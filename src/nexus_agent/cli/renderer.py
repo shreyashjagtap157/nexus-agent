@@ -251,21 +251,20 @@ class PerRequest:
 
 class TokenUsage:
     """Token usage tracking — matches Claude Code's display."""
-    input_tokens: int = 0
-    output_tokens: int = 0
-    cache_creation: int = 0
-    cache_read: int = 0
-    total_input: int = 0
-    total_output: int = 0
-    context_window: int = 200000  # Dynamic — set from provider
-    provider_name: str = "local"  # For pricing lookup
-
-    # Per-request tracking
-    current_request: PerRequest = field(default_factory=PerRequest)
-    last_request: PerRequest = field(default_factory=PerRequest)
+    def __init__(self):
+        self.input_tokens: int = 0
+        self.output_tokens: int = 0
+        self.cache_creation: int = 0
+        self.cache_read: int = 0
+        self.total_input: int = 0
+        self.total_output: int = 0
+        self.context_window: int = 200000
+        self.provider_name: str = "local"
+        self.current_request = PerRequest()
+        self.last_request = PerRequest()
 
     # Per-provider pricing: (input_per_1m, output_per_1m) in USD
-    PRICING: dict[str, tuple[float, float]] = field(default_factory=lambda: {
+    PRICING: dict[str, tuple[float, float]] = {
         "anthropic": (3.00, 15.00),
         "openai": (2.50, 10.00),
         "google": (1.25, 5.00),
@@ -279,7 +278,7 @@ class TokenUsage:
         "nvidia": (0.00, 0.00),  # Free tier
         "local": (0.00, 0.00),
         "ollama": (0.00, 0.00),
-    })
+    }
 
     @property
     def total(self) -> int:
