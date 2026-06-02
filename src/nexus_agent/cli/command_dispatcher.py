@@ -350,12 +350,26 @@ class CommandDispatcherMixin:
 
     def _cmd_help(self, args: str):
         self.r.divider()
+        self.console.print("[bold]Slash Commands:[/bold]")
         table = Table(show_header=False, box=None, padding=(0, 2))
         for c in self.SLASH_COMMANDS:
-            table.add_row(f"[bold]{c['name']}[/bold]", f"[dim]{c['description']}[/dim]")
+            table.add_row(f"  [bold]{c['name']}[/bold]", f"[dim]{c['description']}[/dim]")
         self.console.print(table)
+        self.console.print()
+        self.console.print("[bold]Keyboard Shortcuts:[/bold]")
+        kb = Table(show_header=False, box=None, padding=(0, 2))
+        kb.add_row("  [bold]Enter[/bold]", "[dim]Send message / execute command[/dim]")
+        kb.add_row("  [bold]Ctrl+C[/bold]", "[dim]Abort current request[/dim]")
+        kb.add_row("  [bold]Ctrl+D[/bold]", "[dim]Exit NexusAgent[/dim]")
+        kb.add_row("  [bold]Esc[/bold]", "[dim]Cancel selection / close menu[/dim]")
+        kb.add_row("  [bold]Tab[/bold]", "[dim]Autocomplete slash command or @file[/dim]")
+        kb.add_row("  [bold]↑/↓[/bold]", "[dim]Navigate command history[/dim]")
+        kb.add_row("  [bold]/[/bold]  ", "[dim]Open slash command menu[/dim]")
+        kb.add_row("  [bold]Ctrl+L[/bold]", "[dim]Clear terminal[/dim]")
+        kb.add_row("  [bold]Ctrl+W[/bold]", "[dim]Delete word backward[/dim]")
+        kb.add_row("  [bold]Ctrl+U[/bold]", "[dim]Delete line[/dim]")
+        self.console.print(kb)
         self.r.divider()
-        self.console.print("  [dim]Tab-complete with / or @ for files[/dim]")
 
     def _cmd_model(self, args: str):
         parts = args.strip().split(maxsplit=2) if args else []

@@ -1,8 +1,12 @@
 # Project Memory
 
 ## Latest Changes (2026-06-02)
-- Effort system refactored: `AgentLoop.EFFORT_CONFIG` with proper 5-level mapping (low/medium/high/xhigh/max) — each with temperature, max_tokens, max_iterations, and reflection toggle
-- RuntimeManager extended: `install_runtime()`, `uninstall_runtime()`, `switch_runtime()`, `is_runtime_installed()`, `get_installable_runtimes()` — 6 installable backends (cpu, cuda, vulkan, metal, rocm, onnx)
+- Welcome display: no longer shows fake context size when no model loaded
+- Token tracking: added `PerRequest` class for per-request input/output tokens + elapsed timing, shown after each response like Claude Code
+- `/help` expanded: shows full keyboard shortcuts reference (Ctrl+C/D/L/W/U, Enter, Esc, Tab, ↑/↓, /)
+- Welcome panel shortcut labels now descriptive ("/help commands  Ctrl+C abort  Ctrl+D exit")
+- Multi-pass orchestration: xhigh and max effort levels get automatic planning phase + final review pass
+- EFFORT_CONFIG now has `multi_pass` boolean field
 - `/runtime` command: added `install`, `reinstall`, `uninstall`, `switch` subcommands with progress reporting
 - Wizard: added runtime selection/installation step (Step 2) with CUDA detection
 - Config: added `NEXUS_RUNTIME` and `NEXUS_EFFORT_LEVEL` env vars

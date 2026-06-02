@@ -217,6 +217,38 @@ class Verbosity(Enum):
 
 
 @dataclass
+class PerRequest:
+    """Per-request token + timing tracking, like Claude Code."""
+    def __init__(self):
+        self.input_tokens: int = 0
+        self.output_tokens: int = 0
+        self.elapsed: float = 0.0
+        self._start: float = 0.0
+
+    def begin(self) -> None:
+        self._start = time.time()
+        self.input_tokens = 0
+        self.output_tokens = 0
+
+    def end(self) -> None:
+        if self._start:
+            self.elapsed = time.time() - self._start
+
+    def display(self) -> str:
+        parts = []
+        if self.input_tokens > 0:
+            parts.append(f"\033[2mIn:\033[0m{self.input_tokens:,}")
+        if self.output_tokens > 0:
+            parts.append(f"\033[2mOut:\033[0m{self.output_tokens:,}")
+        if self.elapsed > 0:
+            if self.elapsed >= 60:
+                m, s = divmod(int(self.elapsed), 60)
+                parts.append(f"\033[2mTime:\033[0m{m}m{s:02d}s")
+            else:
+                parts.append(f"\033[2mTime:\033[0m{self.elapsed:.1f}s")
+        return "  ".join(parts) if parts else ""
+
+
 class TokenUsage:
     """Token usage tracking — matches Claude Code's display."""
     input_tokens: int = 0
@@ -227,6 +259,10 @@ class TokenUsage:
     total_output: int = 0
     context_window: int = 200000  # Dynamic — set from provider
     provider_name: str = "local"  # For pricing lookup
+
+    # Per-request tracking
+    current_request: PerRequest = field(default_factory=PerRequest)
+    last_request: PerRequest = field(default_factory=PerRequest)
 
     # Per-provider pricing: (input_per_1m, output_per_1m) in USD
     PRICING: dict[str, tuple[float, float]] = field(default_factory=lambda: {
@@ -260,7 +296,11 @@ class TokenUsage:
     def display_short(self) -> str:
         inp = self.total_input or self.input_tokens
         out = self.total_output or self.output_tokens
-        return f"↑{inp:,}|↓{out:,}" if inp or out else ""
+        return f"\u2191{inp:,}|\u2193{out:,}" if inp or out else ""
+
+    def display_request(self) -> str:
+        """Display the last request's token usage and timing."""
+        return self.last_request.display()
 
     def display_context(self) -> str:
         """Context bar format like Claude Code's visual bar."""
@@ -268,9 +308,19 @@ class TokenUsage:
         pct = min(100, int(self.total / ctx * 100)) if self.total > 0 else 0
         bar_len = 10
         filled = int(pct / 100 * bar_len)
-        bar = "━" * filled + "─" * (bar_len - filled)
+        bar = "\u2501" * filled + "\u2500" * (bar_len - filled)
         color = "green" if pct < 50 else "yellow" if pct < 80 else "red"
+        if self.last_request.elapsed > 0:
+            time_str = self._fmt_time(self.last_request.elapsed)
+            return f"[dim]{time_str}[/dim] Ctx: [{color}]{bar}[/{color}] {pct}%"
         return f"Ctx: [{color}]{bar}[/{color}] {pct}%"
+
+    @staticmethod
+    def _fmt_time(seconds: float) -> str:
+        if seconds >= 60:
+            m, s = divmod(int(seconds), 60)
+            return f"{m}m{s:02d}s"
+        return f"{seconds:.1f}s"
 
     def detail_str(self) -> str:
         """Detailed breakdown for /context command."""
@@ -278,17 +328,22 @@ class TokenUsage:
         pct = min(100, int(self.total / ctx * 100))
         bar_len = 30
         filled = int(pct / 100 * bar_len)
-        bar = "█" * filled + "░" * (bar_len - filled)
+        bar = "\u2588" * filled + "\u2591" * (bar_len - filled)
         cost = self.estimated_cost
-        return (
-            f"  Input tokens:     {self.total_input:,}\n"
-            f"  Output tokens:    {self.total_output:,}\n"
-            f"  Cache creation:   {self.cache_creation:,}\n"
-            f"  Cache read:       {self.cache_read:,}\n"
-            f"  Total:            {self.total:,} / {ctx:,} ({pct}%)\n"
-            f"  Estimated cost:   ${cost:.4f}\n"
-            f"  [{bar}] {pct}%"
-        )
+        lines = [
+            f"  Input tokens:     {self.total_input:,}",
+            f"  Output tokens:    {self.total_output:,}",
+            f"  Cache creation:   {self.cache_creation:,}",
+            f"  Cache read:       {self.cache_read:,}",
+            f"  Total:            {self.total:,} / {ctx:,} ({pct}%)",
+        ]
+        if self.last_request.elapsed > 0:
+            lines.append(f"  Last request:     {self._fmt_time(self.last_request.elapsed)}")
+        if self.last_request.input_tokens or self.last_request.output_tokens:
+            lines.append(f"  Last I/O:         \u2191{self.last_request.input_tokens:,} \u2193{self.last_request.output_tokens:,}")
+        lines.append(f"  Estimated cost:   ${cost:.4f}")
+        lines.append(f"  [{bar}] {pct}%")
+        return "\n".join(lines)
 
     def display_cost(self, kind: str = "all") -> str:
         pricing = self.PRICING.get(self.provider_name, (0.003, 0.015))
@@ -1326,7 +1381,7 @@ class NexusTerminalRenderer:
         # ── Right column lines ──
         right = [
             f"{B}Welcome to NexusAgent!{R}",
-            f"  {B}/help{R}{D} · {B}Ctrl+C{R}{D} · {B}Ctrl+D{R}",
+            f"  {B}/help{R}{D} commands{R}  {B}Ctrl+C{R}{D} abort{R}  {B}Ctrl+D{R}{D} exit{R}",
             "",
         ]
 
@@ -1354,7 +1409,7 @@ class NexusTerminalRenderer:
         elif model_status == "loaded":
             right_5 = f"  {B}Provider:{R} {C}{provider}{R}  Context: {fmt(context_size)}"
         else:
-            right_5 = f"  {B}Provider:{R} {D}{provider}{R}  Context: {fmt(context_size)}"
+            right_5 = f"  {B}Provider:{R} {D}{provider}{R}"
         lines.append(build_line(model_status_label, right_5))
 
         # ── Row 6: workspace left | tokens right ──

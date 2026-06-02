@@ -27,13 +27,15 @@ src/nexus_agent/
 ```
 
 ## Effort Levels (mapped in `core/agent.py:AgentLoop.EFFORT_CONFIG`)
-| Level   | Iterations | Temp | Max Tokens | Reflection |
-|---------|-----------|------|------------|------------|
-| low     | 15        | 0.30 | 2,048      | No         |
-| medium  | 25        | 0.15 | 4,096      | No         |
-| high    | 50        | 0.10 | 8,192      | Yes        |
-| xhigh   | 80        | 0.05 | 16,384     | Yes        |
-| max     | 120       | 0.01 | 32,768     | Yes        |
+| Level   | Iterations | Temp | Max Tokens | Reflection | Multi-Pass |
+|---------|-----------|------|------------|------------|------------|
+| low     | 15        | 0.30 | 2,048      | No         | No         |
+| medium  | 25        | 0.15 | 4,096      | No         | No         |
+| high    | 50        | 0.10 | 8,192      | Yes        | No         |
+| xhigh   | 80        | 0.05 | 16,384     | Yes        | Yes        |
+| max     | 120       | 0.01 | 32,768     | Yes        | Yes        |
+
+Multi-pass (xhigh+): automatic planning prompt injected before execution, final review pass after completion.
 
 Set via `/effort [level]` slash command. Config in `agent.effort_level`.
 

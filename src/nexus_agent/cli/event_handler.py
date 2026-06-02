@@ -28,6 +28,7 @@ class EventHandlerMixin:
         in_tokens = self._engine.count_tokens(user_input) if self._engine else len(user_input.split())
         self._tokens.input_tokens += in_tokens
         self._tokens.total_input += in_tokens
+        self._tokens.current_request.input_tokens = in_tokens
 
         if self._session_mgr:
             self._session_mgr.save_message("user", content=user_input)
@@ -49,6 +50,7 @@ class EventHandlerMixin:
         verb = random.choice(SPINNER_VERBS_PRESENT)
         self.r.show_spinner(verb)
         _streaming_started = False
+        self._tokens.current_request.begin()
 
         try:
             for event in self._agent.run_stream(user_input):
@@ -75,6 +77,7 @@ class EventHandlerMixin:
                         out_tokens = self._engine.count_tokens(event.data) if self._engine else len(event.data.split())
                         self._tokens.output_tokens += out_tokens
                         self._tokens.total_output += out_tokens
+                        self._tokens.current_request.output_tokens = out_tokens
 
                 elif event.type == "tool_call":
                     self._finalize_streaming(full_response)
@@ -142,10 +145,14 @@ class EventHandlerMixin:
             if self._session_mgr:
                 self._session_mgr.save_message("assistant", content=full_response)
 
-            if self._tokens.input_tokens > 0 or self._tokens.output_tokens > 0:
-                self.console.print(
-                    f"  [dim]{self._tokens.display_short()}[/dim]"
-                )
+            self._tokens.current_request.end()
+            in_r = self._tokens.current_request.input_tokens
+            out_r = self._tokens.current_request.output_tokens
+            if self._tokens.current_request.elapsed > 0 or in_r or out_r:
+                self.r.system_message(self._tokens.display_request())
+            self._tokens.last_request.input_tokens = self._tokens.current_request.input_tokens
+            self._tokens.last_request.output_tokens = self._tokens.current_request.output_tokens
+            self._tokens.last_request.elapsed = self._tokens.current_request.elapsed
 
         if self._agent and hasattr(self._agent, 'messages'):
             self._context.messages = len(self._agent.messages)

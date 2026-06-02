@@ -157,6 +157,7 @@ class AgentLoop:
             "temperature": 0.3,
             "max_tokens": 2048,
             "reflection": False,
+            "multi_pass": False,
             "description": "Fast responses, minimal iteration",
         },
         "medium": {
@@ -164,6 +165,7 @@ class AgentLoop:
             "temperature": 0.15,
             "max_tokens": 4096,
             "reflection": False,
+            "multi_pass": False,
             "description": "Balanced speed and quality",
         },
         "high": {
@@ -171,6 +173,7 @@ class AgentLoop:
             "temperature": 0.1,
             "max_tokens": 8192,
             "reflection": True,
+            "multi_pass": False,
             "description": "Thorough reasoning with reflection",
         },
         "xhigh": {
@@ -178,6 +181,7 @@ class AgentLoop:
             "temperature": 0.05,
             "max_tokens": 16384,
             "reflection": True,
+            "multi_pass": True,
             "description": "Deep reasoning with multi-pass review",
         },
         "max": {
@@ -185,6 +189,7 @@ class AgentLoop:
             "temperature": 0.01,
             "max_tokens": 32768,
             "reflection": True,
+            "multi_pass": True,
             "description": "Maximum intelligence, exhaustive analysis",
         },
     }
@@ -253,6 +258,7 @@ Current workspace: {workspace}
         self.temperature = effort_map["temperature"]
         self.max_tokens = min(effort_map["max_tokens"], cfg.max_tokens) if cfg.max_tokens != self.max_tokens else effort_map["max_tokens"]
         self._reflection_enabled = effort_map["reflection"]
+        self._multi_pass_enabled = effort_map.get("multi_pass", False)
 
         # Conversation state
         self.messages: list[Message] = []
@@ -490,7 +496,11 @@ Current workspace: {workspace}
             self.messages.append(Message(role=Role.SYSTEM, content=system_prompt))
 
         truncated_input = user_input[:self.max_input_chars]
-        self.messages.append(Message(role=Role.USER, content=truncated_input))
+        if self._multi_pass_enabled:
+            planning_prompt = f"[Task]\n{truncated_input}\n\n[Plan-First]\nBefore starting, create a clear step-by-step plan for how you will approach this task. Break it down into phases: context gathering, implementation, verification. Then execute each phase."
+            self.messages.append(Message(role=Role.USER, content=planning_prompt))
+        else:
+            self.messages.append(Message(role=Role.USER, content=truncated_input))
         self.iteration_count = 0
         return truncated_input
 
@@ -717,6 +727,36 @@ Current workspace: {workspace}
                 yield ev
             if rework_needed:
                 continue
+
+            # Multi-pass review for xhigh+ efforts
+            if self._multi_pass_enabled and self._stream_content:
+                yield self._emit_event("thinking", "Review pass: verifying completeness...")
+                review_msg = (
+                    "[Review Request]\nOriginal task: "
+                    f"{truncated_input[:500]}\n\n"
+                    "Your completed work is above. Review it carefully:\n"
+                    "1. Does it fully address all parts of the request?\n"
+                    "2. Are there any edge cases, errors, or missing details?\n"
+                    "3. Did you verify the solution works?\n"
+                    "4. If changes were made, are they correct and complete?\n\n"
+                    'If the work is complete and correct, say "Looks good" with a brief summary. '
+                    "If anything is missing or wrong, fix it now."
+                )
+                with self._lock:
+                    self.messages.append(Message(role=Role.USER, content=review_msg))
+                self._stream_content = ""
+                self._stream_tool_calls = []
+                try:
+                    yield from self._run_streaming()
+                except (RuntimeError, ValueError, OSError) as e:
+                    pass
+                if self._stream_content:
+                    yield self._emit_event("content_complete", self._stream_content)
+                    with self._lock:
+                        self.messages.append(Message(
+                            role=Role.ASSISTANT,
+                            content=self._stream_content or None,
+                        ))
 
             self.state = AgentState.DONE
             yield self._emit_event("done", {
