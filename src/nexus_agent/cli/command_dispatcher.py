@@ -431,7 +431,7 @@ class CommandDispatcherMixin:
             self._provider_name = "local"
             self._config.setdefault("local_model", {})["model_path"] = path
             self._rebuild_welcome()
-            self._init_engine()
+            self._init_engine(skip_interactive=True)
             self._init_agent()
             if self._engine and getattr(self._engine, "is_loaded", False):
                 self._model_status = "loaded"
@@ -1678,7 +1678,7 @@ class CommandDispatcherMixin:
         self.r.system_message("Vim mode: Not yet implemented")
 
     def _cmd_quit(self, args: str):
-        self._is_running = False
+        self._is_running.clear()
 
     def _cmd_desktop(self, args: str):
         self.r.system_message("Desktop handoff: Not yet implemented")

@@ -1344,11 +1344,14 @@ class NexusTerminalRenderer:
             elif n >= 1024:
                 return f"{n/1024:.1f}K"
             return str(n)
-        inp = fmt(tokens.total_input if tokens and hasattr(tokens, 'total_input') else 0)
-        out = fmt(tokens.total_output if tokens and hasattr(tokens, 'total_output') else 0)
-        read_t = fmt(metrics.get("read_tokens", 0))
-        write_t = fmt(metrics.get("write_tokens", 0))
-        edit_t = fmt(metrics.get("edit_tokens", 0))
+        if model_status == "loaded":
+            inp = fmt(tokens.total_input if tokens and hasattr(tokens, 'total_input') else 0)
+            out = fmt(tokens.total_output if tokens and hasattr(tokens, 'total_output') else 0)
+            read_t = fmt(metrics.get("read_tokens", 0))
+            write_t = fmt(metrics.get("write_tokens", 0))
+            edit_t = fmt(metrics.get("edit_tokens", 0))
+        else:
+            inp = out = read_t = write_t = edit_t = "—"
 
         model_d = truncate_visual(model_name, 45)
         ws = truncate_visual(workspace, 45)

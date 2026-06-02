@@ -81,7 +81,7 @@ class SessionOrchestratorMixin:
         self._init_skills()
         self._init_agent()
 
-    def _init_engine(self):
+    def _init_engine(self, skip_interactive: bool = False):
         provider = self._provider_name or self._config.get("providers", {}).get("active", "local")
         from nexus_agent.llm.providers.factory import ProviderFactory
 
@@ -97,7 +97,7 @@ class SessionOrchestratorMixin:
                     if best:
                         model_val = str(best)
 
-                if sys.stdout.isatty() and model_val:
+                if sys.stdout.isatty() and model_val and not skip_interactive:
                     self._interactive_model_config(model_val)
 
             self._engine = ProviderFactory.create_provider(provider, self._config, model_val)
