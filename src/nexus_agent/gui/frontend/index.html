@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusAgent — Offline AI Coding Workspace</title>
+    <!-- Premium Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="dark-theme">
+    <div class="app-layout">
+        
+        <!-- COLUMN 1: LEFT SIDEBAR (SESSIONS & LOGO) -->
+        <aside class="sidebar-left glassmorphism">
+            <div class="brand">
+                <div class="logo-orb"></div>
+                <div class="brand-text">
+                    <h1>NexusAgent</h1>
+                    <span class="badge offline-badge">OFFLINE</span>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary btn-new-chat" id="btn-new-session">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                New Workspace
+            </button>
+            
+            <div class="sidebar-section">
+                <h3>CONVERSATIONS</h3>
+                <ul class="session-list" id="session-history-list">
+                    <!-- Session history items will be loaded dynamically here -->
+                    <div class="loader-small"></div>
+                </ul>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="btn-icon" id="btn-settings-trigger" title="Settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <div class="user-badge">
+                    <span class="avatar">U</span>
+                    <span class="user-name">Developer</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- COLUMN 2: CENTER PANEL (CHAT INTERFACE) -->
+        <main class="chat-workspace">
+            <header class="top-nav glassmorphism">
+                <div class="nav-left">
+                    <div class="current-model-tag" id="active-model-display">
+                        <span class="indicator red-glow"></span>
+                        <span class="model-text">No local LLM loaded</span>
+                        <button class="btn btn-secondary btn-sm" id="btn-change-model">Switch Model</button>
+                    </div>
+                </div>
+                
+                <div class="nav-right">
+                    <div class="mode-selector">
+                        <button class="mode-tab active" data-mode="auto">AUTO</button>
+                        <button class="mode-tab" data-mode="plan">PLAN</button>
+                        <button class="mode-tab" data-mode="build">BUILD</button>
+                        <button class="mode-tab" data-mode="review">REVIEW</button>
+                    </div>
+                    <div class="connection-status" id="ws-status" title="Disconnected"></div>
+                </div>
+            </header>
+
+            <section class="messages-area" id="chat-messages-container">
+                <!-- Message blocks will dynamically stream here -->
+                <div class="welcome-card-container">
+                    <div class="welcome-card glassmorphism">
+                        <div class="orb-large glow-blue"></div>
+                        <h2>NexusAgent Coding Environment</h2>
+                        <p class="tagline">Local model hosting, native performance, complete data privacy.</p>
+                        
+                        <div class="feature-rows">
+                            <div class="f-row">
+                                <span class="f-icon">🔒</span>
+                                <div class="f-text">
+                                    <h4>100% Offline Engine</h4>
+                                    <p>Your workspace logic and file modifications remain entirely secure on your machine.</p>
+                                </div>
+                            </div>
+                            <div class="f-row">
+                                <span class="f-icon">🚀</span>
+                                <div class="f-text">
+                                    <h4>NPU & Multi-GPU Support</h4>
+                                    <p>Accelerated via WinML/DirectML on NPUs, CUDA on Nvidia, or Metal on Apple Silicon.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" id="btn-load-first-model">
+                            Select Local LLM Model to Start
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="chat-input-container">
+                <div class="input-glow-wrapper glassmorphism">
+                    <textarea class="prompt-input" id="prompt-textarea" placeholder="Describe the feature or bug to fix... (Press Enter to send)"></textarea>
+                    <button class="btn-send" id="btn-send-prompt" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z"/></svg>
+                    </button>
+                </div>
+                <div class="input-footer-info">
+                    <span>Press <kbd>Shift + Enter</kbd> for a newline. Workspace: <strong id="workspace-path-display">D:/Project/nexus-agent</strong></span>
+                </div>
+            </footer>
+        </main>
+
+        <!-- COLUMN 3: RIGHT PANEL (HARDWARE & AGENT RUNTIME LOGS) -->
+        <aside class="sidebar-right glassmorphism">
+            <div class="panel-section">
+                <h3>🖥️ HARDWARE ACCELERATION</h3>
+                <div class="hardware-card">
+                    <div class="hw-item">
+                        <span class="hw-label">System Platform:</span>
+                        <span class="hw-value" id="hw-platform">-</span>
+                    </div>
+                    <div class="hw-item">
+                        <span class="hw-label">Processor:</span>
+                        <span class="hw-value truncate" id="hw-cpu">-</span>
+                    </div>
+                    <div class="hw-item">
+                        <span class="hw-label">Total Memory:</span>
+                        <span class="hw-value" id="hw-ram">-</span>
+                    </div>
+                    <div class="hw-item">
+                        <span class="hw-label">NPU Accelerator:</span>
+                        <span class="hw-value success-text" id="hw-npu">None detected</span>
+                    </div>
+                    <div class="hw-item">
+                        <span class="hw-label">GPU Devices:</span>
+                        <span class="hw-value" id="hw-gpu">Not detected</span>
+                    </div>
+                    <div class="hw-item">
+                        <span class="hw-label">Offload layers:</span>
+                        <span class="hw-value" id="active-gpu-layers">CPU fallback</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section flex-grow">
+                <h3>🔧 AGENT SUB-SYSTEM LOGS</h3>
+                <div class="agent-activity-panel" id="agent-activity-log">
+                    <div class="log-entry system">[SYSTEM] Web interface initialized. Ready.</div>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- MODAL: MODEL LOADER MANAGER -->
+    <div class="modal-backdrop" id="model-loader-modal">
+        <div class="modal-card glassmorphism">
+            <div class="modal-header">
+                <h2>Local LLM Engine Manager</h2>
+                <button class="btn-close-modal" id="btn-close-model-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">Discovered models in your configured local model directory. Suited formats are recommended based on available RAM, VRAM, and NPUs.</p>
+                
+                <div class="model-selection-grid" id="discovered-models-list">
+                    <!-- Discovered local GGUF/ONNX models listed here -->
+                    <div class="loader-small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div class="modal-backdrop" id="settings-modal">
+        <div class="modal-card glassmorphism">
+            <div class="modal-header">
+                <h2>Workspace & Sandbox Settings</h2>
+                <button class="btn-close-modal" id="btn-close-settings-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="setting-worktree-mode">
+                        <span class="slider"></span>
+                        <span class="toggle-label">Git Worktree Isolation Mode</span>
+                    </label>
+                    <p class="setting-hint">Create temporary Git worktrees for sandbox operations to isolate edits. Allows reviewing changes before merging. Safe for sensitive master branches.</p>
+                </div>
+                
+                <div class="settings-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="setting-auto-sandbox" checked>
+                        <span class="slider"></span>
+                        <span class="toggle-label">Rule-based Shell Permission checks</span>
+                    </label>
+                    <p class="setting-hint">Automatically prompt before executing DANGEROUS commands while executing SAFE commands (e.g. git status, list directories) automatically.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript bundles -->
+    <script src="/js/utils.js"></script>
+    <script src="/js/chat.js"></script>
+    <script src="/js/models.js"></script>
+    <script src="/js/settings.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

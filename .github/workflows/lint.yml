@@ -1,0 +1,41 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    name: Lint (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+        tool: [ruff, mypy]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run Ruff
+        if: matrix.tool == 'ruff'
+        run: |
+          python -m ruff check src/
+          python -m ruff format --check src/
+
+      - name: Run MyPy
+        if: matrix.tool == 'mypy'
+        run: |
+          python -m mypy src/nexus_agent/

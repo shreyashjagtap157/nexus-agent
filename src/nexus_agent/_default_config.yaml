@@ -1,0 +1,378 @@
+# NexusAgent Default Configuration
+# ================================
+# This file contains the default settings for the agent.
+# User overrides are stored in ~/.nexus-agent/config.yaml
+
+agent:
+  # Name shown in UI
+  name: "NexusAgent"
+  version: "0.1.0"
+
+  # Default operating mode: plan, build, auto
+  default_mode: "auto"
+
+  # Maximum iterations in agentic loop before asking for confirmation
+  max_iterations: 50
+
+  # Temperature for LLM inference
+  temperature: 0.1
+
+  # Maximum tokens per response
+  max_tokens: 4096
+
+  # Enable streaming responses
+  streaming: true
+
+  # Auto-compact context when this percentage is reached
+  context_compact_threshold: 0.85
+
+  # Reasoning effort level: low, medium, high
+  effort_level: "medium"
+
+  # Active Hermes coding goal/objective
+  goal: ""
+
+
+local_model:
+  # The runtime engine to use: auto, llama-cpp, onnx, ollama
+  runtime: "auto"
+
+  # Directory to scan for GGUF/ONNX models
+  models_dir: "~/models"
+
+  # Default model file or folder (empty = auto-detect first available)
+  default_model: ""
+
+  # Explicit GPU backend: auto, cpu, cuda, vulkan, metal, sycl, rocm
+  gpu_backend: "auto"
+
+  # GPU layers to offload (-1 = all available, 0 = CPU only)
+  gpu_layers: -1
+
+  # Context window size in tokens
+  context_size: 4096
+
+  # CPU threads (0 = auto-detect)
+  threads: 0
+
+  # Chat format for tool calling (auto-detect from model metadata)
+  chat_format: "auto"
+
+  # Batch size for prompt processing
+  batch_size: 512
+
+  # Enable memory mapping for faster model loading
+  use_mmap: true
+
+  # Enable memory locking to prevent swapping
+  use_mlock: false
+
+  # Seed for reproducibility (-1 = random)
+  seed: -1
+
+  # Fine-tuning parameters
+  flash_attention: true
+  unified_kv_cache: true
+  rope_freq_base: 0.0          # 0 = auto/default
+  rope_freq_scale: 0.0         # 0 = auto/default
+  kv_quant_type: "f16"         # f16, q8_0, q4_0
+  keep_in_memory: true
+
+  # Model loading guardrails: off, relaxed, balanced, strict
+  guardrails: "balanced"
+
+  # Per-backend hardware configuration overrides
+  # Each backend section overrides the top-level local_model settings
+  # when that specific backend is selected or auto-detected.
+  backends:
+    cuda:
+      enabled: true
+      device: 0                     # GPU device ID (-1 = auto)
+      gpu_layers: -1                # Layers to offload (-1 = all)
+      tensor_split: ""              # Comma-separated split ratios across GPUs
+      kv_quant_type: "f16"         # f16, q8_0, q4_0
+      flash_attention: true
+      unified_kv_cache: true
+      use_mmap: true
+      use_mlock: false
+
+    vulkan:
+      enabled: true
+      device: 0
+      gpu_layers: -1
+      tensor_split: ""
+      kv_quant_type: "f16"
+      flash_attention: true
+      unified_kv_cache: true
+      use_mmap: true
+      use_mlock: false
+
+    rocm:
+      enabled: true
+      device: 0
+      gpu_layers: -1
+      tensor_split: ""
+      kv_quant_type: "f16"
+      flash_attention: true
+      unified_kv_cache: true
+      use_mmap: true
+      use_mlock: false
+
+    metal:
+      enabled: true
+      device: 0
+      gpu_layers: -1
+      kv_quant_type: "f16"
+      flash_attention: true
+      use_mmap: true
+      use_mlock: false
+
+    sycl:
+      enabled: true
+      device: 0
+      gpu_layers: -1
+      kv_quant_type: "f16"
+      flash_attention: true
+      unified_kv_cache: true
+      use_mmap: true
+      use_mlock: false
+
+    npu:
+      enabled: true
+      device: 0
+      runtime: "onnx"              # NPU uses ONNX Runtime GenAI + DirectML
+      provider: "dml"              # Execution provider: dml, cpu, cuda
+      context_size: 4096
+      flash_attention: true
+
+    openvino:
+      enabled: true
+      device: "CPU"                # CPU, GPU, NPU (Intel device string)
+      gpu_layers: -1
+      kv_quant_type: "f16"
+      flash_attention: true
+      use_mmap: true
+      nthreads: 0                  # OpenVINO threads (0 = auto)
+      num_streams: 1               # Number of inference streams
+
+
+hardware:
+  # Global hardware acceleration backends
+  # This section controls which hardware platforms are enabled for inference.
+  # Each backend can be explicitly enabled/disabled. The system auto-detects
+  # available backends at startup when set to "auto".
+
+  # CUDA — NVIDIA GPU acceleration
+  cuda:
+    enabled: auto                  # true, false, auto
+    min_compute_capability: 7.0   # Minimum CC required (7.0 = Volta+)
+    device: 0                     # Default GPU device ID
+    memory_fraction: 0.9          # Max fraction of GPU memory to use
+    allow_growth: true            # Allocate memory on demand (vs. pre-reserve)
+    tensor_cores: auto            # Enable tensor core optimizations (auto, true, false)
+    cudnn:
+      enabled: true
+      benchmark: true
+      deterministic: false
+
+  # Vulkan — Cross-platform GPU acceleration (AMD, Intel, NVIDIA)
+  vulkan:
+    enabled: auto
+    device: 0
+    memory_fraction: 0.9
+    allow_growth: true
+
+  # ROCm — AMD GPU acceleration (Linux)
+  rocm:
+    enabled: auto
+    device: 0
+    memory_fraction: 0.9
+    allow_growth: true
+    hip_visible_devices: ""       # HIP_VISIBLE_DEVICES override
+
+  # Metal — Apple GPU acceleration (macOS)
+  metal:
+    enabled: auto
+    device: 0
+    memory_fraction: 0.9
+
+  # SYCL — Intel GPU acceleration (oneAPI)
+  sycl:
+    enabled: auto
+    device: 0
+    memory_fraction: 0.9
+
+  # NPU — Neural Processing Unit (Windows DirectML / Qualcomm SNPE)
+  npu:
+    enabled: auto
+    device: 0
+    runtime: "onnx"              # onnx or tflite
+    provider: "dml"              # dml (DirectML), qnn (Qualcomm), xnnpack
+
+  # OpenVINO — Intel CPU/GPU/NPU (cross-platform)
+  openvino:
+    enabled: auto
+    device: "CPU"                # CPU, GPU, NPU, AUTO, MULTI
+    num_streams: 1
+    nthreads: 0
+    performance_hint: "throughput"  # latency, throughput, cumulative
+
+  # TPU — Google Tensor Processing Unit (via JAX)
+  tpu:
+    enabled: auto
+    device: 0
+    runtime: "jax"               # jax or torch-xla
+
+
+providers:
+  # Active provider: local, openai, anthropic, google, ollama, openrouter, groq, deepseek, bedrock, custom
+  active: "local"
+
+  openai:
+    model: "gpt-4o"
+    base_url: "https://api.openai.com/v1"
+    max_tokens: 4096
+
+  anthropic:
+    model: "claude-sonnet-4-20250514"
+    max_tokens: 8192
+
+  google:
+    model: "gemini-2.0-flash"
+    max_tokens: 8192
+
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "llama3"
+
+  openrouter:
+    base_url: "https://openrouter.ai/api/v1"
+    model: "anthropic/claude-sonnet-4-20250514"
+
+  groq:
+    base_url: "https://api.groq.com/openai/v1"
+    model: "llama-3.1-70b-versatile"
+
+  deepseek:
+    base_url: "https://api.deepseek.com/v1"
+    model: "deepseek-chat"
+
+  bedrock:
+    region: "us-east-1"
+    model: "anthropic.claude-sonnet-4-20250514-v2:0"
+
+  custom:
+    base_url: ""
+    model: ""
+    api_key: ""
+
+memory:
+  # Enable persistent memory across sessions
+  enabled: true
+
+  # Data directory for memory storage
+  data_dir: "~/.nexus-agent/memory"
+
+  # Working memory max entries
+  working_memory_limit: 100
+
+  # Long-term memory search results limit
+  search_limit: 20
+
+  # Auto-summarize sessions for long-term retention
+  auto_summarize: true
+
+  # User profile learning
+  learn_preferences: true
+
+session:
+  # Data directory for session storage
+  data_dir: "~/.nexus-agent/sessions"
+
+  # Enable auto-save
+  auto_save: true
+
+  # Auto-save interval (seconds)
+  auto_save_interval: 30
+
+  # Maximum sessions to retain
+  max_sessions: 100
+
+  # Enable checkpoint/rollback
+  checkpoints_enabled: true
+
+permissions:
+  # Default mode: suggest, ask, auto
+  mode: "ask"
+
+  # Tool-level permissions
+  tools:
+    file_read: "allow"
+    file_write: "ask"
+    shell_execute: "ask"
+    git_operations: "ask"
+    web_search: "allow"
+    browser: "ask"
+
+  # Allowed shell commands (regex patterns)
+  allowed_commands:
+    - "^ls\\b"
+    - "^dir\\b"
+    - "^cat\\b"
+    - "^head\\b"
+    - "^tail\\b"
+    - "^grep\\b"
+    - "^find\\b"
+    - "^git\\s+(status|log|diff|branch|show)\\b"
+    - "^python\\b"
+    - "^pip\\s+list\\b"
+    - "^npm\\s+(list|ls)\\b"
+
+  # Denied shell commands (regex patterns)
+  # Note: `^` anchors match the start of each subcommand (after &&, ||, ;, | splitting)
+  denied_commands:
+    - "^rm\\s+-rf\\s+/"
+    - "^sudo\\b"
+    - "^format\\b"
+    - "^mkfs\\b"
+    - "^dd\\s+if="
+    - "^shutdown\\b"
+    - "^reboot\\b"
+    - "^chmod\\s+777\\b"
+    - "^:(){"
+
+skills:
+  # Directories to scan for skills
+  search_dirs:
+    - "~/.nexus-agent/skills"
+    - "./skills"
+
+  # Enable built-in skills
+  builtin_enabled: true
+
+mcp:
+  # MCP servers to connect to
+  servers: []
+
+  # Expose agent as MCP server
+  serve:
+    enabled: false
+    transport: "stdio"
+
+gui:
+  host: "127.0.0.1"
+  port: 7860
+  open_browser: true
+
+cli:
+  # Theme: dark, light
+  theme: "dark"
+
+  # Show file tree sidebar
+  show_file_tree: true
+
+  # Show agent activity panel
+  show_agent_panel: true
+
+  # Vim-style keybindings
+  vim_mode: false
