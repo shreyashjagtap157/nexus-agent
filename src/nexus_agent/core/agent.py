@@ -289,6 +289,7 @@ Current workspace: {workspace}
         # Tool registry (name → tool instance)
         self._tool_map: dict[str, Any] = {}
         self._tool_definitions: list[ToolDefinition] = []
+        self.disabled_tools: set[str] = set()
         self._setup_tools()
 
     def _setup_tools(self) -> None:
@@ -408,15 +409,17 @@ Current workspace: {workspace}
 
     def _get_tool_definitions(self) -> list[ToolDefinition] | None:
         """Get tool definitions based on current mode."""
+        disabled = getattr(self, "disabled_tools", set())
         if self.mode == AgentMode.PLAN:
             # Plan mode: only read-only tools
             return [td for td in self._tool_definitions
-                    if self._tool_map[td.name].permission_level == "read-only"]
+                    if self._tool_map[td.name].permission_level == "read-only"
+                    and td.name not in disabled]
 
         if not self._tool_definitions:
             return None
 
-        return self._tool_definitions
+        return [td for td in self._tool_definitions if td.name not in disabled]
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
         """Execute a tool call with permission checking.
