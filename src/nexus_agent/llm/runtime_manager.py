@@ -88,6 +88,15 @@ class LocalModelConfig:
     use_mmap: bool = True
     use_mlock: bool = False
     default_model: str = ""
+    seed: int = -1
+    flash_attention: bool = True
+    unified_kv_cache: bool = True
+    rope_freq_base: float = 0.0
+    rope_freq_scale: float = 0.0
+    kv_quant_type: str = "f16"
+    keep_in_memory: bool = True
+    use_agent_protocol: bool = False
+    reasoning_depth: int = 8
 
     def __post_init__(self) -> None:
         valid_runtimes = {"auto", "llama-cpp", "onnx"}
@@ -135,8 +144,22 @@ class RuntimeManager:
         self._batch_size = self._validated_config.batch_size
         self._use_mmap = self._validated_config.use_mmap
         self._use_mlock = self._validated_config.use_mlock
+        self._seed = self._validated_config.seed
+        self._flash_attention = self._validated_config.flash_attention
+        self._unified_kv_cache = self._validated_config.unified_kv_cache
+        self._rope_freq_base = self._validated_config.rope_freq_base
+        self._rope_freq_scale = self._validated_config.rope_freq_scale
+        self._kv_quant_type = self._validated_config.kv_quant_type
+        self._keep_in_memory = self._validated_config.keep_in_memory
+        self._use_agent_protocol = self._validated_config.use_agent_protocol
+        self._reasoning_depth = self._validated_config.reasoning_depth
 
         self._active_engine: LLMProvider | None = None
+
+        # Activate configured runtime backend if active is set
+        active_backend = self._config.get("runtime", {}).get("active")
+        if active_backend:
+            RuntimeManager.activate_runtime(active_backend)
 
     @property
     def active_engine(self) -> LLMProvider | None:
@@ -171,6 +194,19 @@ class RuntimeManager:
 
         logger.info(f"Selecting local LLM runtime: {runtime}")
 
+        # Activate the runtime backend in sys.path
+        active_backend = self._config.get("runtime", {}).get("active")
+        if not active_backend:
+            if runtime == "onnx":
+                active_backend = "onnx"
+            else:
+                for b in ["cuda", "vulkan", "cpu"]:
+                    if RuntimeManager.is_runtime_installed(b):
+                        active_backend = b
+                        break
+        if active_backend:
+            RuntimeManager.activate_runtime(active_backend)
+
         try:
             if runtime == "onnx":
                 if not ONNX_AVAILABLE:
@@ -201,6 +237,15 @@ class RuntimeManager:
                 batch_size=self._batch_size,
                 use_mmap=self._use_mmap,
                 use_mlock=self._use_mlock,
+                seed=self._seed,
+                flash_attention=self._flash_attention,
+                unified_kv_cache=self._unified_kv_cache,
+                rope_freq_base=self._rope_freq_base,
+                rope_freq_scale=self._rope_freq_scale,
+                kv_quant_type=self._kv_quant_type,
+                keep_in_memory=self._keep_in_memory,
+                use_agent_protocol=self._use_agent_protocol,
+                reasoning_depth=self._reasoning_depth,
                 gpu_backend=self._gpu_backend,
             )
             # Successful instantiation! Close old engine and switch
@@ -218,81 +263,97 @@ class RuntimeManager:
             raise RuntimeError(f"Failed to switch local engine: {e}") from e
 
     @staticmethod
+    def activate_runtime(backend: str) -> None:
+        """Prepend the isolated runtime directory to sys.path and invalidate caches."""
+        import os
+        import sys
+        import importlib
+        if not backend or backend == "auto":
+            return
+        data_dir_path = os.path.expanduser("~/.nexus-agent")
+        target_dir = os.path.join(data_dir_path, "runtimes", backend)
+        if os.path.exists(target_dir):
+            target_dir_abs = os.path.abspath(target_dir)
+            if target_dir_abs not in sys.path:
+                sys.path.insert(0, target_dir_abs)
+                importlib.invalidate_caches()
+                logger.info(f"Activated isolated runtime backend '{backend}' by prepending to sys.path: {target_dir_abs}")
+
+    @staticmethod
+    def get_recommended_runtimes() -> list[str]:
+        """Detect and return a list of recommended runtimes for this machine."""
+        recs = ["cpu"]
+        import sys
+        import platform
+        import os
+        import shutil
+        if sys.platform == "darwin":
+            if "arm" in platform.processor().lower() or "m1" in platform.processor().lower() or "m2" in platform.processor().lower() or "m3" in platform.processor().lower():
+                recs.append("metal")
+        if shutil.which("vulkaninfo") or shutil.which("vulkaninfo.exe"):
+            recs.append("vulkan")
+        if shutil.which("nvidia-smi") or shutil.which("nvidia-smi.exe") or os.environ.get("CUDA_PATH") or os.environ.get("CUDA_HOME"):
+            recs.append("cuda")
+            recs.append("onnx")
+        if sys.platform == "win32":
+            recs.append("onnx")
+        return list(set(recs))
+
+    @staticmethod
     def get_installable_runtimes() -> dict[str, dict[str, Any]]:
-        """Return dict of installable runtimes keyed by backend name."""
-        return dict(INSTALLABLE_RUNTIMES)
+        """Return dict of installable runtimes keyed by backend name, with recommendations."""
+        rts = dict(INSTALLABLE_RUNTIMES)
+        recs = RuntimeManager.get_recommended_runtimes()
+        for key in rts:
+            rts[key]["recommended"] = (key in recs)
+        return rts
 
     @staticmethod
     def is_runtime_installed(backend: str) -> bool:
-        """Check if a given runtime backend is already installed."""
-        if backend == "cpu":
-            try:
-                import llama_cpp  # noqa: F401
-                return True
-            except ImportError:
-                return False
-        elif backend == "cuda":
-            try:
-                import llama_cpp
-                return hasattr(llama_cpp, "llama_supports_gpu_offload") and llama_cpp.llama_supports_gpu_offload()
-            except ImportError:
-                return False
+        """Check if a given runtime backend is already installed in its isolated directory."""
+        import os
+        from pathlib import Path
+        data_dir_path = os.path.expanduser("~/.nexus-agent")
+        target_dir = Path(data_dir_path) / "runtimes" / backend
+        if not target_dir.exists():
+            return False
+        if backend in ("cpu", "cuda", "vulkan", "metal", "rocm"):
+            return (target_dir / "llama_cpp").exists() or list(target_dir.glob("llama_cpp*")) != []
         elif backend == "onnx":
-            try:
-                import onnxruntime  # noqa: F401
-                return True
-            except ImportError:
-                return False
-        elif backend == "vulkan":
-            try:
-                import llama_cpp
-                return "vulkan" in str(getattr(llama_cpp, "__git_revision__", "")).lower()
-            except ImportError:
-                return False
-        elif backend == "metal":
-            try:
-                import llama_cpp
-                return "metal" in str(getattr(llama_cpp, "__git_revision__", "")).lower()
-            except ImportError:
-                return False
-        elif backend == "rocm":
-            try:
-                import llama_cpp
-                return "hip" in str(getattr(llama_cpp, "__git_revision__", "")).lower() or "rocm" in str(getattr(llama_cpp, "__git_revision__", "")).lower()
-            except ImportError:
-                return False
+            return (target_dir / "onnxruntime_genai").exists() or list(target_dir.glob("onnxruntime_genai*")) != []
         return False
 
     @staticmethod
     def install_runtime(backend: str, force_reinstall: bool = False, progress_callback: Any = None) -> bool:
-        """Install a runtime backend via pip.
-
-        Args:
-            backend: Runtime backend key (cpu, cuda, vulkan, metal, rocm, onnx).
-            force_reinstall: Reinstall even if already installed.
-            progress_callback: Optional callable(status, detail) for progress reporting.
-
-        Returns:
-            True if installation succeeded.
-        """
+        """Install a runtime backend via pip to an isolated target directory."""
+        import os
+        import sys
+        from pathlib import Path
+        import subprocess
         rt = INSTALLABLE_RUNTIMES.get(backend)
         if not rt:
             raise ValueError(f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}")
 
+        data_dir_path = os.path.expanduser("~/.nexus-agent")
+        target_dir = Path(data_dir_path) / "runtimes" / backend
+
         if not force_reinstall and RuntimeManager.is_runtime_installed(backend):
             logger.info(f"Runtime {rt['name']} is already installed. Use force_reinstall=True to reinstall.")
+            if progress_callback:
+                progress_callback("complete", f"{rt['name']} is already installed")
             return True
 
         if progress_callback:
-            progress_callback("installing", f"Installing {rt['name']}...")
+            progress_callback("installing", f"Installing {rt['name']} in isolated path...")
 
+        target_dir.mkdir(parents=True, exist_ok=True)
         package_spec = rt["package"]
         if rt.get("extras"):
             package_spec = f"{rt['package']}[{rt['extras']}]"
 
-        pip_args = [sys.executable, "-m", "pip", "install"]
+        pip_args = [sys.executable, "-m", "pip", "install", "--target", str(target_dir)]
         if force_reinstall:
-            pip_args.append("--force-reinstall")
+            pip_args.append("--upgrade")
 
         if rt.get("cmake_args"):
             env = {"CMAKE_ARGS": rt["cmake_args"]}
@@ -300,14 +361,19 @@ class RuntimeManager:
             env = {}
 
         if rt.get("pip_install_args"):
-            pip_args.extend(rt["pip_install_args"].split())
+            pkgs = rt["pip_install_args"].split()
+            pip_args.extend(pkgs)
         else:
             pip_args.append(package_spec)
 
         try:
+            current_env = dict(os.environ)
+            if env:
+                current_env.update(env)
+
             result = subprocess.run(
                 pip_args,
-                env={**env} if env else None,
+                env=current_env,
                 capture_output=True,
                 text=True,
                 timeout=600,
@@ -317,18 +383,6 @@ class RuntimeManager:
                 if progress_callback:
                     progress_callback("error", f"Installation failed: {result.stderr[-200:]}")
                 return False
-
-            if progress_callback:
-                progress_callback("verifying", f"Verifying {rt['name']}...")
-
-            try:
-                importlib.invalidate_caches()
-                if not RuntimeManager.is_runtime_installed(backend):
-                    checked = RuntimeManager._verify_runtime_import(backend)
-                    if not checked:
-                        logger.warning(f"Runtime {backend} installed but import verification inconclusive")
-            except ImportError:
-                logger.warning(f"Runtime {backend} installed but could not verify import")
 
             if progress_callback:
                 progress_callback("complete", f"{rt['name']} installed successfully")
@@ -346,46 +400,22 @@ class RuntimeManager:
             return False
 
     @staticmethod
-    def _verify_runtime_import(backend: str) -> bool:
-        """Try to import a runtime after installation."""
-        try:
-            if backend == "cpu":
-                import llama_cpp  # noqa: F401
-                return True
-            elif backend == "cuda":
-                import llama_cpp  # noqa: F401
-                return hasattr(llama_cpp, "llama_supports_gpu_offload") and llama_cpp.llama_supports_gpu_offload()
-            elif backend == "onnx":
-                import onnxruntime  # noqa: F401
-                return True
-            elif backend in ("vulkan", "metal", "rocm"):
-                import llama_cpp  # noqa: F401
-                return True
-            return False
-        except ImportError:
-            return False
-
-    @staticmethod
     def uninstall_runtime(backend: str) -> bool:
-        """Uninstall a runtime backend via pip."""
-        rt = INSTALLABLE_RUNTIMES.get(backend)
-        if not rt:
-            raise ValueError(f"Unknown runtime backend: {backend}")
-
-        pip_args = [sys.executable, "-m", "pip", "uninstall", "-y"]
-        pip_args.append(rt["package"])
-
-        try:
-            result = subprocess.run(pip_args, capture_output=True, text=True, timeout=120)
-            if result.returncode != 0:
-                logger.error(f"Failed to uninstall {rt['name']}: {result.stderr}")
+        """Uninstall a runtime backend by removing its isolated directory."""
+        import os
+        import shutil
+        from pathlib import Path
+        data_dir_path = os.path.expanduser("~/.nexus-agent")
+        target_dir = Path(data_dir_path) / "runtimes" / backend
+        if target_dir.exists():
+            try:
+                shutil.rmtree(target_dir)
+                logger.info(f"Uninstalled runtime {backend} from {target_dir}")
+                return True
+            except OSError as e:
+                logger.error(f"Failed to delete directory {target_dir}: {e}")
                 return False
-            importlib.invalidate_caches()
-            logger.info(f"Uninstalled {rt['name']}")
-            return True
-        except (OSError, subprocess.TimeoutExpired, RuntimeError) as e:
-            logger.error(f"Uninstall error for {rt['name']}: {e}")
-            return False
+        return True
 
     def switch_runtime(self, backend: str) -> bool:
         """Switch the active runtime backend.

@@ -1192,6 +1192,7 @@ class NexusTerminalRenderer:
         except (OSError, ValueError):
             self.width = 80
             self.height = 24
+        self._scroll_region_set = False
 
     def enter_fullscreen(self):
         if not self._is_fullscreen:
@@ -1280,7 +1281,8 @@ class NexusTerminalRenderer:
             except (OSError, ValueError):
                 term_h = 24
             sys.stdout.write(f"\033[1;{term_h}r")
-            sys.stdout.write(f"\033[{self._welcome_height + 1};1H")
+            # Move cursor to the very bottom line of the terminal screen, and add a newline to scroll up once
+            sys.stdout.write(f"\033[{term_h};1H\n")
             sys.stdout.flush()
             self._scroll_region_set = False
 
@@ -1457,16 +1459,25 @@ class NexusTerminalRenderer:
 
         panel_h = len(lines)
         batch = []
+        if self._scroll_region_set:
+            batch.append("\033[s")  # Save cursor position if scroll region is active
+
         for i in range(panel_h):
             batch.append(f"\033[{i + 1};1H\033[2K")
         for i, line in enumerate(lines):
             batch.append(f"\033[{i + 1};1H{line}")
-        batch.append(f"\033[{panel_h + 1};1H")
+
+        if self._scroll_region_set:
+            batch.append("\033[u")  # Restore cursor position
+        else:
+            batch.append(f"\033[{panel_h + 1};1H")  # Move cursor to top of scroll region
+
         sys.stdout.write("".join(batch))
         sys.stdout.flush()
 
         self._welcome_height = panel_h
-        self._setup_scroll_region(self._welcome_height)
+        if not self._scroll_region_set:
+            self._setup_scroll_region(self._welcome_height)
 
         self.transcript.add_block("system", content=f"NexusAgent v{version}")
         self.transcript.add_block("system", content=f"Model: {model_name}")
@@ -1491,13 +1502,13 @@ class NexusTerminalRenderer:
 
     def rebuild_welcome(self, tokens: object = None, metrics: dict = None,
                       model_status: str | None = None, resource_info: str = "",
-                      active_agents: int | None = None):
+                      active_agents: int | None = None, model_name: str | None = None):
         """Rebuild the welcome panel after terminal resize or clear screen."""
         p = self._welcome_params
         if not p:
             return
-        self._clear_welcome_area()
-        self._reset_scroll_region()
+        if model_name is not None:
+            p["model_name"] = model_name
         actual_status = model_status if model_status is not None else p.get("model_status", "idle")
         actual_resource = resource_info if resource_info else p.get("resource_info", "")
         actual_tokens = tokens if tokens is not None else p.get("tokens")
@@ -1518,12 +1529,29 @@ class NexusTerminalRenderer:
         self.console.print(f"[bold]❯ {text}[/bold]")
         self.transcript.add_block("user", content=text)
 
+    def _get_token_string(self) -> str:
+        if hasattr(self, 'tokens') and self.tokens:
+            req = self.tokens.current_request
+            if req.input_tokens == 0 and req.output_tokens == 0:
+                req = self.tokens.last_request
+            
+            if req.input_tokens > 0 or req.output_tokens > 0:
+                parts = []
+                if req.input_tokens > 0:
+                    parts.append(f"In: {req.input_tokens:,}")
+                if req.output_tokens > 0:
+                    parts.append(f"Out: {req.output_tokens:,}")
+                if parts:
+                    return f"  [dim]({' | '.join(parts)})[/dim]"
+        return ""
+
     def assistant_message(self, content: str):
         if not content.strip():
             return
         self.transcript.add_block("assistant", content=content)
+        token_str = self._get_token_string()
         try:
-            self.console.print("[bold]●[/bold]")
+            self.console.print(f"[bold]●[/bold]{token_str}")
             md = Markdown(content, code_theme="monokai", inline_code_theme="monokai")
             self.console.print(md)
         except (ValueError, TypeError):
@@ -1682,8 +1710,13 @@ class NexusTerminalRenderer:
             )
             self._streaming_last_render = 0.0
             self._streaming_active = True
-            # Print the ● marker once at start
-            self.console.print("[bold]●[/bold]", end="")
+            # Print the ● marker once at start with incoming tokens if available
+            token_str = ""
+            if hasattr(self, 'tokens') and self.tokens:
+                req = self.tokens.current_request
+                if req.input_tokens > 0:
+                    token_str = f"  [dim](In: {req.input_tokens:,})[/dim]"
+            self.console.print(f"[bold]●[/bold]{token_str}", end="")
             sys.stdout.write("\n")
             sys.stdout.flush()
             self._streaming_line_count = 1
@@ -1750,8 +1783,9 @@ class NexusTerminalRenderer:
                 content=full_response,
                 is_streaming=False,
             )
+            token_str = self._get_token_string()
             try:
-                self.console.print("[bold]●[/bold]")
+                self.console.print(f"[bold]●[/bold]{token_str}")
                 md = Markdown(full_response, code_theme="monokai", inline_code_theme="monokai")
                 self.console.print(md)
             except (ValueError, TypeError):

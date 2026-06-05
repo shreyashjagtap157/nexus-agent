@@ -61,11 +61,13 @@ def wizard() -> None:
 @cli.command()
 @click.option("--prompt", "-p", type=str, default=None, help="Initial prompt (non-interactive mode)")
 @click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--session", "-s", type=str, default=None, help="Session ID to resume")
+@click.option("--new", "-n", is_flag=True, default=False, help="Start a new session instead of resuming the last active one")
 @click.option("--verbose", is_flag=True, default=False, help="Show verbose output")
 @click.option("--quiet", is_flag=True, default=False, help="Minimal output")
 @click.pass_context
 def chat(ctx: click.Context, prompt: str | None, workspace: str,
-         verbose: bool, quiet: bool) -> None:
+         session: str | None, new: bool, verbose: bool, quiet: bool) -> None:
     """Start an interactive chat session (TUI mode)."""
     from nexus_agent.cli.app import NexusApp
 
@@ -78,6 +80,8 @@ def chat(ctx: click.Context, prompt: str | None, workspace: str,
         config_path=ctx.obj.get("config_path"),
         data_dir=ctx.obj.get("data_dir"),
         initial_prompt=prompt,
+        session_id=session,
+        new_session=new,
         verbose=verbose,
         quiet=quiet,
     )

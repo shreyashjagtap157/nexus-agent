@@ -111,6 +111,21 @@ class LocalModelConfig(TypedDict, total=False):
     context_size: int
     threads: int
     runtime: str
+    gpu_backend: str
+    chat_format: str
+    batch_size: int
+    use_mmap: bool
+    use_mlock: bool
+    seed: int
+    flash_attention: bool
+    unified_kv_cache: bool
+    rope_freq_base: float
+    rope_freq_scale: float
+    kv_quant_type: str
+    keep_in_memory: bool
+    use_agent_protocol: bool
+    reasoning_depth: int
+
 
 
 class PermissionsConfig(TypedDict, total=False):

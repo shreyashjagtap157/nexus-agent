@@ -41,6 +41,11 @@ SLASH_COMMANDS = [
     {"name": "/autonomous", "description": "Full autonomous goal execution"},
     {"name": "/review", "description": "Multi-agent code review on git diff"},
     {"name": "/model", "description": "Manage, show, switch, or unload models"},
+    {"name": "/model list", "description": "List available stored models"},
+    {"name": "/model switch", "description": "Switch active model to specified name"},
+    {"name": "/model unload", "description": "Unload current active model from memory"},
+    {"name": "/model add", "description": "Register a new model name and path"},
+    {"name": "/model remove", "description": "Deregister a model from database"},
     {"name": "/tools", "description": "Show enabled toolset and allow toggling"},
     {"name": "/skills", "description": "List available skills (project/global)"},
     {"name": "/mode", "description": "Set agent mode (auto|plan|build|review)"},
@@ -49,6 +54,9 @@ SLASH_COMMANDS = [
     {"name": "/sandbox", "description": "View/set sandbox execution mode"},
     {"name": "/context", "description": "Show context window token breakdown"},
     {"name": "/session", "description": "Show active session info"},
+    {"name": "/session list", "description": "List saved sessions in DB"},
+    {"name": "/session resume", "description": "Resume session with specified ID"},
+    {"name": "/session new", "description": "Start a new session"},
     {"name": "/stats", "description": "Conversation statistics"},
     {"name": "/memory", "description": "Search/edit CLAUDE.md memory files"},
     {"name": "/reflect", "description": "Critique last assistant response"},
@@ -121,6 +129,9 @@ SLASH_COMMANDS = [
     {"name": "/mcp", "description": "List/connect MCP servers"},
     {"name": "/skill", "description": "List/run agent skills"},
     {"name": "/config", "description": "View or set configuration"},
+    {"name": "/config show", "description": "Display current configuration"},
+    {"name": "/config set", "description": "Set config key to value persistently"},
+    {"name": "/config get", "description": "Get active config value"},
     {"name": "/settings", "description": "Alias for /config"},
     {"name": "/{", "description": "Display settings (refresh rate, fonts, colors)"},
     {"name": "/devops", "description": "Run full CI verification pipeline"},
@@ -378,7 +389,11 @@ class CommandDispatcherMixin:
         self.r.divider()
 
     def _cmd_model(self, args: str):
-        parts = args.strip().split(maxsplit=2) if args else []
+        import shlex
+        try:
+            parts = shlex.split(args) if args else []
+        except ValueError:
+            parts = args.strip().split() if args else []
         subcmd = parts[0].lower() if parts else ""
 
         if subcmd == "list":
@@ -403,8 +418,8 @@ class CommandDispatcherMixin:
             return
 
         elif subcmd == "add" and len(parts) >= 3:
-            name = parts[1]
-            raw_path = parts[2]
+            name = " ".join(parts[1:-1])
+            raw_path = parts[-1]
             stripped = raw_path.strip("\"'")
             path = os.path.abspath(stripped)
             if not os.path.isfile(path):
@@ -415,7 +430,7 @@ class CommandDispatcherMixin:
             return
 
         elif subcmd == "remove" and len(parts) >= 2:
-            name = parts[1]
+            name = " ".join(parts[1:])
             if self._models_db.remove(name):
                 self.r.system_message(f"Model removed: {name}")
             else:
@@ -423,7 +438,7 @@ class CommandDispatcherMixin:
             return
 
         elif subcmd == "switch" and len(parts) >= 2:
-            name = parts[1]
+            name = " ".join(parts[1:])
             path = self._models_db.get_path(name)
             if not path:
                 self.r.error(f"Model not found: {name}. Use /model list")
@@ -740,15 +755,62 @@ class CommandDispatcherMixin:
         self.r.system_message("Cleared.")
 
     def _cmd_session(self, args: str):
-        if self._session_mgr:
-            try:
-                info = self._session_mgr.get_session_info()
-                for k, v in info.items():
-                    self.console.print(f"  {k}: {v}")
-            except (ValueError, OSError, KeyError, TypeError):
-                self.r.system_message("No active session.")
-        else:
+        if not self._session_mgr:
             self.r.system_message("Session manager unavailable.")
+            return
+
+        parts = args.strip().split(maxsplit=1) if args else []
+        subcmd = parts[0].lower() if parts else ""
+
+        if subcmd == "list":
+            try:
+                sessions = self._session_mgr.list_sessions()
+                if sessions:
+                    from rich.table import Table
+                    table = Table(title="Sessions", show_header=True, header_style="bold magenta")
+                    table.add_column("ID", style="cyan")
+                    table.add_column("Created", style="green")
+                    table.add_column("Messages", justify="right", style="yellow")
+                    table.add_column("Model", style="dim")
+                    for s in sessions:
+                        table.add_row(s["id"][:12], s["created"], str(s.get("message_count", 0)), s.get("model", ""))
+                    self.console.print(table)
+                else:
+                    self.r.system_message("No saved sessions.")
+            except Exception as e:
+                self.r.error(f"Failed to list sessions: {e}")
+
+        elif subcmd == "resume" and len(parts) >= 2:
+            sid = parts[1].strip()
+            self._cmd_resume(sid)
+
+        elif subcmd == "new":
+            self._session_id = self._session_mgr.create_session(
+                model=self._engine.model_name if self._engine else "unknown",
+                provider=self._provider_name or "local",
+                workspace=str(self.workspace),
+                mode=self._current_mode.value,
+            )
+            if self._agent:
+                self._agent.clear_history()
+            self._tokens = TokenUsage()
+            self.r.clear()
+            self.r.system_message(f"Started new session: {self._session_id}")
+            self._rebuild_welcome()
+
+        else:
+            try:
+                act = self._session_mgr.get_active_session()
+                if act:
+                    self.console.print(f"  Active Session ID: {act.get('id', 'unknown')}")
+                    self.console.print(f"  Title:            {act.get('title', '')}")
+                    self.console.print(f"  Workspace:        {act.get('workspace', '')}")
+                    self.console.print(f"  Model:            {act.get('model', '')}")
+                    self.console.print(f"  Provider:         {act.get('provider', '')}")
+                else:
+                    self.r.system_message("No active session.")
+            except Exception as e:
+                self.r.system_message(f"No active session info available: {e}")
 
     def _cmd_stats(self, args: str):
         if self._agent:
@@ -1338,7 +1400,8 @@ class CommandDispatcherMixin:
                 self.console.print("\n  [bold]Installable runtimes:[/bold]")
                 for key, rt in installable.items():
                     status = "[green]✓ installed[/green]" if RuntimeManager.is_runtime_installed(key) else "[dim]not installed[/dim]"
-                    self.console.print(f"  {key:12s} {rt['name']:40s} {status}")
+                    rec_str = " [yellow](Recommended for your system)[/yellow]" if rt.get("recommended") else ""
+                    self.console.print(f"  {key:12s} {rt['name']:40s} {status}{rec_str}")
                     self.console.print(f"  {'':12s} [dim]{rt['description']}[/dim]")
                 self.console.print("\n  Usage: [bold]/runtime install <backend>[/bold]")
                 self.console.print(f"  Backends: {', '.join(installable.keys())}")
@@ -1385,10 +1448,36 @@ class CommandDispatcherMixin:
         elif subcmd == "list" or (not args):
             if not self._runtime_list:
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
-            self.console.print(format_runtime_list(self._runtime_list) or "  [dim]No runtimes detected. Run /runtime scan[/dim]")
+            items = []
+            for rt in self._runtime_list:
+                status = "✓" if rt.available else "✗"
+                items.append((f"{status} {rt.name} ({rt.description})", rt.name))
+            items.append(("Cancel", "exit"))
+            sel = self._interactive_menu(items, "Select a runtime (↑↓ Enter Esc):")
+            if sel and sel != "exit":
+                self._cmd_runtime(f"select {sel}")
+            return
 
         elif subcmd == "select" and len(parts) >= 2:
             name = parts[1].strip()
+            installable = RuntimeManager.get_installable_runtimes()
+            if name.lower() in installable:
+                backend = name.lower()
+                if not RuntimeManager.is_runtime_installed(backend):
+                    self.r.error(f"Runtime '{backend}' is not installed. Run /runtime install {backend} first.")
+                    return
+                self._config.setdefault("runtime", {})["active"] = backend
+                if "path" in self._config.get("runtime", {}):
+                    del self._config["runtime"]["path"]
+                if "name" in self._config.get("runtime", {}):
+                    del self._config["runtime"]["name"]
+                save_config(self._config, self.config_path)
+                RuntimeManager.activate_runtime(backend)
+                self.r.system_message(f"Active runtime switched to isolated backend: {backend}")
+                self._init_engine()
+                self._init_agent()
+                return
+
             customs = self._config.get("custom_runtimes", {})
             if name in customs:
                 path = customs[name]
@@ -1402,6 +1491,8 @@ class CommandDispatcherMixin:
 
                 self.r.system_message(f"Selected custom runtime: {name} (✓ active path prepended)")
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
+                self._init_engine()
+                self._init_agent()
                 return
 
             if not self._runtime_list:
@@ -1417,6 +1508,8 @@ class CommandDispatcherMixin:
                 save_config(self._config, self.config_path)
                 self.r.system_message(f"Active runtime: {rt.name} [{rt.provider}]")
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
+                self._init_engine()
+                self._init_agent()
             else:
                 self.r.error(f"No runtime matches: {name}. Run /runtime list")
 
@@ -1598,7 +1691,33 @@ class CommandDispatcherMixin:
             try:
                 data = self._session_mgr.resume_session(args)
                 if data:
-                    self.r.system_message(f"Resumed session: {args}")
+                    self._session_id = data["id"]
+                    model = data.get("model")
+                    provider = data.get("provider")
+                    mode_str = data.get("mode")
+                    if mode_str:
+                        try:
+                            from nexus_agent.core.agent import AgentMode
+                            self._current_mode = AgentMode(mode_str)
+                            if self._agent:
+                                self._agent.mode = self._current_mode
+                        except ValueError:
+                            pass
+                    self.r.system_message(f"Resumed session: {self._session_id}")
+                    if model and model != "unknown":
+                        if provider == "local" and os.path.isfile(model):
+                            self._model_path = model
+                            self._provider_name = "local"
+                            self._model_status = "loading"
+                            self._init_engine(skip_interactive=True)
+                            self._init_agent()
+                        elif provider != "local":
+                            self._provider_name = provider
+                            self._model_path = model
+                            self._model_status = "loading"
+                            self._init_engine(skip_interactive=True)
+                            self._init_agent()
+                    self._rebuild_welcome()
                 else:
                     self.r.error(f"Session not found: {args}")
             except (ValueError, OSError, RuntimeError) as e:
@@ -1900,10 +2019,10 @@ class CommandDispatcherMixin:
         return customs
 
     def _interactive_menu(self, items: list[tuple[str, str | None]], title: str = "Select:") -> str | None:
-        idx = 0
         selectable = [i for i, (l, v) in enumerate(items) if v is not None]
         if not selectable:
             return None
+        idx = selectable[0]
         n_selectable = len(selectable)
 
         sys.stdout.write("\033[s")
@@ -1924,11 +2043,11 @@ class CommandDispatcherMixin:
 
             def render(sel_idx):
                 nonlocal menu_h
+                sys.stdout.write("\033[u\033[J")
                 lines = build(sel_idx)
                 nh = len(lines)
-                sys.stdout.write("\033[1B\033[J")
+                sys.stdout.write("\033[1B\r\033[J")
                 sys.stdout.write("\n".join(lines))
-                sys.stdout.write(f"\033[{nh}A")
                 sys.stdout.flush()
                 menu_h = nh
 
@@ -1956,11 +2075,7 @@ class CommandDispatcherMixin:
                     break
                 time.sleep(0.01)
         finally:
-            if menu_h > 0:
-                for _ in range(menu_h):
-                    sys.stdout.write("\033[2K\r\033[J")
-                sys.stdout.write("\033[J")
-            sys.stdout.write("\033[u")
+            sys.stdout.write("\033[u\033[J")
             sys.stdout.flush()
 
         if idx < 0:
