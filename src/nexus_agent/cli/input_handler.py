@@ -195,6 +195,38 @@ class InputHandlerMixin:
                 if not ch:
                     continue
 
+                # Translate ANSI VT escape sequence arrow keys (on Windows/etc.) into standard scan codes
+                if ch == b"\x1b" and self._kbhit():
+                    next_ch = self._read_byte()
+                    if next_ch == b"[":
+                        if self._kbhit():
+                            ext2 = self._read_byte()
+                            if ext2 == b"A":
+                                ch = b"\xe0"
+                                self._key_queue.insert(0, b"H")
+                            elif ext2 == b"B":
+                                ch = b"\xe0"
+                                self._key_queue.insert(0, b"P")
+                            elif ext2 == b"C":
+                                ch = b"\xe0"
+                                self._key_queue.insert(0, b"M")
+                            elif ext2 == b"D":
+                                ch = b"\xe0"
+                                self._key_queue.insert(0, b"K")
+                            elif ext2 == b"H":
+                                ch = b"\xe0"
+                                self._key_queue.insert(0, b"G")
+                            elif ext2 == b"F":
+                                ch = b"\xe0"
+                                self._key_queue.insert(0, b"O")
+                            else:
+                                self._key_queue.insert(0, ext2)
+                                self._key_queue.insert(0, next_ch)
+                        else:
+                            self._key_queue.insert(0, next_ch)
+                    else:
+                        self._key_queue.insert(0, next_ch)
+
                 multi_line = (ch == b"\x00" and self._kbhit() and self._read_byte() == b"\x0a")
                 if multi_line:
                     value = value[:pos] + "\n" + value[pos:]
@@ -288,7 +320,8 @@ class InputHandlerMixin:
                     continue
 
                 elif ch == b"\x0c":
-                    sys.stdout.write("\033[2J")
+                    sys.stdout.write("\033[2J\033[H")
+                    self.r._scroll_region_set = False
                     self._rebuild_welcome()
                     self._render_prompt(value, pos)
                     continue
@@ -548,12 +581,12 @@ class InputHandlerMixin:
                 sys.stdout.write(move_up(1))
         sys.stdout.write("\r\033[J")
 
-        prompt = f"\033[1;36m❯\033[0m {value} "
+        prompt = f"\033[1;36m❯\033[0m {value}"
         self._prompt_line_count = prompt.count("\n") + 1
         sys.stdout.write(prompt)
 
         if pos < len(value):
-            visual_pos = visual_len(value[:pos])
+            visual_pos = visual_len(value) - visual_len(value[:pos])
             sys.stdout.write(move_left(visual_pos))
         sys.stdout.flush()
         self._render_footer()

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import sys
 import threading
 import time
 from pathlib import Path
@@ -60,6 +61,7 @@ class NexusApp(
         data_dir: str | None = None,
         initial_prompt: str | None = None,
         session_id: str | None = None,
+        new_session: bool = False,
         verbose: bool = False,
         quiet: bool = False,
     ):
@@ -68,9 +70,11 @@ class NexusApp(
         self.data_dir = data_dir
         self.initial_prompt = initial_prompt
         self._model_path = model_path
+        self._model_path_passed = (model_path is not None)
         self._provider_name = provider
         self._gpu_layers = gpu_layers
         self._session_id = session_id
+        self._new_session = new_session
 
         verbosity = Verbosity.VERBOSE if verbose else Verbosity.QUIET if quiet else Verbosity.NORMAL
         self.r = NexusTerminalRenderer(verbosity)
@@ -82,8 +86,12 @@ class NexusApp(
         self._memory: Any = None
         self._session_mgr: Any = None
         self._permissions: Any = None
+        self._mcp_clients: list = []
+        self._mcp_tools: list = []
+        self._skill_registry: Any = None
         self._current_mode = AgentMode.AUTO
         self._tokens = TokenUsage()
+        self.r.tokens = self._tokens
         self._context = ContextBreakdown()
         self._metrics = {
             "read_tokens": 0,
@@ -124,6 +132,8 @@ class NexusApp(
     def run(self):
         try:
             self._initialize()
+            self._welcome_thread = threading.Thread(target=self._welcome_update_loop, daemon=True)
+            self._welcome_thread.start()
             self._main_loop()
         except KeyboardInterrupt:
             self.console.print(Text("\n  Interrupted.", style="dim"))
@@ -133,7 +143,20 @@ class NexusApp(
         finally:
             self._cleanup()
 
+    def _welcome_update_loop(self):
+        while self._is_running.is_set():
+            time.sleep(1.0)
+            if not self._processing:
+                try:
+                    self._rebuild_welcome()
+                except Exception:
+                    pass
+
     def _main_loop(self):
+        # Clear screen to ensure no remnants of early prints are visible
+        sys.stdout.write("\033[2J\033[H")
+        sys.stdout.flush()
+
         model_name = self._model_name()
         provider = self._provider_name or "local"
         if provider in self._PROVIDER_CONTEXT_SIZES:
@@ -154,6 +177,12 @@ class NexusApp(
         effort = self._config.get("agent", {}).get("effort_level", "medium")
         mode = self._current_mode.value
         self.r.system_message(f"Mode: {mode.upper()} | Effort: {effort.upper()}")
+
+        # Print any startup error cleanly below the welcome panel
+        startup_err = getattr(self, "_startup_error", None)
+        if startup_err:
+            self.r.error(startup_err)
+            self._startup_error = None
 
         # Set terminal title
         self.r.set_terminal_title(self._status_line())
@@ -185,6 +214,8 @@ class NexusApp(
 
     def _cleanup(self):
         self.r.close()
+        sys.stdout.write("\033[2J\033[H")
+        sys.stdout.flush()
         if self._session_mgr:
             try:
                 self._session_mgr.save_session()
@@ -206,5 +237,17 @@ class NexusApp(
                 client.close()
             except (OSError, RuntimeError):
                 pass
-        self.r.console.print("\n[dim]Goodbye.[/dim]")
+        logo = """
+ _   _  _____  __  __ _   _  ____    _     ____ _____ _   _ _____ 
+| \\ | || ____| \\ \\/ /| | | |/ ___|  / \\   / ___| ____| \\ | |_   _|
+|  \\| ||  _|    \\  / | | | |\\___ \\ / _ \\ | |  _|  _| |  \\| | | |  
+| |\\  || |___   /  \\ | |_| | ___) / ___ \\| |_| | |___| |\\  | | |  
+|_| \\_||_____| /_/\\_\\ \\___/|____/_/   \\_\\\\____|_____|_| \\_| |_|  
+"""
+        self.r.console.print(logo, style="bold cyan")
+        if self._session_id:
+            self.r.console.print(f"  [bold green]Session saved.[/bold green] To resume this session, run:")
+            self.r.console.print(f"  [bold]nexus session resume {self._session_id}[/bold]\n")
+        else:
+            self.r.console.print("  [dim]Goodbye.[/dim]\n")
         self.r.set_terminal_title("NexusAgent — closed")

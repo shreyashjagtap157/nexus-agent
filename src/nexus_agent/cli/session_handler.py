@@ -53,7 +53,10 @@ class SessionOrchestratorMixin:
                 os.environ["PATH"] = path_dir + os.pathsep + os.environ.get("PATH", "")
                 logger.info(f"Dynamically prepended custom runtime path: {path_dir}")
 
-        self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")
+        if getattr(self, "_model_path_passed", False):
+            self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")
+        else:
+            self._model_path = None
 
         data_dir_path = self._config.get("_data_dir", str(os.path.expanduser("~/.nexus-agent")))
         self._memory = MemoryManager(data_dir=f"{data_dir_path}/memory")
@@ -91,7 +94,7 @@ class SessionOrchestratorMixin:
                 local_config = self._config.setdefault("local_model", {})
                 if self._gpu_layers is not None:
                     local_config["gpu_layers"] = self._gpu_layers
-                if not model_val:
+                if not model_val and getattr(self, "_model_path_passed", False):
                     mgr = ModelManager(models_dir=local_config.get("models_dir"))
                     best = mgr.find_best_model()
                     if best:
@@ -100,7 +103,14 @@ class SessionOrchestratorMixin:
                 if sys.stdout.isatty() and model_val and not skip_interactive:
                     self._interactive_model_config(model_val)
 
+            if provider == "local" and not model_val:
+                self._engine = None
+                self._model_status = "idle"
+                return
+
             self._engine = ProviderFactory.create_provider(provider, self._config, model_val)
+            if self._engine:
+                self._model_status = "loaded"
             if model_val and os.path.isfile(str(model_val)):
                 name = self._models_db.find_by_path(str(model_val))
                 if not name:
@@ -108,7 +118,9 @@ class SessionOrchestratorMixin:
                     self._models_db.add(name, str(model_val))
         except (ValueError, OSError, ImportError) as e:
             logger.error(f"Failed to create provider '{provider}': {e}")
-            self.r.error(f"Failed to load LLM provider '{provider}': {e}")
+            self._startup_error = f"Failed to load LLM provider '{provider}': {e}"
+            self._engine = None
+            self._model_status = "idle"
 
     def _init_mcp(self):
         mcp_config = self._config.get("mcp", {})
@@ -176,8 +188,9 @@ class SessionOrchestratorMixin:
             ImportGraphTool(self.workspace),
         ]
 
-        if self._mcp_tools:
-            tools.extend(self._mcp_tools)
+        mcp_tools = getattr(self, "_mcp_tools", [])
+        if mcp_tools:
+            tools.extend(mcp_tools)
 
         try:
             from nexus_agent.tools.browser import BrowserTool
@@ -217,13 +230,20 @@ class SessionOrchestratorMixin:
         )
 
         if self._session_mgr:
+            if not self._session_id and not getattr(self, "_new_session", False):
+                last_sid = self._session_mgr.get_last_session_for_workspace(str(self.workspace))
+                if last_sid:
+                    self._session_id = last_sid
+                    logger.info(f"Auto-resumed last session for workspace: {self._session_id}")
+
             if self._session_id:
                 s_data = self._session_mgr.resume_session(self._session_id)
                 if s_data and "mode" in s_data:
                     try:
                         from nexus_agent.core.agent import AgentMode
                         self._current_mode = AgentMode(s_data["mode"])
-                        self._agent.mode = self._current_mode
+                        if self._agent:
+                            self._agent.mode = self._current_mode
                     except ValueError:
                         pass
             else:

@@ -21,29 +21,34 @@ class EventHandlerMixin:
             self._handle_slash_command(user_input)
             return
 
-        if not self._agent:
-            self.r.error("No model loaded. Use --model or set NEXUS_MODEL_PATH.")
-            return
+        self.r.divider()
 
-        in_tokens = self._engine.count_tokens(user_input) if self._engine else len(user_input.split())
-        self._tokens.input_tokens += in_tokens
-        self._tokens.total_input += in_tokens
-        self._tokens.current_request.input_tokens = in_tokens
+        try:
+            if not self._agent:
+                self.r.error("No model loaded. Use --model or set NEXUS_MODEL_PATH.")
+                return
 
-        if self._session_mgr:
-            self._session_mgr.save_message("user", content=user_input)
-            try:
-                self._session_mgr.auto_title(user_input)
-            except (OSError, ValueError):
-                pass
+            in_tokens = self._engine.count_tokens(user_input) if self._engine else len(user_input.split())
+            self._tokens.input_tokens += in_tokens
+            self._tokens.total_input += in_tokens
+            self._tokens.current_request.input_tokens = in_tokens
 
-        self._processing = True
-        self._run_agent(user_input)
-        self._processing = False
-        if not self._first_request_done:
-            self._first_request_done = True
-            self._model_status = "loaded"
-            self._rebuild_welcome()
+            if self._session_mgr:
+                self._session_mgr.save_message("user", content=user_input)
+                try:
+                    self._session_mgr.auto_title(user_input)
+                except (OSError, ValueError):
+                    pass
+
+            self._processing = True
+            self._run_agent(user_input)
+        finally:
+            self._processing = False
+            if not self._first_request_done:
+                self._first_request_done = True
+                self._model_status = "loaded"
+                self._rebuild_welcome()
+            self.r.divider()
 
     def _run_agent(self, user_input: str):
         full_response = ""
@@ -146,10 +151,6 @@ class EventHandlerMixin:
                 self._session_mgr.save_message("assistant", content=full_response)
 
             self._tokens.current_request.end()
-            in_r = self._tokens.current_request.input_tokens
-            out_r = self._tokens.current_request.output_tokens
-            if self._tokens.current_request.elapsed > 0 or in_r or out_r:
-                self.r.system_message(self._tokens.display_request())
             self._tokens.last_request.input_tokens = self._tokens.current_request.input_tokens
             self._tokens.last_request.output_tokens = self._tokens.current_request.output_tokens
             self._tokens.last_request.elapsed = self._tokens.current_request.elapsed
@@ -158,9 +159,6 @@ class EventHandlerMixin:
             self._context.messages = len(self._agent.messages)
         self._refresh_status()
         self.r.set_terminal_title(self._status_line())
-
-        if full_response and not self._abort_event.is_set():
-            self.r.divider()
 
         if self._abort_event.is_set():
             self._abort_event.clear()

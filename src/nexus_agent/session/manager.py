@@ -311,6 +311,24 @@ class SessionManager:
             return True
         return False
 
+    def get_last_session_for_workspace(self, workspace: str) -> str | None:
+        """Get the ID of the most recently updated session for a given workspace."""
+        try:
+            target_workspace = str(Path(workspace).resolve())
+        except Exception:
+            target_workspace = str(workspace)
+        sessions = self.storage.list_sessions(limit=100)
+        for s in sessions:
+            ws = s.get("workspace")
+            if ws:
+                try:
+                    ws_resolve = str(Path(ws).resolve())
+                except Exception:
+                    ws_resolve = str(ws)
+                if ws_resolve == target_workspace:
+                    return s["id"]
+        return None
+
     def close(self) -> None:
         """Clean up resources."""
         self.save_session()
