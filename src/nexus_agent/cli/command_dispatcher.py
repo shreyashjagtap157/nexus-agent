@@ -41,6 +41,8 @@ SLASH_COMMANDS = [
     {"name": "/autonomous", "description": "Full autonomous goal execution"},
     {"name": "/review", "description": "Multi-agent code review on git diff"},
     {"name": "/model", "description": "Manage, show, switch, or unload models"},
+    {"name": "/tools", "description": "Show enabled toolset and allow toggling"},
+    {"name": "/skills", "description": "List available skills (project/global)"},
     {"name": "/mode", "description": "Set agent mode (auto|plan|build|review)"},
     {"name": "/effort", "description": "Set reasoning effort (low|medium|high|xhigh|max)"},
     {"name": "/goal", "description": "Set active coding objective"},
@@ -80,6 +82,7 @@ SLASH_COMMANDS = [
     {"name": "/theme", "description": "Change color theme"},
     {"name": "/color", "description": "Set the prompt bar color"},
     {"name": "/vim", "description": "Toggle vim editing mode"},
+    {"name": "/unload", "description": "Unload the current model from memory"},
     {"name": "/exit", "description": "Exit the CLI"},
     {"name": "/desktop", "description": "Hand off session to Desktop app"},
     {"name": "/mobile", "description": "Show QR code for mobile app"},
@@ -336,6 +339,9 @@ class CommandDispatcherMixin:
             "/view":        self._cmd_view,
             "/tui":         self._cmd_tui,
             "/quit":        self._cmd_quit,
+            "/unload":      self._cmd_unload,
+            "/tools":       self._cmd_tools,
+            "/skills":      self._cmd_skill,
             "/nla":         self._cmd_nla,
             "/explain":     self._cmd_explain,
         }
@@ -1677,6 +1683,70 @@ class CommandDispatcherMixin:
     def _cmd_vim(self, args: str):
         self.r.system_message("Vim mode: Not yet implemented")
 
+    def _cmd_unload(self, args: str):
+        self._cmd_model("unload")
+
+    def _cmd_tools(self, args: str):
+        if not self._agent:
+            self.r.system_message("No active agent.")
+            return
+
+        parts = args.strip().split()
+        if parts:
+            action = parts[0].lower()
+            if action in ("enable", "disable", "toggle") and len(parts) >= 2:
+                name = parts[1]
+                target_tool = None
+                for t in self._agent.tools:
+                    if t.name == name:
+                        target_tool = t
+                        break
+                if not target_tool:
+                    self.r.error(f"Unknown tool: {name}")
+                    return
+                
+                disabled = getattr(self._agent, "disabled_tools", set())
+                if action == "enable":
+                    disabled.discard(name)
+                    self.r.system_message(f"Enabled tool: {name}")
+                elif action == "disable":
+                    disabled.add(name)
+                    self.r.system_message(f"Disabled tool: {name}")
+                elif action == "toggle":
+                    if name in disabled:
+                        disabled.discard(name)
+                        self.r.system_message(f"Enabled tool: {name}")
+                    else:
+                        disabled.add(name)
+                        self.r.system_message(f"Disabled tool: {name}")
+                self._agent.disabled_tools = disabled
+                return
+            else:
+                self.r.system_message("Usage: /tools [enable|disable|toggle <tool_name>]")
+                return
+
+        # Interactive toggling using menu
+        while True:
+            disabled = getattr(self._agent, "disabled_tools", set())
+            items = []
+            for t in self._agent.tools:
+                status = "\033[31m[OFF]\033[0m" if t.name in disabled else "\033[32m[ON]\033[0m "
+                items.append((f"{status} {t.name:<25} \033[2m{t.description[:45]}\033[0m", t.name))
+            items.append(("────────────────────", None))
+            items.append(("\033[36m[Exit]\033[0m", "exit"))
+
+            sel = self._interactive_menu(items, "Toggle Tools (↑↓ Enter Esc):")
+            if sel is None or sel == "exit":
+                break
+            
+            # Toggle the tool
+            if sel in disabled:
+                disabled.discard(sel)
+            else:
+                disabled.add(sel)
+            self._agent.disabled_tools = disabled
+            self.r.system_message(f"Toggled tool {sel}: {'Disabled' if sel in disabled else 'Enabled'}")
+
     def _cmd_quit(self, args: str):
         self._is_running.clear()
 
@@ -2159,7 +2229,7 @@ class CommandDispatcherMixin:
             new_ctx = self._PROVIDER_CONTEXT_SIZES.get(provider_name, 200000)
             self.r._welcome_params["provider"] = provider_name
             self.r._welcome_params["context_size"] = new_ctx
-            self.r.rebuild_welcome(self._tokens, self._metrics)
+            self._rebuild_welcome()
         except (ValueError, RuntimeError, OSError, TypeError) as e:
             self.r.error(f"Failed to connect to {provider_name}: {e}")
 

@@ -1295,7 +1295,8 @@ class NexusTerminalRenderer:
     def welcome(self, model_name: str, workspace: str, version: str,
                 provider: str = "local", context_size: int = 200000,
                 tokens: object = None, metrics: dict = None,
-                model_status: str = "idle", resource_info: str = ""):
+                model_status: str = "idle", resource_info: str = "",
+                active_agents: int = 0):
         try:
             W = shutil.get_terminal_size().columns
         except (OSError, ValueError):
@@ -1333,100 +1334,128 @@ class NexusTerminalRenderer:
                 resource_info=resource_info,
                 tokens=tokens,
                 metrics=metrics,
+                active_agents=active_agents,
             )
             return
 
-        if metrics is None:
-            metrics = {}
-        def fmt(n):
-            if n >= 1_000_000:
-                return f"{n/1_000_000:.1f}M"
-            elif n >= 1024:
-                return f"{n/1024:.1f}K"
-            return str(n)
-        if model_status == "loaded":
-            inp = fmt(tokens.total_input if tokens and hasattr(tokens, 'total_input') else 0)
-            out = fmt(tokens.total_output if tokens and hasattr(tokens, 'total_output') else 0)
-            read_t = fmt(metrics.get("read_tokens", 0))
-            write_t = fmt(metrics.get("write_tokens", 0))
-            edit_t = fmt(metrics.get("edit_tokens", 0))
+        import subprocess
+        import psutil
+
+        # 1. Fetch system statistics
+        cpu_percent = psutil.cpu_percent(interval=None) or 0.0
+        if cpu_percent == 0.0:
+            cpu_percent = 5.0
+            
+        cpu_threads = os.cpu_count() or 8
+        if metrics and "threads" in metrics:
+            cpu_threads = metrics["threads"]
+
+        try:
+            virtual_mem = psutil.virtual_memory()
+            used_gb = virtual_mem.used / (1024**3)
+            total_gb = virtual_mem.total / (1024**3)
+            mem_str = f"{used_gb:.1f}G/{total_gb:.0f}G"
+        except Exception:
+            mem_str = "—"
+
+        gpu_percent = 0
+        try:
+            gpu_res = subprocess.run(
+                ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+                capture_output=True,
+                text=True,
+                timeout=1
+            )
+            if gpu_res.returncode == 0 and gpu_res.stdout.strip().isdigit():
+                gpu_percent = int(gpu_res.stdout.strip())
+        except Exception:
+            pass
+
+        # 2. Fetch git delta lines
+        added = 0
+        deleted = 0
+        try:
+            res = subprocess.run(
+                ["git", "diff", "--numstat"],
+                cwd=workspace,
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        a, d = parts[0], parts[1]
+                        if a.isdigit() and d.isdigit():
+                            added += int(a)
+                            deleted += int(d)
+        except Exception:
+            pass
+        delta_lines = f"+{added}/-{deleted}"
+
+        # 3. Setup tokens
+        tokens_in = tokens.total_input if tokens and hasattr(tokens, 'total_input') else 0
+        tokens_out = tokens.total_output if tokens and hasattr(tokens, 'total_output') else 0
+        context_used = tokens.total if tokens and hasattr(tokens, 'total') else 0
+        context_limit = context_size
+
+        # 4. Formatter layout
+        if W < 75:
+            box_width = 55
+            left_col_w = 33
+            right_col_w = 18
         else:
-            inp = out = read_t = write_t = edit_t = "—"
+            box_width = 70
+            left_col_w = 45
+            right_col_w = 21
 
-        model_d = truncate_visual(model_name, 45)
-        ws = truncate_visual(workspace, 45)
+        def format_dashboard_line(left: str, right: str = "") -> str:
+            left_plain = strip_markup(_ANSI_RE.sub('', left))
+            right_plain = strip_markup(_ANSI_RE.sub('', right))
+            
+            if not right:
+                pad = box_width - visual_len(left_plain)
+                return f"│{left}{' ' * pad}│"
+            else:
+                left_pad = left_col_w - visual_len(left_plain)
+                right_pad = right_col_w - visual_len(right_plain)
+                return f"│{left}{' ' * left_pad} ║ {right}{' ' * right_pad}│"
 
+        # 5. Build dashboard details
+        model_d = truncate_visual(model_name, 20)
+        
+        # Colors
         B = "\033[1m"
         D = "\033[2m"
         C = hex_to_ansi(self.theme.accent_primary)
         R = "\033[0m"
         Y = hex_to_ansi(self.theme.accent_warning)
+        M_color = "\033[38;2;180;80;220m"
 
-        # ── Column divider position ──
-        DIV = max(34, int(W * 0.38))
+        left_1 = f" 🦄 NexusAgent      Model: {M_color}{model_d}{R}"
+        right_1 = f"Mem: {mem_str}"
 
-        # ── Build a full-width panel line ──
-        def build_line(left_content: str, right_content: str = "") -> str:
-            lv = visual_len(left_content)
-            rv = visual_len(right_content)
-            lp = max(0, DIV - lv - 3)
-            rp = max(0, W - DIV - rv - 2)
-            return f"{D}│{R}{left_content}{' ' * lp} {D}│{R} {right_content}{' ' * rp}{D}│{R}"
+        left_2 = f"  CPU: {cpu_threads} threads    GPU: {gpu_percent}%"
+        right_2 = f"Context: {context_used}/{context_limit}"
 
-        # ── Big infinity logo (3 lines) ──
-        logo = [
-            "  \033[38;2;120;140;250m╔══╗  ╔══╗\033[0m",
-            "  \033[38;2;140;120;240m║  \033[38;2;180;80;220m╚══╝\033[38;2;140;120;240m  ║\033[0m",
-            "  \033[38;2;120;140;250m╚══╗  \033[38;2;160;100;230m╔══╝\033[0m",
+        left_3 = f"  Tokens In: {tokens_in:<6} Out: {tokens_out}"
+        right_3 = f"ΔLines: {delta_lines}"
+
+        left_4 = f"  Processes (agents): {active_agents}"
+        right_4 = ""
+
+        # Draw box
+        lines = [
+            "┌" + "─" * box_width + "┐",
+            format_dashboard_line(left_1, right_1),
+            format_dashboard_line(left_2, right_2),
+            format_dashboard_line(left_3, right_3),
+            format_dashboard_line(left_4, right_4),
+            "└" + "─" * box_width + "┘"
         ]
-
-        # ── Right column lines ──
-        right = [
-            f"{B}Welcome to NexusAgent!{R}",
-            f"  {B}/help{R}{D} commands{R}  {B}Ctrl+C{R}{D} abort{R}  {B}Ctrl+D{R}{D} exit{R}",
-            "",
-        ]
-
-        # ── Row 1: top border ──
-        title = f" NexusAgent v{version} "
-        side = (W - 2 - len(title)) // 2
-        lines = ["╭" + "─" * side + title + "─" * (W - 2 - side - len(title)) + "╮"]
-
-        # ── Rows 2-4: logo (left) + tips (right) ──
-        for i in range(3):
-            lines.append(build_line(logo[i], right[i]))
-
-        # ── Row 5: model info left | provider + context right ──
-        if model_status == "loading":
-            model_status_label = f"  {Y}⟳ Loading model…{R}"
-        elif model_status == "unloading":
-            model_status_label = f"  {Y}⟳ Unloading…{R}"
-        elif model_status == "loaded":
-            model_status_label = f"  {B}Model:{R} {C}{model_d}{R} {D}via {provider}{R}"
-        else:
-            model_status_label = f"  {D}No model loaded{R}"
-
-        if model_status == "loaded" and resource_info:
-            right_5 = f"  {B}Provider:{R} {C}{provider}{R}  {resource_info}"
-        elif model_status == "loaded":
-            right_5 = f"  {B}Provider:{R} {C}{provider}{R}  Context: {fmt(context_size)}"
-        else:
-            right_5 = f"  {B}Provider:{R} {D}{provider}{R}"
-        lines.append(build_line(model_status_label, right_5))
-
-        # ── Row 6: workspace left | tokens right ──
-        tok_r = f"↑{inp}|↓{out}    R:{read_t} W:{write_t} E:{edit_t}"
-        lines.append(build_line(
-            f"  {D}{ws}{R}",
-            f"  {tok_r}",
-        ))
-
-        # ── Row 7: bottom border ──
-        lines.append("╰" + "─" * (W - 2) + "╯")
 
         panel_h = len(lines)
-
-        # ── Write panel using raw ANSI ──
         batch = []
         for i in range(panel_h):
             batch.append(f"\033[{i + 1};1H\033[2K")
@@ -1454,13 +1483,15 @@ class NexusTerminalRenderer:
             resource_info=resource_info,
             tokens=tokens,
             metrics=metrics,
+            active_agents=active_agents,
         )
 
     def update_size(self):
         self._update_size()
 
     def rebuild_welcome(self, tokens: object = None, metrics: dict = None,
-                      model_status: str | None = None, resource_info: str = ""):
+                      model_status: str | None = None, resource_info: str = "",
+                      active_agents: int | None = None):
         """Rebuild the welcome panel after terminal resize or clear screen."""
         p = self._welcome_params
         if not p:
@@ -1471,10 +1502,12 @@ class NexusTerminalRenderer:
         actual_resource = resource_info if resource_info else p.get("resource_info", "")
         actual_tokens = tokens if tokens is not None else p.get("tokens")
         actual_metrics = metrics if metrics is not None else p.get("metrics")
+        actual_active = active_agents if active_agents is not None else p.get("active_agents", 0)
         self.welcome(
             p["model_name"], p["workspace"], p["version"],
             p.get("provider", "local"), p.get("context_size", 200000),
             actual_tokens, actual_metrics, actual_status, actual_resource,
+            active_agents=actual_active,
         )
 
     def system_message(self, text: str):

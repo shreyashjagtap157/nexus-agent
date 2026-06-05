@@ -223,12 +223,8 @@ class InputHandlerMixin:
                         self._clear_cmd_menu(cmd_menu_visible)
                         cmd_menu_visible = False
                         if sel_name.startswith("/"):
-                            sys.stdout.write(f"\r❯ {sel_name} \n")
-                            sys.stdout.flush()
-                            self._input_history.append(sel_name)
-                            self._history_idx = -1
-                            return sel_name
-                        if value.rfind("@") >= 0:
+                            value = sel_name + " "
+                        elif value.rfind("@") >= 0:
                             at_idx = value.rfind("@")
                             value = value[:at_idx] + "@" + sel_name + " "
                         else:
@@ -293,7 +289,7 @@ class InputHandlerMixin:
 
                 elif ch == b"\x0c":
                     sys.stdout.write("\033[2J")
-                    self.r.rebuild_welcome(self._tokens, self._metrics, model_status=None, resource_info="")
+                    self._rebuild_welcome()
                     self._render_prompt(value, pos)
                     continue
 

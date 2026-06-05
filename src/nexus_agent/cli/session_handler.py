@@ -270,7 +270,7 @@ class SessionOrchestratorMixin:
             if self.r._is_fullscreen:
                 self.r._render_fullscreen()
             else:
-                self.r.rebuild_welcome(self._tokens, self._metrics)
+                self._rebuild_welcome()
             return True
         return False
 
@@ -345,6 +345,7 @@ class SessionOrchestratorMixin:
                 self._tokens, self._metrics,
                 model_status=self._model_status,
                 resource_info=res_info,
+                active_agents=len(self._sub_agents),
             )
         self.r.set_terminal_title(self._status_line())
 

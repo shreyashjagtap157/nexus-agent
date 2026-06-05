@@ -26,11 +26,25 @@ Thumbs.db
 .DS_Store
 
 # Project specific
+.nexus/
 .nexus-agent/
+*.log
 *.gguf
 *.onnx
 *.ot
 traces/
+
+# Antigravity CLI
+.antigravitycli/
+
+# mypy
+.mypy_cache/
+
+# uv
+uv.lock
+
+# Session worktrees (nexus-agent internal)
+.nexus-agent/
 
 # Test
 .coverage

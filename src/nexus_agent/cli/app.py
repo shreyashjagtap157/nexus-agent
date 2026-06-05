@@ -140,7 +140,16 @@ class NexusApp(
             context_size = self._PROVIDER_CONTEXT_SIZES[provider]
         else:
             context_size = self._config.get("local_model", {}).get("context_size", 200000)
-        self.r.welcome(model_name, str(self.workspace), __version__, provider, context_size, self._tokens, self._metrics)
+        self.r.welcome(
+            model_name,
+            str(self.workspace),
+            __version__,
+            provider,
+            context_size,
+            self._tokens,
+            self._metrics,
+            active_agents=len(self._sub_agents),
+        )
 
         effort = self._config.get("agent", {}).get("effort_level", "medium")
         mode = self._current_mode.value
