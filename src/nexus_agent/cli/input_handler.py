@@ -320,12 +320,8 @@ class InputHandlerMixin:
                     continue
 
                 elif ch == b"\x0c":
-<<<<<<< HEAD
-                    sys.stdout.write("\033[2J")
-=======
                     sys.stdout.write("\033[2J\033[H")
                     self.r._scroll_region_set = False
->>>>>>> rebuild-project-claude-ui
                     self._rebuild_welcome()
                     self._render_prompt(value, pos)
                     continue

@@ -34,7 +34,7 @@ class EventHandlerMixin:
             self._tokens.current_request.input_tokens = in_tokens
 
             if self._session_mgr:
-                self._session_mgr.save_message("user", content=user_input)
+                self._session_mgr.save_message("user", content=user_input, type="user")
                 try:
                     self._session_mgr.auto_title(user_input)
                 except (OSError, ValueError):
@@ -94,6 +94,12 @@ class EventHandlerMixin:
                     args = event.data.get("arguments", {})
                     self.r.tool_call(name, args)
                     self._tool_timings[name] = time.time()
+                    if self._session_mgr:
+                        self._session_mgr.save_message(
+                            role="assistant",
+                            type="tool_call",
+                            tool_calls=[{"name": name, "arguments": args}],
+                        )
                     tverb = random.choice([
                         "Reading", "Writing", "Searching", "Executing",
                         "Fetching", "Parsing", "Grepping", "Editing",
@@ -107,6 +113,14 @@ class EventHandlerMixin:
                     success = event.data.get("success", True)
                     elapsed = time.time() - self._tool_timings.pop(name, time.time())
                     self.r.tool_result(name, output, success, elapsed)
+                    if self._session_mgr:
+                        self._session_mgr.save_message(
+                            role="tool",
+                            type="tool_result",
+                            name=name,
+                            content=str(output)[:1000] if output else "",
+                            metadata={"success": success, "elapsed": elapsed},
+                        )
                     self.r.show_spinner(random.choice(SPINNER_VERBS_PRESENT))
 
                 elif event.type == "error":
@@ -114,7 +128,10 @@ class EventHandlerMixin:
                     if _streaming_started:
                         _streaming_started = False
                     self.r.hide_spinner()
-                    self.r.error(str(event.data))
+                    error_msg = str(event.data)
+                    self.r.error(error_msg)
+                    if self._session_mgr:
+                        self._session_mgr.save_message("system", content=error_msg, type="system")
 
                 self._refresh_status()
 
@@ -138,7 +155,10 @@ class EventHandlerMixin:
                 elapsed_str = f"{elapsed:.0f}s"
             else:
                 elapsed_str = f"{elapsed / 60:.0f}m {elapsed % 60:.0f}s"
-            self.r.system_message(f"{past_verb} for {elapsed_str}")
+            system_msg = f"{past_verb} for {elapsed_str}"
+            self.r.system_message(system_msg)
+            if self._session_mgr:
+                self._session_mgr.save_message("system", content=system_msg, type="system")
 
         self._finalize_streaming(full_response)
         if _streaming_started:
@@ -148,7 +168,7 @@ class EventHandlerMixin:
 
         if full_response and not self._abort_event.is_set():
             if self._session_mgr:
-                self._session_mgr.save_message("assistant", content=full_response)
+                self._session_mgr.save_message("assistant", content=full_response, type="assistant")
 
             self._tokens.current_request.end()
             self._tokens.last_request.input_tokens = self._tokens.current_request.input_tokens

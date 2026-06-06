@@ -244,6 +244,8 @@ class SessionOrchestratorMixin:
                         self._current_mode = AgentMode(s_data["mode"])
                         if self._agent:
                             self._agent.mode = self._current_mode
+                        self._replay_session_history(s_data)
+                        self._restore_agent_context(s_data.get("messages", []))
                     except ValueError:
                         pass
             else:
@@ -389,3 +391,109 @@ class SessionOrchestratorMixin:
 
     def _approval_handler(self, tool_name: str, description: str, arguments: dict) -> bool:
         return PermissionDialog.render(self.console, tool_name, arguments)
+
+    def _replay_session_history(self, session_data: dict[str, Any]) -> None:
+        """Replay session history in condensed format on resume.
+
+        Args:
+            session_data: Session data dict from resume_session containing messages.
+        """
+        if not session_data:
+            return
+
+        messages = session_data.get("messages", [])
+        if not messages:
+            return
+
+        session_id = session_data.get("id", "")
+        message_count = len(messages)
+        created = session_data.get("created", "")
+
+        self.r.replay_session_header(session_id, message_count, created)
+
+        for msg in messages:
+            msg_type = msg.get("type", "")
+            role = msg.get("role", "")
+            content = msg.get("content", "") or ""
+            name = msg.get("name", "")
+            metadata = msg.get("metadata", {}) or {}
+            tool_calls = msg.get("tool_calls")
+
+            if msg_type == "user" or role == "user":
+                self.r.replay_user_message(content)
+            elif msg_type == "assistant" or role == "assistant":
+                self.r.replay_assistant_message(content)
+            elif msg_type == "tool_call" or (role == "assistant" and tool_calls):
+                tool_name = name
+                args = {}
+                if tool_calls and isinstance(tool_calls, list) and len(tool_calls) > 0:
+                    tc = tool_calls[0]
+                    tool_name = tc.get("name", name)
+                    args = tc.get("arguments", {})
+                self.r.replay_tool_call(tool_name, args)
+            elif msg_type == "tool_result" or role == "tool":
+                success = metadata.get("success", True)
+                elapsed = metadata.get("elapsed", 0.0)
+                self.r.replay_tool_result(name or "tool", success, elapsed)
+            elif msg_type == "system" or role == "system":
+                self.r.replay_system_message(content)
+            elif msg_type == "divider":
+                self.r.replay_divider()
+            elif content:
+                self.r.replay_system_message(content[:100])
+
+        self.r.replay_divider()
+        self.r.console.print()
+
+    def _restore_agent_context(self, messages: list[dict[str, Any]]) -> None:
+        """Restore the agent's messages list from stored session messages.
+
+        Args:
+            messages: List of stored message dicts from session storage.
+        """
+        if not self._agent or not messages:
+            return
+
+        try:
+            from nexus_agent.core.agent import Message, Role
+        except ImportError:
+            logger.warning("Could not import Message class for context restoration")
+            return
+
+        restored = []
+        for msg in messages:
+            role_str = msg.get("role", "user")
+            content = msg.get("content", "") or ""
+
+            if role_str == "system":
+                continue
+
+            try:
+                role = Role(role_str)
+            except ValueError:
+                role = Role.USER
+
+            tool_calls = msg.get("tool_calls")
+            tool_call_id = msg.get("tool_call_id")
+            name = msg.get("name")
+
+            restored.append(Message(
+                role=role,
+                content=content,
+                tool_calls=tool_calls,
+                tool_call_id=tool_call_id,
+                name=name,
+            ))
+
+        if restored:
+            self._agent.messages = restored
+            logger.info(f"Restored {len(restored)} messages to agent context")
+
+            if self._engine and hasattr(self._engine, 'count_message_tokens'):
+                try:
+                    total_tokens = self._engine.count_message_tokens(restored)
+                    self._tokens.input_tokens = total_tokens
+                    self._tokens.total_input = total_tokens
+                    logger.info(f"Estimated {total_tokens} tokens for restored context")
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Could not estimate token count: {e}")

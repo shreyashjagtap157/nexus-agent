@@ -162,8 +162,18 @@ class SessionManager:
         tool_calls: list[dict] | None = None,
         tool_call_id: str | None = None,
         name: str | None = None,
+        type: str = "",
     ) -> None:
-        """Save a message to the active session."""
+        """Save a message to the active session.
+
+        Args:
+            role: Message role (user, assistant, system, tool).
+            content: Message content.
+            tool_calls: List of tool call dicts.
+            tool_call_id: Tool call ID for tool messages.
+            name: Name for assistant messages.
+            type: UI event type (user, assistant, tool_call, tool_result, system, divider).
+        """
         if not self._active_session_id:
             return
 
@@ -174,6 +184,7 @@ class SessionManager:
             tool_calls=tool_calls,
             tool_call_id=tool_call_id,
             name=name,
+            type=type,
         )
 
     def create_checkpoint(

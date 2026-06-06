@@ -47,6 +47,7 @@ class SessionStorage(SQLiteStore):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
             role TEXT NOT NULL,
+            type TEXT DEFAULT '',
             content TEXT,
             tool_calls TEXT,
             tool_call_id TEXT,
@@ -81,6 +82,11 @@ class SessionStorage(SQLiteStore):
                 conn.commit()
             except sqlite3.OperationalError:
                 pass
+            try:
+                conn.execute("ALTER TABLE messages ADD COLUMN type TEXT DEFAULT ''")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
 
     def create_session(
         self,
@@ -112,20 +118,34 @@ class SessionStorage(SQLiteStore):
         tool_calls: list[dict] | None = None,
         tool_call_id: str | None = None,
         name: str | None = None,
+        type: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> int:
-        """Save a message to a session."""
+        """Save a message to a session.
+
+        Args:
+            session_id: The session ID.
+            role: Message role (user, assistant, system, tool).
+            content: Message content.
+            tool_calls: List of tool call dicts.
+            tool_call_id: Tool call ID for tool messages.
+            name: Name for assistant messages.
+            type: UI event type (user, assistant, tool_call, tool_result, system, divider).
+            metadata: Additional metadata dict.
+
+        Returns:
+            The row ID of the inserted message.
+        """
         with self._lock:
             conn = self._get_conn()
             cursor = conn.execute(
-                "INSERT INTO messages (session_id, role, content, tool_calls, tool_call_id, name, created_at, metadata) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (session_id, role, content,
+                "INSERT INTO messages (session_id, role, type, content, tool_calls, tool_call_id, name, created_at, metadata) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (session_id, role, type, content,
                  json.dumps(tool_calls) if tool_calls is not None else None,
                  tool_call_id, name, time.time(),
                  json.dumps(metadata or {})),
             )
-            # Update session
             conn.execute(
                 "UPDATE sessions SET updated_at = ?, message_count = message_count + 1 WHERE id = ?",
                 (time.time(), session_id),

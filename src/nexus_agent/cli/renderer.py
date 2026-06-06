@@ -1685,6 +1685,94 @@ class NexusTerminalRenderer:
         """Render the full transcript (for /context, /log, etc.)."""
         return self.transcript.render_lines(self.width)
 
+    # ── Session Replay Display ──────────────────────────────────────────
+
+    def replay_session_header(self, session_id: str, message_count: int, created: str = ""):
+        """Render session resume header.
+
+        Args:
+            session_id: Session identifier.
+            message_count: Number of messages in session.
+            created: Creation timestamp string.
+        """
+        term_width = min(shutil.get_terminal_size().columns, 100)
+        session_short = session_id[:8] if len(session_id) > 8 else session_id
+        count_str = f"{message_count} messages"
+        if created:
+            header = f"── Resuming session {session_short} ({count_str}, {created}) ──"
+        else:
+            header = f"── Resuming session {session_short} ({count_str}) ──"
+        if len(header) < term_width:
+            pad = (term_width - len(header)) // 2
+            header = " " * pad + header
+        self.console.print(f"\n[dim]{header}[/dim]\n")
+
+    def replay_user_message(self, text: str):
+        """Render a user message in replay mode (dimmed style with ❯ prefix).
+
+        Args:
+            text: The user message text.
+        """
+        self.console.print(f"[dim]❯ {text}[/dim]")
+
+    def replay_assistant_message(self, content: str):
+        """Render an assistant message in replay mode (collapsed to 3 lines).
+
+        Args:
+            content: The assistant response text.
+        """
+        lines = content.split("\n")
+        if len(lines) <= 3:
+            for line in lines:
+                self.console.print(f"[dim]{line}[/dim]")
+        else:
+            for line in lines[:3]:
+                self.console.print(f"[dim]{line}[/dim]")
+            self.console.print("[dim]● (continued…)[/dim]")
+
+    def replay_tool_call(self, name: str, args: dict[str, Any] | None = None):
+        """Render a tool call in replay mode (one-line summary).
+
+        Args:
+            name: Tool name.
+            args: Tool arguments dict.
+        """
+        if args:
+            items = list(args.items())[:2]
+            args_preview = ", ".join(
+                f"{k}='{v}'" if isinstance(v, str) else f"{k}={v}" for k, v in items
+            )
+            if len(args) > 2:
+                args_preview += f" …+{len(args) - 2}"
+            self.console.print(f"[dim]▶ {name}({args_preview})[/dim]")
+        else:
+            self.console.print(f"[dim]▶ {name}[/dim]")
+
+    def replay_tool_result(self, name: str, success: bool = True, elapsed: float = 0.0):
+        """Render a tool result in replay mode (one-line summary).
+
+        Args:
+            name: Tool name.
+            success: Whether the tool succeeded.
+            elapsed: Elapsed time in seconds.
+        """
+        status = "[green]OK[/green]" if success else "[red]FAIL[/red]"
+        elapsed_str = f" [{elapsed:.1f}s]" if elapsed else ""
+        self.console.print(f"  [dim]{status}{elapsed_str} {name}[/dim]")
+
+    def replay_system_message(self, text: str):
+        """Render a system message in replay mode (dimmed italic).
+
+        Args:
+            text: The system message text.
+        """
+        self.console.print(f"[dim italic]{text}[/dim italic]")
+
+    def replay_divider(self):
+        """Render a thin dimmed divider."""
+        term_width = min(shutil.get_terminal_size().columns, 100)
+        self.console.print(f"[dim]{'─' * term_width}[/dim]")
+
     # ── Streaming Display ──────────────────────────────────────────────
 
     def stream_text(self, text: str):
