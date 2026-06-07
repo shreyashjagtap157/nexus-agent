@@ -228,6 +228,7 @@ Current workspace: {workspace}
         tools: list[_ToolLike] | None = None,
         config: AgentLoopConfig | None = None,
         self_healing_executor: SelfHealingExecutor | None = None,
+        usage_tracker: "UsageTracker | None" = None,
     ):
         """Initialize the agent loop.
 
@@ -236,6 +237,7 @@ Current workspace: {workspace}
             tools: List of available tools.
             config: AgentLoopConfig with all optional settings.
             self_healing_executor: Optional SelfHealingExecutor instance.
+            usage_tracker: Optional UsageTracker to record token usage for /cost.
         """
         cfg = config or AgentLoopConfig()
         self.provider = provider
@@ -250,6 +252,7 @@ Current workspace: {workspace}
         self.goal = cfg.goal
         self.tool_timeout = cfg.tool_timeout
         self.max_input_chars = cfg.max_input_chars
+        self.usage_tracker = usage_tracker
         self._healer = self_healing_executor or SelfHealingExecutor(max_retries=3)
 
         # Apply effort-level config mapping
@@ -577,7 +580,39 @@ Current workspace: {workspace}
             temperature=self.temperature,
             max_tokens=self.max_tokens,
         )
+        self._record_usage(response)
         return response
+
+    def _record_usage(self, response: LLMResponse) -> None:
+        """Forward token usage to the UsageTracker, if one is configured."""
+        usage = getattr(response, "usage", None) or {}
+        self._record_usage_dict(usage)
+
+    def _record_usage_dict(self, usage: dict) -> None:
+        if not getattr(self, "usage_tracker", None):
+            return
+        prompt = int(usage.get("prompt_tokens", 0) or 0)
+        completion = int(usage.get("completion_tokens", 0) or 0)
+        if prompt == 0 and completion == 0:
+            return
+        provider_obj = getattr(self, "provider", None)
+        provider_name = ""
+        model_name = ""
+        if provider_obj is not None:
+            provider_name = (
+                getattr(provider_obj, "name", "") or type(provider_obj).__name__
+            )
+            model_name = getattr(provider_obj, "model_name", "") or ""
+        try:
+            self.usage_tracker.record(
+                session_id=self.session_id,
+                provider=provider_name,
+                model=model_name,
+                prompt_tokens=prompt,
+                completion_tokens=completion,
+            )
+        except Exception as e:  # pragma: no cover - telemetry must not break the loop
+            logger.debug(f"UsageTracker.record failed: {e}")
 
     def run(self, user_input: str) -> Iterator[AgentEvent]:
         truncated_input = self._init_conversation(user_input)
@@ -650,8 +685,10 @@ Current workspace: {workspace}
             )
             self._stream_content = response.content or ""
             self._stream_tool_calls = response.tool_calls or []
+            self._record_usage(response)
             return
 
+        final_usage: dict = {}
         for chunk in self.provider.chat_completion_stream(
             messages=self.messages,
             tools=self._get_tool_definitions(),
@@ -663,8 +700,13 @@ Current workspace: {workspace}
                 yield self._emit_event("content_chunk", chunk.content)
             if chunk.tool_calls:
                 self._stream_tool_calls.extend(chunk.tool_calls)
+            if chunk.usage:
+                final_usage = dict(chunk.usage)
             if chunk.is_final:
                 break
+
+        if final_usage:
+            self._record_usage_dict(final_usage)
 
     def run_stream(self, user_input: str) -> Iterator[AgentEvent]:
         truncated_input = self._init_conversation(user_input)

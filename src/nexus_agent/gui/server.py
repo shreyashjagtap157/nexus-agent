@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 from nexus_agent import __app_name__, __version__
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.core.config import load_config
+from nexus_agent.core.usage import UsageTracker
 from nexus_agent.core.debate import DebateEngine
 from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.nla_telemetry import NLATelemetry
@@ -503,6 +504,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 provider=engine,
                 tools=tools,
                 config=agent_cfg,
+                usage_tracker=state_manager.get("usage_tracker"),
             )
 
             # Run the agent in a background thread to prevent blocking the async loop
@@ -631,6 +633,7 @@ def start_gui_server(
     state_manager.set("session_manager", SessionManager(data_dir=f"{data_dir_path}/sessions"))
     state_manager.set("permission_manager", PermissionManager())
     state_manager.get("permission_manager").load_from_config(state_manager.get("config"))
+    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))
 
     # Initialize RuntimeManager
     rm = RuntimeManager(state_manager.get("config"))

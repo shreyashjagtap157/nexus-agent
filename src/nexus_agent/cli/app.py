@@ -133,6 +133,7 @@ class NexusApp(
         self._last_responses: list[str] = []
         self._extra_dirs: list[Path] = []
         self._fast_mode: bool = False
+        self.usage_tracker = None  # set in _initialize once data dir is known
 
     def run(self):
         try:

@@ -2019,10 +2019,80 @@ class CommandDispatcherMixin:
             self._cmd_resume(sel)
 
     def _cmd_cost(self, args: str):
-        self.r.system_message(f"Cost: ${self._tokens.estimated_cost:.4f}")
+        tracker = getattr(self, "usage_tracker", None)
+        if args.strip() in ("help", "--help", "-h"):
+            self.r.system_message(
+                "Usage: /cost [today|week|all|session|model|<days=N>]\n"
+                "  (no args)  - current session + lifetime totals\n"
+                "  today      - usage in the last 24 hours\n"
+                "  week       - usage in the last 7 days\n"
+                "  all        - lifetime usage\n"
+                "  session    - detailed breakdown by session\n"
+                "  model      - detailed breakdown by model\n"
+                "  days=N     - usage in the last N days"
+            )
+            return
+
+        current = self._tokens.estimated_cost
+        if tracker is None:
+            self.r.system_message(
+                f"Cost: ${current:.4f} (no usage tracker configured)"
+            )
+            return
+
+        arg = args.strip().lower()
+        if arg in ("session", "model", "all", "today", "week", "") or arg.startswith(
+            "days="
+        ):
+            if arg == "session":
+                s = tracker.summarize()
+                if not s.by_session:
+                    self.r.system_message("No historical usage recorded.")
+                    return
+                lines = [f"Session: {self._session_label()} (current)"]
+                for sid, x in s.by_session.items():
+                    lines.append(
+                        f"  {sid[:40]:<40} {x['total_tokens']:>10,} tok ${x['estimated_cost']:.4f}"
+                    )
+                self.r.system_message("\n".join(lines))
+                return
+            if arg == "model":
+                s = tracker.summarize()
+                if not s.by_model:
+                    self.r.system_message("No historical usage recorded.")
+                    return
+                lines = ["By model:"]
+                for m, x in s.by_model.items():
+                    lines.append(
+                        f"  {m[:40]:<40} {x['total_tokens']:>10,} tok ${x['estimated_cost']:.4f}"
+                    )
+                self.r.system_message("\n".join(lines))
+                return
+            since = None
+            if arg == "today":
+                since = time.time() - 24 * 3600
+            elif arg == "week":
+                since = time.time() - 7 * 24 * 3600
+            elif arg.startswith("days="):
+                try:
+                    n = int(arg.split("=", 1)[1])
+                    since = time.time() - n * 24 * 3600
+                except ValueError:
+                    self.r.system_message(f"Invalid days value: {arg}")
+                    return
+            s = tracker.summarize(since_ts=since)
+            lines = s.to_lines()
+            lines.insert(0, f"Current session: ${current:.4f}")
+            self.r.system_message("\n".join(lines))
+            return
+
+        self.r.system_message(f"Cost: ${current:.4f}")
 
     def _cmd_usage(self, args: str):
-        self.r.system_message("Usage tracking: Not yet implemented")
+        self.r.system_message(
+            "Usage tracking: use /cost for token/cost details. "
+            "Use /cost help for subcommands."
+        )
 
     def _cmd_extra_usage(self, args: str):
         self.r.system_message("Extra usage: Not yet implemented")

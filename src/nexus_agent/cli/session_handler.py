@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 import sys
+from pathlib import Path
 from typing import Any
 
 from nexus_agent.cli.auth import AuthStore
@@ -18,6 +19,7 @@ from nexus_agent.cli.renderer import (
 )
 from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
 from nexus_agent.core.config import load_config
+from nexus_agent.core.usage import UsageTracker
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.runtime_manager import RuntimeManager
 from nexus_agent.memory.memory_manager import MemoryManager
@@ -64,6 +66,9 @@ class SessionOrchestratorMixin:
         self._project_memory = MemoryManager(data_dir=str(project_mem_dir))
         self._session_mgr = SessionManager(data_dir=f"{data_dir_path}/sessions")
         self._checkpoint_mgr = CheckpointManager(os.path.join(data_dir_path, "checkpoints")) if self._session_mgr else None
+        self._usage_tracker = UsageTracker(
+            path=Path(data_dir_path) / "usage.json"
+        )
 
         self._permissions = PermissionManager(approval_callback=self._approval_handler)
         self._permissions.load_from_config(self._config)
@@ -238,6 +243,7 @@ class SessionOrchestratorMixin:
             provider=self._engine,
             tools=tools,
             config=cfg,
+            usage_tracker=getattr(self, "_usage_tracker", None),
         )
 
         if self._session_mgr:
@@ -275,6 +281,9 @@ class SessionOrchestratorMixin:
             mcp_tools_count=mcp_count,
             skills_count=skills_count,
         )
+
+        # Expose the usage tracker to the dispatcher (for /cost).
+        self.usage_tracker = getattr(self, "_usage_tracker", None)
 
         if self._engine:
             prov_name = getattr(self._engine, 'name', self._provider_name or 'local')
