@@ -110,6 +110,7 @@ SLASH_COMMANDS = [
     {"name": "/statusline", "description": "Configure status line display"},
     {"name": "/privacy-settings", "description": "View and update privacy settings"},
     {"name": "/upgrade", "description": "Open upgrade page for higher plan tier"},
+    {"name": "/update", "description": "Update NexusAgent to the latest version (pip install --upgrade)"},
     {"name": "/feedback", "description": "Submit feedback about NexusAgent"},
     {"name": "/bug", "description": "Alias for /feedback"},
     {"name": "/ide", "description": "Manage IDE integrations"},
@@ -321,6 +322,7 @@ class CommandDispatcherMixin:
             "/statusline":  self._cmd_statusline,
             "/privacy-settings": self._cmd_privacy_settings,
             "/upgrade":     self._cmd_upgrade,
+            "/update":      self._cmd_update,
             "/feedback":    self._cmd_feedback,
             "/bug":         self._cmd_feedback,
             "/ide":         self._cmd_ide,
@@ -2174,6 +2176,90 @@ class CommandDispatcherMixin:
 
     def _cmd_upgrade(self, args: str):
         self.r.system_message("Upgrade: Not yet implemented")
+
+    def _cmd_update(self, args: str):
+        """Run `pip install --upgrade nexus-agent` in a background thread.
+
+        Streams the installer's output to the renderer as it arrives so the
+        user can watch progress. The user is asked to confirm first (via the
+        existing permission system, or a simple y/n prompt) since this
+        downloads code from PyPI.
+        """
+        import shlex
+        import subprocess
+        import sys
+        import threading
+        from nexus_agent.core.updater import check_for_update, get_installed_version
+
+        args = (args or "").strip()
+        # Allow `/update check` to do a non-mutating version check only.
+        check_only = args in ("check", "--check", "-c")
+
+        try:
+            current = get_installed_version()
+        except (OSError, ValueError, ImportError) as e:
+            self.r.system_message(f"Update: could not determine installed version: {e}")
+            return
+
+        self.r.system_message(f"Update: current installed version is {current}.")
+
+        try:
+            info = check_for_update(current, timeout_s=10.0)
+        except (OSError, ValueError, TimeoutError) as e:
+            self.r.system_message(f"Update: could not reach PyPI: {e}")
+            return
+
+        if not info.available:
+            self.r.system_message(
+                f"Update: you are already on the latest version ({info.latest or current})."
+            )
+            return
+
+        self.r.system_message(
+            f"Update: {current} -> {info.latest} available."
+        )
+        if check_only:
+            return
+
+        # Confirm.
+        try:
+            ans = input(
+                f"Run 'pip install --upgrade nexus-agent' now? [y/N]: "
+            ).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            self.r.system_message("Update: cancelled.")
+            return
+        if ans not in ("y", "yes"):
+            self.r.system_message("Update: cancelled.")
+            return
+
+        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "nexus-agent"]
+        self.r.system_message(f"Update: running {' '.join(shlex.quote(c) for c in cmd)}")
+
+        def runner() -> None:
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+            except (OSError, ValueError) as e:
+                self.r.system_message(f"Update: failed to start pip: {e}")
+                return
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                self.r.system_message(f"  {line.rstrip()}")
+            rc = proc.wait()
+            if rc == 0:
+                self.r.system_message(
+                    f"Update: installed {info.latest}. Restart NexusAgent to use it."
+                )
+            else:
+                self.r.system_message(f"Update: pip exited with code {rc}.")
+
+        threading.Thread(target=runner, daemon=True).start()
 
     def _cmd_feedback(self, args: str):
         self.r.system_message("Feedback: Not yet implemented")
