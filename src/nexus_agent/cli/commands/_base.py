@@ -130,6 +130,12 @@ class BaseCommands:
 
     SLASH_COMMANDS = SLASH_COMMANDS
 
+    # Per-instance state used by `/copy` and similar commands.
+    # Initialized here so the attributes always exist (avoids AttributeError
+    # in any mixin that reads them).
+    _copied_text: str = ""
+    _last_responses: list[str] = []  # most-recent assistant outputs (newest first)
+
     """Mixin that provides slash command routing and all /cmd_* handlers."""
     SLASH_COMMANDS = SLASH_COMMANDS
     _KNOWN_PROVIDERS = [

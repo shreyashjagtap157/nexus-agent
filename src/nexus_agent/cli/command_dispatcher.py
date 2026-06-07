@@ -82,6 +82,9 @@ SLASH_COMMANDS = [
     {"name": "/btw", "description": "Ask a quick side question (ephemeral)"},
     {"name": "/add-dir", "description": "Add a working directory to the session"},
     {"name": "/rewind", "description": "Rewind conversation and/or code to checkpoint"},
+    {"name": "/background", "description": "Run a prompt in a parallel isolated session"},
+    {"name": "/sessions", "description": "Interactive session picker (list, search, resume)"},
+    {"name": "/import", "description": "Import a session from a JSON file"},
     {"name": "/fast", "description": "Toggle fast mode on or off"},
     {"name": "/cost", "description": "Show token usage statistics"},
     {"name": "/usage", "description": "Show plan usage limits"},
@@ -291,6 +294,9 @@ class CommandDispatcherMixin:
             "/btw":         self._cmd_btw,
             "/add-dir":     self._cmd_add_dir,
             "/rewind":      self._cmd_rewind,
+            "/background":  self._cmd_background,
+            "/sessions":    self._cmd_sessions,
+            "/import":      self._cmd_import,
             "/fast":        self._cmd_fast,
             "/cost":        self._cmd_cost,
             "/usage":       self._cmd_usage,
@@ -1294,6 +1300,25 @@ class CommandDispatcherMixin:
         else:
             self.r.system_message("Session manager unavailable.")
 
+    def _cmd_import(self, args: str):
+        if not self._session_mgr:
+            self.r.system_message("Session manager unavailable.")
+            return
+        src = Path(args.strip()) if args else None
+        if not src or not args:
+            self.r.system_message("Usage: /import <path-to-session.json>")
+            return
+        if not src.exists():
+            self.r.error(f"File not found: {src}")
+            return
+        try:
+            new_id = self._session_mgr.import_session(src)
+            if new_id:
+                self.r.system_message(f"Imported session: {new_id}")
+                self.r.system_message("Run /resume " + new_id[:12] + " to switch to it.")
+        except (ValueError, OSError, TypeError, FileNotFoundError) as e:
+            self.r.error(f"Import failed: {e}")
+
     def _cmd_retry(self, args: str):
         if not self._agent or not self._agent.messages:
             self.r.system_message("Nothing to retry.")
@@ -1681,7 +1706,16 @@ class CommandDispatcherMixin:
             self.console.print()
 
     def _cmd_fork(self, args: str):
-        self.r.system_message("Fork: Not yet implemented")
+        if not self._session_mgr:
+            self.r.system_message("Session manager unavailable.")
+            return
+        title = args.strip() if args else None
+        new_id = self._session_mgr.fork_session(title)
+        if new_id:
+            self.r.system_message(f"Forked session: {new_id[:12]}…")
+            self.r.system_message("Run /resume " + new_id[:12] + " to switch to it.")
+        else:
+            self.r.error("Fork failed (no active session?).")
 
     def _cmd_resume(self, args: str):
         if not self._session_mgr:
@@ -1746,19 +1780,241 @@ class CommandDispatcherMixin:
             self.r.system_message("Session manager unavailable.")
 
     def _cmd_copy(self, args: str):
-        self.r.system_message("Copy: Not yet implemented")
+        """Copy to clipboard. Usage: /copy [last|N|session|<text>]."""
+        try:
+            import pyperclip
+        except ImportError:
+            self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")
+            return
+        text = ""
+        if not args or args == "last":
+            text = self._copied_text or (
+                self._last_responses[0] if getattr(self, "_last_responses", []) else ""
+            )
+            if not text:
+                self.r.system_message("Nothing to copy.")
+                return
+            pyperclip.copy(text)
+            self.r.system_message("Copied last response.")
+        elif args == "session":
+            if self._agent:
+                history = self._agent.get_conversation_history()
+                text = json.dumps(history, indent=2)
+                pyperclip.copy(text)
+                self.r.system_message(f"Copied session ({len(history)} messages).")
+            else:
+                self.r.system_message("No active session.")
+        elif args.isdigit():
+            n = int(args)
+            if self._agent and 0 < n <= len(self._agent.messages):
+                msg = self._agent.messages[-n]
+                pyperclip.copy(msg.content or "")
+                self.r.system_message(f"Copied message -{n}.")
+            else:
+                self.r.system_message("Invalid message index.")
+        else:
+            pyperclip.copy(args)
+            self.r.system_message("Copied.")
+        self._copied_text = ""
 
     def _cmd_btw(self, args: str):
-        self.r.system_message("BTW: Not yet implemented")
+        """Ask a quick side question (ephemeral — not added to main history)."""
+        if not self._agent or not self._engine:
+            self.r.system_message("No model loaded.")
+            return
+        if not args:
+            self.r.system_message("Usage: /btw <quick question>")
+            return
+        try:
+            from nexus_agent.core.agent import AgentEventType, AgentMode
+            saved_mode = self._agent.mode
+            self._agent.mode = AgentMode.PLAN
+            self.r.show_spinner("Thinking")
+            chunks: list[str] = []
+            for event in self._agent.run(args):
+                if event.type == AgentEventType.CONTENT_COMPLETE and isinstance(event.data, str):
+                    chunks.append(event.data)
+                elif event.type == AgentEventType.CONTENT and isinstance(event.data, str):
+                    chunks.append(event.data)
+                elif event.type == AgentEventType.ERROR:
+                    self.r.hide_spinner()
+                    self.r.error(f"BTW failed: {event.data}")
+                    self._agent.mode = saved_mode
+                    return
+            self.r.hide_spinner()
+            self._agent.mode = saved_mode
+            text = "".join(chunks).strip()
+            if text:
+                self.console.print()
+                self.console.print(Panel(text, title="BTW", border_style="dim"))
+                self._copied_text = text
+        except (ValueError, OSError, RuntimeError) as e:
+            self.r.hide_spinner()
+            self.r.error(f"BTW failed: {e}")
 
     def _cmd_add_dir(self, args: str):
-        self.r.system_message("Add-dir: Not yet implemented")
+        """Add a directory to the session (per-request only — does not persist)."""
+        target = Path(args).expanduser().resolve() if args else None
+        if not target:
+            self.r.system_message("Usage: /add-dir <path>")
+            return
+        if not target.is_dir():
+            self.r.error(f"Not a directory: {target}")
+            return
+        if not str(target).startswith(str(self.workspace.resolve())) and not args.startswith("~"):
+            self.r.system_message(
+                f"Note: {target} is outside the workspace {self.workspace}"
+            )
+        self._extra_dirs = getattr(self, "_extra_dirs", []) + [target]
+        self.r.system_message(f"Added dir: {target} (in-session only)")
 
     def _cmd_rewind(self, args: str):
-        self.r.system_message("Rewind: Not yet implemented")
+        """Rewind to the latest checkpoint (or a specific id)."""
+        if not self._session_mgr:
+            self.r.system_message("Session manager unavailable.")
+            return
+        try:
+            target = args.strip() if args else None
+            results = self._session_mgr.rollback(target)
+            for k, v in results.items():
+                self.console.print(f"  {k}: {v}")
+            if self._agent:
+                # Drop all messages past the rewind point (keep system messages)
+                self._agent.clear_history()
+        except (ValueError, OSError, RuntimeError) as e:
+            self.r.error(f"Rewind failed: {e}")
 
     def _cmd_fast(self, args: str):
-        self.r.system_message("Fast mode: Not yet implemented")
+        """Toggle fast mode (low effort, smaller context) on/off."""
+        if not self._agent:
+            self.r.system_message("No active agent.")
+            return
+        current = getattr(self, "_fast_mode", False)
+        self._fast_mode = not current
+        if self._fast_mode:
+            self._agent.max_iterations = 5
+            self._agent.temperature = 0.5
+            self.r.system_message("Fast mode: ON (5 it, T=0.5)")
+        else:
+            self._agent.max_iterations = self._agent._initial_max_iterations
+            self._agent.temperature = self._agent._initial_temperature
+            self.r.system_message("Fast mode: OFF (restored defaults)")
+
+    def _cmd_background(self, args: str):
+        """Run a prompt in a parallel isolated session."""
+        if not self._agent or not self._engine:
+            self.r.system_message("No model loaded.")
+            return
+        if not args:
+            self.r.system_message("Usage: /background <prompt>")
+            return
+        if not self._session_mgr:
+            self.r.system_message("Session manager unavailable.")
+            return
+        from nexus_agent.session.background import BackgroundSession
+
+        def run_in_background(prompt: str) -> str:
+            from nexus_agent.core.agent import AgentEventType
+            out: list[str] = []
+            for ev in self._agent.run(prompt):
+                if ev.type == AgentEventType.CONTENT_COMPLETE and isinstance(ev.data, str):
+                    out.append(ev.data)
+                elif ev.type == AgentEventType.CONTENT and isinstance(ev.data, str):
+                    out.append(ev.data)
+                elif ev.type == AgentEventType.ERROR:
+                    out.append(f"\n[error] {ev.data}")
+            return "".join(out).strip()
+
+        bg = BackgroundSession(
+            prompt=args,
+            run_callable=run_in_background,
+        )
+        bg_id = bg.start()
+        self._session_mgr.register_background(bg)
+        self.r.system_message(f"Background session started: {bg_id} (use /sessions to view)")
+
+    def _cmd_sessions(self, args: str):
+        """Interactive session picker — list, search, and resume."""
+        if not self._session_mgr:
+            self.r.system_message("Session manager unavailable.")
+            return
+        sub = args.strip().split(maxsplit=1) if args else []
+        subcmd = sub[0].lower() if sub else ""
+
+        if subcmd == "list":
+            try:
+                sessions = self._session_mgr.list_sessions(limit=50)
+            except (OSError, ValueError, RuntimeError) as e:
+                self.r.error(f"List failed: {e}")
+                return
+            if not sessions:
+                self.r.system_message("No saved sessions.")
+                return
+            from rich.table import Table
+            tbl = Table(title="Sessions", show_header=True, header_style="bold magenta")
+            tbl.add_column("ID", style="cyan")
+            tbl.add_column("Title", style="green", max_width=40)
+            tbl.add_column("Messages", justify="right", style="yellow")
+            tbl.add_column("Updated", style="dim")
+            for s in sessions:
+                tbl.add_row(
+                    s.get("id", "?")[:12],
+                    (s.get("title") or "")[:40],
+                    str(s.get("message_count", 0)),
+                    s.get("updated", ""),
+                )
+            self.console.print(tbl)
+            return
+
+        if subcmd == "background":
+            bgs = self._session_mgr.list_background_sessions()
+            if not bgs:
+                self.r.system_message("No background sessions.")
+                return
+            from rich.table import Table
+            tbl = Table(title="Background Sessions", show_header=True, header_style="bold magenta")
+            tbl.add_column("ID", style="cyan")
+            tbl.add_column("State", style="yellow")
+            tbl.add_column("Duration", justify="right", style="dim")
+            tbl.add_column("Prompt", max_width=60)
+            for bg in bgs:
+                tbl.add_row(
+                    bg.get("session_id", "?")[:12],
+                    bg.get("state", "?"),
+                    f"{bg.get('duration_s', 0):.1f}s",
+                    bg.get("prompt", "")[:60],
+                )
+            self.console.print(tbl)
+            return
+
+        if subcmd == "stop" and len(sub) >= 2:
+            bg = self._session_mgr.get_background_session(sub[1])
+            if bg and bg.cancel():
+                self.r.system_message(f"Cancellation requested for {sub[1]}.")
+            else:
+                self.r.error(f"No running background session: {sub[1]}")
+            return
+
+        # Default: interactive picker
+        try:
+            sessions = self._session_mgr.list_sessions(limit=50)
+        except (OSError, ValueError, RuntimeError) as e:
+            self.r.error(f"List failed: {e}")
+            return
+        if not sessions:
+            self.r.system_message("No saved sessions.")
+            return
+        items = [
+            (
+                f"{s.get('id', '?')[:12]}  {(s.get('title') or '(untitled)')[:40]}  "
+                f"[{s.get('message_count', 0)} msg · {s.get('updated', '')}]",
+                s.get("id"),
+            )
+            for s in sessions
+        ]
+        sel = self._interactive_menu(items, "Select session to resume (↑↓ Enter Esc):")
+        if sel:
+            self._cmd_resume(sel)
 
     def _cmd_cost(self, args: str):
         self.r.system_message(f"Cost: ${self._tokens.estimated_cost:.4f}")

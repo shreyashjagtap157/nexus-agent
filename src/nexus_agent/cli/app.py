@@ -128,6 +128,11 @@ class NexusApp(
         self._notification_time = 0.0
         self._drawer_active = False
         self._drawer_idx = 0
+        # Per-instance state for /copy and /add-dir
+        self._copied_text: str = ""
+        self._last_responses: list[str] = []
+        self._extra_dirs: list[Path] = []
+        self._fast_mode: bool = False
 
     def run(self):
         try:

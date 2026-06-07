@@ -9,6 +9,7 @@ CheckpointManager for rollback capability.
 from __future__ import annotations
 
 import atexit
+import json
 import logging
 import signal
 import threading
@@ -21,6 +22,14 @@ from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.storage import SessionStorage
 
 logger = logging.getLogger(__name__)
+
+
+SCHEMA_VERSION = 1
+
+
+def sid_safe(s: str) -> str:
+    """Return the first 12 chars of an id, or '?' if empty."""
+    return (s or "?")[:12]
 
 
 class SessionManager:
@@ -51,6 +60,10 @@ class SessionManager:
 
         self._active_session_id: str | None = None
         self._last_save_time: float = 0
+        self._autosave_thread: threading.Thread | None = None
+        self._autosave_stop = threading.Event()
+        self._background_sessions: dict[str, "BackgroundSession"] = {}
+        self._background_lock = threading.Lock()
 
         SessionManager._instances.append(self)
         if len(SessionManager._instances) == 1:
@@ -63,6 +76,9 @@ class SessionManager:
                         signal.signal(sigterm, SessionManager._signal_handler)
                 except (ValueError, RuntimeError, OSError):
                     pass
+
+        if self.auto_save and self.auto_save_interval > 0:
+            self._start_autosave()
 
     @classmethod
     def _atexit_save_all(cls) -> None:
@@ -322,6 +338,10 @@ class SessionManager:
             return True
         return False
 
+    def rename(self, new_name: str) -> bool:
+        """Alias for :meth:`rename_session` (matches the `/rename` slash command)."""
+        return self.rename_session(new_name)
+
     def get_last_session_for_workspace(self, workspace: str) -> str | None:
         """Get the ID of the most recently updated session for a given workspace."""
         try:
@@ -342,5 +362,181 @@ class SessionManager:
 
     def close(self) -> None:
         """Clean up resources."""
+        self._stop_autosave()
         self.save_session()
         self.storage.close()
+
+    def _start_autosave(self) -> None:
+        """Start the background autosave timer thread."""
+        if self._autosave_thread and self._autosave_thread.is_alive():
+            return
+        self._autosave_stop.clear()
+        self._autosave_thread = threading.Thread(
+            target=self._autosave_loop,
+            daemon=True,
+            name=f"SessionManager-autosave-{id(self)}",
+        )
+        self._autosave_thread.start()
+        logger.debug(f"Autosave started (interval={self.auto_save_interval}s)")
+
+    def _stop_autosave(self) -> None:
+        """Stop the background autosave timer thread."""
+        self._autosave_stop.set()
+        if self._autosave_thread and self._autosave_thread.is_alive():
+            self._autosave_thread.join(timeout=2.0)
+        self._autosave_thread = None
+
+    def _autosave_loop(self) -> None:
+        """Background loop that periodically saves the active session."""
+        while not self._autosave_stop.wait(self.auto_save_interval):
+            try:
+                self.save_session()
+            except (OSError, ValueError, TypeError, RuntimeError) as e:
+                logger.debug(f"Autosave error: {e}")
+
+    def get_messages(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Get messages for the active session.
+
+        Args:
+            limit: Optional max number of most-recent messages to return.
+
+        Returns:
+            List of message dicts in chronological order.
+        """
+        if not self._active_session_id:
+            return []
+        msgs = self.storage.get_messages(self._active_session_id)
+        if limit is not None and limit > 0:
+            return msgs[-limit:]
+        return msgs
+
+    def get_session_info(self) -> dict[str, Any]:
+        """Get a human-readable info dict for the active session."""
+        info: dict[str, Any] = {
+            "active_session_id": self._active_session_id or "(none)",
+            "total_sessions": self.count_sessions(),
+        }
+        if self._active_session_id:
+            session = self.storage.get_session(self._active_session_id)
+            if session:
+                info.update(
+                    {
+                        "title": session.get("title", ""),
+                        "model": session.get("model", ""),
+                        "provider": session.get("provider", ""),
+                        "mode": session.get("mode", "auto"),
+                        "status": session.get("status", "active"),
+                        "message_count": session.get("message_count", 0),
+                        "created": session.get("created", ""),
+                        "updated": session.get("updated", ""),
+                    }
+                )
+            info["active_message_count"] = self.get_messages_count()
+        return info
+
+    def export_session(self, session_id: str | None = None) -> dict[str, Any]:
+        """Export a session (default: active) to a portable JSON-serializable dict.
+
+        Format:
+            {
+                "schema_version": 1,
+                "exported_at": <unix-ts>,
+                "session": { ...full session row... },
+                "messages": [ ...message dicts... ],
+                "file_changes": [ ...file change dicts... ],
+            }
+        """
+        sid = session_id or self._active_session_id
+        if not sid:
+            raise ValueError("No session to export (no active session and no id given)")
+        session = self.storage.get_session(sid)
+        if not session:
+            raise ValueError(f"Session not found: {sid}")
+        messages = self.storage.get_messages(sid)
+        file_changes = self.storage.get_file_changes(sid)
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "exported_at": time.time(),
+            "session": session,
+            "messages": messages,
+            "file_changes": file_changes,
+        }
+
+    def import_session(self, src: str | Path) -> str | None:
+        """Import a session from a JSON file produced by `export_session`.
+
+        Returns the new session id, or None on failure.
+        """
+        path = Path(src)
+        if not path.exists():
+            raise FileNotFoundError(f"Import file not found: {path}")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise ValueError(f"Invalid session file: {e}") from e
+        if not isinstance(payload, dict):
+            raise ValueError("Invalid session file: top-level must be an object")
+        if "session" not in payload:
+            raise ValueError("Invalid session file: missing 'session' field")
+        schema_version = int(payload.get("schema_version", 0))
+        if schema_version > SCHEMA_VERSION:
+            raise ValueError(
+                f"Session file is from a newer version (schema={schema_version}); "
+                f"this build supports up to schema={SCHEMA_VERSION}"
+            )
+        src_session = payload.get("session", {})
+        new_id = self.create_session(
+            model=src_session.get("model", ""),
+            provider=src_session.get("provider", ""),
+            workspace=src_session.get("workspace", ""),
+            title=(src_session.get("title", "Imported session") + " (imported)"),
+            mode=src_session.get("mode", "auto"),
+            metadata=src_session.get("metadata", {}),
+        )
+        for msg in payload.get("messages", []):
+            try:
+                self.storage.save_message(
+                    session_id=new_id,
+                    role=msg.get("role", "user"),
+                    content=msg.get("content"),
+                    tool_calls=msg.get("tool_calls"),
+                    tool_call_id=msg.get("tool_call_id"),
+                    name=msg.get("name"),
+                    type=msg.get("type", ""),
+                )
+            except (OSError, ValueError, TypeError) as e:
+                logger.warning(f"Skipping message during import: {e}")
+        for fc in payload.get("file_changes", []):
+            try:
+                self.storage.track_file_change(
+                    session_id=new_id,
+                    file_path=fc.get("file_path", ""),
+                    change_type=fc.get("change_type", "edit"),
+                    original_content=fc.get("original_content"),
+                    new_content=fc.get("new_content"),
+                )
+            except (OSError, ValueError, TypeError) as e:
+                logger.warning(f"Skipping file change during import: {e}")
+        logger.info(f"Imported session {sid_safe(src_session.get('id', '?'))} → {new_id}")
+        return new_id
+
+    def list_background_sessions(self) -> list[dict[str, Any]]:
+        """List all running background sessions."""
+        with self._background_lock:
+            return [bg.status() for bg in self._background_sessions.values()]
+
+    def get_background_session(self, session_id: str) -> "BackgroundSession | None":
+        """Get a background session by id (supports prefix match)."""
+        with self._background_lock:
+            for sid, bg in self._background_sessions.items():
+                if sid == session_id or sid.startswith(session_id):
+                    return bg
+        return None
+
+    def register_background(self, bg: "BackgroundSession") -> None:
+        with self._background_lock:
+            self._background_sessions[bg.session_id] = bg
+
+    def unregister_background(self, session_id: str) -> None:
+        with self._background_lock:
+            self._background_sessions.pop(session_id, None)

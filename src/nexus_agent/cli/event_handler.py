@@ -169,6 +169,9 @@ class EventHandlerMixin:
         if full_response and not self._abort_event.is_set():
             if self._session_mgr:
                 self._session_mgr.save_message("assistant", content=full_response, type="assistant")
+            # Remember the most recent assistant response for `/copy last`.
+            self._last_responses.insert(0, full_response)
+            del self._last_responses[10:]
 
             self._tokens.current_request.end()
             self._tokens.last_request.input_tokens = self._tokens.current_request.input_tokens

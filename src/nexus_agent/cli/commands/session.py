@@ -166,10 +166,12 @@ class SessionCommands(BaseCommands):
         try:
             import pyperclip
         except ImportError:
-            self.r.system_message("pyperclip not installed — cannot copy.")
+            self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")
             return
         if args == "last":
-            text = self._copied_text
+            text = self._copied_text or (
+                self._last_responses[0] if self._last_responses else ""
+            )
             if text:
                 pyperclip.copy(text)
                 self.r.system_message("Copied last response.")
@@ -178,7 +180,6 @@ class SessionCommands(BaseCommands):
         elif args == "session":
             if self._agent:
                 history = self._agent.get_conversation_history()
-                import json
                 text = json.dumps(history, indent=2)
                 pyperclip.copy(text)
                 self.r.system_message(f"Copied session ({len(history)} messages).")

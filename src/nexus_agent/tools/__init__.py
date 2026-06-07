@@ -12,7 +12,14 @@ from nexus_agent.tools.file_ops import (
     WriteFileTool,
 )
 from nexus_agent.tools.git_ops import CIAnalyzerTool, GitTool, PRGeneratorTool, SmartCommitTool
-from nexus_agent.tools.lsp_client import LSPClientTool
+from nexus_agent.tools.lsp_client import LSPClientTool, register_lsp_server
+from nexus_agent.tools.lsp_transport import (
+    DEFAULT_SERVERS,
+    LSPClient,
+    LSPClientPool,
+    LSPConfig,
+    LSPError,
+)
 from nexus_agent.tools.rag_search import RepositoryRAGTool
 from nexus_agent.tools.shell import ShellTool
 from nexus_agent.tools.web_search import WebSearchTool
@@ -38,4 +45,10 @@ __all__ = [
     "CallGraphTool",
     "RenameTool",
     "LSPClientTool",
+    "LSPClient",
+    "LSPClientPool",
+    "LSPConfig",
+    "LSPError",
+    "DEFAULT_SERVERS",
+    "register_lsp_server",
 ]

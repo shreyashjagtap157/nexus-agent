@@ -6,9 +6,16 @@ import hashlib
 import importlib
 import logging
 import threading
+from collections.abc import Iterator
 from typing import Any
 
-from nexus_agent.llm.base import LLMProvider
+from nexus_agent.llm.base import (
+    LLMProvider,
+    LLMResponse,
+    Message,
+    StreamChunk,
+    ToolDefinition,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +32,123 @@ _PROVIDER_MAP: dict[str, tuple[str, str]] = {
     "bedrock": ("nexus_agent.llm.providers.aws_bedrock_provider", "AWSBedrockProvider"),
     "custom": ("nexus_agent.llm.providers.custom_openai_provider", "CustomOpenAIProvider"),
 }
+
+
+class FallbackProvider(LLMProvider):
+    """Chain of providers tried in order on failure.
+
+    The chain is walked top-to-bottom: `primary` is tried first; on a
+    `RuntimeError`/`ConnectionError`/`TimeoutError`/`OSError` (network or
+    hard load failure), the next provider in `fallbacks` is tried. The
+    first successful response wins. Streaming does not fall back mid-stream
+    (the iterator is returned as-is from the provider that produced it).
+
+    The wrapper's `name` is `"<primary>-><fb1>-><fb2>"` and `model_name`
+    follows the primary.
+    """
+
+    def __init__(
+        self,
+        primary: LLMProvider,
+        fallbacks: list[LLMProvider] | None = None,
+    ) -> None:
+        self._primary = primary
+        self._fallbacks: list[LLMProvider] = list(fallbacks or [])
+        self._chain = [self._primary, *self._fallbacks]
+        self._last_used: LLMProvider | None = None
+
+    @property
+    def name(self) -> str:
+        return "->".join(p.name for p in self._chain)
+
+    @property
+    def model_name(self) -> str:
+        return self._primary.model_name
+
+    @property
+    def primary(self) -> LLMProvider:
+        return self._primary
+
+    @property
+    def last_used(self) -> LLMProvider | None:
+        return self._last_used
+
+    def get_capabilities(self) -> Any:
+        # Capabilities follow the primary — fallbacks may differ but the
+        # caller already accepted the primary's contract.
+        return self._primary.get_capabilities()
+
+    def get_available_models(self) -> list[dict[str, Any]]:
+        try:
+            return self._primary.get_available_models()
+        except (OSError, RuntimeError, ValueError, ConnectionError) as e:
+            logger.debug(f"primary models() failed: {e}; falling back")
+            for fb in self._fallbacks:
+                try:
+                    return fb.get_available_models()
+                except (OSError, RuntimeError, ValueError, ConnectionError) as e2:
+                    logger.debug(f"fallback {fb.name} models() failed: {e2}")
+        return []
+
+    def _walk(self, op_name: str, fn):
+        """Call `fn(provider)` over the chain, returning the first success."""
+        last_exc: BaseException | None = None
+        for provider in self._chain:
+            try:
+                result = fn(provider)
+                self._last_used = provider
+                if provider is not self._primary:
+                    logger.info(
+                        f"FallbackProvider: {op_name} succeeded via fallback '{provider.name}'"
+                    )
+                return result
+            except (RuntimeError, ConnectionError, TimeoutError, OSError) as e:
+                last_exc = e
+                logger.warning(
+                    f"FallbackProvider: {op_name} failed on '{provider.name}': {e}"
+                )
+                continue
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("FallbackProvider: empty chain")
+
+    def chat_completion(
+        self,
+        messages: list[Message],
+        tools: list[ToolDefinition] | None = None,
+        temperature: float = 0.1,
+        max_tokens: int = 4096,
+        **kwargs: Any,
+    ) -> LLMResponse:
+        return self._walk(
+            "chat_completion",
+            lambda p: p.chat_completion(messages, tools, temperature, max_tokens, **kwargs),
+        )
+
+    def chat_completion_stream(
+        self,
+        messages: list[Message],
+        tools: list[ToolDefinition] | None = None,
+        temperature: float = 0.1,
+        max_tokens: int = 4096,
+        **kwargs: Any,
+    ) -> Iterator[StreamChunk]:
+        # Streaming has no per-call fallback — return the primary's iterator.
+        # (Mid-stream fallback is out of scope; callers should retry from
+        # the start with the next provider in the chain if needed.)
+        return self._primary.chat_completion_stream(
+            messages, tools, temperature, max_tokens, **kwargs
+        )
+
+    def close(self) -> None:
+        for p in self._chain:
+            try:
+                p.close()
+            except (OSError, RuntimeError) as e:
+                logger.debug(f"FallbackProvider: close() on '{p.name}' failed: {e}")
+
+    def __repr__(self) -> str:
+        return f"<FallbackProvider chain={self.name} last_used={self._last_used and self._last_used.name}>"
 
 
 class ProviderFactory:
@@ -93,6 +217,35 @@ class ProviderFactory:
         with ProviderFactory._lock:
             ProviderFactory._instances[cache_key] = instance
         return instance
+
+    @staticmethod
+    def create_with_fallback(
+        primary_name: str,
+        fallback_names: list[str],
+        config: dict[str, Any],
+        model_path_or_name: str | None = None,
+    ) -> FallbackProvider:
+        """Build a `FallbackProvider` from a list of provider names.
+
+        Each name is resolved via `create_provider`. The first provider
+        (primary) is tried first; the rest are tried in order on failure.
+        If `fallback_names` is empty, this is equivalent to a single-provider
+        chain.
+        """
+        primary = ProviderFactory.create_provider(
+            primary_name, config, model_path_or_name
+        )
+        fallbacks: list[LLMProvider] = []
+        for name in fallback_names:
+            try:
+                fallbacks.append(
+                    ProviderFactory.create_provider(name, config, model_path_or_name)
+                )
+            except (ValueError, ImportError, OSError, RuntimeError) as e:
+                logger.warning(
+                    f"create_with_fallback: skipping fallback '{name}': {e}"
+                )
+        return FallbackProvider(primary, fallbacks)
 
     @staticmethod
     def clear_cache():

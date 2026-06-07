@@ -260,6 +260,11 @@ Current workspace: {workspace}
         self._reflection_enabled = effort_map["reflection"]
         self._multi_pass_enabled = effort_map.get("multi_pass", False)
 
+        # Snapshot the defaults so callers (e.g. /fast) can restore them later.
+        self._initial_max_iterations = self.max_iterations
+        self._initial_temperature = self.temperature
+        self._initial_max_tokens = self.max_tokens
+
         # Conversation state
         self.messages: list[Message] = []
         self.state = AgentState.IDLE
