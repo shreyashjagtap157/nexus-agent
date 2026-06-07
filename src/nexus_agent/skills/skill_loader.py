@@ -3,10 +3,25 @@ Skill Loader — Loads modular capabilities from Markdown files.
 
 Parses .md files with YAML frontmatter to extract metadata and registers
 them as executable agent tools that spawn specialized sub-agents.
+
+Templating
+----------
+Skill instructions may reference the values passed in at execution time
+using a small Jinja-style syntax:
+
+  {{ var }}                    → string-coerced value of `var`
+  {{ var|filter }}             → apply filter (upper, lower, trim,
+                                 truncate:N, default:"fallback",
+                                 json, repr, indent:N)
+  {{ var|filter1|filter2 }}    → chained filters (left-to-right)
+
+Missing variables raise `TemplateError` so the user sees a clear
+message instead of a silent `{{var}}` leak into the rendered text.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -17,6 +32,101 @@ import yaml
 from nexus_agent.tools.base import Tool
 
 logger = logging.getLogger(__name__)
+
+
+class TemplateError(ValueError):
+    """Raised when a skill template references an unknown variable."""
+
+
+# {{ var }} or {{ var|filter|filter... }} — whitespace tolerant.
+_VAR_RE = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)(\|[^}]*)?\s*\}\}")
+
+
+def _apply_filter(value: Any, filter_expr: str) -> Any:
+    """Apply a single `name[:arg]` filter to `value`.
+
+    Supported filters:
+    - upper / lower / trim / json / repr
+    - default:"fallback"
+    - truncate:N
+    - indent:N
+    """
+    expr = filter_expr.strip()
+    if not expr:
+        return value
+    if ":" in expr:
+        name, _, arg = expr.partition(":")
+        name = name.strip()
+        arg = arg.strip()
+        # Strip surrounding quotes from default:
+        if name == "default":
+            if (arg.startswith('"') and arg.endswith('"')) or (
+                arg.startswith("'") and arg.endswith("'")
+            ):
+                arg = arg[1:-1]
+            return value if value not in (None, "") else arg
+        if name == "truncate":
+            try:
+                n = int(arg)
+            except ValueError:
+                n = 80
+            s = "" if value is None else str(value)
+            return s if len(s) <= n else s[: max(0, n - 1)] + "…"
+        if name == "indent":
+            try:
+                n = int(arg)
+            except ValueError:
+                n = 2
+            indent = " " * n
+            return "\n".join(indent + line for line in str(value).splitlines())
+        # Unknown filter — return value as-is
+        return value
+    name = expr
+    if name == "upper":
+        return str(value).upper()
+    if name == "lower":
+        return str(value).lower()
+    if name == "trim":
+        return str(value).strip()
+    if name == "json":
+        return json.dumps(value, default=str, ensure_ascii=False)
+    if name == "repr":
+        return repr(value)
+    # Unknown filter — return value as-is
+    return value
+
+
+def render_template(template: str, variables: dict[str, Any]) -> str:
+    """Substitute `{{ var|filter|... }}` placeholders in `template`.
+
+    Raises:
+        TemplateError: If a variable is missing (or unquoted in
+            `default:`), so silent leaks are caught.
+    """
+    if not template:
+        return ""
+    variables = variables or {}
+
+    def repl(m: re.Match[str]) -> str:
+        name = m.group(1)
+        filters = m.group(2) or ""
+        if name not in variables:
+            raise TemplateError(
+                f"Skill template references unknown variable {name!r}; "
+                f"available: {sorted(variables.keys())}"
+            )
+        # Coerce None to "" at the start so filters operate on strings,
+        # not on Python's repr-of-None ("None"). This also matches the
+        # intuition that a missing optional input renders as nothing.
+        value: Any = "" if variables[name] is None else variables[name]
+        if filters:
+            for f in filters.split("|"):
+                if not f.strip():
+                    continue
+                value = _apply_filter(value, f)
+        return str(value)
+
+    return _VAR_RE.sub(repl, template)
 
 
 @runtime_checkable
@@ -112,7 +222,23 @@ class Skill(Tool):
         return self._render_template(kwargs)
 
     def _build_prompt(self, kwargs: dict[str, Any]) -> str:
-        """Build the execution prompt from skill arguments."""
+        """Build the execution prompt from skill arguments.
+
+        If the skill's instructions contain `{{ var }}` placeholders,
+        they are substituted with values from `kwargs`. Any remaining
+        placeholders cause a `TemplateError` to surface a clear message
+        to the caller. Falls back to a structured arg summary when no
+        placeholders are present.
+        """
+        if "{{" in self._instructions:
+            try:
+                rendered = render_template(self._instructions, kwargs)
+            except TemplateError as e:
+                return f"Error rendering skill template: {e}"
+            return (
+                f"You are executing the specialized skill '{self._name}'.\n\n"
+                f"{rendered}"
+            )
         arg_summary = "\n".join(f"- {k}: {v}" for k, v in kwargs.items())
         return (
             f"You are executing the specialized skill '{self._name}'.\n"
@@ -171,7 +297,22 @@ class Skill(Tool):
             return f"Error executing skill sub-agent: {e}"
 
     def _render_template(self, kwargs: dict[str, Any]) -> str:
-        """Render a template response when no agent is available."""
+        """Render a template response when no agent is available.
+
+        Substitutes `{{ var }}` placeholders against `kwargs` first; if
+        no placeholders are present, returns the legacy summary format
+        so existing skills continue to work.
+        """
+        if "{{" in self._instructions:
+            try:
+                rendered = render_template(self._instructions, kwargs)
+            except TemplateError as e:
+                return f"Error rendering skill template: {e}"
+            return (
+                f"[SKILL TEMPLATE EXECUTED] Skill: {self._name}\n"
+                f"Arguments provided: {kwargs}\n"
+                f"Rendered Instructions:\n{rendered}"
+            )
         return (
             f"[SKILL TEMPLATE EXECUTED] Skill: {self._name}\n"
             f"Arguments provided: {kwargs}\n"
