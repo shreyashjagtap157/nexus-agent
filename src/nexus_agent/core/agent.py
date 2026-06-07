@@ -312,30 +312,17 @@ Current workspace: {workspace}
         """Build the system prompt with workspace context."""
         prompt = self.SYSTEM_PROMPT.format(workspace=self.workspace)
 
-        # State-of-the-art auto-discovery of workspace standard files (e.g. CLAUDE.md, AGENT.md)
-        rules_files = ["CLAUDE.md", ".nexus-agent.md", "AGENT.md", "developer.md"]
-        for rf in rules_files:
-            rf_path = Path(self.workspace) / rf
-            if rf_path.exists():
-                try:
-                    rules_content = rf_path.read_text(encoding="utf-8", errors="ignore")
-                    if len(rules_content) > 50000:
-                        logger.warning(f"Workspace rules file {rf} is too large (>50KB). Skipping for security.")
-                        continue
-                    lower_content = rules_content.lower()
-                    danger_keywords = [
-                        "ignore all previous", "ignore previous instructions", "override system prompt",
-                        "you are now", "new system instructions", "system override"
-                    ]
-                    if any(dk in lower_content for dk in danger_keywords):
-                        logger.warning(f"Potential prompt injection pattern detected in workspace rules file {rf}. Skipping.")
-                        continue
-                    if rules_content.strip():
-                        prompt += f"\n\n## WORKSPACE STANDARDS & INSTRUCTIONS (from {rf})\n{rules_content}"
-                        logger.info(f"Loaded workspace standards from {rf}")
-                        break
-                except (OSError, PermissionError, UnicodeDecodeError) as e:
-                    logger.debug(f"Failed to read workspace rules file {rf}: {e}")
+        # Auto-discover AGENTS.md / CLAUDE.md / .nexus/AGENTS.md etc. via
+        # the shared ProjectContextLoader (cached, parent-walking, size-capped,
+        # prompt-injection-guarded).
+        try:
+            from nexus_agent.core.project_context import ProjectContextLoader
+            loader = ProjectContextLoader(self.workspace)
+            project_ctx = loader.load()
+            if project_ctx:
+                prompt += f"\n\n## WORKSPACE STANDARDS & INSTRUCTIONS\n{project_ctx}"
+        except (ImportError, OSError, ValueError) as e:
+            logger.debug(f"ProjectContextLoader unavailable: {e}")
 
         if self.goal:
             prompt += f"\n\n## ACTIVE OBJECTIVE\nYour current Hermes goal is: **{self.goal}**\nConcentrate strictly on achieving this objective. Avoid out-of-scope edits."
