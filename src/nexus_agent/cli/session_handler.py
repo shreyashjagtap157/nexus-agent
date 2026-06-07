@@ -169,6 +169,7 @@ class SessionOrchestratorMixin:
             WriteFileTool,
         )
         from nexus_agent.tools.git_ops import GitTool
+        from nexus_agent.tools.memory import MemoryTool
         from nexus_agent.tools.rag_search import RepositoryRAGTool
         from nexus_agent.tools.shell import ShellTool
         from nexus_agent.tools.todowrite import TodoWriteTool
@@ -191,6 +192,12 @@ class SessionOrchestratorMixin:
             ImportGraphTool(self.workspace),
             TodoWriteTool(persist_path=self.workspace / ".nexus" / "todos.json"),
         ]
+        # MemoryTool needs the MemoryManager to be constructed first, so
+        # it's bound after the tools list is built.
+        memory_tool = MemoryTool()
+        if self._memory is not None:
+            memory_tool.set_memory(self._memory)
+        tools.append(memory_tool)
 
         mcp_tools = getattr(self, "_mcp_tools", [])
         if mcp_tools:

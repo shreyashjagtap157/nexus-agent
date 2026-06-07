@@ -222,12 +222,12 @@ class LongTermMemory(SQLiteStore):
             params.append(time.time())
             params.append(entry_id)
 
-            conn.execute(
+            cursor = conn.execute(
                 f"UPDATE memories SET {', '.join(updates)} WHERE id = ?",
                 params,
             )
             conn.commit()
-            return True
+            return cursor.rowcount > 0
 
     def delete(self, entry_id: str) -> bool:
         """Delete a memory entry."""
@@ -245,6 +245,41 @@ class LongTermMemory(SQLiteStore):
                 "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"
             )
             return [dict(row) for row in cursor]
+
+    def list_all(self, category: str | None = None, limit: int = 100,
+                 offset: int = 0) -> list[dict[str, Any]]:
+        """Enumerate memories, newest first.
+
+        Args:
+            category: Optional category filter.
+            limit: Maximum entries to return (default 100).
+            offset: Skip this many entries (for pagination).
+
+        Returns:
+            List of memory entries (newest first).
+        """
+        with self._lock:
+            conn = self._get_conn()
+            if category:
+                cursor = conn.execute(
+                    "SELECT * FROM memories WHERE category = ? "
+                    "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                    (category, limit, offset),
+                )
+            else:
+                cursor = conn.execute(
+                    "SELECT * FROM memories ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                    (limit, offset),
+                )
+            results: list[dict[str, Any]] = []
+            for row in cursor:
+                entry = dict(row)
+                try:
+                    entry["metadata"] = json.loads(entry.get("metadata", "{}"))
+                except (TypeError, json.JSONDecodeError):
+                    entry["metadata"] = {}
+                results.append(entry)
+            return results
 
     def get_stats(self) -> dict[str, Any]:
         """Get memory statistics."""

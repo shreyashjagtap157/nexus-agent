@@ -106,6 +106,60 @@ class MemoryManager:
         with self._lock:
             return self.long_term.store(content, category=category, metadata=metadata)
 
+    def update(self, entry_id: str, content: str | None = None,
+               category: str | None = None) -> bool:
+        """Update an existing long-term memory entry.
+
+        Args:
+            entry_id: ID of the memory to update.
+            content: New content (optional).
+            category: New category (optional).
+
+        Returns:
+            True if a row was updated, False otherwise.
+        """
+        with self._lock:
+            return self.long_term.update(entry_id, content=content, category=category)
+
+    def forget(self, entry_id: str) -> bool:
+        """Delete a long-term memory entry.
+
+        Args:
+            entry_id: ID of the memory to forget.
+
+        Returns:
+            True if a row was deleted, False otherwise.
+        """
+        with self._lock:
+            return self.long_term.delete(entry_id)
+
+    def get(self, entry_id: str) -> dict[str, Any] | None:
+        """Look up a specific memory by ID."""
+        with self._lock:
+            return self.long_term.get(entry_id)
+
+    def list_all(self, category: str | None = None, limit: int = 100,
+                 offset: int = 0) -> list[dict[str, Any]]:
+        """Enumerate memories, newest first.
+
+        Args:
+            category: Optional category filter.
+            limit: Maximum number of entries to return.
+            offset: Skip this many entries (for pagination).
+
+        Returns:
+            List of memory entries (newest first).
+        """
+        with self._lock:
+            return self.long_term.list_all(
+                category=category, limit=limit, offset=offset,
+            )
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get memory statistics (total entries, categories, db path)."""
+        with self._lock:
+            return self.long_term.get_stats()
+
     def remember(self, key: str) -> str | None:
         """Quick recall by key from working memory or long-term.
 
