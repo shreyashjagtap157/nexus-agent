@@ -50,7 +50,9 @@ from nexus_agent.tools.file_ops import (
 )
 from nexus_agent.tools.git_ops import GitTool, SmartCommitTool
 from nexus_agent.tools.shell import ShellTool
+from nexus_agent.tools.todowrite import TodoWriteTool
 from nexus_agent.tools.web_search import WebSearchTool
+from nexus_agent.tools.webfetch import WebFetchTool
 
 logger = logging.getLogger(__name__)
 
@@ -470,6 +472,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 InsertLinesTool(state_manager.get("workspace")),
                 GitTool(state_manager.get("workspace")),
                 WebSearchTool(),
+                WebFetchTool(),
+                TodoWriteTool(persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"),
             ]
 
             # Build memory prompt context

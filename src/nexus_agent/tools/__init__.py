@@ -22,6 +22,7 @@ from nexus_agent.tools.lsp_transport import (
 )
 from nexus_agent.tools.rag_search import RepositoryRAGTool
 from nexus_agent.tools.shell import ShellTool
+from nexus_agent.tools.todowrite import Todo, TodoPriority, TodoStatus, TodoStore, TodoWriteTool, format_todo_list
 from nexus_agent.tools.web_search import WebSearchTool
 from nexus_agent.tools.webfetch import WebFetchTool, html_to_markdown
 
@@ -53,5 +54,11 @@ __all__ = [
     "LSPError",
     "DEFAULT_SERVERS",
     "register_lsp_server",
+    "TodoWriteTool",
+    "Todo",
+    "TodoStatus",
+    "TodoPriority",
+    "TodoStore",
+    "format_todo_list",
     "html_to_markdown",
 ]

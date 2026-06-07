@@ -171,7 +171,9 @@ class SessionOrchestratorMixin:
         from nexus_agent.tools.git_ops import GitTool
         from nexus_agent.tools.rag_search import RepositoryRAGTool
         from nexus_agent.tools.shell import ShellTool
+        from nexus_agent.tools.todowrite import TodoWriteTool
         from nexus_agent.tools.web_search import WebSearchTool
+        from nexus_agent.tools.webfetch import WebFetchTool
 
         tools = [
             ReadFileTool(self.workspace),
@@ -183,9 +185,11 @@ class SessionOrchestratorMixin:
             InsertLinesTool(self.workspace),
             GitTool(self.workspace),
             WebSearchTool(),
+            WebFetchTool(),
             RepositoryRAGTool(self.workspace),
             BatchEditTool(self.workspace),
             ImportGraphTool(self.workspace),
+            TodoWriteTool(persist_path=self.workspace / ".nexus" / "todos.json"),
         ]
 
         mcp_tools = getattr(self, "_mcp_tools", [])
