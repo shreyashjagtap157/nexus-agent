@@ -60,6 +60,8 @@ SLASH_COMMANDS = [
     {"name": "/stats", "description": "Conversation statistics"},
     {"name": "/memory", "description": "Search/edit CLAUDE.md memory files"},
     {"name": "/reflect", "description": "Critique last assistant response"},
+    {"name": "/plugin", "description": "Manage and list loaded plugins"},
+    {"name": "/reload-plugins", "description": "Reload plugins from disk"},
     {"name": "/task", "description": "View task graph progress"},
     {"name": "/debate", "description": "Convene multi-agent expert panel"},
     {"name": "/verify", "description": "Run DevOps pipeline (tests, linters, secrets)"},
@@ -311,6 +313,9 @@ class CommandDispatcherMixin:
             "/mobile":      self._cmd_mobile,
             "/release-notes": self._cmd_release_notes,
             "/tasks":       self._cmd_tasks,
+            "/plugin":        self._cmd_plugin,
+            "/reload-plugins": self._cmd_reload_plugins,
+
             "/pr-comments": self._cmd_pr_comments,
             "/security-review": self._cmd_security_review,
             "/init":        self._cmd_init,
@@ -327,8 +332,6 @@ class CommandDispatcherMixin:
             "/bug":         self._cmd_feedback,
             "/ide":         self._cmd_ide,
             "/chrome":      self._cmd_chrome,
-            "/plugin":      self._cmd_plugin,
-            "/reload-plugins": self._cmd_reload_plugins,
             "/agents":      self._cmd_agents,
             "/hooks":       self._cmd_hooks,
             "/install-github-app": self._cmd_install_github_app,
@@ -369,8 +372,20 @@ class CommandDispatcherMixin:
         if handler:
             handler(args)
         else:
-            self.r.error("Unknown command. Type /help")
+            # Try plugin commands
+            tracker = getattr(self, "plugin_manager", None)
+            if tracker:
+                found_plugin = False
+                for p_name, p_info in tracker.plugins.items():
+                    if cmd in p_info.commands:
+                        p_info.commands[cmd](self, args)
+                        found_plugin = True
+                        break
+                if found_plugin:
+                    self._refresh_status()
+                    return
 
+            self.r.error("Unknown command. Type /help")
         self._refresh_status()
 
     def _cmd_help(self, args: str):
@@ -379,6 +394,14 @@ class CommandDispatcherMixin:
         table = Table(show_header=False, box=None, padding=(0, 2))
         for c in self.SLASH_COMMANDS:
             table.add_row(f"  [bold]{c['name']}[/bold]", f"[dim]{c['description']}[/dim]")
+        
+        # Add plugin commands
+        tracker = getattr(self, "plugin_manager", None)
+        if tracker:
+            for p_name, p_info in tracker.plugins.items():
+                for cmd_name in p_info.commands:
+                    table.add_row(f"  [bold]{cmd_name}[/bold]", f"[dim]plugin: {p_name}[/dim]")
+                    
         self.console.print(table)
         self.console.print()
         self.console.print("[bold]Keyboard Shortcuts:[/bold]")
@@ -2341,10 +2364,42 @@ class CommandDispatcherMixin:
         self.r.system_message("Chrome: Not yet implemented")
 
     def _cmd_plugin(self, args: str):
-        self.r.system_message("Plugin: Not yet implemented")
+        tracker = getattr(self, "plugin_manager", None)
+        if not tracker:
+            self.r.system_message("Plugin manager not initialized.")
+            return
+
+        if args.strip() == "list" or not args:
+            plugins = tracker.plugins
+            if not plugins:
+                self.r.system_message("No plugins loaded.")
+                return
+            lines = ["Loaded Plugins:"]
+            for name, info in plugins.items():
+                status = "OK" if info.error is None else f"Error: {info.error}"
+                lines.append(f"  {name:<20} {status}")
+            self.r.system_message("\n".join(lines))
+            return
+
+        self.r.system_message("Plugin: use '/plugin list' to see loaded plugins.")
 
     def _cmd_reload_plugins(self, args: str):
-        self.r.system_message("Reload plugins: Not yet implemented")
+        tracker = getattr(self, "plugin_manager", None)
+        if not tracker:
+            self.r.system_message("Plugin manager not initialized.")
+            return
+        
+        tracker.discover_and_load()
+        # If we have a current agent, we should probably update its tools
+        if hasattr(self, "_agent") and self._agent:
+            plugin_tools = []
+            for info in tracker.plugins.values():
+                plugin_tools.extend(info.tools)
+            # we can't easily 'update' the agent's tool list without restarting it
+            # or adding a method to AgentLoop. Let's just notify the user.
+            self.r.system_message(f"Reloaded plugins. Found {len(tracker.plugins)} plugins. (Restart session to update agent tools)")
+        else:
+            self.r.system_message(f"Reloaded plugins. Found {len(tracker.plugins)} plugins.")
 
     def _cmd_agents(self, args: str):
         self.r.system_message("Agents: Not yet implemented")

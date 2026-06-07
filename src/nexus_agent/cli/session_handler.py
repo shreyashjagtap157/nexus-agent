@@ -69,6 +69,14 @@ class SessionOrchestratorMixin:
         self._usage_tracker = UsageTracker(
             path=Path(data_dir_path) / "usage.json"
         )
+        self._plugin_manager = PluginManager(
+            workspace=self.workspace,
+            plugin_dirs=[
+                self.workspace / ".nexus" / "plugins",
+                Path(data_dir_path) / "plugins",
+            ]
+        )
+        self._plugin_manager.discover_and_load()
 
         self._permissions = PermissionManager(approval_callback=self._approval_handler)
         self._permissions.load_from_config(self._config)
@@ -197,6 +205,11 @@ class SessionOrchestratorMixin:
             ImportGraphTool(self.workspace),
             TodoWriteTool(persist_path=self.workspace / ".nexus" / "todos.json"),
         ]
+        # Load plugin tools
+        plugin_manager = getattr(self, "_plugin_manager", None)
+        if plugin_manager:
+            for info in plugin_manager.plugins.values():
+                tools.extend(info.tools)
         # MemoryTool needs the MemoryManager to be constructed first, so
         # it's bound after the tools list is built.
         memory_tool = MemoryTool()
@@ -284,6 +297,7 @@ class SessionOrchestratorMixin:
 
         # Expose the usage tracker to the dispatcher (for /cost).
         self.usage_tracker = getattr(self, "_usage_tracker", None)
+        self.plugin_manager = getattr(self, "_plugin_manager", None)
 
         if self._engine:
             prov_name = getattr(self._engine, 'name', self._provider_name or 'local')
