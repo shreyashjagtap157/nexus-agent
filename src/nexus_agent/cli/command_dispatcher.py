@@ -55,6 +55,7 @@ SLASH_COMMANDS = [
     {"name": "/model unload", "description": "Unload current active model from memory"},
     {"name": "/model add", "description": "Register a new model name and path"},
     {"name": "/model remove", "description": "Deregister a model from database"},
+    {"name": "/model benchmark", "description": "Benchmark model inference performance"},
     {"name": "/tools", "description": "Show enabled toolset and allow toggling"},
     {"name": "/skills", "description": "List available skills (project/global)"},
     {"name": "/mode", "description": "Set agent mode (auto|plan|build|review)"},

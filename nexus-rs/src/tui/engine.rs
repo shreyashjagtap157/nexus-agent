@@ -199,8 +199,19 @@ impl TuiEngine {
             phase,
         );
 
+        let cost_str = if app.estimated_cost > 0.0 {
+            format!("${:.4}", app.estimated_cost)
+        } else {
+            String::new()
+        };
+        let cost_part = if !cost_str.is_empty() {
+            format!(" {} |", cost_str)
+        } else {
+            String::new()
+        };
         let right = format!(
-            " {} in / {} out | {} ",
+            "{} {} in / {} out | {} ",
+            cost_part,
             Self::format_tokens(app.tokens_in),
             Self::format_tokens(app.tokens_out),
             app.uptime_string(),

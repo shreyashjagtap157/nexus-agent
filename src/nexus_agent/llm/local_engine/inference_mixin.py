@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -24,6 +25,74 @@ class InferenceMixin:
 
     def _ensure_loaded(self) -> None:
         ...
+
+    def benchmark(self, prompt: str = "Hello world", iterations: int = 5) -> dict:
+        """Benchmark model inference performance.
+
+        Measures time-to-first-token, tokens/sec, and average latency
+        across a configurable number of iterations.
+
+        Args:
+            prompt: Input text to benchmark with.
+            iterations: Number of benchmark iterations.
+
+        Returns:
+            Dict with benchmark results.
+        """
+        self._ensure_loaded()
+
+        test_messages = [{"role": "user", "content": prompt}]
+        prompt_tokens = self._llm.tokenize(prompt.encode("utf-8"))
+        prompt_len = len(prompt_tokens)
+
+        latencies: list[float] = []
+        tokens_per_sec: list[float] = []
+        ttft_list: list[float] = []
+
+        for i in range(iterations):
+            try:
+                start = time.perf_counter()
+                first_token = True
+                total_tokens = 0
+                for chunk in self._llm.create_chat_completion(
+                    messages=test_messages,
+                    temperature=0.0,
+                    max_tokens=256,
+                    stream=True,
+                ):
+                    if first_token:
+                        ttft = time.perf_counter() - start
+                        ttft_list.append(ttft)
+                        first_token = False
+                    choice = (chunk.get("choices") or [{}])[0]
+                    delta = choice.get("delta", {})
+                    if delta.get("content"):
+                        total_tokens += 1
+
+                elapsed = time.perf_counter() - start
+                latencies.append(elapsed)
+                if total_tokens > 0 and elapsed > 0:
+                    tokens_per_sec.append(total_tokens / elapsed)
+            except Exception as e:
+                logger.warning(f"Benchmark iteration {i + 1} failed: {e}")
+                continue
+
+        if not latencies:
+            return {"error": "All benchmark iterations failed", "iterations_attempted": iterations}
+
+        return {
+            "prompt": prompt,
+            "prompt_tokens": prompt_len,
+            "iterations": len(latencies),
+            "latency_avg_s": sum(latencies) / len(latencies),
+            "latency_min_s": min(latencies),
+            "latency_max_s": max(latencies),
+            "ttft_avg_s": sum(ttft_list) / len(ttft_list) if ttft_list else 0,
+            "ttft_min_s": min(ttft_list) if ttft_list else 0,
+            "tokens_per_sec_avg": sum(tokens_per_sec) / len(tokens_per_sec) if tokens_per_sec else 0,
+            "tokens_per_sec_max": max(tokens_per_sec) if tokens_per_sec else 0,
+            "model": self._model_name_str,
+        }
 
     def chat_completion(
         self,

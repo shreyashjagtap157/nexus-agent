@@ -418,32 +418,64 @@ fn render_cost(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Theme)
     let inner = block.inner(area);
     frame.render_widget(&block, area);
 
-    let lines = vec![
+    let cost_str = if app.estimated_cost > 0.0 {
+        format!("${:.6}", app.estimated_cost)
+    } else {
+        "$0.00".to_string()
+    };
+
+    let mut lines = vec![
         Line::from(vec![
             Span::styled(" Model: ", Style::default().fg(theme.colors.muted_col())),
             Span::styled(&app.model_name, Style::default().fg(theme.colors.accent())),
         ]),
         Line::from(vec![
             Span::styled(" Tokens in:  ", Style::default().fg(theme.colors.muted_col())),
-            Span::styled(format_count(app.tokens_in), Style::default().fg(theme.colors.fg())),
+            Span::styled(format_count(app.prompt_tokens_total), Style::default().fg(theme.colors.fg())),
         ]),
         Line::from(vec![
             Span::styled(" Tokens out: ", Style::default().fg(theme.colors.muted_col())),
-            Span::styled(format_count(app.tokens_out), Style::default().fg(theme.colors.fg())),
+            Span::styled(format_count(app.completion_tokens_total), Style::default().fg(theme.colors.fg())),
         ]),
         Line::from(vec![
             Span::styled(" Total:      ", Style::default().fg(theme.colors.muted_col())),
             Span::styled(
-                format_count(app.tokens_in + app.tokens_out),
+                format_count(app.total_tokens),
                 Style::default().fg(theme.colors.accent2()),
             ),
         ]),
-        Line::from(""),
-        Line::from(Span::styled(
-            " (Cost tracking synced from backend)",
-            Style::default().fg(theme.colors.muted_col()).italic(),
-        )),
+        Line::from(vec![
+            Span::styled(" Est. Cost:  ", Style::default().fg(theme.colors.muted_col())),
+            Span::styled(cost_str, Style::default().fg(theme.colors.warn())),
+        ]),
     ];
+
+    // Per-model breakdown
+    if !app.cost_by_model.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            " Per-Model Breakdown:",
+            Style::default().fg(theme.colors.accent()).bold(),
+        )));
+        for (model_name, cost, tokens) in &app.cost_by_model {
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  \u{2022} {}: ", model_name),
+                    Style::default().fg(theme.colors.fg()),
+                ),
+                Span::styled(
+                    format!("{} tokens, ${:.6}", tokens, cost),
+                    Style::default().fg(theme.colors.muted_col()),
+                ),
+            ]));
+        }
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled(" Provider: ", Style::default().fg(theme.colors.muted_col())),
+        Span::styled(&app.provider_name, Style::default().fg(theme.colors.info_col())),
+    ]));
 
     frame.render_widget(
         Paragraph::new(lines).block(Block::default()),

@@ -110,6 +110,18 @@ pub struct App {
     /// Terminal size at last render.
     pub terminal_width: u16,
     pub terminal_height: u16,
+
+    // ── Cost Tracking (Phase 3) ────────────────────────────────────
+    /// Estimated total cost in USD.
+    pub estimated_cost: f64,
+    /// Total tokens used across all calls.
+    pub total_tokens: u64,
+    /// Prompt tokens (input) used.
+    pub prompt_tokens_total: u64,
+    /// Completion tokens (output) used.
+    pub completion_tokens_total: u64,
+    /// Per-model breakdown: (model_name, cost, tokens).
+    pub cost_by_model: Vec<(String, f64, u64)>,
 }
 
 /// System resource snapshot for the resource monitor pane.
@@ -318,6 +330,11 @@ impl App {
             resources: SystemResources::default(),
             terminal_width: 80,
             terminal_height: 24,
+            estimated_cost: 0.0,
+            total_tokens: 0,
+            prompt_tokens_total: 0,
+            completion_tokens_total: 0,
+            cost_by_model: Vec::new(),
         }
     }
 
@@ -537,6 +554,37 @@ impl App {
             }
             "done" if self.phase == AppPhase::Processing => {
                 self.phase = AppPhase::Ready;
+            }
+            "cost_update" => {
+                if let Some(data) = params.and_then(|p| p.get("data")) {
+                    if let Some(cost) = data.get("estimated_cost").and_then(|c| c.as_f64()) {
+                        self.estimated_cost = cost;
+                    }
+                    if let Some(tokens) = data.get("total_tokens").and_then(|t| t.as_u64()) {
+                        self.total_tokens = tokens;
+                    }
+                    if let Some(pt) = data.get("prompt_tokens").and_then(|t| t.as_u64()) {
+                        self.prompt_tokens_total = pt;
+                    }
+                    if let Some(ct) = data.get("completion_tokens").and_then(|t| t.as_u64()) {
+                        self.completion_tokens_total = ct;
+                    }
+                    // Parse per-model breakdown
+                    if let Some(by_model) = data.get("by_model").and_then(|m| m.as_object()) {
+                        self.cost_by_model = by_model
+                            .iter()
+                            .filter_map(|(model_name, info)| {
+                                let cost = info.get("cost").and_then(|c| c.as_f64()).unwrap_or(0.0);
+                                let tokens = info.get("tokens").and_then(|t| t.as_u64()).unwrap_or(0);
+                                if cost > 0.0 || tokens > 0 {
+                                    Some((model_name.clone(), cost, tokens))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                    }
+                }
             }
             _ => {
                 // Unknown event type — ignore

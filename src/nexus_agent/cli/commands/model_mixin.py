@@ -88,12 +88,16 @@ class ModelCommandsMixin:
             self._cmd_model_list(grouped=True)
             return
 
+        elif subcmd == "benchmark":
+            self._cmd_model_benchmark()
+            return
+
         elif subcmd in ("", "info"):
             self._cmd_model_interactive()
             return
 
         else:
-            self.r.system_message("Usage: /model [info|list|switch <name>|add <name> <path>|remove <name>|unload]")
+            self.r.system_message("Usage: /model [info|list|switch <name>|add <name> <path>|remove <name>|unload|benchmark]")
 
     def _cmd_model_interactive(self):
         models = self._models_db.list()
@@ -194,6 +198,64 @@ class ModelCommandsMixin:
 
         total = len(local_models) + len(cloud_models)
         self.console.print(f"  [dim]{total} model(s) total ({len(local_models)} local, {len(cloud_models)} cloud)[/dim]")
+
+    def _cmd_model_benchmark(self):
+        from rich.table import Table
+        from rich import box
+
+        engine = getattr(self, "_engine", None)
+        if not engine or not getattr(engine, "is_loaded", False):
+            self.r.error("No model loaded. Load a model first with /model switch <name>")
+            return
+
+        if not hasattr(engine, "benchmark"):
+            self.r.error(f"Engine {type(engine).__name__} does not support benchmarking")
+            return
+
+        self.r.system_message("Running benchmark (5 iterations, 256 max tokens)...")
+
+        # Run benchmarks at different prompt lengths
+        prompts = {
+            "Short": "Hello world",
+            "Medium": "Explain the concept of recursion in computer programming with examples.",
+            "Long": "Write a detailed analysis of the differences between gradient descent and stochastic gradient descent in machine learning optimization. Include mathematical formulations, convergence properties, and practical recommendations." * 3,
+        }
+
+        tbl = Table(title="Model Benchmark Results", box=box.ROUNDED)
+        tbl.add_column("Prompt", style="cyan")
+        tbl.add_column("Iterations", justify="right")
+        tbl.add_column("Avg Latency", justify="right")
+        tbl.add_column("TTFT Avg", justify="right")
+        tbl.add_column("Tokens/s", justify="right")
+        tbl.add_column("Max Tok/s", justify="right")
+
+        for label, prompt_text in prompts.items():
+            try:
+                result = engine.benchmark(prompt=prompt_text, iterations=5)
+                if "error" in result:
+                    tbl.add_row(label, "[red]Error[/red]", "", "", "", result["error"][:40])
+                    continue
+                if result.get("iterations", 0) == 0:
+                    tbl.add_row(label, "0", "[red]N/A[/red]", "[red]N/A[/red]", "[red]N/A[/red]", "[red]N/A[/red]")
+                    continue
+                tbl.add_row(
+                    label,
+                    str(result.get("iterations", 0)),
+                    f"{result.get('latency_avg_s', 0):.3f}s",
+                    f"{result.get('ttft_avg_s', 0):.4f}s",
+                    f"{result.get('tokens_per_sec_avg', 0):.1f}",
+                    f"{result.get('tokens_per_sec_max', 0):.1f}",
+                )
+            except Exception as e:
+                tbl.add_row(label, "[red]Error[/red]", "", "", "", str(e)[:40])
+
+        self.console.print()
+        self.console.print(tbl)
+
+        # Show model info
+        model_name = getattr(engine, "model_name", "unknown")
+        self.console.print(f"  [dim]Model: {model_name} | Engine: {type(engine).__name__}[/dim]")
+        self.console.print()
 
     def _cmd_unload(self, args: str):
         self._cmd_model("unload")
