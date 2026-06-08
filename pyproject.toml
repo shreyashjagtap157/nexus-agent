@@ -107,6 +107,12 @@ providers = [
     "boto3>=1.35.0",
 ]
 
+# Security — OS keychain integration for credential storage
+security = [
+    "keyring>=25.0.0",
+    "cryptography>=42.0.0",
+]
+
 # MCP (Model Context Protocol) support
 mcp = [
     "mcp>=1.0.0",

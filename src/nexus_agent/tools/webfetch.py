@@ -40,6 +40,10 @@ _DROP_TAGS: frozenset[str] = frozenset({
     "object", "embed", "applet", "base", "link", "meta", "title", "head",
 })
 
+_BOILERPLATE_TAGS: frozenset[str] = frozenset({
+    "nav", "footer", "header", "aside",
+})
+
 # Block-level tags that should produce a newline boundary.
 _BLOCK_TAGS: frozenset[str] = frozenset({
     "p", "div", "section", "article", "header", "footer", "main",
@@ -63,6 +67,28 @@ def _coerce_int(value: Any, default: int, *, lo: int = 0, hi: int | None = None)
     return n
 
 
+def _find_next_link(html: str, base_url: str) -> str | None:
+    """Heuristic to find a pagination 'next' link in HTML."""
+    # Look for <a rel="next" href="..."> or <a class="next" href="...">
+    # A simple regex is often more robust than a partial parser for this specific task.
+    import re
+    # Match <a ... rel="next" ... href="url" ...> or vice-versa
+    pattern = re.compile(
+        r'<a\s+[^>]*?rel=["\']next["\'][^>]*?href=["\']([^"\']+)["\']', re.I
+    )
+    match = pattern.search(html)
+    if not match:
+        # Try the other order: href then rel
+        pattern = re.compile(
+            r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*?rel=["\']next["\']', re.I
+        )
+        match = pattern.search(html)
+    
+    if match:
+        return urljoin(base_url, match.group(1))
+    return None
+
+
 class _HTMLToMarkdown(HTMLParser):
     """Streaming HTML→text/markdown converter.
 
@@ -71,8 +97,9 @@ class _HTMLToMarkdown(HTMLParser):
     converter — just enough for an LLM to read a web page.
     """
 
-    def __init__(self, base_url: str = "") -> None:
+    def __init__(self, base_url: str = "", strip_boilerplate: bool = False) -> None:
         super().__init__(convert_charrefs=True)
+        self.strip_boilerplate = strip_boilerplate
         # A list of "lines". Each entry is one of:
         #   - a non-empty string (a real line, e.g. "Hello world")
         #   - "" (one blank line)
@@ -150,6 +177,10 @@ class _HTMLToMarkdown(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag = tag.lower()
         if tag in _DROP_TAGS:
+            self._suppressed_depth += 1
+            self._tag_stack.append(tag)
+            return
+        if self.strip_boilerplate and tag in _BOILERPLATE_TAGS:
             self._suppressed_depth += 1
             self._tag_stack.append(tag)
             return
@@ -366,9 +397,9 @@ class _HTMLToMarkdown(HTMLParser):
         return "\n".join(out)
 
 
-def html_to_markdown(html: str, base_url: str = "") -> str:
+def html_to_markdown(html: str, base_url: str = "", strip_boilerplate: bool = False) -> str:
     """Convert `html` to a clean text/markdown-ish string."""
-    parser = _HTMLToMarkdown(base_url=base_url)
+    parser = _HTMLToMarkdown(base_url=base_url, strip_boilerplate=strip_boilerplate)
     try:
         parser.feed(html)
         parser.close()
@@ -456,6 +487,16 @@ class WebFetchTool(Tool):
                 "description": "If true, bypass the in-memory cache.",
                 "required": False,
             },
+            "strip_boilerplate": {
+                "type": "boolean",
+                "description": "If true, strips common layout elements like nav, footer, and header.",
+                "required": False,
+            },
+            "follow_pagination": {
+                "type": "boolean",
+                "description": "If true, follows 'rel=next' links to gather content from multiple pages (up to 3).",
+                "required": False,
+            },
         }
 
     @property
@@ -525,6 +566,8 @@ class WebFetchTool(Tool):
         url: str,
         max_chars: int | None = None,
         no_cache: bool = False,
+        strip_boilerplate: bool = False,
+        follow_pagination: bool = False,
         **kwargs: Any,
     ) -> str:
         err = self._validate_url(url)
@@ -535,31 +578,61 @@ class WebFetchTool(Tool):
             max_chars, self._max_chars, lo=100, hi=10_000_000
         )
 
-        cache_key = f"{url}::{cap}"
-        now = time.time()
-        if not no_cache and self._cache_ttl_s > 0:
-            cached = self._cache.get(cache_key)
-            if cached is not None:
-                content, ts = cached
-                if now - ts < self._cache_ttl_s:
-                    return content
-                # expired
-                self._cache.pop(cache_key, None)
+        collected_texts: list[str] = []
+        current_url = url
+        pages_fetched = 0
+        max_pages = 3 if follow_pagination else 1
 
-        try:
-            final_url, html = self._fetch(url)
-        except RuntimeError as e:
-            return f"Error fetching {url}: {e}"
+        while current_url and pages_fetched < max_pages:
+            # Cache check for this specific page
+            cache_key = f"{current_url}::{cap}"
+            now = time.time()
+            cached_text = None
+            if not no_cache and self._cache_ttl_s > 0:
+                val = self._cache.get(cache_key)
+                if val:
+                    content, ts = val
+                    if now - ts < self._cache_ttl_s:
+                        cached_text = content
+                    else:
+                        self._cache.pop(cache_key, None)
 
-        text = html_to_markdown(html, base_url=final_url)
+            if cached_text:
+                html = "" # We don't have the HTML in cache, only the markdown
+                # If we have cached markdown, we can't follow pagination unless we fetch HTML
+                # For simplicity, we treat cached results as final for that page.
+                collected_texts.append(cached_text)
+                # We can't find 'next' link in markdown, so we stop pagination
+                break
+            else:
+                try:
+                    final_url, html = self._fetch(current_url)
+                    # Convert to markdown
+                    text = html_to_markdown(html, base_url=final_url, strip_boilerplate=strip_boilerplate)
+                    collected_texts.append(text)
+                    
+                    # Update cache
+                    if self._cache_ttl_s > 0:
+                        self._cache.put(cache_key, (text, now))
+                    
+                    # Pagination check
+                    if follow_pagination and pages_fetched < max_pages - 1:
+                        current_url = _find_next_link(html, final_url)
+                    else:
+                        current_url = None
+                    
+                    pages_fetched += 1
+                except RuntimeError as e:
+                    return f"Error fetching {current_url}: {e}"
 
-        if len(text) > cap:
-            text = text[:cap] + f"\n\n... (truncated at {cap} chars)"
+        full_text = "\n\n---\n\n".join(collected_texts)
+        if not full_text:
+            return "Error: No content could be fetched."
+        
+        if len(full_text) > cap:
+            full_text = full_text[:cap] + f"\n\n... (truncated at {cap} chars)"
 
-        if self._cache_ttl_s > 0:
-            self._cache.put(cache_key, (text, now))
-
-        return text
+        return full_text
 
     def clear_cache(self) -> None:
         self._cache.clear()

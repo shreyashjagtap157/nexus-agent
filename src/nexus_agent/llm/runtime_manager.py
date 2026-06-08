@@ -31,6 +31,7 @@ INSTALLABLE_RUNTIMES: dict[str, dict[str, Any]] = {
         "description": "Standard CPU-only build — works on all systems",
         "cmake_args": "-DLLAMA_NATIVE=ON;-DLLAMA_AVX512=OFF",
         "pip_install_args": "",
+        "runtime_type": "llama_cpp",
     },
     "cuda": {
         "name": "llama-cpp-python (CUDA)",
@@ -39,6 +40,7 @@ INSTALLABLE_RUNTIMES: dict[str, dict[str, Any]] = {
         "description": "NVIDIA GPU acceleration via CUDA",
         "cmake_args": "-DLLAMA_CUDA=ON;-DLLAMA_NATIVE=ON",
         "pip_install_args": "",
+        "runtime_type": "llama_cpp",
     },
     "vulkan": {
         "name": "llama-cpp-python (Vulkan)",
@@ -47,6 +49,7 @@ INSTALLABLE_RUNTIMES: dict[str, dict[str, Any]] = {
         "description": "Cross-platform GPU via Vulkan",
         "cmake_args": "-DLLAMA_VULKAN=ON;-DLLAMA_NATIVE=ON",
         "pip_install_args": "",
+        "runtime_type": "llama_cpp",
     },
     "metal": {
         "name": "llama-cpp-python (Metal)",
@@ -55,6 +58,7 @@ INSTALLABLE_RUNTIMES: dict[str, dict[str, Any]] = {
         "description": "Apple Silicon GPU via Metal",
         "cmake_args": "-DLLAMA_METAL=ON;-DLLAMA_NATIVE=ON",
         "pip_install_args": "",
+        "runtime_type": "llama_cpp",
     },
     "rocm": {
         "name": "llama-cpp-python (ROCm)",
@@ -63,6 +67,7 @@ INSTALLABLE_RUNTIMES: dict[str, dict[str, Any]] = {
         "description": "AMD GPU via ROCm",
         "cmake_args": "-DLLAMA_HIPBLAS=ON;-DLLAMA_NATIVE=ON",
         "pip_install_args": "",
+        "runtime_type": "llama_cpp",
     },
     "onnx": {
         "name": "ONNX Runtime GenAI",
@@ -71,6 +76,86 @@ INSTALLABLE_RUNTIMES: dict[str, dict[str, Any]] = {
         "description": "ONNX model runtime with DirectML support",
         "cmake_args": "",
         "pip_install_args": "onnxruntime-genai onnxruntime-directml",
+        "runtime_type": "onnx",
+    },
+    # ── Phase 3: New Runtimes ──────────────────────────────────────
+    "ollama": {
+        "name": "Ollama",
+        "package": "",
+        "extras": "",
+        "description": "Local LLM server with built-in model management (ollama.com)",
+        "cmake_args": "",
+        "pip_install_args": "",
+        "runtime_type": "external_server",
+        "probe_url": "http://localhost:11434/api/tags",
+    },
+    "vllm": {
+        "name": "vLLM",
+        "package": "vllm",
+        "extras": "",
+        "description": "High-throughput LLM serving with PagedAttention",
+        "cmake_args": "",
+        "pip_install_args": "vllm",
+        "runtime_type": "python_package",
+        "probe_url": "http://localhost:8000/v1/models",
+    },
+    "sglang": {
+        "name": "SGLang",
+        "package": "sglang",
+        "extras": "",
+        "description": "Structured generation language for LLMs",
+        "cmake_args": "",
+        "pip_install_args": "sglang[all]",
+        "runtime_type": "python_package",
+        "probe_url": "http://localhost:30000/v1/models",
+    },
+    "mlx": {
+        "name": "MLX (Apple Silicon)",
+        "package": "mlx-lm",
+        "extras": "",
+        "description": "Apple Silicon ML framework by Apple ML Research",
+        "cmake_args": "",
+        "pip_install_args": "mlx-lm",
+        "runtime_type": "python_package",
+    },
+    "lm_studio": {
+        "name": "LM Studio",
+        "package": "",
+        "extras": "",
+        "description": "Local LLM desktop app with OpenAI-compatible API (lmstudio.ai)",
+        "cmake_args": "",
+        "pip_install_args": "",
+        "runtime_type": "external_server",
+        "probe_url": "http://localhost:1234/v1/models",
+    },
+    "exllamav2": {
+        "name": "ExLlamaV2 (TabbyAPI)",
+        "package": "exllamav2",
+        "extras": "",
+        "description": "Fast inference for quantized Llama models via TabbyAPI",
+        "cmake_args": "",
+        "pip_install_args": "exllamav2",
+        "runtime_type": "python_package",
+        "probe_url": "http://localhost:5000/v1/models",
+    },
+    "koboldcpp": {
+        "name": "KoboldCpp",
+        "package": "",
+        "extras": "",
+        "description": "GGUF inference server with OpenAI-compatible API",
+        "cmake_args": "",
+        "pip_install_args": "",
+        "runtime_type": "external_server",
+        "probe_url": "http://localhost:5001/v1/models",
+    },
+    "tensorrt_llm": {
+        "name": "TensorRT-LLM (NVIDIA)",
+        "package": "tensorrt_llm",
+        "extras": "",
+        "description": "NVIDIA TensorRT for LLM inference (Docker recommended)",
+        "cmake_args": "",
+        "pip_install_args": "tensorrt_llm",
+        "runtime_type": "python_package",
     },
 }
 
@@ -99,7 +184,11 @@ class LocalModelConfig:
     reasoning_depth: int = 8
 
     def __post_init__(self) -> None:
-        valid_runtimes = {"auto", "llama-cpp", "onnx"}
+        valid_runtimes = {
+            "auto", "llama-cpp", "onnx",
+            "ollama", "vllm", "sglang", "mlx",
+            "lm_studio", "exllamav2", "koboldcpp", "tensorrt_llm",
+        }
         runtime_lower = self.runtime.lower()
         if runtime_lower not in valid_runtimes:
             raise ValueError(f"Invalid runtime '{self.runtime}'. Must be one of {valid_runtimes}")
@@ -287,16 +376,46 @@ class RuntimeManager:
         import platform
         import os
         import shutil
+
+        # Apple Silicon
         if sys.platform == "darwin":
-            if "arm" in platform.processor().lower() or "m1" in platform.processor().lower() or "m2" in platform.processor().lower() or "m3" in platform.processor().lower():
+            proc = platform.processor().lower()
+            if any(x in proc for x in ("arm", "m1", "m2", "m3", "m4")):
                 recs.append("metal")
-        if shutil.which("vulkaninfo") or shutil.which("vulkaninfo.exe"):
-            recs.append("vulkan")
-        if shutil.which("nvidia-smi") or shutil.which("nvidia-smi.exe") or os.environ.get("CUDA_PATH") or os.environ.get("CUDA_HOME"):
+                recs.append("mlx")
+
+        # NVIDIA GPU
+        has_nvidia = bool(
+            shutil.which("nvidia-smi") or shutil.which("nvidia-smi.exe")
+            or os.environ.get("CUDA_PATH") or os.environ.get("CUDA_HOME")
+        )
+        if has_nvidia:
             recs.append("cuda")
             recs.append("onnx")
+            recs.append("vllm")
+            recs.append("tensorrt_llm")
+
+        # Vulkan
+        if shutil.which("vulkaninfo") or shutil.which("vulkaninfo.exe"):
+            recs.append("vulkan")
+
+        # Windows
         if sys.platform == "win32":
             recs.append("onnx")
+
+        # Check for common external server runtimes
+        for server, probe_key in [("ollama", "ollama"), ("lm_studio", "lm_studio"), ("koboldcpp", "koboldcpp")]:
+            try:
+                import urllib.request
+                info = INSTALLABLE_RUNTIMES.get(server, {})
+                probe = info.get("probe_url", "")
+                if probe:
+                    req = urllib.request.Request(probe, method="GET")
+                    urllib.request.urlopen(req, timeout=1)
+                    recs.append(probe_key)
+            except Exception:
+                pass
+
         return list(set(recs))
 
     @staticmethod
@@ -310,29 +429,95 @@ class RuntimeManager:
 
     @staticmethod
     def is_runtime_installed(backend: str) -> bool:
-        """Check if a given runtime backend is already installed in its isolated directory."""
+        """Check if a given runtime backend is available.
+
+        For isolated pip installs, checks the target directory.
+        For external servers, probes the localhost endpoint.
+        For system packages, checks import availability.
+        """
         import os
+        import shutil
         from pathlib import Path
         data_dir_path = os.path.expanduser("~/.nexus-agent")
         target_dir = Path(data_dir_path) / "runtimes" / backend
-        if not target_dir.exists():
+
+        # External servers — probe API endpoint
+        if backend in ("ollama", "lm_studio", "koboldcpp"):
+            info = INSTALLABLE_RUNTIMES.get(backend, {})
+            probe_url = info.get("probe_url", "")
+            if probe_url:
+                try:
+                    import urllib.request
+                    req = urllib.request.Request(probe_url, method="GET")
+                    urllib.request.urlopen(req, timeout=2)
+                    return True
+                except Exception:
+                    pass
+            # Fall back to checking if the binary/package exists
+            if backend == "ollama" and shutil.which("ollama"):
+                return True
             return False
+
+        # Isolated pip installs
         if backend in ("cpu", "cuda", "vulkan", "metal", "rocm"):
+            if not target_dir.exists():
+                return False
             return (target_dir / "llama_cpp").exists() or list(target_dir.glob("llama_cpp*")) != []
-        elif backend == "onnx":
+        if backend == "onnx":
+            if not target_dir.exists():
+                return False
             return (target_dir / "onnxruntime_genai").exists() or list(target_dir.glob("onnxruntime_genai*")) != []
+
+        # Python package runtimes (vLLM, SGLang, MLX, ExLlamaV2, TensorRT-LLM)
+        pkg_map = {"vllm": "vllm", "sglang": "sglang", "mlx": "mlx", "exllamav2": "exllamav2", "tensorrt_llm": "tensorrt_llm"}
+        pkg = pkg_map.get(backend)
+        if pkg:
+            try:
+                importlib.import_module(pkg)
+                return True
+            except ImportError:
+                pass
+            if target_dir.exists() and list(target_dir.glob(f"{pkg}*")):
+                return True
+
         return False
 
     @staticmethod
     def install_runtime(backend: str, force_reinstall: bool = False, progress_callback: Any = None) -> bool:
-        """Install a runtime backend via pip to an isolated target directory."""
+        """Install a runtime backend.
+
+        For pip-installable runtimes: installs to isolated target directory.
+        For external servers: prints instructions (Ollama, LM Studio, KoboldCpp).
+        """
         import os
         import sys
         from pathlib import Path
         import subprocess
+        import shutil
         rt = INSTALLABLE_RUNTIMES.get(backend)
         if not rt:
             raise ValueError(f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}")
+
+        runtime_type = rt.get("runtime_type", "")
+
+        # External servers — just print install instructions
+        if runtime_type == "external_server":
+            install_guides = {
+                "ollama": "Visit https://ollama.com to download and install, then run: ollama pull <model>",
+                "lm_studio": "Download from https://lmstudio.ai and enable the local API server in Settings.",
+                "koboldcpp": "Download from https://github.com/LostRuins/koboldcpp/releases and run with --openai-compat.",
+            }
+            guide = install_guides.get(backend, f"Download and install {rt['name']} manually.")
+            if progress_callback:
+                progress_callback("info", guide)
+            logger.info("External server runtime '%s': %s", backend, guide)
+            return True
+
+        # External binary — check if available on PATH
+        if backend == "ollama" and shutil.which("ollama"):
+            if progress_callback:
+                progress_callback("complete", f"{rt['name']} is already installed (found on PATH)")
+            return True
 
         data_dir_path = os.path.expanduser("~/.nexus-agent")
         target_dir = Path(data_dir_path) / "runtimes" / backend
@@ -420,18 +605,16 @@ class RuntimeManager:
     def switch_runtime(self, backend: str) -> bool:
         """Switch the active runtime backend.
 
-        Unlike select_engine() which takes a model path, this changes the
-        runtime type used for future engine selections.
-
         Args:
-            backend: Runtime backend key (auto, llama-cpp, onnx).
+            backend: Runtime backend key.
 
         Returns:
             True if switch was successful.
         """
-        valid = {"auto", "llama-cpp", "onnx"}
+        valid = {"auto", "llama-cpp", "onnx", "ollama", "vllm", "sglang",
+                 "mlx", "lm_studio", "exllamav2", "koboldcpp", "tensorrt_llm"}
         if backend.lower() not in valid:
-            logger.error(f"Invalid runtime: {backend}. Valid: {', '.join(valid)}")
+            logger.error(f"Invalid runtime: {backend}. Valid: {', '.join(sorted(valid))}")
             return False
 
         self._runtime_override = backend.lower()

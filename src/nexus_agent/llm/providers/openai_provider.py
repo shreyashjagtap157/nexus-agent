@@ -19,6 +19,7 @@ from nexus_agent.llm.base import (
     ToolCall,
     ToolDefinition,
 )
+from nexus_agent.llm.retry import with_retry, RetryPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -103,30 +104,40 @@ class OpenAIProvider(LLMProvider):
         payload = self._prepare_payload(messages, tools, temperature, max_tokens, stream=False)
         payload.update(kwargs)
 
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(
-                self._api_url,
-                headers=self._get_headers(),
-                json=payload,
-            )
-            response.raise_for_status()
-            result = response.json()
-
-        choice = (result.get("choices") or [{}])[0]
-        message = choice.get("message", {})
-
-        tool_calls = None
-        raw_tc = message.get("tool_calls")
-        if raw_tc:
-            tool_calls = [ToolCall.from_openai_format(tc) for tc in raw_tc]
-
-        return LLMResponse(
-            content=message.get("content"),
-            tool_calls=tool_calls,
-            finish_reason=choice.get("finish_reason"),
-            usage=result.get("usage"),
-            model=self._model_name,
+        policy = RetryPolicy(
+            max_attempts=3,
+            initial_backoff_s=1.0,
+            max_backoff_s=30.0,
         )
+
+        def _do_request() -> LLMResponse:
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    self._api_url,
+                    headers=self._get_headers(),
+                    json=payload,
+                )
+                response.raise_for_status()
+                result = response.json()
+
+            choice = (result.get("choices") or [{}])[0]
+            message = choice.get("message", {})
+
+            tool_calls = None
+            raw_tc = message.get("tool_calls")
+            if raw_tc:
+                tool_calls = [ToolCall.from_openai_format(tc) for tc in raw_tc]
+
+            return LLMResponse(
+                content=message.get("content"),
+                tool_calls=tool_calls,
+                finish_reason=choice.get("finish_reason"),
+                usage=result.get("usage"),
+                model=self._model_name,
+            )
+
+        response, stats = with_retry(_do_request, policy=policy)
+        return response
 
     def chat_completion_stream(
         self,

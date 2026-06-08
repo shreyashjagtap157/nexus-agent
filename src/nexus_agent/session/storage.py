@@ -12,6 +12,7 @@ import logging
 import sqlite3
 import textwrap
 import time
+import uuid
 from typing import Any
 
 from nexus_agent.core.sqlite_store import SQLiteStore
@@ -68,9 +69,21 @@ class SessionStorage(SQLiteStore):
             FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
         );
 
+        -- Session replay trace: records every action for replay/debug
+        CREATE TABLE IF NOT EXISTS session_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            event_data TEXT NOT NULL DEFAULT '{}',
+            parent_event_id INTEGER,
+            created_at REAL NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
         CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);
+        CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id);
     """)
 
     def _init_db(self) -> None:
@@ -281,4 +294,150 @@ class SessionStorage(SQLiteStore):
             )
             row = cursor.fetchone()
             return row["count"] if row else 0
+
+    # ── Session Replay (Goose-inspired event recording) ───────────────
+
+    def record_event(
+        self,
+        session_id: str,
+        event_type: str,
+        event_data: dict[str, Any],
+        parent_event_id: int | None = None,
+    ) -> int:
+        """Record a session event for replay/trace.
+
+        Args:
+            session_id: Session this event belongs to.
+            event_type: Event category (prompt, tool_call, tool_result, file_change, error, etc.).
+            event_data: Structured payload for the event.
+            parent_event_id: Optional parent event ID (for building call trees).
+
+        Returns:
+            The row ID of the inserted event.
+        """
+        with self._lock:
+            conn = self._get_conn()
+            cursor = conn.execute(
+                "INSERT INTO session_events "
+                "(session_id, event_type, event_data, parent_event_id, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (session_id, event_type, json.dumps(event_data), parent_event_id, time.time()),
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    def record_tool_call_event(
+        self,
+        session_id: str,
+        tool_name: str,
+        arguments: dict[str, Any],
+        result: str | None = None,
+        success: bool = True,
+    ) -> int:
+        """Record a tool call event for replay.
+
+        Args:
+            session_id: Session ID.
+            tool_name: Name of the tool called.
+            arguments: Arguments passed to the tool.
+            result: Tool execution result (optional — populated on completion).
+            success: Whether the tool call succeeded.
+
+        Returns:
+            Event ID.
+        """
+        return self.record_event(
+            session_id=session_id,
+            event_type="tool_call",
+            event_data={
+                "tool_name": tool_name,
+                "arguments": arguments,
+                "result": result,
+                "success": success,
+            },
+        )
+
+    def get_session_events(
+        self,
+        session_id: str,
+        event_type: str | None = None,
+        limit: int = 500,
+    ) -> list[dict[str, Any]]:
+        """Get all recorded events for a session in chronological order.
+
+        Args:
+            session_id: Session ID.
+            event_type: Optional filter by event type.
+            limit: Maximum events to return.
+
+        Returns:
+            List of event dicts.
+        """
+        with self._lock:
+            conn = self._get_conn()
+            if event_type:
+                cursor = conn.execute(
+                    "SELECT * FROM session_events WHERE session_id = ? AND event_type = ? "
+                    "ORDER BY created_at ASC LIMIT ?",
+                    (session_id, event_type, limit),
+                )
+            else:
+                cursor = conn.execute(
+                    "SELECT * FROM session_events WHERE session_id = ? "
+                    "ORDER BY created_at ASC LIMIT ?",
+                    (session_id, limit),
+                )
+            results = []
+            for row in cursor:
+                ev = dict(row)
+                try:
+                    ev["event_data"] = json.loads(ev["event_data"])
+                except (json.JSONDecodeError, TypeError):
+                    ev["event_data"] = {}
+                results.append(ev)
+            return results
+
+    def get_session_event_tree(self, session_id: str) -> list[dict[str, Any]]:
+        """Get session events structured as a tree (parent → children).
+
+        Useful for visualizing the call chain during replay.
+
+        Args:
+            session_id: Session ID.
+
+n        Returns:
+            List of root events, each with a 'children' list.
+        """
+        events = self.get_session_events(session_id)
+        event_map: dict[int, dict[str, Any]] = {}
+        roots: list[dict[str, Any]] = []
+
+        for ev in events:
+            ev["children"] = []
+            event_map[ev["id"]] = ev
+
+        for ev in events:
+            parent_id = ev.get("parent_event_id")
+            if parent_id and parent_id in event_map:
+                event_map[parent_id]["children"].append(ev)
+            else:
+                roots.append(ev)
+
+        return roots
+
+    def delete_session_events(self, session_id: str) -> int:
+        """Delete all events for a session.
+
+        Returns:
+            Number of deleted events.
+        """
+        with self._lock:
+            conn = self._get_conn()
+            cursor = conn.execute(
+                "DELETE FROM session_events WHERE session_id = ?",
+                (session_id,),
+            )
+            conn.commit()
+            return cursor.rowcount
+
 

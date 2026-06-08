@@ -1,7 +1,7 @@
 # NexusAgent — Agent Context & Memory
 
 ## Project Overview
-Offline-first AI coding agent that runs GGUF/ONNX LLM models locally via `llama-cpp-python`. Provides CLI (Textual TUI) + GUI (FastAPI) interfaces. Zero internet required by default.
+Offline-first AI coding agent that runs GGUF/ONNX LLM models locally via `llama-cpp-python`. Provides a high-fidelity inline REPL CLI (TUI) and a FastAPI GUI interface. Zero internet required by default.
 
 ## Quick Start
 ```bash
@@ -10,6 +10,9 @@ nexus chat                # Launch CLI
 nexus gui                 # Launch web UI
 nexus wizard              # First-time setup
 ```
+
+## TUI Design
+The CLI is implemented as a **high-fidelity inline REPL**. Unlike modal-based interfaces, it maintains a continuous flow where the prompt is integrated into the terminal stream, matching the interaction model of tools like Claude Code. It uses a custom raw-mode input handler to support real-time autocomplete, slash-command menus, and interactive rendering without breaking the terminal scrollback.
 
 ## Architecture
 ```
@@ -52,7 +55,7 @@ Detection: `cli/runtimes.py` — scans for nvcc, CUDA_PATH, llama-cli, vulkaninf
 
 ## Key Files
 - `core/agent.py` — `AgentLoop` with `run()`/`run_stream()`, tools, reflection, effort config
-- `cli/command_dispatcher.py` — All `/cmd` handlers (2317 lines)
+- `cli/command_dispatcher.py` — All `/cmd` handlers (includes dynamic plugin dispatch)
 - `cli/session_handler.py` — Engine + Agent initialization, model config HUD
 - `cli/app.py` — Main REPL loop, mixin orchestration
 - `cli/wizard.py` — First-run setup with 7 steps (hardware → runtime → model → permissions → memory → guardrails → cloud)
@@ -60,6 +63,9 @@ Detection: `cli/runtimes.py` — scans for nvcc, CUDA_PATH, llama-cli, vulkaninf
 - `cli/renderer.py` — Terminal rendering, TokenUsage, ContextBreakdown, effort/status display
 - `llm/runtime_manager.py` — RuntimeManager, SmartRouter, INSTALLABLE_RUNTIMES
 - `core/config.py` — Multi-layer config, env var mappings (NEXUS_*)
+- `core/usage.py` — Token usage and cost tracking (JSON-backed)
+- `core/plugins.py` — Dynamic plugin loading (commands & tools)
+- `mcp/acp_server.py` — JSON-RPC stdio server for external control
 
 ## Config Env Vars (`core/config.py`)
 | Var | Purpose |
@@ -86,9 +92,44 @@ Detection: `cli/runtimes.py` — scans for nvcc, CUDA_PATH, llama-cli, vulkaninf
 ```bash
 python -m pytest tests/ -v
 ```
-161 tests across: memory (35), permissions (18), session (17), cli (14), mcp (8), skills (7), core (8), providers (20).
+726 tests across: memory, permissions, session, cli, mcp, skills, core, providers, usage, plugins.
 
 ## Git Convention
 - Branch: feature/description
 - Emoji-free commit messages
 - Conventional commits: "fix:", "feat:", "docs:", "refactor:"
+
+### Pre-commit Hook
+Location: `.githooks/pre-commit`
+Enable: `git config core.hooksPath .githooks`
+
+Runs full test suite on every commit. Updates ``docs/exhaustive_audit.md``
+and ``docs/FRESH_AUDIT.md`` with current test counts and verification date,
+then stages both files. Aborts commit if any test fails.
+
+Flags:
+- ``--from-file <path>`` — read pre-existing pytest output instead of running
+  tests (for CI workflows that run tests separately).
+- ``--ci`` — label audit as "verified via CI" and skip ``git add``.
+
+Test args: ``-q --tb=short -W error::ResourceWarning`` (promotes unclosed
+resource warnings to errors).
+
+## CI Workflow (`.github/workflows/test-and-audit.yml`)
+
+| Detail | Value |
+|--------|-------|
+| Name | ``Test & Audit`` |
+| Triggers | ``push`` to ``main``/``master``, ``pull_request`` to ``main``/``master``, ``workflow_dispatch`` |
+| Runner | ``ubuntu-latest`` (Python 3.12) |
+
+Steps:
+1. Checkout with full git history (``fetch-depth: 0``).
+2. Install dependencies via ``pip install -e ".[dev]"``.
+3. **Run tests** — ``python -m pytest tests/ -q --tb=short > pytest_output.txt``
+4. **Update audit docs** — runs the pre-commit hook in CI mode:
+   ``python .githooks/pre-commit --from-file pytest_output.txt --ci``
+5. **Auto-commit audit updates** (on push to main/master or workflow_dispatch)
+   — commits ``docs/exhaustive_audit.md`` and ``docs/FRESH_AUDIT.md`` with
+   message ``docs: auto-update audit with latest test results`` and pushes.
+6. **Upload pytest output** — uploaded as artifact for debugging.

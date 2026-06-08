@@ -477,5 +477,5 @@ class BrowserTool(Tool):
     def __del__(self) -> None:
         try:
             self.close()
-        except (OSError, RuntimeError):
+        except Exception:
             pass

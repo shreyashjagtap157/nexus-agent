@@ -12,6 +12,7 @@ import atexit
 import json
 import logging
 import signal
+import sqlite3
 import threading
 import time
 import uuid
@@ -85,7 +86,7 @@ class SessionManager:
         for inst in cls._instances:
             try:
                 inst.save_session()
-            except (OSError, ValueError):
+            except (OSError, ValueError, sqlite3.Error, RuntimeError):
                 pass
 
     @classmethod
@@ -360,6 +361,12 @@ class SessionManager:
                     return s["id"]
         return None
 
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def close(self) -> None:
         """Clean up resources."""
         self._stop_autosave()
@@ -519,6 +526,169 @@ class SessionManager:
                 logger.warning(f"Skipping file change during import: {e}")
         logger.info(f"Imported session {sid_safe(src_session.get('id', '?'))} → {new_id}")
         return new_id
+
+    # ── Session Replay (Goose-inspired) ──────────────────────────────
+
+    def record_event(
+        self,
+        event_type: str,
+        event_data: dict[str, Any],
+        parent_event_id: int | None = None,
+    ) -> int | None:
+        """Record a session event for replay.
+
+        Args:
+            event_type: Event category (prompt, tool_call, tool_result, etc.).
+            event_data: Structured payload.
+            parent_event_id: Optional parent event ID.
+
+        Returns:
+            Event row ID, or None if no active session.
+        """
+        if not self._active_session_id:
+            return None
+        return self.storage.record_event(
+            session_id=self._active_session_id,
+            event_type=event_type,
+            event_data=event_data,
+            parent_event_id=parent_event_id,
+        )
+
+    def record_tool_call(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        result: str | None = None,
+        success: bool = True,
+    ) -> int | None:
+        """Record a tool call for replay."""
+        if not self._active_session_id:
+            return None
+        return self.storage.record_tool_call_event(
+            session_id=self._active_session_id,
+            tool_name=tool_name,
+            arguments=arguments,
+            result=result,
+            success=success,
+        )
+
+    def get_session_trace(
+        self,
+        session_id: str | None = None,
+        event_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get a replayable trace of session events.
+
+        Args:
+            session_id: Session ID (defaults to active session).
+            event_type: Optional filter by event type.
+
+        Returns:
+            Chronological list of events with deserialized payloads.
+        """
+        sid = session_id or self._active_session_id
+        if not sid:
+            return []
+        return self.storage.get_session_events(
+            session_id=sid,
+            event_type=event_type,
+        )
+
+    def get_session_event_tree(self, session_id: str | None = None) -> list[dict[str, Any]]:
+        """Get session events as a parent-child tree for visualization."""
+        sid = session_id or self._active_session_id
+        if not sid:
+            return []
+        return self.storage.get_session_event_tree(session_id=sid)
+
+    def replay_session(
+        self,
+        session_id: str,
+        target_role: str = "user",
+    ) -> list[dict[str, Any]]:
+        """Replay a session by extracting its prompt/response pairs.
+
+        Returns a list of sequential actions that can be fed back to the
+        agent to reproduce the session's behavior. This is a "trace" replay:
+        it extracts the prompts and results, not the actual LLM calls.
+
+        Args:
+            session_id: The session to replay.
+            target_role: Which role's events to extract ("user" = prompts,
+                "assistant" = responses, "tool" = tool results).
+
+        Returns:
+            List of replay events in chronological order.
+        """
+        messages = self.storage.get_messages(session_id)
+        events = self.storage.get_session_events(session_id)
+
+        replay: list[dict[str, Any]] = []
+
+        # First add message replay
+        for msg in messages:
+            if target_role and msg.get("role") != target_role:
+                continue
+            replay.append({
+                "type": "message",
+                "role": msg.get("role"),
+                "content": msg.get("content"),
+                "timestamp": msg.get("created_at"),
+            })
+
+        # Then add tool call replay
+        for ev in events:
+            if target_role == "tool" and ev.get("event_type") != "tool_call":
+                continue
+            replay.append({
+                "type": "event",
+                "event_type": ev.get("event_type"),
+                "data": ev.get("event_data", {}),
+                "timestamp": ev.get("created_at"),
+            })
+
+        replay.sort(key=lambda x: x.get("timestamp", 0))
+        return replay
+
+    def export_replay(
+        self,
+        session_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Export a full replay package: messages + events + file changes.
+
+        The output is suitable for debugging, testing, or sharing.
+
+        Args:
+            session_id: Session ID (defaults to active session).
+
+        Returns:
+            Dict with 'messages', 'events', 'file_changes', 'session_metadata'.
+        """
+        sid = session_id or self._active_session_id
+        if not sid:
+            return {"error": "No active session"}
+
+        session = self.storage.get_session(sid) or {}
+        messages = self.storage.get_messages(sid)
+        events = self.storage.get_session_events(sid)
+        file_changes = self.storage.get_file_changes(sid)
+
+        return {
+            "session_id": sid,
+            "session_metadata": {
+                "title": session.get("title"),
+                "model": session.get("model"),
+                "provider": session.get("provider"),
+                "workspace": session.get("workspace"),
+                "created_at": session.get("created_at"),
+                "message_count": session.get("message_count"),
+            },
+            "messages": messages,
+            "events": events,
+            "file_changes": file_changes,
+        }
+
+    # ── Background Sessions ───────────────────────────────────────────
 
     def list_background_sessions(self) -> list[dict[str, Any]]:
         """List all running background sessions."""

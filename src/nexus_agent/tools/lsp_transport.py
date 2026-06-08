@@ -459,6 +459,12 @@ class LSPClientPool:
             return None
         return self._ensure(lang)
 
+    def __del__(self) -> None:
+        try:
+            self.shutdown()
+        except Exception:
+            pass
+
     def shutdown(self) -> None:
         with self._lock:
             clients = list(self._clients.values())

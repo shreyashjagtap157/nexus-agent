@@ -336,6 +336,12 @@ class RepositoryRAGTool(Tool):
             "\n".join(results)
         )
 
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def close(self) -> None:
         """Close database connection to release Windows file locks."""
         if self._conn:

@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from nexus_agent import __app_name__, __version__
+from typing import Any
 
 
 @click.group(invoke_without_command=True)
@@ -424,6 +425,66 @@ def plan(ctx: click.Context, task: str, workspace: str, model_path: str | None) 
 
 
 @cli.command()
+@click.option("--model", "-m", type=str, default=None,
+              help="Path to GGUF model for benchmarking")
+@click.option("--provider", "-p", type=str, default="local",
+              help="Provider to benchmark (local, openai, anthropic, etc.)")
+@click.option("--benchmark/--no-benchmark", default=True,
+              help="Run cold-start and first-token benchmarks")
+@click.option("--json", "json_output", is_flag=True, default=False,
+              help="Output as JSON")
+def doctor(model: str | None, provider: str, benchmark: bool, json_output: bool) -> None:
+    """Diagnose installation and benchmark cold-start + first-token latency.
+
+    Checks system hardware, Python environment, key packages, and runs
+    performance benchmarks for cold-start and first-token latency.
+
+    Examples:
+
+        nexus doctor
+
+        nexus doctor --model path/to/model.gguf
+
+        nexus doctor --model path/to/model.gguf --json
+    """
+    from rich.console import Console
+
+    from nexus_agent.cli.doctor import run_doctor, print_report
+
+    console = Console()
+
+    if json_output:
+        import json as _json
+        report = run_doctor(model_path=model, provider=provider, run_benchmarks=benchmark)
+        data: dict[str, Any] = {
+            "timestamp": report.timestamp,
+            "system": [
+                {"name": m.name, "value": m.value, "unit": m.unit, "status": m.status}
+                for m in report.system
+            ],
+            "python_env": [
+                {"name": m.name, "value": m.value, "unit": m.unit, "status": m.status}
+                for m in report.python_env
+            ],
+            "benchmarks": None,
+        }
+        if report.benchmarks:
+            data["benchmarks"] = {
+                "cold_start_ms": report.benchmarks.cold_start_ms,
+                "first_token_ms": report.benchmarks.first_token_ms,
+                "model_path": report.benchmarks.model_path,
+                "provider": report.benchmarks.provider,
+                "model_name": report.benchmarks.model_name,
+                "error": report.benchmarks.error,
+            }
+        console.print(_json.dumps(data, indent=2))
+        return
+
+    report = run_doctor(model_path=model, provider=provider, run_benchmarks=benchmark)
+    print_report(report)
+
+
+@cli.command()
 @click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
 def devops(workspace: str) -> None:
     """Run the DevOps verification pipeline (linters, secrets, tests)."""
@@ -444,6 +505,35 @@ def devops(workspace: str) -> None:
         console.print("[bold yellow]  Secrets found:[/bold yellow]")
         for s in report.secrets_found:
             console.print(f"    - {s.file_path}:{s.line_number} ({s.pattern_name})")
+
+
+@cli.command()
+@click.option("--acp", is_flag=True, help="Run as ACP stdio backend (for Rust CLI)")
+@click.option("--dry-run", is_flag=True, help="Test initialization and exit")
+@click.option("--workspace", type=click.Path(exists=False), default=".", help="Working directory")
+@click.option("--model", type=str, default=None, help="Model path or alias")
+@click.option("--provider", type=str, default=None, help="Provider name")
+@click.option("--verbose", is_flag=True, default=False, help="Enable verbose logging")
+@click.pass_context
+def backend(ctx: click.Context, acp: bool, dry_run: bool, workspace: str,
+            model: str | None, provider: str | None, verbose: bool) -> None:
+    """Run as backend process for the Rust CLI (ACP mode).
+
+    Spawned automatically by the Rust `nexus chat` binary.
+    """
+    if not acp:
+        click.echo("Usage: nexus backend --acp [options]")
+        return
+    from nexus_agent.backend import run_acp_backend, parse_args
+    args = parse_args([
+        "--acp",
+        "--workspace", workspace,
+        *(("--model", model) if model else []),
+        *(("--provider", provider) if provider else []),
+        *(["--verbose"] if verbose else []),
+        *(["--dry-run"] if dry_run else []),
+    ])
+    run_acp_backend(args)
 
 
 def main() -> None:

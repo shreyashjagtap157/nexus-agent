@@ -283,6 +283,12 @@ class MCPClient:
             logger.error(f"Failed to execute MCP tool '{tool_name}': {e}")
             raise
 
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def close(self) -> None:
         """Clean up process and threads with robust termination."""
         if self._transport:

@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 from nexus_agent.core.plugins import NexusPlugin, PluginInfo, PluginManager
 
 
-class TestNexusPluginSubclass(NexusPlugin):
+class _NexusPluginSubclass(NexusPlugin):
     def initialize(self) -> None:
         self.manager.register_command(
             self.name, "/testclass", lambda d, a: None
@@ -130,7 +130,7 @@ class SimplePlugin(NexusPlugin):
         mock_ep.name = "ep_subclass_plugin"
         # Use a real ModuleType to avoid MagicMock __dir__ issues
         mock_module = types.ModuleType("mock_module")
-        mock_module.MyEPPlugin = TestNexusPluginSubclass
+        mock_module.MyEPPlugin = _NexusPluginSubclass
         mock_ep.load.return_value = mock_module
         
         with patch("nexus_agent.core.plugins.dir", return_value=["MyEPPlugin"]):

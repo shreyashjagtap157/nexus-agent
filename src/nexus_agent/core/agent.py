@@ -43,6 +43,7 @@ from nexus_agent.llm.base import (
     ToolCall,
     ToolDefinition,
 )
+from nexus_agent.tools.base import format_aci_output, summarize_search_results
 
 logger = logging.getLogger(__name__)
 
@@ -255,9 +256,16 @@ Current workspace: {workspace}
         self.usage_tracker = usage_tracker
         self._healer = self_healing_executor or SelfHealingExecutor(max_retries=3)
 
-        # Apply effort-level config mapping
+        # Effort auto-detection: adjust config based on model capability
+        # If the provider can report a tier (low/medium/high/xhigh/max), we cap the effort_level.
+        detected_tier = "max"
+        if hasattr(provider, "capability_tier"):
+            detected_tier = provider.capability_tier
+
         effort_map = self.EFFORT_CONFIG.get(self.effort_level, self.EFFORT_CONFIG["medium"])
-        self.max_iterations = effort_map["max_iterations"]
+        # Cap the requested effort by the detected tier's max_iterations
+        tier_limit = self.EFFORT_CONFIG.get(detected_tier, self.EFFORT_CONFIG["medium"])["max_iterations"]
+        self.max_iterations = min(effort_map["max_iterations"], tier_limit)
         self.temperature = effort_map["temperature"]
         self.max_tokens = min(effort_map["max_tokens"], cfg.max_tokens) if cfg.max_tokens != self.max_tokens else effort_map["max_tokens"]
         self._reflection_enabled = effort_map["reflection"]
@@ -417,13 +425,13 @@ Current workspace: {workspace}
         return [td for td in self._tool_definitions if td.name not in disabled]
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
-        """Execute a tool call with permission checking.
+        """Execute a tool call with permission checking and ACI-formatted output.
 
         Args:
             tool_call: The tool call to execute.
 
         Returns:
-            ToolResult with output or error.
+            ToolResult with ACI-formatted output or error.
         """
         tool = self._tool_map.get(tool_call.name)
         if not tool:
@@ -451,17 +459,29 @@ Current workspace: {workspace}
             def on_heal_event(ev_name: str, ev_data: Any):
                 logger.info(f"Self-heal event emit: {ev_name} -> {ev_data}")
 
+            start_time = time.time()
             heal_res = self._healer.execute_with_healing(
                 tool=tool,
                 arguments=tool_call.arguments,
                 tool_call_id=tool_call.id,
                 on_event=on_heal_event,
             )
+            elapsed_ms = (time.time() - start_time) * 1000
+
+            # Format output using ACI pattern
+            aci_output = format_aci_output(
+                output=heal_res.final_output,
+                success=heal_res.success,
+                tool_name=tool_call.name,
+                error=heal_res.diagnosis if not heal_res.success else None,
+                execution_time_ms=elapsed_ms,
+                metadata=tool_call.arguments if isinstance(tool_call.arguments, dict) else None,
+            )
 
             return ToolResult(
                 tool_call_id=tool_call.id,
                 tool_name=tool_call.name,
-                output=heal_res.final_output,
+                output=aci_output,
                 success=heal_res.success,
                 error=heal_res.diagnosis if not heal_res.success else None,
             )
@@ -574,12 +594,25 @@ Current workspace: {workspace}
         return False, events
 
     def _call_llm(self) -> LLMResponse:
-        response = self.provider.chat_completion(
-            messages=self.messages,
-            tools=self._get_tool_definitions(),
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+        from nexus_agent.llm.retry import RetryPolicy, with_retry
+
+        policy = RetryPolicy(max_attempts=3, initial_backoff_s=1.0, max_backoff_s=30.0)
+        response, stats = with_retry(
+            lambda: self.provider.chat_completion(
+                messages=self.messages,
+                tools=self._get_tool_definitions(),
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+            ),
+            policy=policy,
+            on_retry=lambda attempt, delay, exc: logger.info(
+                "LLM call retry %d/%d after %.1fs: %s",
+                attempt, policy.max_attempts, delay, exc,
+            ),
         )
+        if stats.attempts > 1:
+            logger.info("LLM call succeeded after %d attempts (%.1fs total sleep)",
+                        stats.attempts, stats.total_sleep_s)
         self._record_usage(response)
         return response
 

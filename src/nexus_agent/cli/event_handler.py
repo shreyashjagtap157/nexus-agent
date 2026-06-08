@@ -14,6 +14,28 @@ logger = logging.getLogger(__name__)
 class EventHandlerMixin:
     """Mixin that provides user input processing and agent execution event loop."""
 
+    def _sample_session_diff(self) -> tuple[int, int]:
+        """Sample current workspace diff. Returns (added, removed)."""
+        added, removed = 0, 0
+        try:
+            import subprocess
+            res = subprocess.run(
+                ["git", "diff", "--numstat"],
+                cwd=str(self.workspace),
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+                        added += int(parts[0])
+                        removed += int(parts[1])
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            pass
+        return added, removed
+
     def _process_user_input(self, user_input: str):
         self._abort_event.clear()
 
@@ -33,6 +55,9 @@ class EventHandlerMixin:
             self._tokens.total_input += in_tokens
             self._tokens.current_request.input_tokens = in_tokens
 
+            # Update agent state
+            self.r.update_agent_state("thinking", detail="Parsing input")
+
             if self._session_mgr:
                 self._session_mgr.save_message("user", content=user_input, type="user")
                 try:
@@ -48,6 +73,7 @@ class EventHandlerMixin:
                 self._first_request_done = True
                 self._model_status = "loaded"
                 self._rebuild_welcome()
+            self.r.update_agent_state("done")
             self.r.divider()
 
     def _run_agent(self, user_input: str):
@@ -56,6 +82,8 @@ class EventHandlerMixin:
         self.r.show_spinner(verb)
         _streaming_started = False
         self._tokens.current_request.begin()
+        # Snapshot diff at start of request
+        _start_added, _start_removed = self._sample_session_diff()
 
         try:
             for event in self._agent.run_stream(user_input):
@@ -65,6 +93,7 @@ class EventHandlerMixin:
                 if event.type == "thinking":
                     new_verb = random.choice(SPINNER_VERBS_PRESENT)
                     self.r.update_spinner(new_verb)
+                    self.r.update_agent_state("thinking", detail=new_verb, iteration=self._agent.iteration_count if self._agent else 0)
 
                 elif event.type == "content":
                     full_response = event.data
@@ -93,6 +122,7 @@ class EventHandlerMixin:
                     name = event.data["name"]
                     args = event.data.get("arguments", {})
                     self.r.tool_call(name, args)
+                    self.r.update_agent_state("tool_calling", detail=name)
                     self._tool_timings[name] = time.time()
                     if self._session_mgr:
                         self._session_mgr.save_message(
@@ -113,14 +143,18 @@ class EventHandlerMixin:
                     success = event.data.get("success", True)
                     elapsed = time.time() - self._tool_timings.pop(name, time.time())
                     self.r.tool_result(name, output, success, elapsed)
+                    self.r.update_agent_state("executing", detail=f"{name} done")
+                    # Toast for errors
+                    if not success:
+                        self.r.show_notification(f"Tool {name} failed", style="error", duration=6.0)
                     if self._session_mgr:
                         self._session_mgr.save_message(
-                            role="tool",
-                            type="tool_result",
-                            name=name,
-                            content=str(output)[:1000] if output else "",
-                            metadata={"success": success, "elapsed": elapsed},
-                        )
+                        role="tool",
+                        type="tool_result",
+                        name=name,
+                        content=str(output)[:1000] if output else "",
+                        metadata={"success": success, "elapsed": elapsed},
+                    )
                     self.r.show_spinner(random.choice(SPINNER_VERBS_PRESENT))
 
                 elif event.type == "error":
@@ -129,6 +163,8 @@ class EventHandlerMixin:
                         _streaming_started = False
                     self.r.hide_spinner()
                     error_msg = str(event.data)
+                    self.r.update_agent_state("error", detail=error_msg[:60])
+                    self.r.show_notification(error_msg[:120], style="error", duration=8.0)
                     self.r.error(error_msg)
                     if self._session_mgr:
                         self._session_mgr.save_message("system", content=error_msg, type="system")
@@ -173,10 +209,22 @@ class EventHandlerMixin:
             self._last_responses.insert(0, full_response)
             del self._last_responses[10:]
 
+            # Sample diff at end of request to get per-request delta
+            cur_added, cur_removed = self._sample_session_diff()
+            req_added = max(0, cur_added - _start_added)
+            req_removed = max(0, cur_removed - _start_removed)
+            self._tokens.current_request.add_diff(req_added, req_removed)
+            # Update session totals
+            self._tokens.total_added += req_added
+            self._tokens.total_removed += req_removed
+
             self._tokens.current_request.end()
             self._tokens.last_request.input_tokens = self._tokens.current_request.input_tokens
             self._tokens.last_request.output_tokens = self._tokens.current_request.output_tokens
             self._tokens.last_request.elapsed = self._tokens.current_request.elapsed
+            # Copy diffs to last_request too (so they show in footer)
+            self._tokens.last_request.lines_added = self._tokens.current_request.lines_added
+            self._tokens.last_request.lines_removed = self._tokens.current_request.lines_removed
 
         if self._agent and hasattr(self._agent, 'messages'):
             self._context.messages = len(self._agent.messages)

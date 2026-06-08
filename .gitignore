@@ -49,7 +49,12 @@ uv.lock
 # Letta
 .letta/
 
+# Rust
+nexus-rs/target/
+
 # Test
 .coverage
 htmlcov/
 .pytest_cache/
+
+nul

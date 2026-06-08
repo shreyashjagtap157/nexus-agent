@@ -1,0 +1,45 @@
+[package]
+name = "nexus"
+version = "0.2.0"
+edition = "2021"
+description = "Offline-first AI coding agent — CLI core (Rust/Python hybrid)"
+authors = ["NexusAgent Team"]
+repository = "https://github.com/nexus-agent/nexus-agent"
+license = "MIT"
+
+[[bin]]
+name = "nexus"
+path = "src/main.rs"
+
+[dependencies]
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# TUI
+ratatui = "0.29"
+crossterm = "0.28"
+
+# IPC — JSON-RPC over stdio
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Async runtime (subprocess + I/O)
+tokio = { version = "1", features = ["full"] }
+
+# Config
+toml = "0.8"
+directories = "6"
+
+# Utilities
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+sysinfo = "0.33"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "z"

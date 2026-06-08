@@ -189,11 +189,13 @@ class TestAdvancedFeatures(unittest.TestCase):
         """Verify BrowserTool falls back cleanly to HTTPX HTML parser scraping."""
         from nexus_agent.tools.browser import BrowserTool
         tool = BrowserTool()
-        
-        # Execute static navigate fallback on a local mock target or static html file
-        res = tool._execute_httpx(action="read", url="https://example.com")
-        self.assertIn("Webpage Scraped", res)
-        self.assertIn("Example Domain", res)
+        try:
+            # Execute static navigate fallback on a local mock target or static html file
+            res = tool._execute_httpx(action="read", url="https://example.com")
+            self.assertIn("Webpage Scraped", res)
+            self.assertIn("Example Domain", res)
+        finally:
+            tool.close()
 
     def test_self_healing_retry_loop(self) -> None:
         """Verify retry and diagnosis prompt generation in SelfHealingExecutor."""

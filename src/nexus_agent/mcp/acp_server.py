@@ -103,6 +103,13 @@ class ACPServer:
                 # Stream agent events as notifications, and send final result as response
                 await self._handle_prompt(req_id, text)
             
+            elif method == "init":
+                # Agent is already initialized in run() — just confirm
+                self._send_response(req_id, {
+                    "session_id": getattr(self._agent, "session_id", "unknown"),
+                    "status": "ready",
+                })
+
             elif method == "get_status":
                 status = {
                     "session_id": getattr(self._agent, "session_id", "unknown"),
@@ -110,6 +117,21 @@ class ACPServer:
                     "effort": getattr(self._agent, "effort_level", "unknown"),
                 }
                 self._send_response(req_id, status)
+            
+            elif method == "memory_list":
+                memories = self._handle_memory_list(req_id, params)
+            
+            elif method == "memory_search":
+                memories = self._handle_memory_search(req_id, params)
+            
+            elif method == "memory_stats":
+                stats = self._handle_memory_stats(req_id, params)
+            
+            elif method == "memory_compact":
+                self._handle_memory_compact(req_id, params)
+            
+            elif method == "memory_scores":
+                self._handle_memory_scores(req_id, params)
             
             elif method == "stop":
                 self._running = False
@@ -130,13 +152,14 @@ class ACPServer:
             # Use run_stream to capture chunks and thinking events
             for event in self._agent.run_stream(text):
                 # Emit a JSON-RPC notification for each event
+                # AgentEvent has: type (AgentEventType enum), data (Any), timestamp
+                event_type = event.type.value if hasattr(event.type, 'value') else event.type
                 notification = {
                     "jsonrpc": "2.0",
                     "method": "event",
                     "params": {
-                        "type": event.type,
-                        "content": event.content if hasattr(event, 'content') else None,
-                        "status": event.status if hasattr(event, 'status') else None,
+                        "type": event_type,
+                        "data": event.data,
                     }
                 }
                 sys.stdout.write(json.dumps(notification) + "\n")
@@ -150,6 +173,74 @@ class ACPServer:
         except Exception as e:
             logger.exception(f"ACP Server: Prompt execution failed: {e}")
             self._send_error(req_id, -32603, f"Execution error: {e}")
+
+    def _get_memory(self):
+        """Get the memory manager from the agent."""
+        agent = getattr(self, "_agent", None)
+        if agent is None:
+            return None
+        return getattr(agent, "memory", None)
+
+    def _handle_memory_list(self, req_id: Any, params: dict[str, Any]) -> None:
+        memory = self._get_memory()
+        if memory is None:
+            self._send_error(req_id, -32000, "Memory system not available")
+            return
+        try:
+            tier = params.get("tier")
+            limit = params.get("limit", 100)
+            offset = params.get("offset", 0)
+            entries = memory.list_all_unified(tier=tier, limit=limit, offset=offset)
+            self._send_response(req_id, {"entries": entries, "count": len(entries)})
+        except Exception as e:
+            self._send_error(req_id, -32001, f"Memory list failed: {e}")
+
+    def _handle_memory_search(self, req_id: Any, params: dict[str, Any]) -> None:
+        memory = self._get_memory()
+        if memory is None:
+            self._send_error(req_id, -32000, "Memory system not available")
+            return
+        try:
+            query = params.get("query", "")
+            limit = params.get("limit", 10)
+            results = memory.search(query, limit=limit)
+            self._send_response(req_id, {"entries": results, "count": len(results)})
+        except Exception as e:
+            self._send_error(req_id, -32001, f"Memory search failed: {e}")
+
+    def _handle_memory_stats(self, req_id: Any, params: dict[str, Any]) -> None:
+        memory = self._get_memory()
+        if memory is None:
+            self._send_error(req_id, -32000, "Memory system not available")
+            return
+        try:
+            stats = memory.get_stats()
+            self._send_response(req_id, stats)
+        except Exception as e:
+            self._send_error(req_id, -32001, f"Memory stats failed: {e}")
+
+    def _handle_memory_compact(self, req_id: Any, params: dict[str, Any]) -> None:
+        memory = self._get_memory()
+        if memory is None:
+            self._send_error(req_id, -32000, "Memory system not available")
+            return
+        try:
+            aggressive = params.get("aggressive", False)
+            result = memory.compact(aggressive=aggressive)
+            self._send_response(req_id, result)
+        except Exception as e:
+            self._send_error(req_id, -32001, f"Memory compact failed: {e}")
+
+    def _handle_memory_scores(self, req_id: Any, params: dict[str, Any]) -> None:
+        memory = self._get_memory()
+        if memory is None:
+            self._send_error(req_id, -32000, "Memory system not available")
+            return
+        try:
+            scores = memory.get_all_scores()
+            self._send_response(req_id, scores)
+        except Exception as e:
+            self._send_error(req_id, -32001, f"Memory scores failed: {e}")
 
     def _send_response(self, req_id: Any, result: Any) -> None:
         resp = ACPResponse(id=req_id, result=result)

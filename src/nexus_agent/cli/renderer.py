@@ -21,6 +21,7 @@ import os
 import random
 import re
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -105,6 +106,287 @@ def truncate_visual(text: str, max_width: int) -> str:
         else:
             hi = mid - 1
     return "".join(chars[:lo])
+
+
+class AgentStateIndicator:
+    """Compact agent state icon/label — displayed in the welcome panel.
+
+    Maps ``AgentState`` values to distinct visual indicators:
+    - IDLE          ``⏸ idle``
+    - THINKING      ``🤔 thinking``
+    - TOOL_CALLING  ``🛠 tool``
+    - EXECUTING     ``⚡ executing``
+    - WAITING_APPROVAL  ``🔒 wait``
+    - ERROR         ``❌ error``
+    - DONE          ``✅ done``
+    """
+
+    _ICONS = {
+        "idle": "\u23f8",           # ⏸
+        "thinking": "\U0001f914",   # 🤔
+        "tool_calling": "\U0001f6e0",  # 🛠
+        "executing": "\u26a1",       # ⚡
+        "waiting_approval": "\U0001f512",  # 🔒
+        "error": "\u274c",           # ❌
+        "done": "\u2705",            # ✅
+    }
+
+    _STYLES = {
+        "idle": "dim",
+        "thinking": "bold cyan",
+        "tool_calling": "bold yellow",
+        "executing": "bold yellow",
+        "waiting_approval": "bold red",
+        "error": "bold red",
+        "done": "bold green",
+    }
+
+    def __init__(self):
+        self._state: str = "idle"
+        self._detail: str = ""
+        self._iteration: int = 0
+        self._last_update: float = 0.0
+
+    def set_state(self, state: str, detail: str = "", iteration: int = 0):
+        self._state = state
+        self._detail = detail
+        self._iteration = iteration
+        self._last_update = time.time()
+
+    def render(self) -> str:
+        icon = self._ICONS.get(self._state, "\u23f8")
+        label = self._state.replace("_", " ").title()
+        style = self._STYLES.get(self._state, "dim")
+        parts = [f"[{style}]{icon} {label}[/{style}]"]
+        if self._detail:
+            parts.append(f"[dim]· {self._detail}[/dim]")
+        if self._iteration > 0:
+            parts.append(f"[dim]#{self._iteration}[/dim]")
+        return "  ".join(parts)
+
+
+@dataclass
+class ToastNotification:
+    """A transient toast notification — auto-expires after *duration* seconds."""
+    text: str
+    style: str = "info"   # info | success | warning | error
+    timestamp: float = field(default_factory=time.time)
+    duration: float = 4.0
+
+
+class NotificationManager:
+    """Manages a queue of toast notifications."""
+
+    def __init__(self):
+        self._notifications: list[ToastNotification] = []
+        self._lock = threading.Lock()
+        self._max_visible = 3
+
+    def push(self, text: str, style: str = "info", duration: float = 4.0):
+        with self._lock:
+            self._notifications.append(ToastNotification(text, style, duration=duration))
+            if len(self._notifications) > 10:
+                self._notifications = self._notifications[-10:]
+
+    def active(self) -> list[ToastNotification]:
+        """Return notifications that haven't expired yet."""
+        now = time.time()
+        with self._lock:
+            active = [n for n in self._notifications if now - n.timestamp < n.duration]
+            self._notifications = active
+            return active[:self._max_visible]
+
+    def render(self, width: int) -> list[str]:
+        """Render active notifications as dimmed lines."""
+        notes = self.active()
+        if not notes:
+            return []
+        lines = []
+        for n in notes:
+            icon = {
+                "info": "\u2139",     # ℹ
+                "success": "\u2714",   # ✔
+                "warning": "\u26a0",   # ⚠
+                "error": "\u2716",      # ✖
+            }.get(n.style, "\u2139")
+            style_code = {
+                "info": "\033[2m",
+                "success": "\033[32m",
+                "warning": "\033[33m",
+                "error": "\033[31m",
+            }.get(n.style, "\033[2m")
+            text = n.text
+            if len(text) > width - 10:
+                text = text[:width - 13] + "..."
+            lines.append(f"  {style_code}{icon} {text}\033[0m")
+        return lines
+
+
+class TaskInspector:
+    """High-fidelity task progress inspector for the terminal UI.
+
+    Wires into the live ``TaskGraph`` from the agent loop and renders
+    real-time task state, progress, and dependency information.
+    Supports toggling visibility via ``/task``.
+    """
+
+    def __init__(self):
+        self.visible = True
+        self._graph = None
+        self._expanded: set[str] = set()
+        self._last_render_hash: int | None = None
+
+    def set_task_graph(self, graph: Any) -> None:
+        """Connect to a live TaskGraph instance."""
+        self._graph = graph
+
+    def toggle(self):
+        self.visible = not self.visible
+
+    def task_graph_updated(self) -> None:
+        """Called whenever the task graph changes (e.g. new task started,
+        task completed, etc.).  Invalidates the render cache."""
+        self._last_render_hash = None
+
+    def render(self, width: int) -> list[str]:
+        """Render the current task graph as a set of lines.
+
+        Args:
+            width: Current terminal width.
+
+        Returns:
+            A list of rendered ANSI/text lines.
+        """
+        if not self.visible:
+            return []
+
+        # Try live TaskGraph first, fall back to nothing
+        if self._graph is not None:
+            return self._render_from_graph(width)
+        return []
+
+    def _render_from_graph(self, width: int) -> list[str]:
+        """Render from the live TaskGraph instance."""
+        graph = self._graph
+        nodes = getattr(graph, "nodes", {})
+        root_id = getattr(graph, "root_id", None)
+
+        if not nodes or not root_id or root_id not in nodes:
+            return []
+
+        root = nodes[root_id]
+        lines: list[str] = []
+
+        # 1. Overall progress bar
+        total = sum(1 for nid in nodes if nid != root_id)
+        completed = sum(1 for n in nodes.values() if n != root and n.status == "completed")
+        failed = sum(1 for n in nodes.values() if n != root and n.status == "failed")
+        running = sum(1 for n in nodes.values() if n != root and n.status == "running")
+        pct = int((completed / total) * 100) if total else 100
+
+        bar_len = 20
+        filled = int(pct / 100 * bar_len)
+        bar = "\u2588" * filled + "\u2591" * (bar_len - filled)
+        color = "green" if pct == 100 else "yellow" if pct > 50 else "blue"
+
+        header = f"  [bold]Tasks[/bold]  [{color}]{bar}[/{color}]  {pct}%"
+        lines.append(header)
+
+        # Compact status line
+        status_parts = []
+        if completed:
+            status_parts.append(f"\033[32m\u2714 {completed}\033[0m")    # green check
+        if running:
+            status_parts.append(f"\033[36m\u26a1 {running}\033[0m")      # cyan zap
+        if pending := total - completed - failed - running:
+            status_parts.append(f"\033[2m\u23f3 {pending}\033[0m")       # dim hourglass
+        if failed:
+            status_parts.append(f"\033[31m\u2716 {failed}\033[0m")       # red x
+        if status_parts:
+            lines.append("    " + "  ".join(status_parts))
+
+        # Divider
+        lines.append("  " + "\u2500" * min(width - 4, 60))
+
+        # 2. Task tree — show root's children recursively
+        self._render_subtree(root, lines, width, root_id, depth=0)
+
+        return lines
+
+    def _render_subtree(
+        self,
+        node: Any,
+        lines: list[str],
+        width: int,
+        root_id: str | None,
+        depth: int = 0,
+    ):
+        """Recursively render a task node and its children."""
+        indent = "  " + "  " * depth
+        nid = getattr(node, "id", "")
+        status = getattr(node, "status", "pending")
+        title = getattr(node, "title", nid)
+        children = getattr(node, "children", [])
+
+        # Icons
+        icon_map = {
+            "completed": "\u2705",     # ✅
+            "running": "\u26a1",       # ⚡
+            "failed": "\u274c",         # ❌
+            "blocked": "\U0001f6ab",    # 🚫
+            "pending": "\u23f3",        # ⏳
+        }
+        icon = icon_map.get(status, "\u23f3")
+
+        # Highlight the currently running task
+        if status == "running":
+            prefix = f"\033[1;36m{icon}\033[0m"  # bold cyan
+            title_style = "\033[1;37m"  # bold white
+        elif status == "completed":
+            prefix = f"\033[32m{icon}\033[0m"     # green
+            title_style = "\033[2m"     # dim
+        elif status == "failed":
+            prefix = f"\033[31m{icon}\033[0m"     # red
+            title_style = "\033[31m"    # red
+        elif status == "blocked":
+            prefix = f"\033[90m{icon}\033[0m"     # bright black
+            title_style = "\033[2;90m"
+        else:
+            prefix = f"\033[2m{icon}\033[0m"
+            title_style = "\033[2m"     # dim
+
+        # Truncate title
+        max_title_w = width - len(indent) - 10
+        if visual_len(title) > max_title_w:
+            title = truncate_visual(title, max_title_w - 1) + "\u2026"
+
+        # Dependency info
+        deps = getattr(node, "dependencies", [])
+        dep_str = f" \033[2m(dep: {len(deps)})\033[0m" if deps else ""
+
+        if depth == 0:
+            # Root node: show goal description
+            desc = getattr(node, "description", "")
+            line = f"{indent}{prefix} \033[1m{title}\033[0m{dep_str}"
+            lines.append(line)
+            if desc and depth == 0:
+                short_desc = desc[:width - len(indent) - 6]
+                lines.append(f"{indent}  \033[3;2m{short_desc}\033[0m")
+        else:
+            line = f"{indent}{prefix} {title_style}{title}\033[0m{dep_str}"
+            lines.append(line)
+
+        # Show result for completed tasks
+        if status == "completed":
+            result = getattr(node, "result", None)
+            if result and depth > 0 and len(result) < 80:
+                lines.append(f"{indent}  \033[2m\u21b3 {result[:width - len(indent) - 8]}\033[0m")
+
+        # Recurse into children
+        for child_id in children:
+            child = getattr(graph, "nodes", {}).get(child_id) if (graph := self._graph) else None
+            if child:
+                self._render_subtree(child, lines, width, root_id, depth + 1)
 
 
 def hex_to_ansi(hex_str: str) -> str:
@@ -218,10 +500,19 @@ class Verbosity(Enum):
 
 @dataclass
 class PerRequest:
-    """Per-request token + timing tracking, like Claude Code."""
+    """Per-request token + timing + diff tracking.
+
+    Spec format (matches user requirement):
+        ↓ 1,234  ↑ 567  +12 -3  · 4.2s
+
+    `↓` is incoming (input) tokens, `↑` is outgoing (output) tokens.
+    `+`/`-` are lines added/removed during the request.
+    """
     def __init__(self):
         self.input_tokens: int = 0
         self.output_tokens: int = 0
+        self.lines_added: int = 0
+        self.lines_removed: int = 0
         self.elapsed: float = 0.0
         self._start: float = 0.0
 
@@ -229,23 +520,37 @@ class PerRequest:
         self._start = time.time()
         self.input_tokens = 0
         self.output_tokens = 0
+        self.lines_added = 0
+        self.lines_removed = 0
 
     def end(self) -> None:
         if self._start:
             self.elapsed = time.time() - self._start
 
+    def add_diff(self, added: int, removed: int) -> None:
+        """Accumulate diff line counts (called as tool results land)."""
+        if added:
+            self.lines_added += int(added)
+        if removed:
+            self.lines_removed += int(removed)
+
     def display(self) -> str:
-        parts = []
+        # ↓ incoming, ↑ outgoing, +/- diff lines, time
+        parts: list[str] = []
         if self.input_tokens > 0:
-            parts.append(f"\033[2mIn:\033[0m{self.input_tokens:,}")
+            parts.append(f"\033[36m↓\033[0m{self.input_tokens:,}")
         if self.output_tokens > 0:
-            parts.append(f"\033[2mOut:\033[0m{self.output_tokens:,}")
+            parts.append(f"\033[35m↑\033[0m{self.output_tokens:,}")
+        if self.lines_added or self.lines_removed:
+            parts.append(
+                f"\033[32m+{self.lines_added}\033[0m\033[31m-{self.lines_removed}\033[0m"
+            )
         if self.elapsed > 0:
             if self.elapsed >= 60:
                 m, s = divmod(int(self.elapsed), 60)
-                parts.append(f"\033[2mTime:\033[0m{m}m{s:02d}s")
+                parts.append(f"\033[2m· {m}m{s:02d}s\033[0m")
             else:
-                parts.append(f"\033[2mTime:\033[0m{self.elapsed:.1f}s")
+                parts.append(f"\033[2m· {self.elapsed:.1f}s\033[0m")
         return "  ".join(parts) if parts else ""
 
 
@@ -258,6 +563,8 @@ class TokenUsage:
         self.cache_read: int = 0
         self.total_input: int = 0
         self.total_output: int = 0
+        self.total_added: int = 0
+        self.total_removed: int = 0
         self.context_window: int = 200000
         self.provider_name: str = "local"
         self.current_request = PerRequest()
@@ -295,10 +602,11 @@ class TokenUsage:
     def display_short(self) -> str:
         inp = self.total_input or self.input_tokens
         out = self.total_output or self.output_tokens
-        return f"\u2191{inp:,}|\u2193{out:,}" if inp or out else ""
+        # \u2193 incoming (input tokens), \u2191 outgoing (output tokens) per spec
+        return f"\u2193{inp:,}|\u2191{out:,}" if inp or out else ""
 
     def display_request(self) -> str:
-        """Display the last request's token usage and timing."""
+        """Display the last request's token usage, diff, and timing."""
         return self.last_request.display()
 
     def display_context(self) -> str:
@@ -339,7 +647,7 @@ class TokenUsage:
         if self.last_request.elapsed > 0:
             lines.append(f"  Last request:     {self._fmt_time(self.last_request.elapsed)}")
         if self.last_request.input_tokens or self.last_request.output_tokens:
-            lines.append(f"  Last I/O:         \u2191{self.last_request.input_tokens:,} \u2193{self.last_request.output_tokens:,}")
+            lines.append(f"  Last I/O:         \u2193{self.last_request.input_tokens:,} \u2191{self.last_request.output_tokens:,}")
         lines.append(f"  Estimated cost:   ${cost:.4f}")
         lines.append(f"  [{bar}] {pct}%")
         return "\n".join(lines)
@@ -775,25 +1083,37 @@ class StatusBar:
 
 
 class CommandMenu:
-    """Slash command dropdown menu — matches Claude Code's autocomplete."""
+    """Slash command dropdown menu — matches Claude Code's autocomplete.
+
+    Features:
+    - Filtered list of commands matching typed prefix
+    - Arrow-key navigation with wrap-around
+    - Highlighted matching characters (prefix chars shown in cyan)
+    - Scroll indicator when >10 items with overflow count
+    - Reverse highlight on selected item
+    - File autocomplete mode
+    """
 
     def __init__(self):
         self.filtered: list[dict[str, str]] = []
         self.selected_index = 0
         self.visible = False
         self.filter = ""
+        self._is_file_mode = False
 
     def show(self, prefix: str, commands: list[dict[str, str]]):
         self.filter = prefix
         self.filtered = [c for c in commands if c["name"].startswith(prefix)]
         self.selected_index = 0
         self.visible = len(self.filtered) > 0
+        self._is_file_mode = False
         return self.visible
 
     def show_files(self, files: list[str]):
         self.filtered = [{"name": f, "description": ""} for f in files]
         self.selected_index = 0
         self.visible = len(self.filtered) > 0
+        self._is_file_mode = True
         return self.visible
 
     def hide(self):
@@ -813,26 +1133,70 @@ class CommandMenu:
             return self.filtered[self.selected_index]
         return None
 
+    def _highlight_match(self, text: str, prefix: str) -> str:
+        """Highlight matching characters in cyan accent color."""
+        if not prefix or not text.lower().startswith(prefix.lower()):
+            return text
+        matched = text[:len(prefix)]
+        rest = text[len(prefix):]
+        return f"\033[36m{matched}\033[0m{rest}"
+
     def render_lines(self, width: int) -> list[str]:
         if not self.visible or not self.filtered:
             return []
 
         lines = []
-        max_name = min(max(visual_len(c["name"]) for c in self.filtered), max(width - 15, 10))
+        max_visible = min(10, len(self.filtered))
+        start_idx = 0
+        end_idx = max_visible
 
-        for i, cmd in enumerate(self.filtered[:min(10, len(self.filtered))]):
-            marker = "▸" if i == self.selected_index else " "
+        # If selected item is past the visible window, scroll
+        if self.selected_index >= end_idx:
+            start_idx = self.selected_index - max_visible + 1
+            end_idx = self.selected_index + 1
+
+        visible_items = self.filtered[start_idx:end_idx]
+        if not visible_items:
+            return []
+        max_name = min(max(visual_len(strip_markup(c["name"])) for c in visible_items), max(width - 15, 10))
+
+        scroll_up = start_idx > 0
+        scroll_down = end_idx < len(self.filtered)
+
+        # Show scroll indicator at top if needed
+        if scroll_up:
+            lines.append(f"  \033[2m\u2191 {start_idx} more\u2026\033[0m")
+
+        for i, cmd in enumerate(visible_items):
+            marker = "\u25b8" if (start_idx + i) == self.selected_index else " "
             name = cmd["name"]
-            if visual_len(name) > max_name:
-                name = truncate_visual(name, max_name - 1) + "…"
+
+            # Highlight matched characters (apply AFTER truncation to preserve ANSI codes)
+            if not self._is_file_mode and self.filter:
+                plain_name = name
+                if visual_len(plain_name) > max_name:
+                    plain_name = truncate_visual(plain_name, max_name - 1) + "\u2026"
+                name = self._highlight_match(plain_name, self.filter)
+            else:
+                if visual_len(name) > max_name:
+                    name = truncate_visual(name, max_name - 1) + "\u2026"
+
             desc = cmd.get("description") or ""
             avail = max(width - max_name - 10, 5)
             if visual_len(desc) > avail:
-                desc = truncate_visual(desc, max(avail - 3, 1)) + "…"
-            style_prefix = "  " if i != self.selected_index else ""
-            padding = max_name - visual_len(name)
+                desc = truncate_visual(desc, max(avail - 3, 1)) + "\u2026"
+
+            padding = max(max_name - visual_len(strip_markup(name)), 0)
             name_padded = name + (" " * padding)
-            lines.append(f"  {marker} {name_padded}  {desc}")
+
+            if (start_idx + i) == self.selected_index:
+                lines.append(f"  \033[7m {marker} {name_padded}  {desc} \033[0m")
+            else:
+                lines.append(f"  {marker} {name_padded}  \033[2m{desc}\033[0m")
+
+        if scroll_down:
+            remaining = len(self.filtered) - end_idx
+            lines.append(f"  \033[2m\u2193 {remaining} more\u2026\033[0m")
 
         return lines
 
@@ -1156,6 +1520,9 @@ class NexusTerminalRenderer:
         self.spinner = SpinnerWidget()
         self.status_bar = StatusBar()
         self.cmd_menu = CommandMenu()
+        self.task_inspector = TaskInspector()
+        self.agent_state = AgentStateIndicator()
+        self.notifications = NotificationManager()
         self._is_fullscreen = False
         self._input_line_count = 0
         self._last_status_height = 0
@@ -1298,7 +1665,8 @@ class NexusTerminalRenderer:
                 provider: str = "local", context_size: int = 200000,
                 tokens: object = None, metrics: dict = None,
                 model_status: str = "idle", resource_info: str = "",
-                active_agents: int = 0):
+                active_agents: int = 0,
+                session_added: int = 0, session_removed: int = 0):
         try:
             W = shutil.get_terminal_size().columns
         except (OSError, ValueError):
@@ -1337,63 +1705,74 @@ class NexusTerminalRenderer:
                 tokens=tokens,
                 metrics=metrics,
                 active_agents=active_agents,
+                session_added=session_added,
+                session_removed=session_removed,
             )
+            # Subscribe to live resource monitor (cheap when off-screen)
+            try:
+                from nexus_agent.cli.resource_monitor import ResourceMonitor
+                self._resource_monitor = ResourceMonitor.get()
+                self._resource_monitor.subscribe()
+            except (ImportError, RuntimeError, OSError):
+                self._resource_monitor = None
             return
 
-        import subprocess
-        import psutil
-
-        # 1. Fetch system statistics
-        cpu_percent = psutil.cpu_percent(interval=None) or 0.0
-        if cpu_percent == 0.0:
-            cpu_percent = 5.0
-            
+        # 1. Use the live resource monitor when available; fall back to a
+        #    one-shot sample so the panel still works without psutil.
+        cpu_percent = 0.0
         cpu_threads = os.cpu_count() or 8
+        mem_str = "—"
+        gpu_percent = 0
+        vram_str = ""
+        try:
+            from nexus_agent.cli.resource_monitor import ResourceMonitor
+            mon = ResourceMonitor.get()
+            self._resource_monitor = mon
+            mon.subscribe()  # panel is visible — sample every second
+            snap = mon.snapshot()
+            cpu_percent = snap.cpu_percent
+            cpu_threads = snap.cpu_threads
+            mem_str = snap.ram_str
+            gpu_percent = snap.gpu_percent
+            vram_str = snap.vram_str
+        except (ImportError, OSError, RuntimeError, ValueError):
+            self._resource_monitor = None
+            try:
+                import psutil  # type: ignore
+                cpu_percent = psutil.cpu_percent(interval=None) or 0.0
+                if cpu_percent == 0.0:
+                    cpu_percent = 5.0
+                vm = psutil.virtual_memory()
+                mem_str = f"{vm.used / (1024**3):.1f}G/{vm.total / (1024**3):.0f}G"
+            except (ImportError, OSError, ValueError):
+                pass
         if metrics and "threads" in metrics:
             cpu_threads = metrics["threads"]
 
-        try:
-            virtual_mem = psutil.virtual_memory()
-            used_gb = virtual_mem.used / (1024**3)
-            total_gb = virtual_mem.total / (1024**3)
-            mem_str = f"{used_gb:.1f}G/{total_gb:.0f}G"
-        except Exception:
-            mem_str = "—"
-
-        gpu_percent = 0
-        try:
-            gpu_res = subprocess.run(
-                ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                text=True,
-                timeout=1
-            )
-            if gpu_res.returncode == 0 and gpu_res.stdout.strip().isdigit():
-                gpu_percent = int(gpu_res.stdout.strip())
-        except Exception:
-            pass
-
-        # 2. Fetch git delta lines
-        added = 0
-        deleted = 0
-        try:
-            res = subprocess.run(
-                ["git", "diff", "--numstat"],
-                cwd=workspace,
-                capture_output=True,
-                text=True,
-                timeout=2
-            )
-            if res.returncode == 0:
-                for line in res.stdout.splitlines():
-                    parts = line.split()
-                    if len(parts) >= 3:
-                        a, d = parts[0], parts[1]
-                        if a.isdigit() and d.isdigit():
-                            added += int(a)
-                            deleted += int(d)
-        except Exception:
-            pass
+        # 2. Session diff totals — prefer the in-memory counters; fall back
+        #    to a git snapshot only as a last resort. The renderer's caller
+        #    passes session_added/removed when it has them, which keeps the
+        #    display live-updating as requests change.
+        added = session_added
+        deleted = session_removed
+        if not added and not deleted:
+            try:
+                res = subprocess.run(
+                    ["git", "diff", "--numstat"],
+                    cwd=workspace,
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if res.returncode == 0:
+                    added, deleted = 0, 0
+                    for line in res.stdout.splitlines():
+                        parts = line.split()
+                        if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+                            added += int(parts[0])
+                            deleted += int(parts[1])
+            except (OSError, subprocess.TimeoutExpired, ValueError):
+                pass
         delta_lines = f"+{added}/-{deleted}"
 
         # 3. Setup tokens
@@ -1415,7 +1794,7 @@ class NexusTerminalRenderer:
         def format_dashboard_line(left: str, right: str = "") -> str:
             left_plain = strip_markup(_ANSI_RE.sub('', left))
             right_plain = strip_markup(_ANSI_RE.sub('', right))
-            
+
             if not right:
                 pad = box_width - visual_len(left_plain)
                 return f"│{left}{' ' * pad}│"
@@ -1426,7 +1805,7 @@ class NexusTerminalRenderer:
 
         # 5. Build dashboard details
         model_d = truncate_visual(model_name, 20)
-        
+
         # Colors
         B = "\033[1m"
         D = "\033[2m"
@@ -1438,14 +1817,17 @@ class NexusTerminalRenderer:
         left_1 = f" 🦄 NexusAgent      Model: {M_color}{model_d}{R}"
         right_1 = f"Mem: {mem_str}"
 
-        left_2 = f"  CPU: {cpu_threads} threads    GPU: {gpu_percent}%"
+        # ↓/↑ spec glyphs for session totals
+        left_2 = f"  CPU: {cpu_threads}t {cpu_percent:.0f}%    GPU: {gpu_percent}%"
         right_2 = f"Context: {context_used}/{context_limit}"
 
-        left_3 = f"  Tokens In: {tokens_in:<6} Out: {tokens_out}"
+        left_3 = f"  Tokens ↓{tokens_in:<6} ↑{tokens_out}"
         right_3 = f"ΔLines: {delta_lines}"
 
         left_4 = f"  Processes (agents): {active_agents}"
         right_4 = ""
+        if vram_str:
+            left_4 = f"{left_4}    VRAM: {vram_str}"
 
         # Draw box
         lines = [
@@ -1495,14 +1877,65 @@ class NexusTerminalRenderer:
             tokens=tokens,
             metrics=metrics,
             active_agents=active_agents,
+            session_added=session_added,
+            session_removed=session_removed,
         )
 
     def update_size(self):
         self._update_size()
 
+    def tick_resources(self) -> bool:
+        """Redraw the welcome panel with fresh resource data.
+
+        Intended to be called from a per-second timer in the REPL loop.
+        Returns True if the panel was redrawn, False if no panel exists
+        or the monitor is dormant.
+        """
+        if not self._welcome_params:
+            return False
+        mon = getattr(self, "_resource_monitor", None)
+        if mon is None:
+            return False
+        snap = mon.snapshot()
+        # Only redraw if the panel is actually on screen — the scroll
+        # region is set during welcome() and reset by clear()/close().
+        if not self._scroll_region_set:
+            return False
+        self._render_resources(snap)
+        return True
+
+    def _render_resources(self, snap) -> None:
+        """In-place update of just the resource-bearing lines of the panel.
+
+        Avoids a full rebuild so the spinner and live token totals keep
+        streaming. We overwrite the single line that holds CPU/GPU.
+        """
+        try:
+            term_h = shutil.get_terminal_size().lines
+        except (OSError, ValueError):
+            return
+        if self._welcome_height < 2:
+            return
+        # Row 2 (1-based) inside the panel holds CPU/GPU/Context.
+        row = 2
+        if row > term_h:
+            return
+        line = (
+            f"\033[{row};1H\033[2K"
+            f"\033[2m  CPU: {snap.cpu_threads}t {snap.cpu_percent:.0f}%"
+            f"    GPU: {snap.gpu_percent}%"
+            f"    RAM: {snap.ram_str}"
+        )
+        if snap.vram_total_gb:
+            line += f"    VRAM: {snap.vram_str}"
+        line += "\033[0m"
+        sys.stdout.write(line)
+        sys.stdout.flush()
+
     def rebuild_welcome(self, tokens: object = None, metrics: dict = None,
                       model_status: str | None = None, resource_info: str = "",
-                      active_agents: int | None = None, model_name: str | None = None):
+                      active_agents: int | None = None, model_name: str | None = None,
+                      session_added: int | None = None, session_removed: int | None = None):
         """Rebuild the welcome panel after terminal resize or clear screen."""
         p = self._welcome_params
         if not p:
@@ -1514,11 +1947,15 @@ class NexusTerminalRenderer:
         actual_tokens = tokens if tokens is not None else p.get("tokens")
         actual_metrics = metrics if metrics is not None else p.get("metrics")
         actual_active = active_agents if active_agents is not None else p.get("active_agents", 0)
+        actual_added = session_added if session_added is not None else p.get("session_added", 0)
+        actual_removed = session_removed if session_removed is not None else p.get("session_removed", 0)
         self.welcome(
             p["model_name"], p["workspace"], p["version"],
             p.get("provider", "local"), p.get("context_size", 200000),
             actual_tokens, actual_metrics, actual_status, actual_resource,
             active_agents=actual_active,
+            session_added=actual_added,
+            session_removed=actual_removed,
         )
 
     def system_message(self, text: str):
@@ -1534,13 +1971,15 @@ class NexusTerminalRenderer:
             req = self.tokens.current_request
             if req.input_tokens == 0 and req.output_tokens == 0:
                 req = self.tokens.last_request
-            
+
             if req.input_tokens > 0 or req.output_tokens > 0:
                 parts = []
                 if req.input_tokens > 0:
-                    parts.append(f"In: {req.input_tokens:,}")
+                    parts.append(f"↓ {req.input_tokens:,}")
                 if req.output_tokens > 0:
-                    parts.append(f"Out: {req.output_tokens:,}")
+                    parts.append(f"↑ {req.output_tokens:,}")
+                if req.lines_added or req.lines_removed:
+                    parts.append(f"+{req.lines_added} -{req.lines_removed}")
                 if parts:
                     return f"  [dim]({' | '.join(parts)})[/dim]"
         return ""
@@ -1634,6 +2073,12 @@ class NexusTerminalRenderer:
         sys.stdout.write(clear_screen())
         sys.stdout.flush()
         self.frame_diff.reset()
+        # Panel is no longer on screen — stop sampling.
+        try:
+            if getattr(self, "_resource_monitor", None):
+                self._resource_monitor.unsubscribe()
+        except (RuntimeError, OSError):
+            pass
         if self._is_fullscreen:
             self._render_fullscreen()
         else:
@@ -1643,6 +2088,13 @@ class NexusTerminalRenderer:
         self._reset_scroll_region()
         self.spinner.stop()
         self.exit_fullscreen()
+        # Stop the per-second resource sampler — we won't be rendering
+        # any more panels this session.
+        try:
+            if getattr(self, "_resource_monitor", None):
+                self._resource_monitor.unsubscribe()
+        except (RuntimeError, OSError):
+            pass
 
     def print(self, text: str):
         self.console.print(text)
@@ -1674,6 +2126,31 @@ class NexusTerminalRenderer:
             self.transcript.toggle_collapsed(self._last_tool_call_id)
         if self._is_fullscreen:
             self._render_fullscreen()
+
+    # ── Agent State ───────────────────────────────────────────────────
+
+    def update_agent_state(self, state: str, detail: str = "", iteration: int = 0):
+        """Update the agent state indicator in the dashboard.
+
+        Called by the event handler as agent events fire.
+        """
+        self.agent_state.set_state(state, detail, iteration)
+
+    # ── Notifications ──────────────────────────────────────────────────
+
+    def show_notification(self, text: str, style: str = "info", duration: float = 4.0):
+        """Push a toast notification.  Rendered at the top of the transcript
+        area, auto-expires after *duration* seconds.
+
+        Styles: ``info``, ``success``, ``warning``, ``error``.
+        """
+        self.notifications.push(text, style, duration)
+
+    # ── Task Inspector ─────────────────────────────────────────────────
+
+    def wire_task_graph(self, graph: Any) -> None:
+        """Connect the task inspector to a live TaskGraph instance."""
+        self.task_inspector.set_task_graph(graph)
 
     def flush(self):
         """Flush the renderer — called after agent execution."""
@@ -1803,7 +2280,7 @@ class NexusTerminalRenderer:
             if hasattr(self, 'tokens') and self.tokens:
                 req = self.tokens.current_request
                 if req.input_tokens > 0:
-                    token_str = f"  [dim](In: {req.input_tokens:,})[/dim]"
+                    token_str = f"  [dim](↓ {req.input_tokens:,})[/dim]"
             self.console.print(f"[bold]●[/bold]{token_str}", end="")
             sys.stdout.write("\n")
             sys.stdout.flush()

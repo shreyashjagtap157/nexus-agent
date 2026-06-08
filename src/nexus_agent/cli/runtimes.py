@@ -204,6 +204,143 @@ def _check_tpu() -> list[RuntimeInfo]:
     return runtimes
 
 
+def _check_vllm() -> list[RuntimeInfo]:
+    runtimes = []
+    try:
+        import vllm
+        runtimes.append(RuntimeInfo(
+            name="vLLM", provider="vllm",
+            available=True, path=vllm.__file__,
+            description="High-throughput LLM serving with PagedAttention", priority=85,
+        ))
+    except ImportError:
+        pass
+    # Check if vLLM server is running
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://localhost:8000/v1/models", method="GET")
+        urllib.request.urlopen(req, timeout=1)
+        runtimes.append(RuntimeInfo(
+            name="vLLM (running)", provider="vllm",
+            available=True, path="http://localhost:8000",
+            description="vLLM server is active", priority=90,
+        ))
+    except Exception:
+        pass
+    return runtimes
+
+
+def _check_sglang() -> list[RuntimeInfo]:
+    runtimes = []
+    try:
+        import sglang
+        runtimes.append(RuntimeInfo(
+            name="SGLang", provider="sglang",
+            available=True, path=sglang.__file__,
+            description="Structured generation language for LLMs", priority=80,
+        ))
+    except ImportError:
+        pass
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://localhost:30000/v1/models", method="GET")
+        urllib.request.urlopen(req, timeout=1)
+        runtimes.append(RuntimeInfo(
+            name="SGLang (running)", provider="sglang",
+            available=True, path="http://localhost:30000",
+            description="SGLang server is active", priority=85,
+        ))
+    except Exception:
+        pass
+    return runtimes
+
+
+def _check_mlx() -> list[RuntimeInfo]:
+    runtimes = []
+    try:
+        import mlx
+        runtimes.append(RuntimeInfo(
+            name="MLX (Apple Silicon)", provider="mlx",
+            available=True, path=mlx.__file__,
+            description="Apple ML framework by Apple ML Research", priority=75,
+        ))
+    except ImportError:
+        pass
+    try:
+        import mlx_lm
+        runtimes.append(RuntimeInfo(
+            name="MLX LM", provider="mlx",
+            available=True, path=mlx_lm.__file__,
+            description="MLX language model inference", priority=80,
+        ))
+    except ImportError:
+        pass
+    return runtimes
+
+
+def _check_external_servers() -> list[RuntimeInfo]:
+    """Check for running external LLM servers (Ollama, LM Studio, KoboldCpp)."""
+    import urllib.request
+    runtimes = []
+    probes = [
+        ("Ollama", "ollama", "http://localhost:11434/api/tags", "Local LLM server"),
+        ("LM Studio", "lm_studio", "http://localhost:1234/v1/models", "Desktop LLM app with API"),
+        ("KoboldCpp", "koboldcpp", "http://localhost:5001/v1/models", "GGUF inference server"),
+        ("TabbyAPI (ExLlamaV2)", "exllamav2", "http://localhost:5000/v1/models", "ExLlamaV2 inference API"),
+    ]
+    for name, provider, url, desc in probes:
+        try:
+            req = urllib.request.Request(url, method="GET")
+            urllib.request.urlopen(req, timeout=1)
+            runtimes.append(RuntimeInfo(
+                name=f"{name} (running)", provider=provider,
+                available=True, path=url,
+                description=desc, priority=75,
+            ))
+        except Exception:
+            pass
+    # Check if Ollama CLI is installed
+    import shutil
+    if shutil.which("ollama"):
+        runtimes.append(RuntimeInfo(
+            name="Ollama CLI", provider="ollama",
+            available=True, path=shutil.which("ollama") or "",
+            description="Ollama command-line tool", priority=70,
+        ))
+    return runtimes
+
+
+def _check_tensorrt() -> list[RuntimeInfo]:
+    runtimes = []
+    try:
+        import tensorrt_llm
+        runtimes.append(RuntimeInfo(
+            name="TensorRT-LLM", provider="tensorrt_llm",
+            available=True, path=tensorrt_llm.__file__,
+            description="NVIDIA TensorRT for LLM (Docker recommended)", priority=60,
+        ))
+    except ImportError:
+        pass
+    # Check for Docker image
+    import shutil
+    if shutil.which("docker"):
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}", "tensorrt_llm"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                runtimes.append(RuntimeInfo(
+                    name="TensorRT-LLM (Docker)", provider="tensorrt_llm",
+                    available=True, path="docker:tensorrt_llm",
+                    description="TensorRT-LLM Docker image detected", priority=65,
+                ))
+        except Exception:
+            pass
+    return runtimes
+
+
 def scan_runtimes() -> list[RuntimeInfo]:
     """Scan all available runtimes on the system."""
     all_runtimes = []
@@ -213,6 +350,11 @@ def scan_runtimes() -> list[RuntimeInfo]:
     all_runtimes.extend(_check_rocm())
     all_runtimes.extend(_check_openvino())
     all_runtimes.extend(_check_tpu())
+    all_runtimes.extend(_check_vllm())
+    all_runtimes.extend(_check_sglang())
+    all_runtimes.extend(_check_mlx())
+    all_runtimes.extend(_check_external_servers())
+    all_runtimes.extend(_check_tensorrt())
     return sorted(all_runtimes, key=lambda r: (-r.priority, r.name))
 
 

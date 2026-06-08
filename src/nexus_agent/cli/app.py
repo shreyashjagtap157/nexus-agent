@@ -1,6 +1,6 @@
 """NexusAgent CLI — Full-Spectrum Agentic Coding Terminal.
 
-Complete REPL application matching Claude Code's terminal UI while providing
+Complete inline REPL application matching Claude Code's terminal UI while providing
 the full feature map of modern AI coding agents:
 - Autonomous goal execution with Planner/Executor/Orchestrator
 - Multi-step agent loops with reflection and self-healing
@@ -28,7 +28,7 @@ from typing import Any
 from rich.text import Text
 
 from nexus_agent import __version__
-from nexus_agent.cli.command_dispatcher import CommandDispatcherMixin
+from nexus_agent.cli.commands import CommandDispatcherMixin
 from nexus_agent.cli.event_handler import EventHandlerMixin
 from nexus_agent.cli.input_handler import InputHandlerMixin
 from nexus_agent.cli.renderer import (
@@ -39,6 +39,7 @@ from nexus_agent.cli.renderer import (
 )
 from nexus_agent.cli.session_handler import SessionOrchestratorMixin
 from nexus_agent.core.agent import AgentLoop, AgentMode
+from nexus_agent.core.task_graph import TaskGraph
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class NexusApp(
     SessionOrchestratorMixin,
     EventHandlerMixin,
 ):
-    """Main REPL application — matches Claude Code's interaction model."""
+    """Main inline REPL application — matches Claude Code's interaction model."""
 
     def __init__(
         self,
@@ -93,6 +94,7 @@ class NexusApp(
         self._tokens = TokenUsage()
         self.r.tokens = self._tokens
         self._context = ContextBreakdown()
+        self._task_graph: TaskGraph | None = None
         self._metrics = {
             "read_tokens": 0,
             "write_tokens": 0,
@@ -150,11 +152,27 @@ class NexusApp(
             self._cleanup()
 
     def _welcome_update_loop(self):
+        """Heartbeat loop to update the welcome panel with fresh resources
+        and session totals. Runs every second while the app is active.
+        """
+        last_tokens = (0, 0)
+        last_diffs = (0, 0)
         while self._is_running.is_set():
             time.sleep(1.0)
-            if not self._processing:
+            # 1. Tick the per-second resource monitor (CPU/GPU)
+            self.r.tick_resources()
+            # 2. Rebuild the full panel if session totals changed
+            curr_tokens = (self._tokens.total_input, self._tokens.total_output)
+            curr_diffs = (self._tokens.total_added, self._tokens.total_removed)
+            if curr_tokens != last_tokens or curr_diffs != last_diffs:
                 try:
-                    self._rebuild_welcome()
+                    self._rebuild_welcome(
+                        tokens=self._tokens,
+                        session_added=self._tokens.total_added,
+                        session_removed=self._tokens.total_removed,
+                    )
+                    last_tokens = curr_tokens
+                    last_diffs = curr_diffs
                 except Exception:
                     pass
 
@@ -179,6 +197,10 @@ class NexusApp(
             self._metrics,
             active_agents=len(self._sub_agents),
         )
+
+        # Wire the task graph to the inspector if available
+        if self._task_graph is not None:
+            self.r.wire_task_graph(self._task_graph)
 
         effort = self._config.get("agent", {}).get("effort_level", "medium")
         mode = self._current_mode.value
@@ -222,10 +244,17 @@ class NexusApp(
         self.r.close()
         sys.stdout.write("\033[2J\033[H")
         sys.stdout.flush()
+        # Close memory (closes SQLite connections)
+        if self._memory:
+            try:
+                self._memory.close()
+            except Exception:
+                pass
         if self._session_mgr:
             try:
                 self._session_mgr.save_session()
-            except (OSError, ValueError):
+                self._session_mgr.close()
+            except Exception:
                 pass
         if self._engine:
             try:

@@ -2,9 +2,11 @@
 
 from nexus_agent.tools.base import Tool
 from nexus_agent.tools.batch_edit import BatchEditTool
+from nexus_agent.tools.boomerang import BoomerangTool
 from nexus_agent.tools.browser import BrowserTool
 from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
 from nexus_agent.tools.code_intel import CallGraphTool, ImportGraphTool, RenameTool
+from nexus_agent.tools.council import CouncilTool
 from nexus_agent.tools.file_ops import (
     ListDirectoryTool,
     ReadFileTool,
@@ -45,7 +47,9 @@ __all__ = [
     "MemoryTool",
     "RepositoryRAGTool",
     "BatchEditTool",
+    "BoomerangTool",
     "BrowserTool",
+    "CouncilTool",
     "ImportGraphTool",
     "CallGraphTool",
     "RenameTool",

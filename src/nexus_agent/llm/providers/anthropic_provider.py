@@ -20,6 +20,7 @@ from nexus_agent.llm.base import (
     ToolCall,
     ToolDefinition,
 )
+from nexus_agent.llm.retry import with_retry, RetryPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -169,46 +170,56 @@ class AnthropicProvider(LLMProvider):
         payload = self._prepare_payload(messages, tools, temperature, max_tokens, stream=False)
         payload.update(kwargs)
 
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(
-                self._api_url,
-                headers=self._get_headers(),
-                json=payload,
-            )
-            response.raise_for_status()
-            result = response.json()
-
-        # Parse Anthropic output
-        content_blocks = result.get("content", [])
-        text_content = ""
-        tool_calls = None
-
-        for block in content_blocks:
-            if block.get("type") == "text":
-                text_content += block.get("text", "")
-            elif block.get("type") == "tool_use":
-                if tool_calls is None:
-                    tool_calls = []
-                tool_calls.append(ToolCall(
-                    id=block["id"],
-                    name=block["name"],
-                    arguments=block["input"],
-                ))
-
-        stop_reason = result.get("stop_reason")
-        finish_reason = "stop" if stop_reason == "end_turn" else stop_reason
-
-        return LLMResponse(
-            content=text_content or None,
-            tool_calls=tool_calls,
-            finish_reason=finish_reason,
-            usage={
-                "prompt_tokens": result.get("usage", {}).get("input_tokens", 0),
-                "completion_tokens": result.get("usage", {}).get("output_tokens", 0),
-                "total_tokens": result.get("usage", {}).get("input_tokens", 0) + result.get("usage", {}).get("output_tokens", 0),
-            },
-            model=self._model_name,
+        policy = RetryPolicy(
+            max_attempts=3,
+            initial_backoff_s=1.0,
+            max_backoff_s=30.0,
         )
+
+        def _do_request() -> LLMResponse:
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    self._api_url,
+                    headers=self._get_headers(),
+                    json=payload,
+                )
+                response.raise_for_status()
+                result = response.json()
+
+            # Parse Anthropic output
+            content_blocks = result.get("content", [])
+            text_content = ""
+            tool_calls = None
+
+            for block in content_blocks:
+                if block.get("type") == "text":
+                    text_content += block.get("text", "")
+                elif block.get("type") == "tool_use":
+                    if tool_calls is None:
+                        tool_calls = []
+                    tool_calls.append(ToolCall(
+                        id=block["id"],
+                        name=block["name"],
+                        arguments=block["input"],
+                    ))
+
+            stop_reason = result.get("stop_reason")
+            finish_reason = "stop" if stop_reason == "end_turn" else stop_reason
+
+            return LLMResponse(
+                content=text_content or None,
+                tool_calls=tool_calls,
+                finish_reason=finish_reason,
+                usage={
+                    "prompt_tokens": result.get("usage", {}).get("input_tokens", 0),
+                    "completion_tokens": result.get("usage", {}).get("output_tokens", 0),
+                    "total_tokens": result.get("usage", {}).get("input_tokens", 0) + result.get("usage", {}).get("output_tokens", 0),
+                },
+                model=self._model_name,
+            )
+
+        response, stats = with_retry(_do_request, policy=policy)
+        return response
 
     def chat_completion_stream(
         self,

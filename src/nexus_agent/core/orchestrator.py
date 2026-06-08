@@ -1,10 +1,13 @@
 """Multi-Agent Orchestrator — Coordinates specialized sub-agents.
 
-Orchestrates sequential planning, user approvals, execution, and verification
-using Planner and Executor sub-agents (inspired by jules/antigravity patterns).
+Implements the **Boomerang Tasks** pattern (inspired by Roo Code):
+- Decompose high-level goals into sub-tasks
+- Delegate sub-tasks to isolated AgentLoop instances ("throw")
+- Collect results back into the orchestrator ("boomerang return")
+- Integrate sub-results into the final output
 
-Adds Phase 9 state-of-the-art fully autonomous goal execution using task graphs,
-DevOps pipelines, and parallel multi-agent debates.
+Also orchestrates sequential planning, user approvals, execution, and
+verification using Planner and Executor sub-agents.
 """
 
 from __future__ import annotations
@@ -13,10 +16,11 @@ import logging
 import os
 import uuid
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from nexus_agent.core.agent import AgentEvent, AgentState
+from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode, AgentState
 from nexus_agent.core.debate import DebateEngine
 from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.executor import Executor
@@ -27,13 +31,48 @@ from nexus_agent.llm.base import LLMProvider
 logger = logging.getLogger(__name__)
 
 
+# ── Boomerang Task Types ────────────────────────────────────────────
+
+
+@dataclass
+class BoomerangSubTask:
+    """A single sub-task that can be delegated to a sub-agent.
+
+    The "boomerang" metaphor:
+    1. **Launch:** The orchestrator defines a focused sub-goal and "throws" it
+       to an isolated AgentLoop with a subset of tools.
+    2. **Return:** The sub-agent executes and sends back a structured result.
+    3. **Integrate:** The orchestrator collects results and integrates them.
+    """
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    description: str = ""
+    context: str = ""
+    status: str = "pending"  # pending | running | completed | failed
+    result: str = ""
+    error: str | None = None
+    tool_names: list[str] | None = None  # Subset of tools to expose (None = all)
+    effort_level: str = "low"
+    max_iterations: int = 15
+
+
+@dataclass
+class BoomerangResult:
+    """Aggregated result of a boomerang task execution."""
+    success: bool = True
+    subtask_results: list[dict[str, Any]] = field(default_factory=list)
+    summary: str = ""
+    total_iterations: int = 0
+
+
 class Orchestrator:
-    """Multi-Agent Orchestrator.
+    """Multi-Agent Orchestrator with Boomerang Task delegation.
 
     Coordinates specialized sub-agents:
     1. Spawn Planner to generate a technical plan (read-only).
     2. Prompt for user feedback or approval (gated).
     3. Spawn Executor to write code, test, and verify.
+    4. **Boomerang Tasks**: Decompose complex goals into sub-tasks,
+       delegate each to an isolated AgentLoop, and collect results.
     """
 
     def __init__(
@@ -62,6 +101,274 @@ class Orchestrator:
 
         self.planner = Planner(provider, tools, workspace=self.workspace, **agent_kwargs)
         self.executor = Executor(provider, tools, workspace=self.workspace, **agent_kwargs)
+
+    # ── Boomerang Task Public API ──────────────────────────────────
+
+    def delegate_subtask(
+        self,
+        subtask: BoomerangSubTask,
+        tools: list[Any] | None = None,
+    ) -> Iterator[AgentEvent]:
+        """Delegate a single sub-task to an isolated AgentLoop.
+
+        The sub-agent runs with its own conversation context, a focused
+        system prompt, and an optional subset of tools. When it finishes,
+        the result is captured and "boomerangs" back to the orchestrator.
+
+        Args:
+            subtask: The sub-task definition (description, context, tool subset).
+            tools: Optional tool override. If None, uses the orchestrator's tools.
+
+        Yields:
+            AgentEvent stream of the delegated execution.
+        """
+        # Select a focused subset of tools for this sub-task
+        sub_tools = tools or self.tools
+        if subtask.tool_names is not None:
+            sub_tools = [t for t in sub_tools if t.name in subtask.tool_names]
+
+        # Build a focused system prompt for the sub-agent
+        system_prompt = (
+            f"You are a focused sub-agent working on a specific task.\n"
+            f"## Objective\n{subtask.description}\n\n"
+            f"## Context\n{subtask.context}\n\n"
+            f"## Rules\n"
+            f"1. Focus exclusively on this objective. Do not go out of scope.\n"
+            f"2. When you have completed the task, clearly state 'TASK COMPLETE' "
+            f"and provide a summary of what was done.\n"
+            f"3. If you encounter an error you cannot resolve, state 'TASK FAILED' "
+            f"and explain the error.\n"
+        )
+
+        # Create an isolated AgentLoop for this sub-task
+        cfg = AgentLoopConfig(
+            mode=AgentMode.BUILD,
+            max_iterations=subtask.max_iterations,
+            system_prompt_extra=system_prompt,
+            workspace=self.workspace,
+        )
+        sub_agent = AgentLoop(
+            provider=self.provider,
+            tools=sub_tools,
+            config=cfg,
+        )
+
+        subtask.status = "running"
+        yield AgentEvent(
+            type="state_change",
+            data=f"delegating_subtask:{subtask.id}",
+        )
+        yield AgentEvent(
+            type="content",
+            data=f"[magenta]  Boomerang → Sub-task: {subtask.description[:80]}...[/magenta]\n",
+        )
+
+        collected_output = ""
+        first_chunk = True
+        try:
+            for event in sub_agent.run_stream(subtask.description):
+                # Capture the agent's output for the result
+                if event.type.value == "content_chunk":
+                    collected_output += event.data
+                elif event.type.value == "content_complete":
+                    collected_output = event.data
+                elif event.type.value == "error":
+                    subtask.status = "failed"
+                    subtask.error = str(event.data)
+                yield event
+                first_chunk = False
+
+            # Check if the sub-agent signaled completion or failure
+            if subtask.status != "failed":
+                if "TASK FAILED" in collected_output.upper():
+                    subtask.status = "failed"
+                    subtask.error = "Sub-agent reported failure: " + collected_output[-500:]
+                elif "TASK COMPLETE" in collected_output.upper():
+                    subtask.status = "completed"
+                else:
+                    # Assume success if no failure signal
+                    subtask.status = "completed"
+
+            subtask.result = collected_output
+        except (RuntimeError, ValueError, OSError) as e:
+            subtask.status = "failed"
+            subtask.error = str(e)
+            yield AgentEvent(type="error", data=f"Sub-task {subtask.id} failed: {e}")
+
+        # Boomerang result back
+        status_icon = "✅" if subtask.status == "completed" else "❌"
+        yield AgentEvent(
+            type="content",
+            data=f"[cyan]  ← Boomerang returned ({status_icon} {subtask.status})\n"
+            f"     Sub-task: {subtask.description[:100]}[/cyan]\n",
+        )
+
+    def run_boomerang(self, goal: str) -> Iterator[AgentEvent]:
+        """Decompose a complex goal into sub-tasks using the planner,
+        then delegate each sub-task via ``delegate_subtask`` and collect results.
+
+        This implements the full Boomerang pattern:
+        1. The orchestrator plans the decomposition
+        2. Each sub-task is "thrown" to an isolated AgentLoop
+        3. Results "boomerang" back with structured output
+        4. The orchestrator integrates results into a final summary
+
+        Args:
+            goal: The high-level goal to decompose and execute.
+
+        Yields:
+            AgentEvent stream.
+        """
+        yield AgentEvent(type="state_change", data="planning")
+        yield AgentEvent(
+            type="content",
+            data="[bold magenta]◆ Boomerang: Decomposing goal into sub-tasks...[/bold magenta]\n",
+        )
+
+        # 1. Use the planner to decompose the goal
+        decomposition_prompt = (
+            f"Analyze the following goal and break it into 3-8 independent, "
+            f"focused sub-tasks that can be executed in parallel or sequence.\n\n"
+            f"Goal: {goal}\n\n"
+            f"For each sub-task, provide:\n"
+            f"1. A one-line description\n"
+            f"2. The specific context needed\n"
+            f"3. Which tool categories are needed (read/write/shell/search)\n\n"
+            f"Format as a numbered list. Each sub-task must be self-contained."
+        )
+
+        plan = ""
+        for event in self.planner.plan(decomposition_prompt):
+            yield event
+            if event.type.value == "content_chunk":
+                plan += event.data
+            elif event.type.value == "content_complete":
+                plan = event.data
+
+        if not plan:
+            yield AgentEvent(type="error", data="Failed to decompose goal into sub-tasks.")
+            return
+
+        # 2. Parse sub-tasks from the plan (numbered list format)
+        subtasks = self._parse_subtasks(plan)
+        if not subtasks:
+            # Fall back: execute the goal as a single sub-task
+            subtasks = [BoomerangSubTask(description=goal, context=plan)]
+
+        yield AgentEvent(
+            type="content",
+            data=f"[green]  Decomposed into {len(subtasks)} sub-tasks[/green]\n",
+        )
+
+        # 3. Execute each sub-task (sequential order for consistency)
+        results: list[dict[str, Any]] = []
+        total_iterations = 0
+        all_success = True
+
+        for i, subtask in enumerate(subtasks):
+            yield AgentEvent(
+                type="content",
+                data=f"\n[bold]--- Sub-task {i + 1}/{len(subtasks)} ---[/bold]\n",
+            )
+
+            # Collect events from the delegated sub-task
+            for event in self.delegate_subtask(subtask):
+                yield event
+                if event.type.value == "content_chunk":
+                    pass  # Already captured in delegate_subtask
+
+            results.append({
+                "id": subtask.id,
+                "description": subtask.description,
+                "status": subtask.status,
+                "result": subtask.result,
+                "error": subtask.error,
+            })
+
+            if subtask.status != "completed":
+                all_success = False
+
+            # Estimate iteration count from result length
+            total_iterations += max(1, len(subtask.result) // 500)
+
+        # 4. Aggregate summary
+        completed = sum(1 for r in results if r["status"] == "completed")
+        failed = sum(1 for r in results if r["status"] == "failed")
+
+        yield AgentEvent(
+            type="content",
+            data=(
+                f"\n[bold]🎯 Boomerang Complete:[/bold] {completed}/{len(subtasks)} sub-tasks succeeded"
+                + (f", {failed} failed" if failed else "")
+                + "\n"
+            ),
+        )
+
+        boomerang_result = BoomerangResult(
+            success=all_success,
+            subtask_results=results,
+            summary=f"Executed {len(subtasks)} sub-tasks: {completed} completed, {failed} failed.",
+            total_iterations=total_iterations,
+        )
+
+        yield AgentEvent(type="state_change", data=AgentState.DONE)
+        yield AgentEvent(type="done", data={
+            "type": "boomerang",
+            "success": boomerang_result.success,
+            "summary": boomerang_result.summary,
+            "subtasks": results,
+        })
+
+    def _parse_subtasks(self, plan: str) -> list[BoomerangSubTask]:
+        """Parse numbered sub-tasks from a planner's markdown output.
+
+        Looks for patterns like:
+        1. Description of the task
+           Context: additional context here
+           Tools: read
+        """
+        import re
+
+        subtasks: list[BoomerangSubTask] = []
+        lines = plan.split("\n")
+
+        current_desc = []
+        current_context = []
+
+        for line in lines:
+            # Match numbered list items like "1. ..." or "1) ..."
+            numbered_match = re.match(r"^\s*\d+[\.\)]\s+(.+)", line)
+            if numbered_match:
+                # Save previous sub-task if we have one
+                if current_desc:
+                    desc = " ".join(current_desc).strip()
+                    if desc:
+                        subtasks.append(BoomerangSubTask(
+                            description=desc,
+                            context="\n".join(current_context).strip(),
+                        ))
+                current_desc = [numbered_match.group(1)]
+                current_context = []
+            elif line.strip().lower().startswith("context:") or line.strip().lower().startswith("tools:"):
+                current_context.append(line.strip())
+            elif current_desc:
+                # Continuation of current sub-task description
+                stripped = line.strip()
+                if stripped and not stripped.startswith("#") and not stripped.startswith("```"):
+                    current_desc.append(stripped)
+
+        # Don't forget the last sub-task
+        if current_desc:
+            desc = " ".join(current_desc).strip()
+            if desc:
+                subtasks.append(BoomerangSubTask(
+                    description=desc,
+                    context="\n".join(current_context).strip(),
+                ))
+
+        return subtasks
+
+    # ── Original Methods ───────────────────────────────────────────
 
     def run_task(self, task: str, plan_only: bool = False) -> Iterator[AgentEvent]:
         """Orchestrate a high-level task.

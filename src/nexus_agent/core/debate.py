@@ -3,6 +3,10 @@ Multi-Agent Debate & Consensus Verification — Expert critique system.
 
 Orchestrates sequential and parallel debates between four specialized reviewer agents
 (Security, Performance, Correctness, and Style) to build consensus on code quality.
+
+Also provides an **Agent Council** for strategic decision-making: convenes a panel
+of expert personas, collects opinions, runs iterative debate rounds, and produces
+a final vote with consensus summary.
 """
 
 from __future__ import annotations
@@ -10,8 +14,10 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from typing import Any
 
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
@@ -388,3 +394,342 @@ class DebateEngine:
             verdict.reworked_code = current_changes
 
         return verdict or DebateVerdict(50, False, {}, [], "No debate loops conducted.", [])
+
+
+# ── Agent Council ──────────────────────────────────────────────────────────
+
+@dataclass
+class CouncilMember:
+    """An expert persona on the agent council."""
+    name: str
+    role: str
+    system_prompt: str
+    vote_weight: float = 1.0
+
+
+@dataclass
+class CouncilVote:
+    """Individual vote from a council member."""
+    member_name: str
+    vote: str  # "approve", "abstain", "reject"
+    reasoning: str
+    confidence: float  # 0.0–1.0
+
+
+@dataclass
+class CouncilDecision:
+    """Final decision produced by the council."""
+    topic: str
+    votes: list[CouncilVote]
+    consensus: str  # "approved", "rejected", "split"
+    summary: str
+    confidence: float
+    majority: float
+    duration: float
+
+
+COUNCIL_MEMBERS: list[CouncilMember] = [
+    CouncilMember(
+        name="Strategist",
+        role="product_strategy",
+        system_prompt=(
+            "You are a product strategist. Evaluate proposals for market fit, "
+            "user value, and strategic alignment. Be concise. Output JSON with "
+            "keys: vote ('approve'/'abstain'/'reject'), reasoning, confidence (0-1)."
+        ),
+        vote_weight=1.2,
+    ),
+    CouncilMember(
+        name="Architect",
+        role="technical_architecture",
+        system_prompt=(
+            "You are a senior software architect. Evaluate proposals for "
+            "technical soundness, scalability, and maintainability. Consider "
+            "trade-offs and technical debt. Output JSON with keys: vote, reasoning, confidence."
+        ),
+        vote_weight=1.2,
+    ),
+    CouncilMember(
+        name="Security",
+        role="security_audit",
+        system_prompt=(
+            "You are a security expert. Evaluate proposals for security "
+            "implications, threat surface, and compliance. Be paranoid. "
+            "Output JSON with keys: vote, reasoning, confidence."
+        ),
+        vote_weight=1.1,
+    ),
+    CouncilMember(
+        name="Pragmatist",
+        role="execution_feasibility",
+        system_prompt=(
+            "You are a pragmatic engineer focused on execution feasibility. "
+            "Evaluate proposals for implementation complexity, timeline, and "
+            "resource constraints. Output JSON with keys: vote, reasoning, confidence."
+        ),
+        vote_weight=1.0,
+    ),
+    CouncilMember(
+        name="UXAdvocate",
+        role="user_experience",
+        system_prompt=(
+            "You are a user experience advocate. Evaluate proposals for "
+            "usability, accessibility, and developer experience. Consider "
+            "the end-user perspective. Output JSON with keys: vote, reasoning, confidence."
+        ),
+        vote_weight=0.9,
+    ),
+]
+
+
+class Council:
+    """Agent Council for strategic decision-making via multi-perspective debate.
+
+    Usage:
+        council = Council(provider=llm_provider)
+        decision = council.convene(topic="Should we migrate to SQLAlchemy 2.0?",
+                                    context="Current ORM is raw SQL...")
+    """
+
+    def __init__(
+        self,
+        provider: LLMProvider | None = None,
+        members: list[CouncilMember] | None = None,
+        approval_threshold: float = 0.6,
+    ):
+        self.provider = provider
+        self.members = members or COUNCIL_MEMBERS
+        self.approval_threshold = approval_threshold
+
+    def convene(
+        self,
+        topic: str,
+        context: str = "",
+        include_rebuttals: bool = False,
+    ) -> CouncilDecision:
+        """Convene the council: collect votes from all members.
+
+        Args:
+            topic: The proposal or question to decide on.
+            context: Supporting context (background, constraints, options).
+            include_rebuttals: If True, run a second round where members
+                see each other's votes and can change their position.
+
+        Returns:
+            CouncilDecision with consolidated result.
+        """
+        start = time.time()
+
+        round1_votes = self._collect_votes(topic, context)
+
+        if include_rebuttals and self.provider:
+            round2_votes = self._rebuttal_round(topic, context, round1_votes)
+            all_votes = round2_votes
+        else:
+            all_votes = round1_votes
+
+        decision = self._tally(topic, all_votes, time.time() - start)
+        return decision
+
+    def _collect_votes(self, topic: str, context: str) -> list[CouncilVote]:
+        """Collect independent votes from all council members."""
+        votes: list[CouncilVote] = []
+
+        if not self.provider:
+            return self._heuristic_votes(topic)
+
+        full_context = f"Topic: {topic}\n\nContext:\n{context}" if context else f"Topic: {topic}"
+
+        with ThreadPoolExecutor(max_workers=len(self.members)) as executor:
+            futures = {}
+            for member in self.members:
+                future = executor.submit(self._ask_member, member, full_context)
+                futures[future] = member
+
+            for future in as_completed(futures):
+                try:
+                    vote = future.result()
+                    if vote:
+                        votes.append(vote)
+                except Exception as e:
+                    member = futures[future]
+                    logger.warning("Council member '%s' failed: %s", member.name, e)
+                    votes.append(CouncilVote(
+                        member_name=member.name,
+                        vote="abstain",
+                        reasoning=f"Error: {e}",
+                        confidence=0.0,
+                    ))
+
+        return votes
+
+    def _ask_member(self, member: CouncilMember, context: str) -> CouncilVote | None:
+        """Ask a single council member for their vote."""
+        if not self.provider:
+            return None
+        try:
+            messages = [
+                Message(role=Role.SYSTEM, content=member.system_prompt),
+                Message(role=Role.USER, content=context),
+            ]
+            response = self.provider.chat_completion(
+                messages=messages,
+                temperature=0.2,
+                max_tokens=512,
+            )
+            content = (response.content or "").strip()
+            if "```" in content:
+                match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL)
+                if match:
+                    content = match.group(1).strip()
+
+            start_idx = content.find("{")
+            end_idx = content.rfind("}") + 1
+            if start_idx >= 0 and end_idx > start_idx:
+                data = json.loads(content[start_idx:end_idx])
+            else:
+                data = json.loads(content)
+
+            vote_str = str(data.get("vote", "abstain")).lower()
+            if vote_str not in ("approve", "abstain", "reject"):
+                vote_str = "abstain"
+
+            return CouncilVote(
+                member_name=member.name,
+                vote=vote_str,
+                reasoning=str(data.get("reasoning", "")),
+                confidence=min(1.0, max(0.0, float(data.get("confidence", 0.5)))),
+            )
+        except Exception as e:
+            logger.debug("Member '%s' vote parse failed: %s", member.name, e)
+            return CouncilVote(
+                member_name=member.name,
+                vote="abstain",
+                reasoning=f"Failed to parse response: {e}",
+                confidence=0.0,
+            )
+
+    def _rebuttal_round(
+        self,
+        topic: str,
+        context: str,
+        round1_votes: list[CouncilVote],
+    ) -> list[CouncilVote]:
+        """Second round where members see each other's votes and may change."""
+        if not self.provider or len(round1_votes) < 2:
+            return round1_votes
+
+        summary_lines = ["\nRound 1 votes:"]
+        for v in round1_votes:
+            summary_lines.append(f"- {v.member_name}: {v.vote} (confidence {v.confidence:.1f}) — {v.reasoning[:200]}")
+        round1_summary = "\n".join(summary_lines)
+
+        round2_votes: list[CouncilVote] = []
+        for member in self.members:
+            existing = next((v for v in round1_votes if v.member_name == member.name), None)
+            rebuttal_prompt = (
+                f"Topic: {topic}\n"
+                f"Context: {context}\n\n"
+                f"{round1_summary}\n\n"
+                f"Your initial vote was: {existing.vote if existing else 'N/A'}\n"
+                "After seeing all arguments, do you maintain your position or change it? "
+                "Output JSON with keys: vote, reasoning, confidence."
+            )
+            try:
+                messages = [
+                    Message(role=Role.SYSTEM, content=member.system_prompt),
+                    Message(role=Role.USER, content=rebuttal_prompt),
+                ]
+                response = self.provider.chat_completion(
+                    messages=messages, temperature=0.2, max_tokens=512,
+                )
+                content = (response.content or "").strip()
+                if "```" in content:
+                    match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL)
+                    if match:
+                        content = match.group(1).strip()
+                start_idx = content.find("{")
+                end_idx = content.rfind("}") + 1
+                if start_idx >= 0 and end_idx > start_idx:
+                    data = json.loads(content[start_idx:end_idx])
+                else:
+                    data = json.loads(content)
+                vote_str = str(data.get("vote", "abstain")).lower()
+                if vote_str not in ("approve", "abstain", "reject"):
+                    vote_str = "abstain"
+                round2_votes.append(CouncilVote(
+                    member_name=member.name,
+                    vote=vote_str,
+                    reasoning=str(data.get("reasoning", existing.reasoning if existing else "")),
+                    confidence=min(1.0, max(0.0, float(data.get("confidence", existing.confidence if existing else 0.5)))),
+                ))
+            except Exception as e:
+                round2_votes.append(existing or CouncilVote(
+                    member_name=member.name, vote="abstain", reasoning=f"Rebuttal failed: {e}", confidence=0.0,
+                ))
+
+        return round2_votes
+
+    def _tally(self, topic: str, votes: list[CouncilVote], duration: float) -> CouncilDecision:
+        """Tally votes and produce final decision."""
+        if not votes:
+            return CouncilDecision(
+                topic=topic, votes=[], consensus="rejected",
+                summary="No votes collected.", confidence=0.0,
+                majority=0.0, duration=duration,
+            )
+
+        weighted = {"approve": 0.0, "abstain": 0.0, "reject": 0.0}
+        total_weight = 0.0
+
+        for v in votes:
+            member = next((m for m in self.members if m.name == v.member_name), None)
+            w = (member.vote_weight if member else 1.0) * v.confidence
+            weighted[v.vote] += w
+            total_weight += w
+
+        approve_pct = weighted["approve"] / total_weight if total_weight > 0 else 0.0
+        reject_pct = weighted["reject"] / total_weight if total_weight > 0 else 0.0
+
+        if approve_pct >= self.approval_threshold:
+            consensus = "approved"
+        elif reject_pct >= self.approval_threshold:
+            consensus = "rejected"
+        else:
+            consensus = "split"
+
+        summary_lines = [
+            f"Council Decision: {consensus.upper()}",
+            f"Approve: {approve_pct:.0%}  |  Reject: {reject_pct:.0%}  |  Abstain: {weighted['abstain'] / total_weight:.0%}" if total_weight > 0 else "",
+            "",
+        ]
+        for v in votes:
+            icon = {"approve": "+1", "abstain": "(_)", "reject": "-1"}.get(v.vote, "?")
+            summary_lines.append(f"- {icon} {v.member_name}: {v.reasoning[:120]}")
+
+        return CouncilDecision(
+            topic=topic,
+            votes=votes,
+            consensus=consensus,
+            summary="\n".join(summary_lines),
+            confidence=approve_pct if consensus == "approved" else (1.0 - reject_pct),
+            majority=approve_pct,
+            duration=duration,
+        )
+
+    def _heuristic_votes(self, topic: str) -> list[CouncilVote]:
+        """Fallback rule-based voting when no LLM is available."""
+        t = topic.lower()
+        votes: list[CouncilVote] = []
+
+        for member in self.members:
+            if member.role == "product_strategy" and ("migrate" in t or "refactor" in t):
+                votes.append(CouncilVote(member.name, "approve", "Strategic value in modernization.", 0.6))
+            elif member.role == "security_audit" and ("migrate" in t or "upgrade" in t):
+                votes.append(CouncilVote(member.name, "approve", "Newer versions have fewer vulnerabilities.", 0.7))
+            elif member.role == "execution_feasibility" and ("large" in t or "complex" in t):
+                votes.append(CouncilVote(member.name, "abstain", "Need more implementation detail.", 0.4))
+            else:
+                votes.append(CouncilVote(member.name, "approve", "Heuristic: default approve.", 0.5))
+
+        return votes

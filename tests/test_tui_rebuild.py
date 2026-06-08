@@ -22,17 +22,19 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_welcome_dashboard_rendering_wide(self):
         """Assert that the dashboard renders correctly on a normal (wide) screen."""
         stdout_mock = MagicMock()
+        # Mock ResourceMonitor so it doesn't bypass psutil patches
+        mock_mon = MagicMock()
+        mock_mon.snapshot.return_value = MagicMock(
+            cpu_percent=12.5, cpu_threads=4,
+            ram_str="4.0G/16G", gpu_percent=35, vram_str="",
+        )
         with patch("sys.stdout.write", stdout_mock), \
              patch("shutil.get_terminal_size", return_value=MagicMock(columns=80, lines=24)), \
-             patch("psutil.cpu_percent", return_value=12.5), \
-             patch("psutil.virtual_memory", return_value=MagicMock(used=4*1024**3, total=16*1024**3)), \
+             patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon), \
              patch("subprocess.run") as mock_run:
             
-            # Mock nvidia-smi and git diff
-            mock_run.side_effect = [
-                MagicMock(returncode=0, stdout="35\n"),  # GPU %
-                MagicMock(returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n")  # Git diff
-            ]
+            # Mock git diff
+            mock_run.return_value = MagicMock(returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n")
 
             self.renderer.welcome(
                 model_name="Llama-3-8B-Q4",
@@ -51,27 +53,29 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             # Ensure model name, CPU/GPU stats, RAM stats, token IO, context, git diff and processes are present
             self.assertIn("Llama-3-8B-Q4", written_data)
             self.assertIn("Mem: 4.0G/16G", written_data)
-            self.assertIn("CPU: 4 threads", written_data)
+            self.assertIn("CPU: 4t", written_data)
             self.assertIn("GPU: 35%", written_data)
             self.assertIn("Context: 200/8192", written_data)
-            self.assertIn("Tokens In: 120", written_data)
-            self.assertIn("Out: 80", written_data)
+            self.assertIn("Tokens ↓120", written_data)
+            self.assertIn("↑80", written_data)
             self.assertIn("ΔLines: +14/-6", written_data)
             self.assertIn("Processes (agents): 2", written_data)
 
     def test_welcome_dashboard_rendering_narrow(self):
         """Assert that the dashboard scales down to 55 cols on a narrow screen."""
         stdout_mock = MagicMock()
+        # Mock ResourceMonitor so it doesn't bypass psutil patches
+        mock_mon = MagicMock()
+        mock_mon.snapshot.return_value = MagicMock(
+            cpu_percent=5.0, cpu_threads=8,
+            ram_str="2.0G/8G", gpu_percent=0, vram_str="",
+        )
         with patch("sys.stdout.write", stdout_mock), \
              patch("shutil.get_terminal_size", return_value=MagicMock(columns=60, lines=24)), \
-             patch("psutil.cpu_percent", return_value=5.0), \
-             patch("psutil.virtual_memory", return_value=MagicMock(used=2*1024**3, total=8*1024**3)), \
+             patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon), \
              patch("subprocess.run") as mock_run:
             
-            mock_run.side_effect = [
-                MagicMock(returncode=1),  # GPU query fails/not available
-                MagicMock(returncode=0, stdout="0\t0\tfile.py\n")
-            ]
+            mock_run.return_value = MagicMock(returncode=0, stdout="0\t0\tfile.py\n")
 
             self.renderer.welcome(
                 model_name="Nemotron-4B",
@@ -90,6 +94,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             self.assertIn("GPU: 0%", written_data)
             self.assertIn("ΔLines: +0/-0", written_data)
             self.assertIn("Processes (agents): 0", written_data)
+            self.assertIn("CPU: 4t", written_data)
             
             # Confirm box dimensions: lines should start with ┌ and have 55 ─ characters
             self.assertIn("┌" + "─" * 55 + "┐", written_data)
@@ -110,6 +115,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         mock_agent.disabled_tools = set()
 
         app = NexusApp(quiet=True)
+        self.addCleanup(app._cleanup)
         app._agent = mock_agent
 
         # Call disable
@@ -137,6 +143,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         mock_agent.disabled_tools = set()
 
         app = NexusApp(quiet=True)
+        self.addCleanup(app._cleanup)
         app._agent = mock_agent
 
         # Mock _interactive_menu to simulate selecting "shell" and then exiting
@@ -148,6 +155,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_unload_commands(self):
         """Verify /unload and /model unload explicitly release engine resources."""
         app = NexusApp(quiet=True)
+        self.addCleanup(app._cleanup)
         mock_engine = MagicMock()
         app._engine = mock_engine
         mock_agent = MagicMock()
@@ -165,6 +173,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_model_unload_subcommand(self):
         """Verify /model unload clears the model state and engine."""
         app = NexusApp(quiet=True)
+        self.addCleanup(app._cleanup)
         mock_engine = MagicMock()
         app._engine = mock_engine
         mock_agent = MagicMock()
@@ -180,6 +189,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_model_switch_with_spaces(self):
         """Verify switching to a model whose name contains spaces parses correctly."""
         app = NexusApp(quiet=True)
+        self.addCleanup(app._cleanup)
         mock_db = MagicMock()
         mock_db.get_path.return_value = "/mock/model.gguf"
         app._models_db = mock_db
@@ -201,7 +211,8 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         """Verify the session orchestrator resumes the last session by default unless new_session is True."""
         from pathlib import Path
         app = NexusApp(quiet=True, workspace=Path("/mock/workspace"))
-        
+        self.addCleanup(app._cleanup)
+
         # Mock SessionManager
         mock_sess_mgr = MagicMock()
         mock_sess_mgr.get_last_session_for_workspace.return_value = "session-123"
@@ -218,6 +229,8 @@ class TestTuiRebuildFeatures(unittest.TestCase):
              patch("nexus_agent.cli.session_handler.ModelsDB"), \
              patch("nexus_agent.cli.session_handler.AuthStore"), \
              patch("nexus_agent.cli.session_handler.RuntimeManager"), \
+             patch("nexus_agent.tools.browser.BrowserTool"), \
+             patch("nexus_agent.tools.rag_search.RepositoryRAGTool"), \
              patch.object(app, "_init_mcp"), \
              patch.object(app, "_init_skills"), \
              patch.object(app, "_init_engine"):

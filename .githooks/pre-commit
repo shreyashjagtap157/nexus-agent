@@ -1,0 +1,171 @@
+#!/usr/bin/env python
+"""Pre-commit hook: run tests, update audit docs with current results.
+
+Installed via ``git config core.hooksPath .githooks``.
+Aborts the commit if any test fails.
+Updates docs/exhaustive_audit.md and docs/FRESH_AUDIT.md with the
+current test count and verification date, then stages both files.
+
+CI mode (``--from-file <path>``):
+  Parse test output from a pre-existing file instead of running tests.
+  Skips the ``git add`` and exits with code 0 regardless of test count.
+  Designed for use in CI workflows where tests run separately.
+"""
+
+import argparse
+import re
+import subprocess
+import sys
+from datetime import date
+from pathlib import Path
+
+
+def _extract_count(text: str, pattern: str) -> int:
+    """Extract an integer count from text using a regex pattern."""
+    m = re.search(pattern, text)
+    return int(m.group(1)) if m else 0
+
+
+def _parse_summary(output: str) -> tuple[int, int, int]:
+    """Parse pytest -q summary line from combined output."""
+    lines = output.strip().split("\n")
+    summary_line = next(
+        (l for l in reversed(lines) if re.search(r"\d+\.\d+s$", l)),
+        "",
+    )
+    passed = _extract_count(summary_line, r"(\d+)\s+passed")
+    skipped = _extract_count(summary_line, r"(\d+)\s+skipped")
+    failed = _extract_count(summary_line, r"(\d+)\s+failed")
+    return passed, skipped, failed
+
+
+def _update_audit_docs(
+    cwd: Path, passed: int, skipped: int, failed: int, ci_mode: bool = False
+) -> None:
+    """Update audit doc files with test counts and verification date."""
+    today_str = date.today().strftime("%B %d, %Y")
+    label = "verified via CI" if ci_mode else "verified"
+
+    update_paths = [
+        cwd / "docs" / "exhaustive_audit.md",
+        cwd / "docs" / "FRESH_AUDIT.md",
+    ]
+
+    for path in update_paths:
+        if not path.exists():
+            print(f"\u26a0\ufe0f  {path.name} not found, skipping")
+            continue
+
+        content = path.read_text(encoding="utf-8")
+
+        # Update test count line — handles both ``**Tests:**`` and ``Tests:``
+        content = re.sub(
+            r"\*{0,2}Tests:\*{0,2} \d+ passing, \d+ skipped, \d+ failed",
+            f"**Tests:** {passed} passing, {skipped} skipped, {failed} failed",
+            content,
+        )
+
+        # Update Last Verified line — handles both ``**Last Verified:`` and ``Last Verified:``
+        content = re.sub(
+            r"\*{0,2}Last Verified:.*",
+            f"**Last Verified: {today_str} \u2014 full test suite {label}",
+            content,
+        )
+
+        path.write_text(content, encoding="utf-8")
+        print(f"\u2705 Updated {path.name}")
+
+
+def _stage_audit_docs(cwd: Path) -> None:
+    """Stage audit doc files for commit."""
+    update_paths = [
+        cwd / "docs" / "exhaustive_audit.md",
+        cwd / "docs" / "FRESH_AUDIT.md",
+    ]
+    for path in update_paths:
+        if path.exists():
+            subprocess.run(
+                ["git", "add", str(path)], check=False, capture_output=True
+            )
+
+
+def _run_hook(cwd: Path) -> tuple[int, int, int]:
+    """Run pytest and parse results. Exits on test failure or timeout."""
+    print("\u23f3 Running test suite...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=short", "-W", "error::ResourceWarning"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(cwd),
+        )
+    except subprocess.TimeoutExpired:
+        print("\u274c Test suite timed out (120s). Commit aborted.")
+        sys.exit(1)
+
+    if result.returncode != 0:
+        print("\u274c Tests failed. Commit aborted.\n")
+        print(result.stdout)
+        if result.stderr:
+            print(result.stderr)
+        sys.exit(1)
+
+    output = (result.stdout or "") + (result.stderr or "")
+    return _parse_summary(output)
+
+
+def main() -> None:
+    # Ensure UTF-8 output on Windows (cp1252 can't encode checkmarks)
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, LookupError):
+        pass
+
+    parser = argparse.ArgumentParser(
+        description="Pre-commit hook: run tests and update audit docs",
+    )
+    parser.add_argument(
+        "--from-file",
+        metavar="PATH",
+        help="Read pytest -q output from file instead of running tests",
+    )
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="CI mode: skip git add, label audit as 'verified via CI'",
+    )
+    args = parser.parse_args()
+
+    cwd = Path(__file__).resolve().parent.parent
+
+    if args.from_file:
+        # CI mode: parse pre-existing test output
+        output = Path(args.from_file).read_text(encoding="utf-8")
+        passed, skipped, failed = _parse_summary(output)
+        print(
+            f"\u2705 Tests: {passed} passed"
+            f"{f', {skipped} skipped' if skipped else ''}"
+            f"{f', {failed} failed' if failed else ''}"
+        )
+        _update_audit_docs(cwd, passed, skipped, failed, ci_mode=args.ci)
+        print("\u2705 Audit doc update complete")
+        return
+
+    # Normal pre-commit mode: run tests, update docs, stage files
+    passed, skipped, failed = _run_hook(cwd)
+
+    print(
+        f"\u2705 Tests: {passed} passed"
+        f"{f', {skipped} skipped' if skipped else ''}"
+        f"{f', {failed} failed' if failed else ''}"
+    )
+
+    _update_audit_docs(cwd, passed, skipped, failed)
+    _stage_audit_docs(cwd)
+
+    print("\u2705 Pre-commit checks passed")
+
+
+if __name__ == "__main__":
+    main()

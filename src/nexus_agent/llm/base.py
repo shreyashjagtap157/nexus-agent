@@ -158,6 +158,8 @@ class ProviderCapabilities:
     supports_parallel_tool_calls: bool = False
     max_context_length: int = 4096
     max_output_tokens: int = 4096
+    supports_effort_levels: bool = False
+    supported_effort_levels: list[str] = field(default_factory=list)
 
 
 class LLMProvider(ABC):
