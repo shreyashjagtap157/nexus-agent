@@ -133,6 +133,9 @@ class ACPServer:
             elif method == "memory_scores":
                 self._handle_memory_scores(req_id, params)
             
+            elif method == "get_usage":
+                self._handle_get_usage(req_id)
+            
             elif method == "stop":
                 self._running = False
                 self._send_response(req_id, {"status": "stopping"})
@@ -149,10 +152,7 @@ class ACPServer:
     async def _handle_prompt(self, req_id: Any, text: str) -> None:
         """Bridge AgentLoop.run_stream() to ACP events."""
         try:
-            # Use run_stream to capture chunks and thinking events
             for event in self._agent.run_stream(text):
-                # Emit a JSON-RPC notification for each event
-                # AgentEvent has: type (AgentEventType enum), data (Any), timestamp
                 event_type = event.type.value if hasattr(event.type, 'value') else event.type
                 notification = {
                     "jsonrpc": "2.0",
@@ -165,14 +165,44 @@ class ACPServer:
                 sys.stdout.write(json.dumps(notification) + "\n")
                 sys.stdout.flush()
 
-            # Final response
-            # In a real AgentLoop, the final result is the last response.
-            # For simplicity, we just signal completion.
+                # Emit cost_update after content_complete or done events
+                if event_type in ("content_complete", "done"):
+                    self._emit_cost_update()
+
             self._send_response(req_id, {"status": "completed"})
 
         except Exception as e:
             logger.exception(f"ACP Server: Prompt execution failed: {e}")
             self._send_error(req_id, -32603, f"Execution error: {e}")
+
+    def _emit_cost_update(self) -> None:
+        """Emit a cost_update notification with current usage data."""
+        try:
+            if not hasattr(self._agent, "usage_tracker") or self._agent.usage_tracker is None:
+                return
+            usage_tracker = self._agent.usage_tracker
+            summary = usage_tracker.summarize(session_id=self._agent.session_id)
+            cost_data = {
+                "estimated_cost": summary.estimated_cost if hasattr(summary, "estimated_cost") else 0.0,
+                "total_tokens": summary.total_tokens if hasattr(summary, "total_tokens") else 0,
+                "prompt_tokens": summary.prompt_tokens if hasattr(summary, "prompt_tokens") else 0,
+                "completion_tokens": summary.completion_tokens if hasattr(summary, "completion_tokens") else 0,
+                "entries": summary.entries if hasattr(summary, "entries") else 0,
+                "by_model": summary.by_model if hasattr(summary, "by_model") else {},
+                "by_session": summary.by_session if hasattr(summary, "by_session") else {},
+            }
+            cost_notification = {
+                "jsonrpc": "2.0",
+                "method": "event",
+                "params": {
+                    "type": "cost_update",
+                    "data": cost_data,
+                }
+            }
+            sys.stdout.write(json.dumps(cost_notification) + "\n")
+            sys.stdout.flush()
+        except Exception as e:
+            logger.debug(f"Failed to emit cost_update: {e}")
 
     def _get_memory(self):
         """Get the memory manager from the agent."""
@@ -230,6 +260,37 @@ class ACPServer:
             self._send_response(req_id, result)
         except Exception as e:
             self._send_error(req_id, -32001, f"Memory compact failed: {e}")
+
+    def _handle_get_usage(self, req_id: Any) -> None:
+        """Handle get_usage request — return current cost/usage summary."""
+        try:
+            if not hasattr(self._agent, "usage_tracker") or self._agent.usage_tracker is None:
+                self._send_response(req_id, {
+                    "estimated_cost": 0.0,
+                    "total_tokens": 0,
+                    "entries": 0,
+                    "by_model": {},
+                    "by_session": {},
+                })
+                return
+            usage_tracker = self._agent.usage_tracker
+            summary = usage_tracker.summarize(session_id=self._agent.session_id)
+            self._send_response(req_id, {
+                "estimated_cost": summary.estimated_cost if hasattr(summary, "estimated_cost") else 0.0,
+                "total_tokens": summary.total_tokens if hasattr(summary, "total_tokens") else 0,
+                "prompt_tokens": summary.prompt_tokens if hasattr(summary, "prompt_tokens") else 0,
+                "completion_tokens": summary.completion_tokens if hasattr(summary, "completion_tokens") else 0,
+                "entries": summary.entries if hasattr(summary, "entries") else 0,
+                "by_model": summary.by_model if hasattr(summary, "by_model") else {},
+                "by_session": summary.by_session if hasattr(summary, "by_session") else {},
+            })
+        except Exception as e:
+            logger.debug(f"get_usage failed: {e}")
+            self._send_response(req_id, {
+                "estimated_cost": 0.0,
+                "total_tokens": 0,
+                "entries": 0,
+            })
 
     def _handle_memory_scores(self, req_id: Any, params: dict[str, Any]) -> None:
         memory = self._get_memory()

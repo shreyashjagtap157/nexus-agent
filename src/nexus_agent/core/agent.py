@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 import uuid
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
 
 from nexus_agent.core.context import ContextManager
 from nexus_agent.core.self_heal import SelfHealingExecutor
+from nexus_agent.llm.runtime_manager import SmartRouter
 from nexus_agent.llm.base import (
     LLMProvider,
     LLMResponse,
@@ -230,6 +232,7 @@ Current workspace: {workspace}
         config: AgentLoopConfig | None = None,
         self_healing_executor: SelfHealingExecutor | None = None,
         usage_tracker: "UsageTracker | None" = None,
+        smart_router: SmartRouter | None = None,
     ):
         """Initialize the agent loop.
 
@@ -254,6 +257,7 @@ Current workspace: {workspace}
         self.tool_timeout = cfg.tool_timeout
         self.max_input_chars = cfg.max_input_chars
         self.usage_tracker = usage_tracker
+        self.smart_router = smart_router or SmartRouter()
         self._healer = self_healing_executor or SelfHealingExecutor(max_retries=3)
 
         # Effort auto-detection: adjust config based on model capability
@@ -597,6 +601,45 @@ Current workspace: {workspace}
         from nexus_agent.llm.retry import RetryPolicy, with_retry
 
         policy = RetryPolicy(max_attempts=3, initial_backoff_s=1.0, max_backoff_s=30.0)
+
+        # If SmartRouter is configured, use failover chain
+        if hasattr(self, "smart_router") and self.smart_router:
+            providers_to_try = self._get_failover_providers()
+            last_error: Exception | None = None
+
+            for provider_idx, (provider, provider_name) in enumerate(providers_to_try):
+                try:
+                    start_time = time.time()
+                    response, stats = with_retry(
+                        lambda p=provider: p.chat_completion(
+                            messages=self.messages,
+                            tools=self._get_tool_definitions(),
+                            temperature=self.temperature,
+                            max_tokens=self.max_tokens,
+                        ),
+                        policy=policy,
+                        on_retry=lambda attempt, delay, exc: logger.info(
+                            "LLM call retry %d/%d after %.1fs: %s",
+                            attempt, policy.max_attempts, delay, exc,
+                        ),
+                    )
+                    elapsed = time.time() - start_time
+                    self.smart_router.update_latency(provider_name, elapsed)
+                    if stats.attempts > 1:
+                        logger.info("LLM call succeeded after %d attempts (%.1fs total sleep)",
+                                    stats.attempts, stats.total_sleep_s)
+                    self._record_usage(response)
+                    return response
+                except (RuntimeError, ValueError, OSError, ConnectionError, TimeoutError) as e:
+                    last_error = e
+                    logger.warning(f"Provider {provider_name} failed, trying next: {e}")
+                    self.smart_router.update_latency(provider_name, 999.0)
+                    continue
+
+            # All providers failed
+            raise RuntimeError(f"All providers failed. Last error: {last_error}") from last_error
+
+        # Original single-provider path
         response, stats = with_retry(
             lambda: self.provider.chat_completion(
                 messages=self.messages,
@@ -615,6 +658,72 @@ Current workspace: {workspace}
                         stats.attempts, stats.total_sleep_s)
         self._record_usage(response)
         return response
+
+    def _get_failover_providers(self) -> list[tuple[LLMProvider, str]]:
+        """Build ordered list of provider fallback candidates.
+
+        Starts with the primary provider, then tries alternatives
+        from the SmartRouter fallback chain.
+        """
+        providers: list[tuple[LLMProvider, str]] = [(self.provider, self.provider.name)]
+        if not self.smart_router:
+            return providers
+
+        chain = self.smart_router.get_fallback_chain("")  # Exclude none — include all
+        for fallback_name in chain:
+            if fallback_name == self.provider.name.lower():
+                continue
+            alt = self._resolve_provider(fallback_name)
+            if alt is not None:
+                providers.append((alt, fallback_name))
+        return providers
+
+    def _resolve_provider(self, provider_name: str) -> LLMProvider | None:
+        """Resolve a provider name to an LLMProvider instance.
+
+        Tries to match known provider names and instantiate the
+        corresponding provider class lazily.
+        """
+        name_lower = provider_name.lower().strip()
+        # If we already have a matching provider cached, use it
+        if hasattr(self, "_provider_cache"):
+            if name_lower in self._provider_cache:
+                return self._provider_cache[name_lower]
+
+        if not hasattr(self, "_provider_cache"):
+            self._provider_cache: dict[str, LLMProvider] = {}
+
+        try:
+            if name_lower == "local":
+                return None  # same as self.provider
+            elif name_lower in ("ollama", "groq", "google", "openai", "anthropic"):
+                # Attempt to instantiate via the config
+                cfg = getattr(self, "_config", {}) or {}
+                # For cloud providers, try to create from env vars
+                if name_lower == "openai":
+                    api_key = os.environ.get("NEXUS_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+                    if not api_key:
+                        logger.debug("No OpenAI API key found, skipping failover")
+                        return None
+                    from nexus_agent.llm.providers.openai_provider import OpenAIProvider
+                    provider = OpenAIProvider(api_key=api_key, model=cfg.get("cloud_model", "gpt-4o"))
+                    self._provider_cache[name_lower] = provider
+                    return provider
+                elif name_lower == "anthropic":
+                    api_key = os.environ.get("NEXUS_ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+                    if not api_key:
+                        logger.debug("No Anthropic API key found, skipping failover")
+                        return None
+                    from nexus_agent.llm.providers.anthropic_provider import AnthropicProvider
+                    provider = AnthropicProvider(api_key=api_key, model=cfg.get("cloud_model", "claude-sonnet-4-20250514"))
+                    self._provider_cache[name_lower] = provider
+                    return provider
+        except Exception as e:
+            logger.debug(f"Failed to resolve provider '{provider_name}': {e}")
+            return None
+
+        logger.debug(f"No resolution for provider '{provider_name}'")
+        return None
 
     def _record_usage(self, response: LLMResponse) -> None:
         """Forward token usage to the UsageTracker, if one is configured."""

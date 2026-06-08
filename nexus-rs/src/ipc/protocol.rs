@@ -88,6 +88,11 @@ impl AcpRequest {
         Self::new(id, "memory_stats", None)
     }
 
+    /// Get current usage and cost tracking data.
+    pub fn get_usage(id: u64) -> Self {
+        Self::new(id, "get_usage", None)
+    }
+
     /// Serialize to a single NDJSON line.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
@@ -192,4 +197,5 @@ pub mod event_type {
     pub const ERROR: &str = "error";
     pub const STATE_CHANGE: &str = "state_change";
     pub const DONE: &str = "done";
+    pub const COST_UPDATE: &str = "cost_update";
 }
