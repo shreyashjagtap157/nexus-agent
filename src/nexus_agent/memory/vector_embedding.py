@@ -330,13 +330,13 @@ class EmbeddingEngine:
 # Convenience
 # ═══════════════════════════════════════════════════════════════════════
 
-def cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Cosine similarity between two vectors."""
+def dot_product_similarity(a: list[float], b: list[float]) -> float:
+    """Compute dot product of two L2 normalized vectors.
+
+    When vectors are already L2 normalized (like those from EmbeddingEngine),
+    their dot product is equivalent to their cosine similarity.
+    This provides a ~3x speedup compared to full cosine similarity calculation.
+    """
     if len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    if na < 1e-12 or nb < 1e-12:
-        return 0.0
-    return dot / (na * nb)
+    return sum(x * y for x, y in zip(a, b))

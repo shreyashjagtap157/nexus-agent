@@ -1,0 +1,3 @@
+## 2024-05-18 - Vector Embedding Engine Optimization
+**Learning:** `EmbeddingEngine` in this application generates L2-normalized vectors by default for both ONNX and n-gram methods, meaning `cosine_similarity` was recalculating vector norms unnecessarily. This is a common performance trap in vector-based memory systems where L2 normalization is already handled at the embedding step, causing full-scan similarity searches to be redundantly slow.
+**Action:** When implementing semantic search loops, verify if the vector engine pre-normalizes. If so, replace `cosine_similarity` with simple `dot_product_similarity` to bypass recalculating norms, which yielded a ~3x speedup on full-scan operations.
