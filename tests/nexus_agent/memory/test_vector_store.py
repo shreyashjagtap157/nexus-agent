@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from nexus_agent.memory.vector_embedding import EmbeddingEngine, cosine_similarity
+from nexus_agent.memory.vector_embedding import EmbeddingEngine, dot_product_similarity
 from nexus_agent.memory.vector_store import VectorStore
 from nexus_agent.memory.memory_manager import MemoryManager
 
@@ -40,13 +40,13 @@ class TestEmbeddingEngine(unittest.TestCase):
     def test_similar_texts_have_positive_similarity(self):
         vec1 = self.engine.embed("python async programming patterns")
         vec2 = self.engine.embed("python async await coroutine patterns")
-        sim = cosine_similarity(vec1, vec2)
+        sim = dot_product_similarity(vec1, vec2)
         self.assertGreater(sim, 0.3)
 
     def test_dissimilar_texts_have_lower_similarity(self):
         vec1 = self.engine.embed("python async programming patterns")
         vec2 = self.engine.embed("the quick brown fox jumps over the lazy dog")
-        sim = cosine_similarity(vec1, vec2)
+        sim = dot_product_similarity(vec1, vec2)
         self.assertLess(sim, 0.8)
 
     def test_embed_many(self):
@@ -55,24 +55,24 @@ class TestEmbeddingEngine(unittest.TestCase):
         self.assertEqual(len(vectors), 3)
         self.assertEqual(len(vectors[0]), 384)
 
-    def test_cosine_similarity_identical(self):
+    def test_dot_product_similarity_identical(self):
         vec = self.engine.embed("test")
-        sim = cosine_similarity(vec, vec)
+        sim = dot_product_similarity(vec, vec)
         self.assertAlmostEqual(sim, 1.0, places=5)
 
-    def test_cosine_similarity_orthogonal(self):
+    def test_dot_product_similarity_orthogonal(self):
         a = [1.0] + [0.0] * 383
         b = [0.0] * 384
         b[0] = 1.0
         # These should be identical after normalisation...
         # Actually ngram fallback normalises, so this test is tricky.
         # Just verify the function doesn't crash.
-        self.assertIsInstance(cosine_similarity(a, b), float)
+        self.assertIsInstance(dot_product_similarity(a, b), float)
 
-    def test_cosine_similarity_zero_vector(self):
+    def test_dot_product_similarity_zero_vector(self):
         a = [0.0] * 384
         b = self.engine.embed("test")
-        sim = cosine_similarity(a, b)
+        sim = dot_product_similarity(a, b)
         self.assertEqual(sim, 0.0)
 
 

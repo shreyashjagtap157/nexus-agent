@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.core.sqlite_store import SQLiteStore
-from nexus_agent.memory.vector_embedding import EmbeddingEngine, cosine_similarity
+from nexus_agent.memory.vector_embedding import EmbeddingEngine, dot_product_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +164,7 @@ class VectorStore(SQLiteStore):
             scored: list[tuple[float, dict[str, Any]]] = []
             for row in cursor:
                 vec = self._unpack(row["embedding"])
-                score = cosine_similarity(query_vec, vec)
+                score = dot_product_similarity(query_vec, vec)
                 if score >= min_score:
                     scored.append((
                         score,
