@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 from nexus_agent.core.updater import (
     PYPI_URL,
-    UpdateInfo,
     _parse_version,
     check_for_update,
     get_installed_version,

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from nexus_agent.tools.lsp_client import LSPClientTool
 

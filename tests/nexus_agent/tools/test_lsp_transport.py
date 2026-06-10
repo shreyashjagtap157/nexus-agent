@@ -272,7 +272,6 @@ class TestLSPClientIntegrationSubprocess(unittest.TestCase):
             self.skipTest("set nexus_run_subprocess_tests=1 to enable subprocess tests")
 
     def test_round_trip_with_fake_server(self):
-        import subprocess
         import sys
         import tempfile
 
