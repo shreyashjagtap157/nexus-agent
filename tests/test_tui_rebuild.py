@@ -5,9 +5,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-from nexus_agent.cli.renderer import NexusTerminalRenderer, TokenUsage, Verbosity
 from nexus_agent.cli.app import NexusApp
-from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode
+from nexus_agent.cli.renderer import NexusTerminalRenderer, TokenUsage, Verbosity
 
 
 class TestTuiRebuildFeatures(unittest.TestCase):
@@ -32,7 +31,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
              patch("shutil.get_terminal_size", return_value=MagicMock(columns=80, lines=24)), \
              patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon), \
              patch("subprocess.run") as mock_run:
-            
+
             # Mock git diff
             mock_run.return_value = MagicMock(returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n")
 
@@ -74,7 +73,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
              patch("shutil.get_terminal_size", return_value=MagicMock(columns=60, lines=24)), \
              patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon), \
              patch("subprocess.run") as mock_run:
-            
+
             mock_run.return_value = MagicMock(returncode=0, stdout="0\t0\tfile.py\n")
 
             self.renderer.welcome(
@@ -95,7 +94,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             self.assertIn("ΔLines: +0/-0", written_data)
             self.assertIn("Processes (agents): 0", written_data)
             self.assertIn("CPU: 4t", written_data)
-            
+
             # Confirm box dimensions: lines should start with ┌ and have 55 ─ characters
             self.assertIn("┌" + "─" * 55 + "┐", written_data)
 
@@ -105,7 +104,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         mock_tool_1 = MagicMock()
         mock_tool_1.name = "read_file"
         mock_tool_1.description = "Read a file"
-        
+
         mock_tool_2 = MagicMock()
         mock_tool_2.name = "write_file"
         mock_tool_2.description = "Write a file"
@@ -163,7 +162,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
 
         # Call unload via direct /unload handler
         app._cmd_unload("")
-        
+
         # Verify engine.unload() was called, and references cleared
         mock_engine.unload.assert_called_once()
         self.assertIsNone(app._engine)
@@ -180,7 +179,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         app._agent = mock_agent
 
         app._cmd_model("unload")
-        
+
         mock_engine.unload.assert_called_once()
         self.assertIsNone(app._engine)
         self.assertIsNone(app._agent)
@@ -234,7 +233,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
              patch.object(app, "_init_mcp"), \
              patch.object(app, "_init_skills"), \
              patch.object(app, "_init_engine"):
-            
+
             # Case 1: auto resume
             app._new_session = False
             app._session_id = None
@@ -257,7 +256,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_isolated_runtime_activation(self):
         """Verify activate_runtime prepends the correct path to sys.path and invalidates caches."""
         from nexus_agent.llm.runtime_manager import RuntimeManager
-        
+
         test_backend = "test_cuda"
         data_dir_path = os.path.expanduser("~/.nexus-agent")
         expected_dir = os.path.abspath(os.path.join(data_dir_path, "runtimes", test_backend))
@@ -265,15 +264,15 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         # Ensure the test directory exists for activate_runtime to check it
         with patch("os.path.exists", return_value=True), \
              patch("importlib.invalidate_caches") as mock_invalidate:
-            
+
             original_sys_path = list(sys.path)
             try:
                 # Remove the directory if it's already in sys.path somehow
                 if expected_dir in sys.path:
                     sys.path.remove(expected_dir)
-                
+
                 RuntimeManager.activate_runtime(test_backend)
-                
+
                 self.assertIn(expected_dir, sys.path)
                 self.assertEqual(sys.path[0], expected_dir)
                 mock_invalidate.assert_called_once()
@@ -284,7 +283,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_custom_model_tuning_parameters(self):
         """Verify that model tuning parameters are validated and passed to LocalEngine constructor."""
         from nexus_agent.llm.runtime_manager import RuntimeManager
-        
+
         config = {
             "local_model": {
                 "runtime": "llama-cpp",
@@ -300,7 +299,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
                 "reasoning_depth": 10,
             }
         }
-        
+
         rm = RuntimeManager(config)
         self.assertEqual(rm._seed, 1337)
         self.assertEqual(rm._flash_attention, False)
@@ -311,15 +310,15 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         self.assertEqual(rm._keep_in_memory, False)
         self.assertEqual(rm._use_agent_protocol, True)
         self.assertEqual(rm._reasoning_depth, 10)
-        
+
         # Now mock LocalEngine constructor and verify the parameters are passed
         with patch("nexus_agent.llm.runtime_manager.LocalEngine") as mock_engine_cls, \
              patch("pathlib.Path.exists", return_value=True):
-             
+
             rm.select_engine("/mock/model.gguf")
             mock_engine_cls.assert_called_once()
             kwargs = mock_engine_cls.call_args[1]
-            
+
             self.assertEqual(kwargs["seed"], 1337)
             self.assertEqual(kwargs["flash_attention"], False)
             self.assertEqual(kwargs["unified_kv_cache"], False)
