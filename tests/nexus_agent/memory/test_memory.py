@@ -1,18 +1,14 @@
 """Tests for the memory module — MemoryManager, WorkingMemory, LongTermMemory, EpisodicMemory, UserProfile."""
 
-import json
-import os
 import tempfile
-import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
 
-from nexus_agent.memory.working_memory import WorkingMemory
-from nexus_agent.memory.long_term import LongTermMemory
 from nexus_agent.memory.episodic import EpisodicMemory
-from nexus_agent.memory.user_profile import UserProfile
+from nexus_agent.memory.long_term import LongTermMemory
 from nexus_agent.memory.memory_manager import MemoryManager
+from nexus_agent.memory.user_profile import UserProfile
+from nexus_agent.memory.working_memory import WorkingMemory
 
 
 class TestWorkingMemory(unittest.TestCase):
@@ -231,7 +227,7 @@ class TestMemoryManager(unittest.TestCase):
         self.tmpdir.cleanup()
 
     def test_store_and_remember(self):
-        eid = self.mgr.store("important fact about the project")
+        self.mgr.store("important fact about the project")
         result = self.mgr.remember("important")
         self.assertIsNotNone(result)
 

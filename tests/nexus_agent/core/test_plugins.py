@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import shutil
 import sys
-import uuid
 import types
-from pathlib import Path
 import unittest
+import uuid
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from nexus_agent.core.plugins import NexusPlugin, PluginInfo, PluginManager
@@ -107,7 +107,7 @@ class SimplePlugin(NexusPlugin):
         # We'll mock the importlib.metadata / importlib_metadata entry_points
         mock_ep = MagicMock()
         mock_ep.name = "ep_plugin"
-        
+
         # When ep.load() is called, return a module-like object with a register_plugin function
         mock_module = MagicMock()
         mock_ep.load.return_value = mock_module
@@ -132,7 +132,7 @@ class SimplePlugin(NexusPlugin):
         mock_module = types.ModuleType("mock_module")
         mock_module.MyEPPlugin = _NexusPluginSubclass
         mock_ep.load.return_value = mock_module
-        
+
         with patch("nexus_agent.core.plugins.dir", return_value=["MyEPPlugin"]):
             with patch("sys.version_info", (3, 11)):
                 with patch("importlib.metadata.entry_points") as mock_eps:
@@ -156,16 +156,11 @@ class SimplePlugin(NexusPlugin):
         assert "failed to load" in res["failed_ep"].error
 
     def test_fallback_entry_points_for_older_python(self):
-        # Mock importlib_metadata as a whole to avoid ModuleNotFoundError during patch
-        mock_md = MagicMock()
-        mock_eps = MagicMock()
-        mock_md.entry_points = MagicMock(return_value=mock_eps)
-        
+        # Mock importlib_metadata to simulate how it returns entry points
         mock_ep = MagicMock()
         mock_ep.name = "legacy_ep"
-        mock_eps.get.return_value = [mock_ep]
 
-        with patch.dict("sys.modules", {"importlib_metadata": mock_md}):
+        with patch("importlib.metadata.entry_points", return_value=[mock_ep]):
             with patch("sys.version_info", (3, 9)):
                 res = self.pm.discover_and_load()
 

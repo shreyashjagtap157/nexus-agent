@@ -23,8 +23,7 @@ import shutil
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -68,19 +67,19 @@ class ResourceMonitor:
     sampling; consumers only see a cached snapshot, so reads are O(1).
     """
 
-    _instance: Optional["ResourceMonitor"] = None
+    _instance: ResourceMonitor | None = None
     _lock = threading.Lock()
 
     def __init__(self) -> None:
         self._subscribers = 0
         self._cond = threading.Condition()
         self._latest = ResourceSnapshot(cpu_threads=os.cpu_count() or 8)
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._nvidia_path = self._find_nvidia_smi()
 
     @classmethod
-    def get(cls) -> "ResourceMonitor":
+    def get(cls) -> ResourceMonitor:
         """Get the process-wide singleton."""
         with cls._lock:
             if cls._instance is None:
@@ -183,7 +182,7 @@ class ResourceMonitor:
             )
         return snap
 
-    def _find_nvidia_smi(self) -> Optional[str]:
+    def _find_nvidia_smi(self) -> str | None:
         """Locate nvidia-smi. Returns path or None."""
         exe = shutil.which("nvidia-smi")
         if exe:

@@ -1,20 +1,20 @@
 """Unit tests to verify LLM Provider operations and payload formatting."""
 
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
+
 import httpx
 
 from nexus_agent.llm.base import Message, Role, ToolDefinition
-from nexus_agent.llm.providers.openai_provider import OpenAIProvider
 from nexus_agent.llm.providers.anthropic_provider import AnthropicProvider
+from nexus_agent.llm.providers.aws_bedrock_provider import AWSBedrockProvider
+from nexus_agent.llm.providers.custom_openai_provider import CustomOpenAIProvider
+from nexus_agent.llm.providers.deepseek_provider import DeepSeekProvider
 from nexus_agent.llm.providers.google_provider import GoogleProvider
 from nexus_agent.llm.providers.groq_provider import GroqProvider
-from nexus_agent.llm.providers.deepseek_provider import DeepSeekProvider
-from nexus_agent.llm.providers.openrouter_provider import OpenRouterProvider
 from nexus_agent.llm.providers.ollama_provider import OllamaProvider
-from nexus_agent.llm.providers.custom_openai_provider import CustomOpenAIProvider
-from nexus_agent.llm.providers.aws_bedrock_provider import AWSBedrockProvider
-
+from nexus_agent.llm.providers.openai_provider import OpenAIProvider
+from nexus_agent.llm.providers.openrouter_provider import OpenRouterProvider
 
 ALL_PROVIDERS = [
     ("openai", OpenAIProvider, {"api_key": "test-openai-key", "model": "gpt-4o"}),

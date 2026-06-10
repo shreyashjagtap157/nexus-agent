@@ -227,7 +227,7 @@ class MCPClient:
                 "capabilities": {},
                 "clientInfo": {"name": "NexusAgent", "version": "1.0"},
             }
-            res = self._send_request("initialize", params, timeout=timeout)
+            self._send_request("initialize", params, timeout=timeout)
 
             # Send initialized notification
             notification = {

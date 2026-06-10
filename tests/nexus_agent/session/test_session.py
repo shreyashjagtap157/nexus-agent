@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from nexus_agent.session.manager import SessionManager
 from nexus_agent.session.checkpoint import CheckpointManager
+from nexus_agent.session.manager import SessionManager
 
 
 class TestSessionManager(unittest.TestCase):

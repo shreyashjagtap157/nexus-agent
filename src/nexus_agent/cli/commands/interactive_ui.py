@@ -676,7 +676,7 @@ class InteractiveUIMixin:
                 if m:
                     cb = ord(m.group(1)) - 32
                     cx = ord(m.group(2)) - 32
-                    cy = ord(m.group(3)) - 32
+                    ord(m.group(3)) - 32
                     btn_num = cb & 0x3
                     col = max(0, (cx - 4) // 45)
                     if btn_num == 0 and col < len(params):
