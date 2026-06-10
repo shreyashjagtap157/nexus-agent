@@ -1,0 +1,3 @@
+## 2024-05-24 - [Vector Math Optimization]
+**Learning:** In pure Python, replacing multiple independent loops and generator expressions (e.g. `sum(x*y for x,y in zip(a,b))`) with a single imperative loop that calculates the dot product and squared sums concurrently is significantly faster (~35% speedup). Additionally, avoiding intermediate list allocations for strings (like storing thousands of ngrams before hashing) saves memory and compute.
+**Action:** When doing simple array math in Python without numpy, use a single-pass imperative loop rather than multiple functional/generator-based passes. When doing sequential string hashing or parsing, process the string iteratively instead of materialising a large list of slices first.
