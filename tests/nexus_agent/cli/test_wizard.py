@@ -6,11 +6,11 @@ configuration updates.
 
 import unittest
 from unittest.mock import MagicMock, patch
-from pathlib import Path
+
 from rich.console import Console
 
-from nexus_agent.cli.wizard import SetupWizard, CLOUD_PROVIDERS
-from nexus_agent.core.config import get_config_dir
+from nexus_agent.cli.wizard import CLOUD_PROVIDERS, SetupWizard
+
 
 class TestSetupWizard(unittest.TestCase):
     def setUp(self):
@@ -39,7 +39,7 @@ class TestSetupWizard(unittest.TestCase):
             self.assertEqual(updates["memory"]["mode"], "session")
             self.assertEqual(updates["memory"]["enabled"], False)
             self.assertEqual(updates["local_model"]["guardrails"], "strict")
-            
+
             # Verify save was called
             mock_save.assert_called_once_with(updates)
 
@@ -47,8 +47,8 @@ class TestSetupWizard(unittest.TestCase):
         """Verify wizard collects cloud API keys and sets active provider."""
         # prompt_func: Permission, Memory, Guardrail, OpenAI Key
         self.prompt_mock.side_effect = ["ask", "full", "balanced", "sk-test-openai"]
-        
-        # confirm_func: 
+
+        # confirm_func:
         # 0. Install runtime? (False)
         # 1. Open HF page? (False)
         # 2. Add cloud keys? (True)
@@ -59,7 +59,7 @@ class TestSetupWizard(unittest.TestCase):
         confirm_responses = [False, False, True, True] + [False] * (len(CLOUD_PROVIDERS) - 1)
         # We need to handle the "Make active" prompt which happens after the loop if any were configured
         confirm_responses.append(True)
-        
+
         self.confirm_mock.side_effect = confirm_responses
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
@@ -73,7 +73,7 @@ class TestSetupWizard(unittest.TestCase):
             # Check provider config
             self.assertEqual(updates["providers"]["openai"]["api_key"], "sk-test-openai")
             self.assertEqual(updates["providers"]["active"], "openai")
-            
+
             mock_save.assert_called_once_with(updates)
 
     def test_hardware_detection_integration(self):
@@ -102,7 +102,7 @@ class TestSetupWizard(unittest.TestCase):
                     confirm_func=self.confirm_mock
                 )
                 wizard.run()
-                
+
                 # Verify hardware detection was called
                 mock_detect.assert_called_once()
                 # Verify GPU layers was set to -1 because GPU was detected

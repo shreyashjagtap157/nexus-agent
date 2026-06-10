@@ -30,11 +30,11 @@ from pydantic import BaseModel, Field
 from nexus_agent import __app_name__, __version__
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.core.config import load_config
-from nexus_agent.core.usage import UsageTracker
 from nexus_agent.core.debate import DebateEngine
 from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.nla_telemetry import NLATelemetry
 from nexus_agent.core.task_graph import TaskGraph
+from nexus_agent.core.usage import UsageTracker
 from nexus_agent.llm.local_engine import LocalEngine
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.providers.factory import ProviderFactory

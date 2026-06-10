@@ -185,7 +185,6 @@ class ProtocolMixin:
         tool_calls = parser.get_tool_calls()
         for tc in tool_calls:
             tc_call = tc.tool_name
-            tc_id = tc.id
             tc_args = tc.args
             try:
                 result = execute_fn({

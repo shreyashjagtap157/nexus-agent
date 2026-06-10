@@ -21,8 +21,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from nexus_agent.memory.memory_manager import MemoryManager
 from nexus_agent.cli.commands.agent_mixin import AgentCommandsMixin
+from nexus_agent.memory.memory_manager import MemoryManager
 
 
 class _MockApp(AgentCommandsMixin):

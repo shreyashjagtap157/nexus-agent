@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from nexus_agent.memory.memory_manager import MemoryManager
 from nexus_agent.memory.vector_embedding import EmbeddingEngine, cosine_similarity
 from nexus_agent.memory.vector_store import VectorStore
-from nexus_agent.memory.memory_manager import MemoryManager
 
 
 class TestEmbeddingEngine(unittest.TestCase):
@@ -305,14 +305,14 @@ class TestEngineUpgradeRebuild(unittest.TestCase):
         self._store_sample_entries()
 
         before = self._query_scores("python async")
-        top_before = max(before, key=before.get) if before else None
+        max(before, key=before.get) if before else None
 
         # Swap engine and rebuild
         self.store._engine = self.engine_v2
         self.store.rebuild()
 
         after = self._query_scores("python async")
-        top_after = max(after, key=after.get) if after else None
+        max(after, key=after.get) if after else None
 
         # At minimum, both engines should return the clearly relevant entry (id1)
         self.assertIn("id1", before)
