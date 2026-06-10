@@ -227,7 +227,7 @@ class TestMemoryManager(unittest.TestCase):
         self.tmpdir.cleanup()
 
     def test_store_and_remember(self):
-        eid = self.mgr.store("important fact about the project")
+        self.mgr.store("important fact about the project")
         result = self.mgr.remember("important")
         self.assertIsNotNone(result)
 

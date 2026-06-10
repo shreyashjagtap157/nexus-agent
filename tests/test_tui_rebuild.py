@@ -265,7 +265,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         with patch("os.path.exists", return_value=True), \
              patch("importlib.invalidate_caches") as mock_invalidate:
 
-            original_sys_path = list(sys.path)
+            list(sys.path)
             try:
                 # Remove the directory if it's already in sys.path somehow
                 if expected_dir in sys.path:
