@@ -92,7 +92,9 @@ class TestCheckCpu(unittest.TestCase):
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     @patch("nexus_agent.cli.runtimes.shutil.which", return_value=None)
     def test_llama_cpp_python_imported(self, mock_which, mock_shutil):
-        with patch.dict("sys.modules", {"llama_cpp": MagicMock(__file__="/path/llama_cpp/__init__.py")}):
+        mock_llama = MagicMock()
+        mock_llama.__file__ = "/path/llama_cpp/__init__.py"
+        with patch.dict("sys.modules", {"llama_cpp": mock_llama}):
             runtimes = _check_cpu()
             names = [r.name for r in runtimes]
             self.assertIn("llama-cpp-python", names)
@@ -100,7 +102,9 @@ class TestCheckCpu(unittest.TestCase):
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     @patch("nexus_agent.cli.runtimes.shutil.which", return_value=None)
     def test_transformers_imported(self, mock_which, mock_shutil):
-        with patch.dict("sys.modules", {"transformers": MagicMock(__file__="/path/transformers/__init__.py")}):
+        mock_transformers = MagicMock()
+        mock_transformers.__file__ = "/path/transformers/__init__.py"
+        with patch.dict("sys.modules", {"transformers": mock_transformers}):
             runtimes = _check_cpu()
             names = [r.name for r in runtimes]
             self.assertIn("HuggingFace Transformers", names)
@@ -167,8 +171,10 @@ class TestCheckVulkan(unittest.TestCase):
 
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     def test_no_vulkan(self, mock_which):
+        mock_onnx = MagicMock()
+        mock_onnx.__file__ = "/path/onnxruntime/__init__.py"
         with patch.dict("os.environ", {}, clear=True), \
-             patch("sys.modules", {"onnxruntime": MagicMock(__file__="/path/onnxruntime/__init__.py")}, create=True), \
+             patch.dict("sys.modules", {"onnxruntime": mock_onnx}), \
              patch("os.name", "nt"):
             runtimes = _check_vulkan()
             names = [r.name for r in runtimes]
@@ -201,7 +207,9 @@ class TestCheckOpenvino(unittest.TestCase):
     """Test OpenVINO runtime detection."""
 
     def test_openvino_imported(self):
-        with patch.dict("sys.modules", {"openvino": MagicMock(__file__="/path/openvino/__init__.py")}):
+        mock_openvino = MagicMock()
+        mock_openvino.__file__ = "/path/openvino/__init__.py"
+        with patch.dict("sys.modules", {"openvino": mock_openvino}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 1)
             self.assertEqual(runtimes[0].provider, "openvino")

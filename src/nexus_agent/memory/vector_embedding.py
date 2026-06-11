@@ -12,10 +12,8 @@ import hashlib
 import json
 import logging
 import math
-import os
 import re
 import threading
-import time
 from pathlib import Path
 from typing import Any
 
@@ -71,7 +69,11 @@ class EmbeddingEngine:
     ONNX_MODEL_REPO = "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx"
 
     def __init__(self, model_dir: str | Path | None = None):
-        self._model_dir = Path(model_dir) if model_dir else Path.home() / ".nexus-agent" / "models" / "embeddings"
+        self._model_dir = (
+            Path(model_dir)
+            if model_dir
+            else Path.home() / ".nexus-agent" / "models" / "embeddings"
+        )
         self._model_dir.mkdir(parents=True, exist_ok=True)
 
         self._mode: str = "ngram"  # fallback default
@@ -199,7 +201,10 @@ class EmbeddingEngine:
             tokens = self._tokenize_onnx(text)
             input_ids = np.array([tokens["input_ids"]], dtype=np.int64)
             attention_mask = np.array([tokens["attention_mask"]], dtype=np.int64)
-            token_type_ids = np.array([tokens.get("token_type_ids", [0] * len(tokens["input_ids"]))], dtype=np.int64)
+            token_type_ids = np.array(
+                [tokens.get("token_type_ids", [0] * len(tokens["input_ids"]))],
+                dtype=np.int64
+            )
 
             result = self._session.run(
                 None,
@@ -334,9 +339,13 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     """Cosine similarity between two vectors."""
     if len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    if na < 1e-12 or nb < 1e-12:
+    dot = 0.0
+    na2 = 0.0
+    nb2 = 0.0
+    for x, y in zip(a, b):
+        dot += x * y
+        na2 += x * x
+        nb2 += y * y
+    if na2 < 1e-12 or nb2 < 1e-12:
         return 0.0
-    return dot / (na * nb)
+    return dot / math.sqrt(na2 * nb2)
