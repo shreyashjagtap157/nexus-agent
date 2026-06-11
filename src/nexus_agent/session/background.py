@@ -18,9 +18,10 @@ import logging
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ class BackgroundSession:
         session_id: str | None = None,
         max_iterations: int = 30,
         metadata: dict[str, Any] | None = None,
-        on_complete: Callable[["BackgroundResult"], None] | None = None,
+        on_complete: Callable[[BackgroundResult], None] | None = None,
     ):
         self.session_id = session_id or uuid.uuid4().hex[:12]
         self.prompt = prompt

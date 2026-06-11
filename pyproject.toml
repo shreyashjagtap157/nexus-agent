@@ -125,7 +125,7 @@ hw-all = [
 
 # All optional features
 all = [
-    "nexus-agent[hw-all,gui,providers,mcp]",
+    "nexus-agent[gui,providers,mcp]",
 ]
 dev = [
     "pytest>=8.0.0",

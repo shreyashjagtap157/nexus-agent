@@ -281,7 +281,7 @@ class NexusApp(
 """
         self.r.console.print(logo, style="bold cyan")
         if self._session_id:
-            self.r.console.print(f"  [bold green]Session saved.[/bold green] To resume this session, run:")
+            self.r.console.print("  [bold green]Session saved.[/bold green] To resume this session, run:")
             self.r.console.print(f"  [bold]nexus session resume {self._session_id}[/bold]\n")
         else:
             self.r.console.print("  [dim]Goodbye.[/dim]\n")
