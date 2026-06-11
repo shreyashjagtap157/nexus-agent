@@ -2,17 +2,18 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
-    scan_runtimes,
-    format_runtime_list,
-    _check_cuda,
-    _check_vulkan,
     _check_cpu,
-    _check_rocm,
+    _check_cuda,
     _check_openvino,
+    _check_rocm,
     _check_tpu,
+    _check_vulkan,
     _validate_runtime_path,
+    format_runtime_list,
+    scan_runtimes,
 )
 
 
@@ -168,8 +169,8 @@ class TestCheckVulkan(unittest.TestCase):
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     def test_no_vulkan(self, mock_which):
         with patch.dict("os.environ", {}, clear=True), \
-             patch("sys.modules", {"onnxruntime": MagicMock(__file__="/path/onnxruntime/__init__.py")}, create=True), \
-             patch("os.name", "nt"):
+             patch.dict("sys.modules", {"onnxruntime": MagicMock(__file__="/path/onnxruntime/__init__.py")}), \
+             patch("nexus_agent.cli.runtimes.os.name", "nt"):
             runtimes = _check_vulkan()
             names = [r.name for r in runtimes]
             self.assertIn("DirectML (NPU/GPU)", names)

@@ -168,37 +168,42 @@ class RepositoryRAGTool(Tool):
                     symbol_data = []
                     chunk_data = []
 
-                    for idx, line in enumerate(lines):
-                        line_num = idx + 1
-                        symbol_name = None
-                        symbol_type = None
+                    file_suffix = file_path.suffix.lower()
+                    is_python = file_suffix == ".py"
+                    is_js_ts = file_suffix in (".js", ".ts", ".jsx", ".tsx")
 
-                        # Python rules
-                        if file_path.suffix.lower() == ".py":
-                            class_match = py_class_pat.match(line)
-                            if class_match:
-                                symbol_name = class_match.group(1)
-                                symbol_type = "class"
-                            else:
-                                def_match = py_def_pat.match(line)
-                                if def_match:
-                                    symbol_name = def_match.group(1)
-                                    symbol_type = "function"
+                    if is_python or is_js_ts:
+                        for idx, line in enumerate(lines):
+                            line_num = idx + 1
+                            symbol_name = None
+                            symbol_type = None
 
-                        # JS/TS rules
-                        elif file_path.suffix.lower() in (".js", ".ts", ".jsx", ".tsx"):
-                            class_match = js_class_pat.match(line)
-                            if class_match:
-                                symbol_name = class_match.group(1)
-                                symbol_type = "class"
-                            else:
-                                func_match = js_func_pat.match(line)
-                                if func_match:
-                                    symbol_name = func_match.group(1)
-                                    symbol_type = "function"
+                            if is_python:
+                                # Python rules
+                                class_match = py_class_pat.match(line)
+                                if class_match:
+                                    symbol_name = class_match.group(1)
+                                    symbol_type = "class"
+                                else:
+                                    def_match = py_def_pat.match(line)
+                                    if def_match:
+                                        symbol_name = def_match.group(1)
+                                        symbol_type = "function"
 
-                        if symbol_name and symbol_type:
-                            symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))
+                            elif is_js_ts:
+                                # JS/TS rules
+                                class_match = js_class_pat.match(line)
+                                if class_match:
+                                    symbol_name = class_match.group(1)
+                                    symbol_type = "class"
+                                else:
+                                    func_match = js_func_pat.match(line)
+                                    if func_match:
+                                        symbol_name = func_match.group(1)
+                                        symbol_type = "function"
+
+                            if symbol_name and symbol_type:
+                                symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))
 
                     chunk_lines_size = 35
                     overlap_lines_size = 5
