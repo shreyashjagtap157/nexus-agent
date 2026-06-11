@@ -167,8 +167,10 @@ class TestCheckVulkan(unittest.TestCase):
 
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     def test_no_vulkan(self, mock_which):
+        mock_onnx = MagicMock()
+        mock_onnx.__file__ = "/path/onnxruntime/__init__.py"
         with patch.dict("os.environ", {}, clear=True), \
-             patch("sys.modules", {"onnxruntime": MagicMock(__file__="/path/onnxruntime/__init__.py")}, create=True), \
+             patch.dict("sys.modules", {"onnxruntime": mock_onnx}), \
              patch("os.name", "nt"):
             runtimes = _check_vulkan()
             names = [r.name for r in runtimes]
