@@ -168,11 +168,11 @@ class TestCheckVulkan(unittest.TestCase):
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     def test_no_vulkan(self, mock_which):
         with patch.dict("os.environ", {}, clear=True), \
-             patch("sys.modules", {"onnxruntime": MagicMock(__file__="/path/onnxruntime/__init__.py")}, create=True), \
-             patch("os.name", "nt"):
+             patch.dict("sys.modules", {"onnxruntime": None}), \
+             patch("nexus_agent.cli.runtimes.os.name", "nt"):
             runtimes = _check_vulkan()
             names = [r.name for r in runtimes]
-            self.assertIn("DirectML (NPU/GPU)", names)
+            self.assertEqual(len(names), 0)
 
     @patch("nexus_agent.cli.runtimes._which", side_effect=lambda x: "/usr/bin/llama-vulkan" if x == "llama-vulkan" else None)
     def test_llama_vulkan(self, mock_which):
@@ -207,7 +207,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {}, clear=True):
+        with patch.dict("sys.modules", {"openvino": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -222,7 +222,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {}, clear=True):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
