@@ -69,7 +69,8 @@ class EmbeddingEngine:
     ONNX_MODEL_REPO = "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx"
 
     def __init__(self, model_dir: str | Path | None = None):
-        self._model_dir = Path(model_dir) if model_dir else Path.home() / ".nexus-agent" / "models" / "embeddings"
+        self._model_dir = Path(model_dir) if model_dir else \
+            Path.home() / ".nexus-agent" / "models" / "embeddings"
         self._model_dir.mkdir(parents=True, exist_ok=True)
 
         self._mode: str = "ngram"  # fallback default
@@ -197,7 +198,10 @@ class EmbeddingEngine:
             tokens = self._tokenize_onnx(text)
             input_ids = np.array([tokens["input_ids"]], dtype=np.int64)
             attention_mask = np.array([tokens["attention_mask"]], dtype=np.int64)
-            token_type_ids = np.array([tokens.get("token_type_ids", [0] * len(tokens["input_ids"]))], dtype=np.int64)
+            token_type_ids = np.array(
+                [tokens.get("token_type_ids", [0] * len(tokens["input_ids"]))],
+                dtype=np.int64
+            )
 
             result = self._session.run(
                 None,
