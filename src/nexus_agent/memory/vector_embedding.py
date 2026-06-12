@@ -337,7 +337,7 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     # ⚡ Bolt Optimization: Replace generator expressions with C-level functions
     # Using sum(map(...)) and math.hypot() speeds up similarity calculation
     # by ~65% (from 8.5s to 2.8s per 100k calls for 384d vectors).
-    dot = sum(map(operator.mul, a, b))
+    dot = float(sum(map(operator.mul, a, b)))
     na = math.hypot(*a)
     nb = math.hypot(*b)
 

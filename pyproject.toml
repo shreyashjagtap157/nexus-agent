@@ -77,7 +77,7 @@ sycl = [
 # NPU — Neural Processing Unit (Windows DirectML / ONNX)
 npu = [
     "onnxruntime-genai>=0.3.0",
-    "onnxruntime-directml>=1.18.0",
+    "onnxruntime-directml>=1.18.0; sys_platform == \"win32\"",
 ]
 
 # OpenVINO — Intel CPU/GPU/NPU
@@ -103,7 +103,7 @@ gui = [
 providers = [
     "openai>=1.40.0",
     "anthropic>=0.34.0",
-    "google-generativeai>=0.8.0",
+    "google-generativeai==0.8.3",
     "boto3>=1.35.0",
 ]
 
