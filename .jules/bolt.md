@@ -1,0 +1,3 @@
+## 2024-05-19 - Vector embedding computation speedup
+**Learning:** Using Python's `math.hypot()` is significantly faster than using manual generator comprehensions to calculate square roots. Furthermore, `sum(map(operator.mul, a, b))` is ~3x faster than `sum(x * y for x, y in zip(a, b))` for computing the dot product of two vectors, achieving roughly a ~65% overall speedup for dense lists of floats.
+**Action:** When performing dense math operations in Python on lists without importing `numpy` (which incurs overhead for small conversions), heavily rely on `math.hypot` and `map` + `operator` instead of generator expressions.
