@@ -1,0 +1,3 @@
+## 2024-05-19 - Python Generator Expression Overhead in Vector Math
+**Learning:** In pure Python, evaluating multiple generator expressions over lists (like `sum(x*y for x,y in zip(a,b))`) sequentially carries significant overhead compared to doing the same operations inside a single explicit `for` loop. When dealing with fixed dimensions like 384d vectors on hot paths (like O(N) exhaustive similarity search), combining these calculations avoids iterating through the lists multiple times and avoids the overhead of creating multiple generator objects.
+**Action:** When performing multiple mathematical aggregations on lists in pure Python on a hot path, combine them into a single `for` loop rather than writing "cleaner" but slower sequential generator expressions.
