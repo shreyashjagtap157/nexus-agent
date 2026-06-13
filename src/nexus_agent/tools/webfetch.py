@@ -83,7 +83,7 @@ def _find_next_link(html: str, base_url: str) -> str | None:
             r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*?rel=["\']next["\']', re.I
         )
         match = pattern.search(html)
-    
+
     if match:
         return urljoin(base_url, match.group(1))
     return None
@@ -610,17 +610,17 @@ class WebFetchTool(Tool):
                     # Convert to markdown
                     text = html_to_markdown(html, base_url=final_url, strip_boilerplate=strip_boilerplate)
                     collected_texts.append(text)
-                    
+
                     # Update cache
                     if self._cache_ttl_s > 0:
                         self._cache.put(cache_key, (text, now))
-                    
+
                     # Pagination check
                     if follow_pagination and pages_fetched < max_pages - 1:
                         current_url = _find_next_link(html, final_url)
                     else:
                         current_url = None
-                    
+
                     pages_fetched += 1
                 except RuntimeError as e:
                     return f"Error fetching {current_url}: {e}"
@@ -628,7 +628,7 @@ class WebFetchTool(Tool):
         full_text = "\n\n---\n\n".join(collected_texts)
         if not full_text:
             return "Error: No content could be fetched."
-        
+
         if len(full_text) > cap:
             full_text = full_text[:cap] + f"\n\n... (truncated at {cap} chars)"
 

@@ -12,7 +12,6 @@ import logging
 import sqlite3
 import textwrap
 import time
-import uuid
 from typing import Any
 
 from nexus_agent.core.sqlite_store import SQLiteStore

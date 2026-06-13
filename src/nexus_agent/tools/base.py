@@ -15,8 +15,6 @@ Implements SWE-Agent's **Agent-Computer Interface (ACI)** pattern:
 
 from __future__ import annotations
 
-import time
-import traceback
 from abc import ABC, abstractmethod
 from functools import cached_property
 from pathlib import Path

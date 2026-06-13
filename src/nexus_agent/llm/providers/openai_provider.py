@@ -19,7 +19,7 @@ from nexus_agent.llm.base import (
     ToolCall,
     ToolDefinition,
 )
-from nexus_agent.llm.retry import with_retry, RetryPolicy
+from nexus_agent.llm.retry import RetryPolicy, with_retry
 
 logger = logging.getLogger(__name__)
 
