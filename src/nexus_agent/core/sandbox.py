@@ -321,34 +321,23 @@ class Sandbox:
             except ValueError:
                 parsed_args = None
 
-            if parsed_args:
-                # Use direct execution on both Unix and Windows when parsing succeeds
-                if sys.platform == "win32":
-                    # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
-                    cmd_args = ["cmd.exe", "/c"] + parsed_args
-                    proc = subprocess.run(
-                        cmd_args,
-                        capture_output=True,
-                        text=True,
-                        cwd=str(work_dir),
-                        env=exec_env,
-                        timeout=effective_timeout,
-                    )
-                else:
-                    proc = subprocess.run(
-                        parsed_args,
-                        capture_output=True,
-                        text=True,
-                        cwd=str(work_dir),
-                        env=exec_env,
-                        timeout=effective_timeout,
-                    )
-            elif sys.platform == "win32":
-                # Windows fallback: shlex.split failed, use PowerShell with proper escaping
-                escaped_cmd = subprocess.list2cmdline([command])
-                shell_cmd = ["powershell", "-NoProfile", "-Command", escaped_cmd]
+            if not parsed_args:
+                return CommandResult(
+                    command=command,
+                    returncode=-1,
+                    stdout="",
+                    stderr="Execution denied: Command parsing failed (potential shell injection).",
+                    duration=time.time() - start_time,
+                    was_approved=False,
+                    risk_level=risk,
+                )
+
+            # Use direct execution on both Unix and Windows when parsing succeeds
+            if sys.platform == "win32":
+                # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
+                cmd_args = ["cmd.exe", "/c"] + parsed_args
                 proc = subprocess.run(
-                    shell_cmd,
+                    cmd_args,
                     capture_output=True,
                     text=True,
                     cwd=str(work_dir),
@@ -356,9 +345,8 @@ class Sandbox:
                     timeout=effective_timeout,
                 )
             else:
-                # Unix fallback: parse failed, use sh -c (best effort)
                 proc = subprocess.run(
-                    ["/bin/sh", "-c", command],
+                    parsed_args,
                     capture_output=True,
                     text=True,
                     cwd=str(work_dir),
