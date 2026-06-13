@@ -155,11 +155,8 @@ class PluginManager:
             group = importlib.metadata.entry_points(group="nexus_agent.plugins")
         else:
             # Fallback for Python < 3.10
-            try:
-                from importlib_metadata import entry_points
-                group = entry_points().get("nexus_agent.plugins", [])
-            except ImportError:
-                return
+            eps = importlib.metadata.entry_points()
+            group = eps.get("nexus_agent.plugins", []) if hasattr(eps, "get") else eps.select(group="nexus_agent.plugins")
 
 
         for ep in group:

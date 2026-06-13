@@ -21,9 +21,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -117,10 +118,10 @@ class ProjectContextLoader:
         files: list[tuple[str, int, int]] = []
         for path in self._candidate_paths():
             try:
-                stat = path.stat()
+                stat = os.stat(path)
             except (OSError, FileNotFoundError):
                 continue
-            files.append((str(path), stat.st_mtime_ns, stat.st_size))
+            files.append((path, stat.st_mtime_ns, stat.st_size))
         param_str = "|".join((
             str(self.max_bytes),
             str(self.max_total_bytes),
@@ -132,46 +133,48 @@ class ProjectContextLoader:
         payload = f"{param_str}::{sorted(files)}"
         return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
-    def _candidate_paths(self) -> list[Path]:
+    def _candidate_paths(self) -> list[str]:
         """All candidate rules-file paths under the workspace tree + ancestors.
 
         We do a controlled BFS up to `max_parent_levels` to find ancestor
         files, and (optionally) a depth-limited walk to find descendants.
         """
-        candidates: list[Path] = []
+        candidates: list[str] = []
+        workspace_str = str(self.workspace)
         # 1) Workspace root (most specific, highest priority)
         for name in self.rules_files:
-            candidates.append(self.workspace / name)
+            candidates.append(os.path.join(workspace_str, name))
         # 2) Ancestors
         if self.walk_ancestors:
-            parent = self.workspace.parent
+            parent = os.path.dirname(workspace_str)
             for _ in range(self.max_parent_levels):
-                if parent == parent.parent:
+                if parent == os.path.dirname(parent):
                     break
                 for name in self.rules_files:
-                    candidates.append(parent / name)
-                parent = parent.parent
+                    candidates.append(os.path.join(parent, name))
+                parent = os.path.dirname(parent)
         # 3) Descendants (optional, depth-limited)
         if self.walk_descendants:
-            candidates.extend(self._descendants(self.workspace, depth=2))
+            candidates.extend(self._descendants(workspace_str, depth=2))
         return candidates
 
-    def _descendants(self, root: Path, depth: int) -> list[Path]:
-        out: list[Path] = []
+    def _descendants(self, root: str, depth: int) -> list[str]:
+        out: list[str] = []
         if depth <= 0:
             return out
         try:
-            for child in root.iterdir():
-                if child.is_dir():
-                    if child.name in SKIP_DIRS or child.name.startswith("."):
-                        # Allow explicit project subdirs like .github, .nexus
-                        if child.name in (".github", ".nexus"):
-                            for name in self.rules_files:
-                                out.append(child / name)
-                        continue
-                    for name in self.rules_files:
-                        out.append(child / name)
-                    out.extend(self._descendants(child, depth - 1))
+            with os.scandir(root) as it:
+                for entry in it:
+                    if entry.is_dir():
+                        if entry.name in SKIP_DIRS or entry.name.startswith("."):
+                            # Allow explicit project subdirs like .github, .nexus
+                            if entry.name in (".github", ".nexus"):
+                                for name in self.rules_files:
+                                    out.append(os.path.join(entry.path, name))
+                            continue
+                        for name in self.rules_files:
+                            out.append(os.path.join(entry.path, name))
+                        out.extend(self._descendants(entry.path, depth - 1))
         except (PermissionError, OSError) as e:
             logger.debug(f"Cannot list {root}: {e}")
         return out
@@ -180,9 +183,9 @@ class ProjectContextLoader:
         lower = content.lower()
         return not any(kw in lower for kw in DANGER_KEYWORDS)
 
-    def _read_file(self, path: Path) -> LoadedFile | None:
+    def _read_file(self, path: str) -> LoadedFile | None:
         try:
-            stat = path.stat()
+            stat = os.stat(path)
         except (OSError, FileNotFoundError):
             return None
         if stat.st_size > self.max_bytes:
@@ -191,7 +194,8 @@ class ProjectContextLoader:
             )
             return None
         try:
-            content = path.read_text(encoding="utf-8", errors="ignore")
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                content = f.read()
         except (OSError, PermissionError, UnicodeDecodeError) as e:
             logger.debug(f"Skipping {path}: read error {e}")
             return None
@@ -201,7 +205,7 @@ class ProjectContextLoader:
             logger.warning(f"Skipping {path}: prompt-injection pattern detected")
             return None
         sha1 = hashlib.sha1(content.encode("utf-8")).hexdigest()[:8]
-        return LoadedFile(path=str(path), size=len(content), sha1=sha1)
+        return LoadedFile(path=path, size=len(content), sha1=sha1)
 
     def load(self, *, force: bool = False) -> str:
         """Return the merged project-context string for injection."""
@@ -213,11 +217,11 @@ class ProjectContextLoader:
         total = 0
         seen_paths: set[str] = set()
         for path in self._candidate_paths():
-            key = str(path)
+            key = path
             if key in seen_paths:
                 continue
             seen_paths.add(key)
-            if not path.is_file():
+            if not os.path.isfile(path):
                 continue
             entry = self._read_file(path)
             if entry is None:
@@ -230,8 +234,10 @@ class ProjectContextLoader:
                 break
             loaded.append(entry)
             total += entry.size
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                file_content = f.read()
             chunks.append(
-                f"## PROJECT CONTEXT (from {path.name})\n{path.read_text(encoding='utf-8', errors='ignore')}"
+                f"## PROJECT CONTEXT (from {os.path.basename(path)})\n{file_content}"
             )
         merged = "\n\n".join(chunks)
         self._cache = (merged, tuple(loaded))
