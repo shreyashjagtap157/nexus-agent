@@ -13,13 +13,14 @@ or has a subclass of `NexusPlugin` that is auto-discovered.
 from __future__ import annotations
 
 import importlib.machinery
-import importlib.util
 import importlib.metadata
+import importlib.util
 import logging
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -151,15 +152,16 @@ class PluginManager:
 
     def _load_entry_points(self) -> None:
         """Load plugins registered under package entry points 'nexus_agent.plugins'."""
-        if sys.version_info >= (3, 10):
-            group = importlib.metadata.entry_points(group="nexus_agent.plugins")
-        else:
-            # Fallback for Python < 3.10
+        if sys.version_info < (3, 10):
+            # importlib_metadata backport or older importlib behavior
             try:
-                from importlib_metadata import entry_points
-                group = entry_points().get("nexus_agent.plugins", [])
+                import importlib_metadata
+                eps = importlib_metadata.entry_points()
+                group = eps.get("nexus_agent.plugins", [])
             except ImportError:
-                return
+                group = importlib.metadata.entry_points().get("nexus_agent.plugins", [])
+        else:
+            group = importlib.metadata.entry_points(group="nexus_agent.plugins")
 
 
         for ep in group:

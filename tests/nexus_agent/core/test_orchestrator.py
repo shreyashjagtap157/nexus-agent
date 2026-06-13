@@ -1,9 +1,8 @@
 """Tests for Orchestrator — multi-agent coordinator for planning and execution."""
 
 import unittest
-from unittest.mock import MagicMock, patch, call
 from pathlib import Path
-
+from unittest.mock import MagicMock, patch
 
 from nexus_agent.core.agent import AgentEvent, AgentState
 from nexus_agent.core.orchestrator import Orchestrator
@@ -50,7 +49,7 @@ class TestOrchestratorInit(unittest.TestCase):
     def test_init_creates_planner_and_executor(self):
         with patch("nexus_agent.core.orchestrator.Planner") as mock_planner, \
              patch("nexus_agent.core.orchestrator.Executor") as mock_executor:
-            orch = Orchestrator(
+            Orchestrator(
                 provider=self.provider,
                 tools=self.tools,
             )
@@ -72,7 +71,7 @@ class TestOrchestratorInit(unittest.TestCase):
     def test_init_kwargs_forwarded(self):
         with patch("nexus_agent.core.orchestrator.Planner") as mock_planner, \
              patch("nexus_agent.core.orchestrator.Executor") as mock_executor:
-            orch = Orchestrator(
+            Orchestrator(
                 provider=self.provider,
                 tools=self.tools,
                 max_iterations=50,
@@ -189,7 +188,7 @@ class TestOrchestratorRunTask(unittest.TestCase):
             _event("content_complete", "done"),
         ])
 
-        events = list(self.orch.run_task("test task"))
+        list(self.orch.run_task("test task"))
         self.mock_executor.execute_plan.assert_called_once_with(
             "test task", "complete plan"
         )
@@ -206,7 +205,7 @@ class TestOrchestratorRunTask(unittest.TestCase):
             _event("content_complete", "done"),
         ])
 
-        events = list(self.orch.run_task("test task"))
+        list(self.orch.run_task("test task"))
         callback.assert_called_once_with("approved plan")
         self.mock_executor.execute_plan.assert_called_once()
 
@@ -415,7 +414,7 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
         mock_verdict.reworked_code = None
         self.mock_debate.run_debate.return_value = mock_verdict
 
-        events = list(self.orch.run_autonomous("build a website"))
+        list(self.orch.run_autonomous("build a website"))
         # Task should be marked completed
         self.assertEqual(task.status, "completed")
         self.assertIsNotNone(task.result)
@@ -665,7 +664,7 @@ class TestOrchestratorDebateReworkedCode(unittest.TestCase):
         return task
 
     def test_debate_reworked_code_writes_files(self):
-        task = self._setup_basic_mocks()
+        self._setup_basic_mocks()
 
         mock_verdict = MagicMock()
         mock_verdict.final_approved = True
@@ -690,7 +689,7 @@ print("Hello, World!")
         self.assertEqual(target.read_text(), 'print("Hello, World!")')
 
     def test_debate_reworked_code_path_traversal_blocked(self):
-        task = self._setup_basic_mocks()
+        self._setup_basic_mocks()
 
         mock_verdict = MagicMock()
         mock_verdict.final_approved = True

@@ -70,7 +70,7 @@ class BrowserConfig:
     extra_launch_args: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_env(cls, workspace: Path | None = None) -> "BrowserConfig":
+    def from_env(cls, workspace: Path | None = None) -> BrowserConfig:
         """Build a config from ``NEXUS_BROWSER_*`` environment variables.
 
         Recognised vars:

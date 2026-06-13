@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
+import io
 import json
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
-import io
+from unittest.mock import patch
 
 from nexus_agent.mcp.acp_server import ACPServer
 

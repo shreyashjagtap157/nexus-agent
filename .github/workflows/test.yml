@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e ".[all]"
+          pip install -e ".[all,dev]"
 
       - name: Run tests
         run: |
