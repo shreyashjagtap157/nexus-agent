@@ -1,9 +1,8 @@
 """Tests for Orchestrator — multi-agent coordinator for planning and execution."""
 
 import unittest
-from unittest.mock import MagicMock, patch, call
 from pathlib import Path
-
+from unittest.mock import MagicMock, patch
 
 from nexus_agent.core.agent import AgentEvent, AgentState
 from nexus_agent.core.orchestrator import Orchestrator

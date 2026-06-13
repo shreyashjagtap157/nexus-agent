@@ -15,9 +15,8 @@ import logging
 import os
 import platform
 import shutil
-import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -38,19 +37,19 @@ class HealthMetric:
     ok: bool | None = None       # None = not applicable (info)
 
     @classmethod
-    def ok(cls, name: str, value: Any, unit: str = "") -> "HealthMetric":
+    def ok(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
         return cls(name=name, value=value, unit=unit, status="ok", ok=True)
 
     @classmethod
-    def warn(cls, name: str, value: Any, unit: str = "") -> "HealthMetric":
+    def warn(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
         return cls(name=name, value=value, unit=unit, status="warn", ok=False)
 
     @classmethod
-    def error(cls, name: str, value: Any, unit: str = "") -> "HealthMetric":
+    def error(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
         return cls(name=name, value=value, unit=unit, status="error", ok=False)
 
     @classmethod
-    def info(cls, name: str, value: Any, unit: str = "") -> "HealthMetric":
+    def info(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
         return cls(name=name, value=value, unit=unit, status="info", ok=None)
 
 
@@ -162,7 +161,12 @@ def _detect_gpu() -> str | None:
 
     # NVIDIA via pynvml
     try:
-        from pynvml import nvmlInit, nvmlDeviceGetCount, nvmlDeviceGetName, nvmlSystemGetDriverVersion
+        from pynvml import (
+            nvmlDeviceGetCount,
+            nvmlDeviceGetName,
+            nvmlInit,
+            nvmlSystemGetDriverVersion,
+        )
         nvmlInit()
         count = nvmlDeviceGetCount()
         if count > 0:
@@ -386,8 +390,8 @@ class BenchmarkRunner:
         start = time.perf_counter()
 
         # 1. Import core modules
-        import nexus_agent.core.config
         import nexus_agent.core.agent
+        import nexus_agent.core.config
         import nexus_agent.llm.base
         import nexus_agent.memory.memory_manager
         import nexus_agent.session.manager
@@ -443,10 +447,10 @@ def load_benchmark_history(limit: int = 20) -> list[BenchmarkResult]:
 
 def print_report(report: DoctorReport) -> None:
     """Pretty-print a full doctor report using rich."""
+    from rich import box
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    from rich import box
 
     console = Console()
 

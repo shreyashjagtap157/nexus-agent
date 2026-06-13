@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import shutil
 
 from nexus_agent.cli.commands._base import SLASH_COMMANDS
 

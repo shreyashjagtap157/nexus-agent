@@ -13,13 +13,14 @@ or has a subclass of `NexusPlugin` that is auto-discovered.
 from __future__ import annotations
 
 import importlib.machinery
-import importlib.util
 import importlib.metadata
+import importlib.util
 import logging
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
