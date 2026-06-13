@@ -326,7 +326,7 @@ class Sandbox:
                     command=command,
                     returncode=-1,
                     stdout="",
-                    stderr="Execution denied: Command parsing failed (potential shell injection).",
+                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",
                     duration=time.time() - start_time,
                     was_approved=False,
                     risk_level=risk,
