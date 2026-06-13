@@ -122,7 +122,7 @@ class Sandbox:
 
     def _split_commands(self, command: str) -> list[str]:
         """Split a shell command into individual subcommands.
-        
+
         Handles shell operators: &&, ||, ;, |, \n
         Each subcommand is trimmed and checked independently.
         """

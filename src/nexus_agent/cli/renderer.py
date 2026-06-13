@@ -963,17 +963,16 @@ class SpinnerWidget:
                 # Gradient color based on frame
                 fi = (self._frame_idx - 1) % len(INFINITY_FRAMES)
                 p_sub = INFINITY_COLORS_PURPLE[fi]
-                g_sub = INFINITY_COLORS_GOLD[fi]
-                s_sub = INFINITY_COLORS_SILVER[fi]
+                INFINITY_COLORS_GOLD[fi]
+                INFINITY_COLORS_SILVER[fi]
 
                 # Blend purple/gold/silver for a radiating gradient effect
                 symbol = f"{p_sub}{frame}{_RESET}"
 
-                color_style = "bold"
                 if elapsed >= 30:
-                    color_style = "bold red"
+                    pass
                 elif elapsed >= 10:
-                    color_style = "bold yellow"
+                    pass
 
                 parts = [symbol, f"\033[3m{verb}\033[0m", f"\033[2m· {elapsed_str}\033[0m"]
                 if progress:
@@ -1045,7 +1044,7 @@ class StatusBar:
 
         for rich_text, plain_text in all_parts:
             sep_plain = sep.replace("│", "|")
-            needed = len(sep_plain) + len(plain_text) if current_line else len(plain_text)
+            len(sep_plain) + len(plain_text) if current_line else len(plain_text)
             if current_line and len(current_plain) + 3 + len(plain_text) > w:
                 lines.append(current_line)
                 current_line = ""
@@ -1807,11 +1806,9 @@ class NexusTerminalRenderer:
         model_d = truncate_visual(model_name, 20)
 
         # Colors
-        B = "\033[1m"
-        D = "\033[2m"
-        C = hex_to_ansi(self.theme.accent_primary)
+        hex_to_ansi(self.theme.accent_primary)
         R = "\033[0m"
-        Y = hex_to_ansi(self.theme.accent_warning)
+        hex_to_ansi(self.theme.accent_warning)
         M_color = "\033[38;2;180;80;220m"
 
         left_1 = f" 🦄 NexusAgent      Model: {M_color}{model_d}{R}"

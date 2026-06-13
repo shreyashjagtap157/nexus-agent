@@ -1,12 +1,7 @@
 """Tests for the MCP module — MCPClient, StdioTransport, MCPServer."""
 
-import json
-import tempfile
-import threading
-import time
 import unittest
 from io import StringIO
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from nexus_agent.mcp.transport import StdioTransport

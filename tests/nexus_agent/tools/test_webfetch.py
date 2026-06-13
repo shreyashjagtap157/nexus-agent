@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from nexus_agent.tools.webfetch import (
     WebFetchTool,
-    _LRUCache,
     _coerce_int,
+    _LRUCache,
     html_to_markdown,
 )
 

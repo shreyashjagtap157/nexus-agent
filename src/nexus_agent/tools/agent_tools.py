@@ -11,13 +11,11 @@ not imported and called directly (though they can be imported for testing).
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

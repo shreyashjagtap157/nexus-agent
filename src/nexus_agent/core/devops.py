@@ -14,7 +14,6 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -243,8 +242,7 @@ class GitCheckpointer:
             res = subprocess.run(
                 ["git", "branch", "--show-current"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             return res.stdout.strip() if res.returncode == 0 else None
@@ -258,8 +256,7 @@ class GitCheckpointer:
             res = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if res.returncode != 0:
@@ -314,7 +311,7 @@ class VulnerabilityScanner:
 
     def scan_python(self) -> list[str]:
         """Run pip-audit for Python vulnerabilities."""
-        vulns: List[str] = []
+        vulns: list[str] = []
         if not ((self.workspace / "requirements.txt").exists() or (self.workspace / "pyproject.toml").exists()):
             return vulns
 
@@ -331,8 +328,7 @@ class VulnerabilityScanner:
             audit = subprocess.run(
                 ["pip-audit", "-r", "requirements.txt"] if (self.workspace / "requirements.txt").exists() else ["pip-audit"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if audit.returncode != 0:
@@ -344,7 +340,7 @@ class VulnerabilityScanner:
 
     def scan_node(self) -> list[str]:
         """Run npm audit for Node vulnerabilities."""
-        vulns: List[str] = []
+        vulns: list[str] = []
         if not (self.workspace / "package.json").exists():
             return vulns
 
@@ -352,8 +348,7 @@ class VulnerabilityScanner:
             audit = subprocess.run(
                 ["npm", "audit", "--audit-level=high"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if audit.returncode != 0:
