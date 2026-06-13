@@ -163,10 +163,16 @@ class SimplePlugin(NexusPlugin):
         
         mock_ep = MagicMock()
         mock_ep.name = "legacy_ep"
-        mock_eps.get.return_value = [mock_ep]
 
-        with patch.dict("sys.modules", {"importlib_metadata": mock_md}):
-            with patch("sys.version_info", (3, 9)):
+        # Depending on python 3.9 implementation details of importlib.metadata.entry_points
+        # Either it's a dict-like obj where `.get("nexus_agent.plugins", [])` works,
+        # or it has a `.select(group="...")` method
+        mock_eps.get.return_value = [mock_ep]
+        mock_eps.select.return_value = [mock_ep]
+
+        with patch("sys.version_info", (3, 9)):
+            with patch("importlib.metadata.entry_points") as mock_entry_points:
+                mock_entry_points.return_value = mock_eps
                 res = self.pm.discover_and_load()
 
         assert "legacy_ep" in res
