@@ -1,0 +1,3 @@
+## 2024-06-25 - Optimize ProjectContextLoader path traversals
+**Learning:** `pathlib` objects introduce significant overhead for operations inside hot loops like recursive directory walking (`_descendants`) and repeated stat checking (`_candidate_paths`, `_signature`). Creating intermediate `Path` objects in Python incurs overhead over raw string manipulations.
+**Action:** Use `os`, `os.path`, and `os.scandir` for internal, high-frequency file system traversal and I/O operations where speed is critical, while maintaining `pathlib` for public API consistency where performance isn't as sensitive.
