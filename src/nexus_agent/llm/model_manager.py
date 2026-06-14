@@ -114,51 +114,73 @@ class ModelManager:
         if search_dirs:
             dirs_to_search.extend(Path(d).expanduser().resolve() for d in search_dirs)
 
+        def get_dir_size(dir_path: str) -> int:
+            total = 0
+            try:
+                for entry in os.scandir(dir_path):
+                    if entry.is_file(follow_symlinks=True):
+                        total += entry.stat(follow_symlinks=True).st_size
+                    elif entry.is_dir(follow_symlinks=False):
+                        total += get_dir_size(entry.path)
+            except OSError:
+                pass
+            return total
+
+        def scan_directory(dir_path: str) -> None:
+            try:
+                for entry in os.scandir(dir_path):
+                    if entry.is_file(follow_symlinks=True):
+                        if entry.name.endswith(".gguf"):
+                            try:
+                                stat = entry.stat(follow_symlinks=True)
+                                name_stem = entry.name[:-5]
+                                model_info = {
+                                    "name": name_stem,
+                                    "filename": entry.name,
+                                    "path": entry.path,
+                                    "size_bytes": stat.st_size,
+                                    "size_str": _format_size(stat.st_size),
+                                    "quantization": _guess_quantization(entry.name),
+                                    "param_count": _guess_param_count(entry.name),
+                                    "modified": stat.st_mtime,
+                                    "format": "gguf",
+                                }
+                                models.append(model_info)
+                            except OSError as e:
+                                logger.warning(f"Could not read model file {entry.path}: {e}")
+                        elif entry.name == "genai_config.json":
+                            try:
+                                stat = entry.stat(follow_symlinks=True)
+                                model_dir = dir_path
+                                dir_name = os.path.basename(model_dir)
+                                total_size = get_dir_size(model_dir)
+                                model_info = {
+                                    "name": dir_name,
+                                    "filename": dir_name,
+                                    "path": model_dir,
+                                    "size_bytes": total_size,
+                                    "size_str": _format_size(total_size),
+                                    "quantization": "ONNX",
+                                    "param_count": _guess_param_count(dir_name),
+                                    "modified": stat.st_mtime,
+                                    "format": "onnx",
+                                }
+                                models.append(model_info)
+                            except OSError as e:
+                                logger.warning(
+                                    f"Could not read ONNX model directory {dir_path}: {e}"
+                                )
+                    elif entry.is_dir(follow_symlinks=False):
+                        scan_directory(entry.path)
+            except OSError as e:
+                logger.debug(f"Could not access directory {dir_path}: {e}")
+
         for search_dir in dirs_to_search:
             if not search_dir.exists():
                 logger.debug(f"Models directory does not exist: {search_dir}")
                 continue
 
-            # Scan for .gguf files
-            for gguf_file in search_dir.rglob("*.gguf"):
-                try:
-                    stat = gguf_file.stat()
-                    model_info = {
-                        "name": gguf_file.stem,
-                        "filename": gguf_file.name,
-                        "path": str(gguf_file),
-                        "size_bytes": stat.st_size,
-                        "size_str": _format_size(stat.st_size),
-                        "quantization": _guess_quantization(gguf_file.name),
-                        "param_count": _guess_param_count(gguf_file.name),
-                        "modified": stat.st_mtime,
-                        "format": "gguf",
-                    }
-                    models.append(model_info)
-                except OSError as e:
-                    logger.warning(f"Could not read model file {gguf_file}: {e}")
-
-            # Scan for ONNX GenAI model folders (folders containing genai_config.json)
-            for config_file in search_dir.rglob("genai_config.json"):
-                try:
-                    model_dir = config_file.parent
-                    stat = config_file.stat()
-                    # Calculate directory size (recursive)
-                    total_size = sum(f.stat().st_size for f in model_dir.rglob("*") if f.is_file())
-                    model_info = {
-                        "name": model_dir.name,
-                        "filename": model_dir.name,
-                        "path": str(model_dir),
-                        "size_bytes": total_size,
-                        "size_str": _format_size(total_size),
-                        "quantization": "ONNX",
-                        "param_count": _guess_param_count(model_dir.name),
-                        "modified": stat.st_mtime,
-                        "format": "onnx",
-                    }
-                    models.append(model_info)
-                except OSError as e:
-                    logger.warning(f"Could not read ONNX model directory {config_file.parent}: {e}")
+            scan_directory(str(search_dir))
 
         # Sort by name
         models.sort(key=lambda m: m["name"].lower())
@@ -218,15 +240,15 @@ class ModelManager:
 
             # Fallback: read GGUF header directly with struct
             import struct
-            GGUF_MAGIC = 0x46554747  # "GGUF" in little-endian
+            gguf_magic = 0x46554747  # "GGUF" in little-endian
             with open(path, "rb") as f:
                 magic = struct.unpack("<I", f.read(4))[0]
-                if magic != GGUF_MAGIC:
+                if magic != gguf_magic:
                     logger.debug(f"Not a valid GGUF file: {path}")
                     return metadata
 
-                version = struct.unpack("<I", f.read(4))[0]
-                tensor_count = struct.unpack("<Q", f.read(8))[0]
+                struct.unpack("<I", f.read(4))[0]
+                struct.unpack("<Q", f.read(8))[0]
                 metadata_kv_count = struct.unpack("<Q", f.read(8))[0]
 
                 # Read key-value metadata
@@ -464,7 +486,7 @@ class ModelManager:
             model_size = sum(f.stat().st_size for f in path.glob("*") if f.is_file())
 
         hw = self.detect_hardware()
-        ram_available = hw.get("ram_available_bytes", 0)
+        hw.get("ram_available_bytes", 0)
         ram_total = hw.get("ram_total_bytes", 0)
         vram_bytes = hw.get("vram_bytes", 0)
 
