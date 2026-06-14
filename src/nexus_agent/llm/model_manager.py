@@ -240,10 +240,10 @@ class ModelManager:
 
             # Fallback: read GGUF header directly with struct
             import struct
-            GGUF_MAGIC = 0x46554747  # "GGUF" in little-endian
+            gguf_magic = 0x46554747  # "GGUF" in little-endian
             with open(path, "rb") as f:
                 magic = struct.unpack("<I", f.read(4))[0]
-                if magic != GGUF_MAGIC:
+                if magic != gguf_magic:
                     logger.debug(f"Not a valid GGUF file: {path}")
                     return metadata
 
