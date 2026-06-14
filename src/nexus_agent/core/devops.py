@@ -14,7 +14,6 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -201,30 +200,33 @@ class SecretScanner:
         """Recursively scan workspace files for secrets."""
         matches: list[SecretMatch] = []
 
+        workspace_str = str(self.workspace)
         try:
-            for root, dirs, files in os.walk(str(self.workspace)):
+            for root, dirs, files in os.walk(workspace_str):
                 dirs[:] = [d for d in dirs if d not in self.EXCLUDE_DIRS]
 
                 for file in files:
-                    file_path = Path(root) / file
-                    if file_path.suffix not in self.VALID_EXTENSIONS:
+                    _, ext = os.path.splitext(file)
+                    if ext not in self.VALID_EXTENSIONS:
                         continue
 
+                    full_path = os.path.join(root, file)
                     try:
-                        content = file_path.read_text(encoding="utf-8", errors="ignore")
+                        with open(full_path, encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
                         for line_idx, line in enumerate(content.splitlines(), 1):
                             if line.strip().startswith("#") or line.strip().startswith("//"):
                                 continue
                             for name, compiled_re in self._compiled_patterns.items():
                                 if compiled_re.search(line):
                                     matches.append(SecretMatch(
-                                        file_path=str(file_path.relative_to(self.workspace)),
+                                        file_path=os.path.relpath(full_path, start=workspace_str),
                                         line_number=line_idx,
                                         matched_pattern=line.strip()[:100],
                                         pattern_name=name
                                     ))
                     except (OSError, UnicodeDecodeError, re.error) as e:
-                        logger.warning(f"Failed to scan {file_path}: {e}")
+                        logger.warning(f"Failed to scan {full_path}: {e}")
         except (OSError, ValueError) as e:
             logger.error(f"Secrets scan encountered failure: {e}")
 
@@ -243,8 +245,7 @@ class GitCheckpointer:
             res = subprocess.run(
                 ["git", "branch", "--show-current"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             return res.stdout.strip() if res.returncode == 0 else None
@@ -258,8 +259,7 @@ class GitCheckpointer:
             res = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if res.returncode != 0:
@@ -314,7 +314,7 @@ class VulnerabilityScanner:
 
     def scan_python(self) -> list[str]:
         """Run pip-audit for Python vulnerabilities."""
-        vulns: List[str] = []
+        vulns: list[str] = []
         if not ((self.workspace / "requirements.txt").exists() or (self.workspace / "pyproject.toml").exists()):
             return vulns
 
@@ -331,8 +331,7 @@ class VulnerabilityScanner:
             audit = subprocess.run(
                 ["pip-audit", "-r", "requirements.txt"] if (self.workspace / "requirements.txt").exists() else ["pip-audit"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if audit.returncode != 0:
@@ -344,7 +343,7 @@ class VulnerabilityScanner:
 
     def scan_node(self) -> list[str]:
         """Run npm audit for Node vulnerabilities."""
-        vulns: List[str] = []
+        vulns: list[str] = []
         if not (self.workspace / "package.json").exists():
             return vulns
 
@@ -352,8 +351,7 @@ class VulnerabilityScanner:
             audit = subprocess.run(
                 ["npm", "audit", "--audit-level=high"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if audit.returncode != 0:
