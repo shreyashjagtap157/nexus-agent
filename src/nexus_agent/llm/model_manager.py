@@ -167,7 +167,9 @@ class ModelManager:
                                 }
                                 models.append(model_info)
                             except OSError as e:
-                                logger.warning(f"Could not read ONNX model directory {dir_path}: {e}")
+                                logger.warning(
+                                    f"Could not read ONNX model directory {dir_path}: {e}"
+                                )
                     elif entry.is_dir(follow_symlinks=False):
                         scan_directory(entry.path)
             except OSError as e:
