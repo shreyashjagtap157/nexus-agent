@@ -1,3 +1,4 @@
-## 2024-05-18 - Multiple generator expressions bottleneck in vector ops
-**Learning:** Using multiple generator expressions inside a math-heavy loop (like vector dot products or sum of squares) creates significant overhead due to object allocation and function call overhead per element in Python. This limits performance significantly in linear scan vector databases.
-**Action:** Unroll the multiple generator loops into a single linear loop to calculate all required scalars (e.g. dot product, sum of squares) in one pass for a substantial speedup (~35%).
+
+## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
+**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
+**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.
