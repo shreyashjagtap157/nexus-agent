@@ -114,51 +114,77 @@ class ModelManager:
         if search_dirs:
             dirs_to_search.extend(Path(d).expanduser().resolve() for d in search_dirs)
 
+        # Helper to traverse directories and yield files using fast os.scandir
+        def _scan_models(dir_path: str):
+            try:
+                with os.scandir(dir_path) as it:
+                    for entry in it:
+                        if entry.is_file(follow_symlinks=True):
+                            name = entry.name.lower()
+                            if name.endswith(".gguf"):
+                                try:
+                                    stat = entry.stat(follow_symlinks=True)
+                                    # Use entry.name without extension for 'stem' equivalent
+                                    stem = entry.name.rsplit('.', 1)[0]
+                                    models.append({
+                                        "name": stem,
+                                        "filename": entry.name,
+                                        "path": entry.path,
+                                        "size_bytes": stat.st_size,
+                                        "size_str": _format_size(stat.st_size),
+                                        "quantization": _guess_quantization(entry.name),
+                                        "param_count": _guess_param_count(entry.name),
+                                        "modified": stat.st_mtime,
+                                        "format": "gguf",
+                                    })
+                                except OSError as e:
+                                    logger.warning(f"Could not read model file {entry.path}: {e}")
+                            elif name == "genai_config.json":
+                                try:
+                                    # Parent dir name
+                                    parent_path = os.path.dirname(entry.path)
+                                    parent_name = os.path.basename(parent_path)
+                                    stat = entry.stat(follow_symlinks=True)
+
+                                    # Calculate dir size recursively via os.scandir
+                                    def _dir_size(dpath):
+                                        total = 0
+                                        try:
+                                            with os.scandir(dpath) as sub_it:
+                                                for sub_entry in sub_it:
+                                                    if sub_entry.is_file(follow_symlinks=True):
+                                                        total += sub_entry.stat(follow_symlinks=True).st_size
+                                                    elif sub_entry.is_dir(follow_symlinks=False):
+                                                        total += _dir_size(sub_entry.path)
+                                        except OSError:
+                                            pass
+                                        return total
+
+                                    total_size = _dir_size(parent_path)
+                                    models.append({
+                                        "name": parent_name,
+                                        "filename": parent_name,
+                                        "path": parent_path,
+                                        "size_bytes": total_size,
+                                        "size_str": _format_size(total_size),
+                                        "quantization": "ONNX",
+                                        "param_count": _guess_param_count(parent_name),
+                                        "modified": stat.st_mtime,
+                                        "format": "onnx",
+                                    })
+                                except OSError as e:
+                                    logger.warning(f"Could not read ONNX model directory {parent_path}: {e}")
+                        elif entry.is_dir(follow_symlinks=False):
+                            _scan_models(entry.path)
+            except OSError:
+                pass
+
         for search_dir in dirs_to_search:
             if not search_dir.exists():
                 logger.debug(f"Models directory does not exist: {search_dir}")
                 continue
 
-            # Scan for .gguf files
-            for gguf_file in search_dir.rglob("*.gguf"):
-                try:
-                    stat = gguf_file.stat()
-                    model_info = {
-                        "name": gguf_file.stem,
-                        "filename": gguf_file.name,
-                        "path": str(gguf_file),
-                        "size_bytes": stat.st_size,
-                        "size_str": _format_size(stat.st_size),
-                        "quantization": _guess_quantization(gguf_file.name),
-                        "param_count": _guess_param_count(gguf_file.name),
-                        "modified": stat.st_mtime,
-                        "format": "gguf",
-                    }
-                    models.append(model_info)
-                except OSError as e:
-                    logger.warning(f"Could not read model file {gguf_file}: {e}")
-
-            # Scan for ONNX GenAI model folders (folders containing genai_config.json)
-            for config_file in search_dir.rglob("genai_config.json"):
-                try:
-                    model_dir = config_file.parent
-                    stat = config_file.stat()
-                    # Calculate directory size (recursive)
-                    total_size = sum(f.stat().st_size for f in model_dir.rglob("*") if f.is_file())
-                    model_info = {
-                        "name": model_dir.name,
-                        "filename": model_dir.name,
-                        "path": str(model_dir),
-                        "size_bytes": total_size,
-                        "size_str": _format_size(total_size),
-                        "quantization": "ONNX",
-                        "param_count": _guess_param_count(model_dir.name),
-                        "modified": stat.st_mtime,
-                        "format": "onnx",
-                    }
-                    models.append(model_info)
-                except OSError as e:
-                    logger.warning(f"Could not read ONNX model directory {config_file.parent}: {e}")
+            _scan_models(str(search_dir))
 
         # Sort by name
         models.sort(key=lambda m: m["name"].lower())

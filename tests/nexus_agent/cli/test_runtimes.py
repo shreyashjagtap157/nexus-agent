@@ -168,7 +168,7 @@ class TestCheckVulkan(unittest.TestCase):
 
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     def test_no_vulkan(self, mock_which):
-        with patch.dict("os.environ", {}, clear=True), \
+        with patch.dict("os.environ", {}), \
              patch.dict("sys.modules", {"onnxruntime": MagicMock(__file__="/path/onnxruntime/__init__.py")}), \
              patch("os.name", "nt"):
             runtimes = _check_vulkan()
@@ -208,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {}, clear=True):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -223,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {}, clear=True):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 

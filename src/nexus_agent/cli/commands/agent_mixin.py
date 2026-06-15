@@ -304,6 +304,7 @@ class AgentCommandsMixin:
                     break
 
         if not stripped:
+            label = "project" if self._vector_use_project else "global"
             self.r.system_message("Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")
             return
 

@@ -7,6 +7,7 @@ processed records when space exceeds limits.
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import threading
 from pathlib import Path
@@ -63,11 +64,21 @@ class DiskWatchdog:
         """Get current disk usage of the cache directory in bytes."""
         if not self._cache_dir.exists():
             return 0
-        total = 0
-        for item in self._cache_dir.rglob("*"):
-            if item.is_file():
-                total += item.stat().st_size
-        return total
+
+        def _dir_size(dpath):
+            total = 0
+            try:
+                with os.scandir(dpath) as it:
+                    for entry in it:
+                        if entry.is_file(follow_symlinks=True):
+                            total += entry.stat(follow_symlinks=True).st_size
+                        elif entry.is_dir(follow_symlinks=False):
+                            total += _dir_size(entry.path)
+            except OSError:
+                pass
+            return total
+
+        return _dir_size(str(self._cache_dir))
 
     def get_disk_free(self) -> int:
         """Get free disk space in bytes."""
