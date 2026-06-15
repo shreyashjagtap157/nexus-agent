@@ -48,14 +48,39 @@ def _format_size(size_bytes: int) -> str:
 def _guess_quantization(filename: str) -> str:
     """Guess quantization type from filename."""
     name = filename.upper()
-    quant_types = sorted([
-        "Q2_K", "Q3_K_S", "Q3_K_M", "Q3_K_L",
-        "Q4_0", "Q4_1", "Q4_K_S", "Q4_K_M",
-        "Q5_0", "Q5_1", "Q5_K_S", "Q5_K_M",
-        "Q6_K", "Q8_0", "F16", "F32",
-        "IQ1_S", "IQ1_M", "IQ2_XXS", "IQ2_XS", "IQ2_S", "IQ2_M",
-        "IQ3_XXS", "IQ3_XS", "IQ3_S", "IQ4_XS", "IQ4_NL",
-    ], key=len, reverse=True)
+    quant_types = sorted(
+        [
+            "Q2_K",
+            "Q3_K_S",
+            "Q3_K_M",
+            "Q3_K_L",
+            "Q4_0",
+            "Q4_1",
+            "Q4_K_S",
+            "Q4_K_M",
+            "Q5_0",
+            "Q5_1",
+            "Q5_K_S",
+            "Q5_K_M",
+            "Q6_K",
+            "Q8_0",
+            "F16",
+            "F32",
+            "IQ1_S",
+            "IQ1_M",
+            "IQ2_XXS",
+            "IQ2_XS",
+            "IQ2_S",
+            "IQ2_M",
+            "IQ3_XXS",
+            "IQ3_XS",
+            "IQ3_S",
+            "IQ4_XS",
+            "IQ4_NL",
+        ],
+        key=len,
+        reverse=True,
+    )
     for qt in quant_types:
         if qt in name or qt.replace("_", "-") in name:
             return qt
@@ -66,10 +91,28 @@ def _guess_param_count(filename: str) -> str:
     """Guess parameter count from filename."""
     name = filename.lower()
     # Common patterns: 7b, 13b, 70b, 1.5b, etc.
-    match = re.search(r'(\d+\.?\d*)[_-]?b(?:illion)?', name)
+    match = re.search(r"(\d+\.?\d*)[_-]?b(?:illion)?", name)
     if match:
         return f"{match.group(1)}B"
     return "unknown"
+
+
+def _fast_dir_size(dirname: str) -> int:
+    """Calculate directory size quickly using os.scandir."""
+    total = 0
+    try:
+        with os.scandir(dirname) as it:
+            for entry in it:
+                try:
+                    if entry.is_file(follow_symlinks=True):
+                        total += entry.stat(follow_symlinks=True).st_size
+                    elif entry.is_dir(follow_symlinks=False):
+                        total += _fast_dir_size(entry.path)
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return total
 
 
 class ModelManager:
@@ -119,46 +162,56 @@ class ModelManager:
                 logger.debug(f"Models directory does not exist: {search_dir}")
                 continue
 
-            # Scan for .gguf files
-            for gguf_file in search_dir.rglob("*.gguf"):
-                try:
-                    stat = gguf_file.stat()
-                    model_info = {
-                        "name": gguf_file.stem,
-                        "filename": gguf_file.name,
-                        "path": str(gguf_file),
-                        "size_bytes": stat.st_size,
-                        "size_str": _format_size(stat.st_size),
-                        "quantization": _guess_quantization(gguf_file.name),
-                        "param_count": _guess_param_count(gguf_file.name),
-                        "modified": stat.st_mtime,
-                        "format": "gguf",
-                    }
-                    models.append(model_info)
-                except OSError as e:
-                    logger.warning(f"Could not read model file {gguf_file}: {e}")
+            # Use a single os.scandir pass for both .gguf files and ONNX config folders
+            # to avoid the overhead of intermediate Path objects and multiple traversals.
+            search_str = str(search_dir)
+            directories_to_scan = [search_str]
 
-            # Scan for ONNX GenAI model folders (folders containing genai_config.json)
-            for config_file in search_dir.rglob("genai_config.json"):
+            while directories_to_scan:
+                current_dir = directories_to_scan.pop()
                 try:
-                    model_dir = config_file.parent
-                    stat = config_file.stat()
-                    # Calculate directory size (recursive)
-                    total_size = sum(f.stat().st_size for f in model_dir.rglob("*") if f.is_file())
-                    model_info = {
-                        "name": model_dir.name,
-                        "filename": model_dir.name,
-                        "path": str(model_dir),
-                        "size_bytes": total_size,
-                        "size_str": _format_size(total_size),
-                        "quantization": "ONNX",
-                        "param_count": _guess_param_count(model_dir.name),
-                        "modified": stat.st_mtime,
-                        "format": "onnx",
-                    }
-                    models.append(model_info)
+                    with os.scandir(current_dir) as it:
+                        for entry in it:
+                            try:
+                                if entry.is_file(follow_symlinks=True):
+                                    name_lower = entry.name.lower()
+                                    if name_lower.endswith(".gguf"):
+                                        stat = entry.stat(follow_symlinks=True)
+                                        stem = entry.name[:-5]  # remove .gguf
+                                        model_info = {
+                                            "name": stem,
+                                            "filename": entry.name,
+                                            "path": entry.path,
+                                            "size_bytes": stat.st_size,
+                                            "size_str": _format_size(stat.st_size),
+                                            "quantization": _guess_quantization(entry.name),
+                                            "param_count": _guess_param_count(entry.name),
+                                            "modified": stat.st_mtime,
+                                            "format": "gguf",
+                                        }
+                                        models.append(model_info)
+                                    elif name_lower == "genai_config.json":
+                                        stat = entry.stat(follow_symlinks=True)
+                                        model_dir_name = os.path.basename(current_dir)
+                                        total_size = _fast_dir_size(current_dir)
+                                        model_info = {
+                                            "name": model_dir_name,
+                                            "filename": model_dir_name,
+                                            "path": current_dir,
+                                            "size_bytes": total_size,
+                                            "size_str": _format_size(total_size),
+                                            "quantization": "ONNX",
+                                            "param_count": _guess_param_count(model_dir_name),
+                                            "modified": stat.st_mtime,
+                                            "format": "onnx",
+                                        }
+                                        models.append(model_info)
+                                elif entry.is_dir(follow_symlinks=False):
+                                    directories_to_scan.append(entry.path)
+                            except OSError as e:
+                                logger.debug(f"Could not read entry {entry.path}: {e}")
                 except OSError as e:
-                    logger.warning(f"Could not read ONNX model directory {config_file.parent}: {e}")
+                    logger.debug(f"Could not scan directory {current_dir}: {e}")
 
         # Sort by name
         models.sort(key=lambda m: m["name"].lower())
@@ -206,6 +259,7 @@ class ModelManager:
             # Try GGUF reader from llama-cpp-python first
             try:
                 from gguf import GGUFReader
+
                 reader = GGUFReader(str(path))
                 metadata["vocab_size"] = reader.fields.get("tokenizer.ggml.vocab_size", None)
                 if metadata["vocab_size"] is None:
@@ -218,6 +272,7 @@ class ModelManager:
 
             # Fallback: read GGUF header directly with struct
             import struct
+
             GGUF_MAGIC = 0x46554747  # "GGUF" in little-endian
             with open(path, "rb") as f:
                 magic = struct.unpack("<I", f.read(4))[0]
@@ -225,8 +280,8 @@ class ModelManager:
                     logger.debug(f"Not a valid GGUF file: {path}")
                     return metadata
 
-                version = struct.unpack("<I", f.read(4))[0]
-                tensor_count = struct.unpack("<Q", f.read(8))[0]
+                struct.unpack("<I", f.read(4))[0]
+                struct.unpack("<Q", f.read(8))[0]
                 metadata_kv_count = struct.unpack("<Q", f.read(8))[0]
 
                 # Read key-value metadata
@@ -294,6 +349,7 @@ class ModelManager:
         # RAM info
         try:
             import psutil
+
             vm = psutil.virtual_memory()
             hw["ram_total"] = _format_size(vm.total)
             hw["ram_available"] = _format_size(vm.available)
@@ -311,9 +367,12 @@ class ModelManager:
         # Try NVIDIA GPU
         try:
             import subprocess
+
             result = subprocess.run(
                 ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode == 0 and result.stdout.strip():
                 lines = result.stdout.strip().split("\n")
@@ -328,9 +387,12 @@ class ModelManager:
         if platform.system() == "Darwin":
             try:
                 import subprocess
+
                 result = subprocess.run(
                     ["system_profiler", "SPDisplaysDataType"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if "Metal" in result.stdout:
                     hw["gpu"] = "Apple Metal (integrated)"
@@ -344,16 +406,21 @@ class ModelManager:
         if platform.system() == "Windows":
             try:
                 import subprocess
+
                 # Run PowerShell query for NPUs (Qualcomm, Intel AI Boost, AMD IPU, etc.)
                 cmd = [
-                    "powershell", "-NoProfile", "-Command",
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
                     "Get-CimInstance Win32_PnPSignedDevice | "
                     "Where-Object { $_.FriendlyName -like '*NPU*' -or $_.FriendlyName -like '*Neural*' -or $_.FriendlyName -like '*Intel AI Boost*' -or $_.FriendlyName -like '*Hexagon*' } | "
-                    "Select-Object -ExpandProperty FriendlyName"
+                    "Select-Object -ExpandProperty FriendlyName",
                 ]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                 if result.returncode == 0 and result.stdout.strip():
-                    npu_names = [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
+                    npu_names = [
+                        line.strip() for line in result.stdout.strip().split("\n") if line.strip()
+                    ]
                     if npu_names:
                         hw["npu"] = npu_names[0]
             except (OSError, AttributeError):
@@ -410,10 +477,7 @@ class ModelManager:
 
         # Filter to models that fit in available memory (with 2GB headroom)
         headroom = 2 * 1024**3
-        fitting_models = [
-            m for m in models
-            if m["size_bytes"] < (usable_memory - headroom)
-        ]
+        fitting_models = [m for m in models if m["size_bytes"] < (usable_memory - headroom)]
 
         if not fitting_models:
             # Fall back to smallest model
@@ -422,11 +486,23 @@ class ModelManager:
 
         # Score models: prefer larger, higher quality
         quant_scores = {
-            "F32": 10, "F16": 9, "Q8_0": 8, "Q6_K": 7,
-            "Q5_K_M": 6, "Q5_K_S": 5, "Q5_1": 5, "Q5_0": 5,
-            "Q4_K_M": 4, "Q4_K_S": 3, "Q4_1": 3, "Q4_0": 3,
-            "Q3_K_L": 2, "Q3_K_M": 2, "Q3_K_S": 1,
-            "Q2_K": 0, "unknown": 3,
+            "F32": 10,
+            "F16": 9,
+            "Q8_0": 8,
+            "Q6_K": 7,
+            "Q5_K_M": 6,
+            "Q5_K_S": 5,
+            "Q5_1": 5,
+            "Q5_0": 5,
+            "Q4_K_M": 4,
+            "Q4_K_S": 3,
+            "Q4_1": 3,
+            "Q4_0": 3,
+            "Q3_K_L": 2,
+            "Q3_K_M": 2,
+            "Q3_K_S": 1,
+            "Q2_K": 0,
+            "unknown": 3,
         }
 
         def score_model(m: dict[str, Any]) -> float:
@@ -438,7 +514,9 @@ class ModelManager:
         fitting_models.sort(key=score_model, reverse=True)
         return fitting_models[0]["path"]
 
-    def evaluate_loading_guardrail(self, model_path: str, guardrail_level: str = "balanced") -> dict[str, Any]:
+    def evaluate_loading_guardrail(
+        self, model_path: str, guardrail_level: str = "balanced"
+    ) -> dict[str, Any]:
         """Evaluate memory requirements of a model against available system RAM/VRAM.
 
         Args:
@@ -461,10 +539,20 @@ class ModelManager:
         if path.is_file():
             model_size = path.stat().st_size
         else:
-            model_size = sum(f.stat().st_size for f in path.glob("*") if f.is_file())
+            # Use fast os.scandir to sum file sizes
+            try:
+                with os.scandir(str(path)) as it:
+                    for entry in it:
+                        try:
+                            if entry.is_file(follow_symlinks=True):
+                                model_size += entry.stat(follow_symlinks=True).st_size
+                        except OSError:
+                            pass
+            except OSError:
+                pass
 
         hw = self.detect_hardware()
-        ram_available = hw.get("ram_available_bytes", 0)
+        hw.get("ram_available_bytes", 0)
         ram_total = hw.get("ram_total_bytes", 0)
         vram_bytes = hw.get("vram_bytes", 0)
 
@@ -480,7 +568,9 @@ class ModelManager:
         if vram_bytes > 0:
             max_allowed_bytes = int((vram_bytes + ram_total) * limit_pct)
 
-        logger.info(f"Guardrail check: model_size={_format_size(model_size)}, max_allowed={_format_size(max_allowed_bytes)}")
+        logger.info(
+            f"Guardrail check: model_size={_format_size(model_size)}, max_allowed={_format_size(max_allowed_bytes)}"
+        )
 
         if model_size > max_allowed_bytes:
             msg = (
@@ -494,4 +584,3 @@ class ModelManager:
                 return {"allowed": True, "warning": f"⚠️ WARNING: {msg}"}
 
         return {"allowed": True, "warning": None}
-

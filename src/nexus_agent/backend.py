@@ -63,8 +63,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _create_mock_provider():
     """Create a minimal mock provider for dry-run or fallback."""
-    from nexus_agent.llm.base import LLMProvider, LLMResponse, Message, ToolDefinition
     from collections.abc import Iterator
+
+    from nexus_agent.llm.base import LLMProvider, LLMResponse, Message, ToolDefinition
 
     class MockProvider(LLMProvider):
         @property
@@ -110,8 +111,8 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
     This mirrors the initialization in SessionOrchestratorMixin._initialize()
     but runs standalone without a TUI or NexusApp instance.
     """
-    from nexus_agent.core.config import load_config
     from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
+    from nexus_agent.core.config import load_config
 
     # 1. Load config
     config = load_config(workspace=workspace)
@@ -129,23 +130,23 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
     # 3. Initialize session (creates or resumes)
     from nexus_agent.session.manager import SessionManager
     session_data_dir = config.get("data_dir", "~/.nexus-agent/sessions")
-    session_mgr = SessionManager(data_dir=session_data_dir)
+    SessionManager(data_dir=session_data_dir)
 
     # 4. Create tool registry
-    from nexus_agent.tools.file_ops import (
-        ReadFileTool,
-        WriteFileTool,
-        ListDirectoryTool,
-        SearchFilesTool,
-    )
-    from nexus_agent.tools.shell import ShellTool
+    from nexus_agent.tools.boomerang import BoomerangTool
     from nexus_agent.tools.code_edit import CodeEditTool
+    from nexus_agent.tools.council import CouncilTool
+    from nexus_agent.tools.file_ops import (
+        ListDirectoryTool,
+        ReadFileTool,
+        SearchFilesTool,
+        WriteFileTool,
+    )
+    from nexus_agent.tools.memory import MemoryTool
+    from nexus_agent.tools.shell import ShellTool
+    from nexus_agent.tools.todowrite import TodoWriteTool
     from nexus_agent.tools.web_search import WebSearchTool
     from nexus_agent.tools.webfetch import WebFetchTool
-    from nexus_agent.tools.todowrite import TodoWriteTool
-    from nexus_agent.tools.memory import MemoryTool
-    from nexus_agent.tools.boomerang import BoomerangTool
-    from nexus_agent.tools.council import CouncilTool
 
     boomerang_tool = BoomerangTool()
     council_tool = CouncilTool()

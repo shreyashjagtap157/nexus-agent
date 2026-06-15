@@ -377,7 +377,7 @@ class SessionOrchestratorMixin:
             import torch
             if torch.cuda.is_available():
                 gpu_mem = torch.cuda.memory_allocated() / (1024**3)
-                gpu_reserved = torch.cuda.memory_reserved() / (1024**3)
+                torch.cuda.memory_reserved() / (1024**3)
                 parts.append(f"GPU:{gpu_mem:.1f}G")
         except (ImportError, RuntimeError, ValueError):
             pass
@@ -390,8 +390,7 @@ class SessionOrchestratorMixin:
         return "  ".join(parts)
 
     def _rebuild_welcome(self):
-        model_name = strip_markup(self._model_name())
-        provider = self._provider_name or "local"
+        strip_markup(self._model_name())
         if self._first_request_done:
             res_info = self._get_resource_info()
         else:
