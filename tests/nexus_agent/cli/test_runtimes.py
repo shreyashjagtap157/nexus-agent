@@ -2,17 +2,18 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
-    scan_runtimes,
-    format_runtime_list,
-    _check_cuda,
-    _check_vulkan,
     _check_cpu,
-    _check_rocm,
+    _check_cuda,
     _check_openvino,
+    _check_rocm,
     _check_tpu,
+    _check_vulkan,
     _validate_runtime_path,
+    format_runtime_list,
+    scan_runtimes,
 )
 
 

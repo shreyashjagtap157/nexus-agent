@@ -552,7 +552,7 @@ class ModelManager:
                 pass
 
         hw = self.detect_hardware()
-        ram_available = hw.get("ram_available_bytes", 0)
+        hw.get("ram_available_bytes", 0)
         ram_total = hw.get("ram_total_bytes", 0)
         vram_bytes = hw.get("vram_bytes", 0)
 

@@ -307,7 +307,7 @@ class LSPClientTool(Tool):
             return lines
 
         body = flatten(symbols)
-        return f"### Document symbols:\n" + "\n".join(body) if body else "No symbols reported by the language server."
+        return "### Document symbols:\n" + "\n".join(body) if body else "No symbols reported by the language server."
 
     @staticmethod
     def _render_completions(result: Any) -> str:
@@ -333,7 +333,7 @@ class LSPClientTool(Tool):
     @staticmethod
     def _render_rename(workspace_edit: Any, new_name: str) -> str:
         if not workspace_edit or not isinstance(workspace_edit, dict):
-            return f"No rename edits returned by the language server (target not found?)."
+            return "No rename edits returned by the language server (target not found?)."
         changes = workspace_edit.get("changes") or {}
         document_changes = workspace_edit.get("documentChanges") or []
         total = sum(len(v) for v in changes.values()) if isinstance(changes, dict) else 0
@@ -341,7 +341,7 @@ class LSPClientTool(Tool):
             len(d.get("edits") or []) for d in document_changes if isinstance(d, dict)
         )
         if total == 0:
-            return f"No rename edits returned by the language server (target not found?)."
+            return "No rename edits returned by the language server (target not found?)."
         return f"✅ Rename to '{new_name}' would affect {total} location(s) across the workspace."
 
     def _run_diagnostics(self, path: Path, content: str) -> str:

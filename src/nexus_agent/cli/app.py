@@ -273,15 +273,15 @@ class NexusApp(
             except (OSError, RuntimeError):
                 pass
         logo = """
- _   _  _____  __  __ _   _  ____    _     ____ _____ _   _ _____ 
+ _   _  _____  __  __ _   _  ____    _     ____ _____ _   _ _____
 | \\ | || ____| \\ \\/ /| | | |/ ___|  / \\   / ___| ____| \\ | |_   _|
-|  \\| ||  _|    \\  / | | | |\\___ \\ / _ \\ | |  _|  _| |  \\| | | |  
-| |\\  || |___   /  \\ | |_| | ___) / ___ \\| |_| | |___| |\\  | | |  
-|_| \\_||_____| /_/\\_\\ \\___/|____/_/   \\_\\\\____|_____|_| \\_| |_|  
+|  \\| ||  _|    \\  / | | | |\\___ \\ / _ \\ | |  _|  _| |  \\| | | |
+| |\\  || |___   /  \\ | |_| | ___) / ___ \\| |_| | |___| |\\  | | |
+|_| \\_||_____| /_/\\_\\ \\___/|____/_/   \\_\\\\____|_____|_| \\_| |_|
 """
         self.r.console.print(logo, style="bold cyan")
         if self._session_id:
-            self.r.console.print(f"  [bold green]Session saved.[/bold green] To resume this session, run:")
+            self.r.console.print("  [bold green]Session saved.[/bold green] To resume this session, run:")
             self.r.console.print(f"  [bold]nexus session resume {self._session_id}[/bold]\n")
         else:
             self.r.console.print("  [dim]Goodbye.[/dim]\n")

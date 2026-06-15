@@ -3,11 +3,11 @@
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
 from nexus_agent import __app_name__, __version__
-from typing import Any
 
 
 @click.group(invoke_without_command=True)
@@ -449,7 +449,7 @@ def doctor(model: str | None, provider: str, benchmark: bool, json_output: bool)
     """
     from rich.console import Console
 
-    from nexus_agent.cli.doctor import run_doctor, print_report
+    from nexus_agent.cli.doctor import print_report, run_doctor
 
     console = Console()
 
@@ -524,7 +524,7 @@ def backend(ctx: click.Context, acp: bool, dry_run: bool, workspace: str,
     if not acp:
         click.echo("Usage: nexus backend --acp [options]")
         return
-    from nexus_agent.backend import run_acp_backend, parse_args
+    from nexus_agent.backend import parse_args, run_acp_backend
     args = parse_args([
         "--acp",
         "--workspace", workspace,
