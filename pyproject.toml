@@ -66,7 +66,7 @@ rocm = [
 
 # Metal — Apple GPU acceleration (macOS)
 metal = [
-    "llama-cpp-python[metal]>=0.3.0",
+    "llama-cpp-python[metal]>=0.3.0; sys_platform == 'darwin'",
 ]
 
 # SYCL — Intel GPU acceleration (oneAPI)
@@ -76,8 +76,8 @@ sycl = [
 
 # NPU — Neural Processing Unit (Windows DirectML / ONNX)
 npu = [
-    "onnxruntime-genai>=0.3.0",
-    "onnxruntime-directml>=1.18.0",
+    "onnxruntime-genai>=0.3.0; sys_platform == 'win32'",
+    "onnxruntime-directml>=1.18.0; sys_platform == 'win32'",
 ]
 
 # OpenVINO — Intel CPU/GPU/NPU

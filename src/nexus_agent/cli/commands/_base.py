@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import Any
 
 from blessed import Terminal
-
 
 _term = Terminal()
 
@@ -213,7 +211,7 @@ class BaseCommands:
             scale_line,
             marker_line,
             label_line,
-            f"  \u2190/\u2192 adjust \u00b7 Enter confirm \u00b7 Esc cancel",
+            "  \u2190/\u2192 adjust \u00b7 Enter confirm \u00b7 Esc cancel",
         ]
 
         h = len(lines)

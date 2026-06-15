@@ -14,7 +14,6 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -314,7 +313,7 @@ class VulnerabilityScanner:
 
     def scan_python(self) -> list[str]:
         """Run pip-audit for Python vulnerabilities."""
-        vulns: List[str] = []
+        vulns: list[str] = []
         if not ((self.workspace / "requirements.txt").exists() or (self.workspace / "pyproject.toml").exists()):
             return vulns
 
@@ -344,7 +343,7 @@ class VulnerabilityScanner:
 
     def scan_node(self) -> list[str]:
         """Run npm audit for Node vulnerabilities."""
-        vulns: List[str] = []
+        vulns: list[str] = []
         if not (self.workspace / "package.json").exists():
             return vulns
 

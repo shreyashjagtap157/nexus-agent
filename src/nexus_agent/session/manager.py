@@ -63,7 +63,7 @@ class SessionManager:
         self._last_save_time: float = 0
         self._autosave_thread: threading.Thread | None = None
         self._autosave_stop = threading.Event()
-        self._background_sessions: dict[str, "BackgroundSession"] = {}
+        self._background_sessions: dict[str, BackgroundSession] = {}
         self._background_lock = threading.Lock()
 
         SessionManager._instances.append(self)
@@ -695,7 +695,7 @@ class SessionManager:
         with self._background_lock:
             return [bg.status() for bg in self._background_sessions.values()]
 
-    def get_background_session(self, session_id: str) -> "BackgroundSession | None":
+    def get_background_session(self, session_id: str) -> BackgroundSession | None:
         """Get a background session by id (supports prefix match)."""
         with self._background_lock:
             for sid, bg in self._background_sessions.items():
@@ -703,7 +703,7 @@ class SessionManager:
                     return bg
         return None
 
-    def register_background(self, bg: "BackgroundSession") -> None:
+    def register_background(self, bg: BackgroundSession) -> None:
         with self._background_lock:
             self._background_sessions[bg.session_id] = bg
 

@@ -52,7 +52,6 @@ class TestImportGraphTool(unittest.TestCase):
         self.assertIn("Unknown", out)
 
     def test_excludes_pycache(self):
-        import os
         cache = self.workspace / "__pycache__"
         cache.mkdir()
         (cache / "x.py").write_text("import os\n")

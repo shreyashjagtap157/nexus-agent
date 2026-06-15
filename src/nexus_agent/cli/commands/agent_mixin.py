@@ -305,7 +305,7 @@ class AgentCommandsMixin:
 
         if not stripped:
             label = "project" if self._vector_use_project else "global"
-            self.r.system_message(f"Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")
+            self.r.system_message("Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")
             return
 
         parts = stripped.split(maxsplit=1)
@@ -435,7 +435,7 @@ class AgentCommandsMixin:
 
             self.console.print(table)
             self.console.print()
-            self.console.print(f"  [dim]Usage: /memory vector list N  — show N entries (default 20)[/dim]")
+            self.console.print("  [dim]Usage: /memory vector list N  — show N entries (default 20)[/dim]")
         except Exception as exc:
             self.r.error(f"List failed: {exc}")
 
@@ -536,7 +536,7 @@ class AgentCommandsMixin:
 
             self.console.print(table)
             self.console.print()
-            self.console.print(f"  [dim]Usage: /memory vector filter <category>  — filter by category[/dim]")
+            self.console.print("  [dim]Usage: /memory vector filter <category>  — filter by category[/dim]")
         except Exception as exc:
             self.r.error(f"Filter failed: {exc}")
 

@@ -354,9 +354,8 @@ class RuntimeManager:
     @staticmethod
     def activate_runtime(backend: str) -> None:
         """Prepend the isolated runtime directory to sys.path and invalidate caches."""
-        import os
-        import sys
         import importlib
+        import os
         if not backend or backend == "auto":
             return
         data_dir_path = os.path.expanduser("~/.nexus-agent")
@@ -372,9 +371,8 @@ class RuntimeManager:
     def get_recommended_runtimes() -> list[str]:
         """Detect and return a list of recommended runtimes for this machine."""
         recs = ["cpu"]
-        import sys
-        import platform
         import os
+        import platform
         import shutil
 
         # Apple Silicon
@@ -490,10 +488,8 @@ class RuntimeManager:
         For external servers: prints instructions (Ollama, LM Studio, KoboldCpp).
         """
         import os
-        import sys
-        from pathlib import Path
-        import subprocess
         import shutil
+        from pathlib import Path
         rt = INSTALLABLE_RUNTIMES.get(backend)
         if not rt:
             raise ValueError(f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}")

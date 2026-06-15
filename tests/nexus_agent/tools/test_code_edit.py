@@ -1,7 +1,6 @@
 """Tests for the CodeEditTool — search-and-replace + AST validation gate."""
 
 import tempfile
-import textwrap
 import unittest
 from pathlib import Path
 

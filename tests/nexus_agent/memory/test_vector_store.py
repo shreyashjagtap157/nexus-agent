@@ -5,9 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from nexus_agent.memory.memory_manager import MemoryManager
 from nexus_agent.memory.vector_embedding import EmbeddingEngine, cosine_similarity
 from nexus_agent.memory.vector_store import VectorStore
-from nexus_agent.memory.memory_manager import MemoryManager
 
 
 class TestEmbeddingEngine(unittest.TestCase):

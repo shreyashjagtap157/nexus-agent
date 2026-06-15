@@ -13,11 +13,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-import queue
 import shutil
 import subprocess
 import threading
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -194,7 +192,7 @@ class LSPClient:
         self._reader_thread = None
         self._started = False
 
-    def __enter__(self) -> "LSPClient":
+    def __enter__(self) -> LSPClient:
         self.start()
         return self
 
@@ -504,7 +502,7 @@ class LSPClientPool:
             self._clients[language] = client
             return client
 
-    def __enter__(self) -> "LSPClientPool":
+    def __enter__(self) -> LSPClientPool:
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:

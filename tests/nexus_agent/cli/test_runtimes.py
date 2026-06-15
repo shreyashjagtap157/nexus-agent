@@ -2,17 +2,18 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
-    scan_runtimes,
-    format_runtime_list,
-    _check_cuda,
-    _check_vulkan,
     _check_cpu,
-    _check_rocm,
+    _check_cuda,
     _check_openvino,
+    _check_rocm,
     _check_tpu,
+    _check_vulkan,
     _validate_runtime_path,
+    format_runtime_list,
+    scan_runtimes,
 )
 
 
@@ -207,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {}, clear=True):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -222,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {}, clear=True):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 

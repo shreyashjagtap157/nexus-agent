@@ -1,9 +1,10 @@
 """Tests for new rendering features: ResourceMonitor, Token glyphs, and Diff tracking."""
 
 import unittest
-from unittest.mock import MagicMock, patch
-from nexus_agent.cli.renderer import TokenUsage, PerRequest
+
+from nexus_agent.cli.renderer import PerRequest, TokenUsage
 from nexus_agent.cli.resource_monitor import ResourceMonitor, ResourceSnapshot, format_resource_line
+
 
 class TestPerRequestRendering(unittest.TestCase):
     def test_glyph_display(self):
