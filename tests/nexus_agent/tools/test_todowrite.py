@@ -193,7 +193,7 @@ class TestTodoStore(unittest.TestCase):
     def test_list_filter_by_priority(self):
         s = TodoStore()
         a = s.add("a", priority="high")
-        b = s.add("b", priority="low")
+        s.add("b", priority="low")
         high = s.list(priority="high")
         self.assertEqual([t.id for t in high], [a.id])
 
@@ -210,7 +210,7 @@ class TestTodoStore(unittest.TestCase):
     def test_clear_completed_keeps_pending(self):
         s = TodoStore()
         a = s.add("a")
-        b = s.add("b")
+        s.add("b")
         s.update(a.id, status="done")
         n = s.clear_completed()
         self.assertEqual(n, 1)
@@ -227,7 +227,7 @@ class TestTodoStore(unittest.TestCase):
     def test_counts(self):
         s = TodoStore()
         a = s.add("a")
-        b = s.add("b")
+        s.add("b")
         s.update(a.id, status="done")
         c = s.counts()
         self.assertEqual(c["total"], 2)

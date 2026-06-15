@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import shutil
 
 from nexus_agent.cli.commands._base import SLASH_COMMANDS
 
@@ -25,7 +24,7 @@ class MinimalInputHandlerMixin:
         """Handle slash commands - delegate to BaseCommands for full handler, handle basics here."""
         parts = command.split(maxsplit=1)
         cmd = parts[0].lower()
-        args = parts[1] if len(parts) > 1 else ""
+        parts[1] if len(parts) > 1 else ""
 
         if cmd == "/help":
             self._minimal_help()

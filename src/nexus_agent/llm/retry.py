@@ -12,11 +12,11 @@ from __future__ import annotations
 import logging
 import random
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from typing import Any, TypeVar, Callable
+from typing import Any, TypeVar
 
-from nexus_agent.llm.base import LLMProvider, LLMResponse, StreamChunk, Message, ToolDefinition
+from nexus_agent.llm.base import LLMProvider, LLMResponse, Message, StreamChunk, ToolDefinition
 
 logger = logging.getLogger(__name__)
 

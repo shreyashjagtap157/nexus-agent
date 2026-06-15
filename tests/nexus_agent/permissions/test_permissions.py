@@ -3,8 +3,8 @@
 import unittest
 from unittest.mock import MagicMock
 
-from nexus_agent.permissions.rules import PermissionRule, PermissionLevel, DEFAULT_RULES
 from nexus_agent.permissions.manager import PermissionManager
+from nexus_agent.permissions.rules import DEFAULT_RULES, PermissionLevel, PermissionRule
 
 
 class TestPermissionLevel(unittest.TestCase):

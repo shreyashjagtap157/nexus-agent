@@ -1,6 +1,5 @@
 """Tests for the retry/backoff/rate-limit module in `llm/retry.py`."""
 
-import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -9,7 +8,6 @@ import httpx
 from nexus_agent.llm.retry import (
     RETRYABLE_STATUS_CODES,
     RetryPolicy,
-    RetryStats,
     _is_retryable,
     _retry_after_seconds,
     chat_with_retry,

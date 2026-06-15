@@ -8,10 +8,6 @@ mixin that ``CommandDispatcherMixin`` inherits.
 
 from __future__ import annotations
 
-import threading
-import time
-from typing import Any
-
 from nexus_agent.cli.commands.interactive_ui import InteractiveUIMixin
 
 

@@ -92,7 +92,7 @@ def _check_vulkan() -> list[RuntimeInfo]:
     vulkan_info = _which("vulkaninfo")
     if vulkan_info and _validate_runtime_path(vulkan_info):
         try:
-            result = subprocess.run([vulkan_info, "--summary"], capture_output=True, text=True, timeout=5)
+            subprocess.run([vulkan_info, "--summary"], capture_output=True, text=True, timeout=5)
             runtimes.append(RuntimeInfo(
                 name="Vulkan", provider="vulkan",
                 available=True, path=vulkan_info,

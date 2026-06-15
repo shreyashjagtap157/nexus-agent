@@ -1,7 +1,7 @@
 """Tests for EventHandlerMixin — agent execution event loop, streaming, tool calls."""
 
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from nexus_agent.cli.event_handler import EventHandlerMixin
 from nexus_agent.core.agent import AgentEvent
@@ -149,7 +149,7 @@ class TestRunAgentEventTypes(unittest.TestCase):
 
     def setUp(self):
         self.app = _MockApp()
-        
+
 
     def _make_event(self, event_type: str, data=None):
         e = MagicMock(spec=AgentEvent)
@@ -263,7 +263,7 @@ class TestRunAgentEventTypes(unittest.TestCase):
         ]
         self.app._run_agent("test")
         # Should not be called with assistant role (empty response)
-        assistant_calls = [
+        [
             c for c in self.app._session_mgr.save_message.call_args_list
             if c.kwargs.get("role") == "assistant"
         ]

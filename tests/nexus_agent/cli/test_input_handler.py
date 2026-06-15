@@ -1,11 +1,7 @@
 """Tests for InputHandlerMixin — key parsing, prompt rendering, autocomplete, and input management."""
 
-import os
-import sys
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from nexus_agent.cli.input_handler import InputHandlerMixin
 
@@ -392,7 +388,6 @@ class TestReadInputBasic(unittest.TestCase):
     def test_enter_returns_stripped_value(self):
         """Enter key (\\r) with text returns that text."""
         # Simulate: type "hello", then press Enter
-        original_read_byte = self.app._read_byte
         call_count = [0]
 
         def mock_read_byte():

@@ -6,10 +6,9 @@ import shutil
 import unittest
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock
 
-from nexus_agent.core.usage import UsageTracker
 from nexus_agent.cli.renderer import TokenUsage
+from nexus_agent.core.usage import UsageTracker
 
 
 class FakeDispatcher:

@@ -43,7 +43,7 @@ from nexus_agent.llm.base import (
     ToolCall,
     ToolDefinition,
 )
-from nexus_agent.tools.base import format_aci_output, summarize_search_results
+from nexus_agent.tools.base import format_aci_output
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ Current workspace: {workspace}
         tools: list[_ToolLike] | None = None,
         config: AgentLoopConfig | None = None,
         self_healing_executor: SelfHealingExecutor | None = None,
-        usage_tracker: "UsageTracker | None" = None,
+        usage_tracker: UsageTracker | None = None,
     ):
         """Initialize the agent loop.
 
@@ -685,8 +685,7 @@ Current workspace: {workspace}
                 continue
 
             rework_needed, reflection_events = self._handle_reflection(truncated_input, response)
-            for ev in reflection_events:
-                yield ev
+            yield from reflection_events
             if rework_needed:
                 continue
 
@@ -793,8 +792,7 @@ Current workspace: {workspace}
                 'has_tool_calls': False,
                 'tool_calls': [],
             })())
-            for ev in reflection_events:
-                yield ev
+            yield from reflection_events
             if rework_needed:
                 continue
 
@@ -818,7 +816,7 @@ Current workspace: {workspace}
                 self._stream_tool_calls = []
                 try:
                     yield from self._run_streaming()
-                except (RuntimeError, ValueError, OSError) as e:
+                except (RuntimeError, ValueError, OSError):
                     pass
                 if self._stream_content:
                     yield self._emit_event("content_complete", self._stream_content)

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import Any
 
 from blessed import Terminal
-
 
 _term = Terminal()
 
@@ -196,7 +194,7 @@ class BaseCommands:
                 label_parts.append(" " * gap)
 
         label_line = " " * pad + "".join(label_parts)
-        ptr_color = effort_colors.get(levels[idx], "yellow")
+        effort_colors.get(levels[idx], "yellow")
         marker_line = " " * (pad + centers[idx]) + "\u25b2"
 
         bar_chars = ["\u2500"] * total_w
@@ -213,7 +211,7 @@ class BaseCommands:
             scale_line,
             marker_line,
             label_line,
-            f"  \u2190/\u2192 adjust \u00b7 Enter confirm \u00b7 Esc cancel",
+            "  \u2190/\u2192 adjust \u00b7 Enter confirm \u00b7 Esc cancel",
         ]
 
         h = len(lines)

@@ -225,8 +225,8 @@ class ModelManager:
                     logger.debug(f"Not a valid GGUF file: {path}")
                     return metadata
 
-                version = struct.unpack("<I", f.read(4))[0]
-                tensor_count = struct.unpack("<Q", f.read(8))[0]
+                struct.unpack("<I", f.read(4))[0]
+                struct.unpack("<Q", f.read(8))[0]
                 metadata_kv_count = struct.unpack("<Q", f.read(8))[0]
 
                 # Read key-value metadata
@@ -464,7 +464,7 @@ class ModelManager:
             model_size = sum(f.stat().st_size for f in path.glob("*") if f.is_file())
 
         hw = self.detect_hardware()
-        ram_available = hw.get("ram_available_bytes", 0)
+        hw.get("ram_available_bytes", 0)
         ram_total = hw.get("ram_total_bytes", 0)
         vram_bytes = hw.get("vram_bytes", 0)
 
