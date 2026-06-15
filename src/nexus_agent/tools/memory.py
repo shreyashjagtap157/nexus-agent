@@ -37,10 +37,10 @@ def _coerce_limit(value: Any, default: int = 10) -> int:
 class MemoryTool(Tool):
     """Self-manage the agent's long-term memory."""
 
-    def __init__(self, memory_manager: "MemoryManager | None" = None) -> None:
+    def __init__(self, memory_manager: MemoryManager | None = None) -> None:
         self._memory = memory_manager
 
-    def set_memory(self, memory_manager: "MemoryManager") -> None:
+    def set_memory(self, memory_manager: MemoryManager) -> None:
         """Bind (or rebind) the memory manager — useful for late init."""
         self._memory = memory_manager
 
@@ -208,4 +208,4 @@ class MemoryTool(Tool):
     def __repr__(self) -> str:
         if self._memory is None:
             return "<Tool:memory (unbound)>"
-        return f"<Tool:memory bound>"
+        return "<Tool:memory bound>"

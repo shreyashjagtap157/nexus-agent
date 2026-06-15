@@ -3,13 +3,16 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from nexus_agent.cli.theme import ThemeColors, DARK_THEME, LIGHT_THEME
-from nexus_agent.cli.renderer import (
-    Verbosity, TokenUsage, ContextBreakdown, detect_dark_mode,
-)
 from nexus_agent.cli.auth import AuthStore
+from nexus_agent.cli.renderer import (
+    ContextBreakdown,
+    TokenUsage,
+    Verbosity,
+    detect_dark_mode,
+)
+from nexus_agent.cli.theme import DARK_THEME, LIGHT_THEME
 
 
 class TestTheme(unittest.TestCase):

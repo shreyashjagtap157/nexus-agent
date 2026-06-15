@@ -1,3 +1,4 @@
-## 2024-06-25 - Optimize ProjectContextLoader path traversals
-**Learning:** `pathlib` objects introduce significant overhead for operations inside hot loops like recursive directory walking (`_descendants`) and repeated stat checking (`_candidate_paths`, `_signature`). Creating intermediate `Path` objects in Python incurs overhead over raw string manipulations.
-**Action:** Use `os`, `os.path`, and `os.scandir` for internal, high-frequency file system traversal and I/O operations where speed is critical, while maintaining `pathlib` for public API consistency where performance isn't as sensitive.
+
+## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
+**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
+**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.

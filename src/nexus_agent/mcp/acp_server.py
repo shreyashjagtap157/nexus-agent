@@ -17,9 +17,10 @@ import asyncio
 import json
 import logging
 import sys
-from dataclasses import dataclass, asdict
+from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class ACPServer:
                 line = await loop.run_in_executor(None, sys.stdin.readline)
                 if not line:
                     break
-                
+
                 # Process each request in a separate task to allow concurrent events
                 task = asyncio.create_task(self._handle_request(line))
                 tasks.add(task)
@@ -79,7 +80,7 @@ class ACPServer:
             except Exception as e:
                 logger.error(f"ACP Server: Error reading stdin: {e}")
                 break
-        
+
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -99,10 +100,10 @@ class ACPServer:
                 if not text:
                     self._send_error(req_id, -32602, "Invalid params: 'text' is required")
                     return
-                
+
                 # Stream agent events as notifications, and send final result as response
                 await self._handle_prompt(req_id, text)
-            
+
             elif method == "init":
                 # Agent is already initialized in run() — just confirm
                 self._send_response(req_id, {
@@ -117,26 +118,26 @@ class ACPServer:
                     "effort": getattr(self._agent, "effort_level", "unknown"),
                 }
                 self._send_response(req_id, status)
-            
+
             elif method == "memory_list":
                 memories = self._handle_memory_list(req_id, params)
-            
+
             elif method == "memory_search":
                 memories = self._handle_memory_search(req_id, params)
-            
+
             elif method == "memory_stats":
                 stats = self._handle_memory_stats(req_id, params)
-            
+
             elif method == "memory_compact":
                 self._handle_memory_compact(req_id, params)
-            
+
             elif method == "memory_scores":
                 self._handle_memory_scores(req_id, params)
-            
+
             elif method == "stop":
                 self._running = False
                 self._send_response(req_id, {"status": "stopping"})
-            
+
             else:
                 self._send_error(req_id, -32601, f"Method not found: {method}")
 

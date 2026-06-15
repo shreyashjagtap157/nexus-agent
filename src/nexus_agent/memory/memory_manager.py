@@ -11,7 +11,6 @@ merged with the existing FTS5 full-text results for hybrid retrieval.
 
 from __future__ import annotations
 
-import datetime
 import logging
 import threading
 import time

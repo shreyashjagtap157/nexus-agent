@@ -252,7 +252,7 @@ class RuntimeCommandsMixin:
                 self.r.system_message(f"Runtime backend switched to: {backend}")
             else:
                 self.r.error(
-                    f"Failed to switch runtime. Valid: auto, llama-cpp, onnx"
+                    "Failed to switch runtime. Valid: auto, llama-cpp, onnx"
                 )
 
         elif subcmd in ("help", "--help", "-h") or (not args and subcmd not in ("list",)):

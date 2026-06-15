@@ -17,7 +17,6 @@ from __future__ import annotations
 import ast
 import difflib
 import logging
-import re
 from pathlib import Path
 from typing import Any
 

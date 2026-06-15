@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 
 from nexus_agent.llm.model_manager import ModelManager
-from nexus_agent.tools.rag_search import RepositoryRAGTool
 from nexus_agent.tools.batch_edit import BatchEditTool
+from nexus_agent.tools.rag_search import RepositoryRAGTool
 
 
 class TestAdvancedFeatures(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestAdvancedFeatures(unittest.TestCase):
         self.test_dir = tempfile.TemporaryDirectory()
         self.workspace = Path(self.test_dir.name)
         self.rag_tool = None
-        
+
         # Write dummy code files
         self.file1 = self.workspace / "utils.py"
         self.file1.write_text(
@@ -27,7 +27,7 @@ class TestAdvancedFeatures(unittest.TestCase):
             "    return a + b\n",
             encoding="utf-8"
         )
-        
+
         self.file2 = self.workspace / "main.py"
         self.file2.write_text(
             "from utils import calculate_total\n"
@@ -47,7 +47,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_rag_search_indexing(self) -> None:
         """Verify RAG tool segments indexing, symbol extraction, and offline FTS5 searches."""
         self.rag_tool = RepositoryRAGTool(workspace=self.workspace, db_dir=self.workspace)
-        
+
         # Index files
         res = self.rag_tool.execute(query="dummy", reindex=True)
         self.assertIn("Found 1 relevant file code blocks", res)
@@ -64,7 +64,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_batch_edit_atomicity(self) -> None:
         """Verify BatchEditTool replaces blocks atomically and rolls back on failures."""
         editor = BatchEditTool(workspace=self.workspace)
-        
+
         edits = [
             {
                 "path": "utils.py",
@@ -77,10 +77,10 @@ class TestAdvancedFeatures(unittest.TestCase):
                 "replacement_content": "print('Result:', calculate_total(10, 20))",
             }
         ]
-        
+
         res = editor.execute(edits)
         self.assertIn("Atomic batch transaction succeeded", res)
-        
+
         # Verify content updated
         self.assertIn("a * b", self.file1.read_text(encoding="utf-8"))
         self.assertIn("Result:", self.file2.read_text(encoding="utf-8"))
@@ -98,17 +98,17 @@ class TestAdvancedFeatures(unittest.TestCase):
                 "replacement_content": "print('Fail')",
             }
         ]
-        
+
         with self.assertRaises(RuntimeError):
             editor.execute(failing_edits)
-            
+
         # utils.py must be rolled back to "a * b" rather than "a / b"
         self.assertIn("a * b", self.file1.read_text(encoding="utf-8"))
 
     def test_loading_guardrails(self) -> None:
         """Verify model loading guardrails safety validations under simulated memory."""
         mgr = ModelManager()
-        
+
         # Evaluate simulated existing dummy model
         dummy_model = self.workspace / "model.gguf"
         # Create a large 10MB dummy model file
@@ -121,19 +121,19 @@ class TestAdvancedFeatures(unittest.TestCase):
 
     def test_agent_telemetry_tracing(self) -> None:
         """Verify AgentLoop writes JSONL execution trace files to the workspace."""
-        from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
-        
         # Create a mock provider
         from unittest.mock import MagicMock
+
+        from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
         mock_provider = MagicMock()
         mock_provider.name = "mock"
         mock_provider.model_name = "mock-model"
-        
+
         from nexus_agent.llm.base import LLMResponse
         mock_response = LLMResponse(content="I am a mock agent.", tool_calls=[], finish_reason="stop")
         mock_provider.chat_completion.return_value = mock_response
         mock_provider.count_message_tokens.return_value = 10
-        
+
         agent = AgentLoop(
             provider=mock_provider,
             config=AgentLoopConfig(
@@ -142,18 +142,18 @@ class TestAdvancedFeatures(unittest.TestCase):
                 effort_level="medium"
             )
         )
-        
+
         # Execute run
         events = list(agent.run("Hello"))
         self.assertTrue(len(events) > 0)
-        
+
         # Verify trace file exists in .nexus-agent/traces/
         trace_dir = self.workspace / ".nexus-agent" / "traces"
         self.assertTrue(trace_dir.exists())
-        
+
         trace_files = list(trace_dir.glob("trace_*.jsonl"))
         self.assertEqual(len(trace_files), 1)
-        
+
         # Verify trace content is structured JSONL
         trace_content = trace_files[0].read_text(encoding="utf-8")
         self.assertIn("state_change", trace_content)
@@ -164,11 +164,11 @@ class TestAdvancedFeatures(unittest.TestCase):
         """Verify LSP static diagnostics catches Python compile errors locally."""
         from nexus_agent.tools.lsp_client import LSPClientTool
         tool = LSPClientTool(workspace=self.workspace)
-        
+
         # Test valid syntax file
         res_ok = tool.execute(action="diagnostics", file=str(self.file1))
         self.assertIn("Diagnostics OK", res_ok)
-        
+
         # Write broken syntax file
         broken_file = self.workspace / "broken.py"
         broken_file.write_text(
@@ -176,7 +176,7 @@ class TestAdvancedFeatures(unittest.TestCase):
             "    return True\n",
             encoding="utf-8"
         )
-        
+
         res_err = tool.execute(action="diagnostics", file=str(broken_file))
         self.assertIn("SYNTAX DIAGNOSTICS FAILURE", res_err)
         self.assertIn("Line 1", res_err)
@@ -184,7 +184,7 @@ class TestAdvancedFeatures(unittest.TestCase):
         # Test definitions lookup
         res_def = tool.execute(action="definition", file=str(self.file1), line=1)
         self.assertIn("Discovered definition", res_def)
-        
+
     def test_browser_crawler_fallback(self) -> None:
         """Verify BrowserTool falls back cleanly to HTTPX HTML parser scraping."""
         from nexus_agent.tools.browser import BrowserTool
@@ -216,7 +216,7 @@ class TestAdvancedFeatures(unittest.TestCase):
 
     def test_failure_classification(self) -> None:
         """Verify classifying error messages into transient, semantic, or fatal categories."""
-        from nexus_agent.core.self_heal import classify_failure, FailureType
+        from nexus_agent.core.self_heal import FailureType, classify_failure
         self.assertEqual(classify_failure("connection reset"), FailureType.TRANSIENT)
         self.assertEqual(classify_failure("no such file or directory"), FailureType.SEMANTIC)
         self.assertEqual(classify_failure("permission denied"), FailureType.FATAL)
@@ -237,12 +237,12 @@ class TestAdvancedFeatures(unittest.TestCase):
         root = tg.decompose("Fix authentication bug and run tests")
         self.assertEqual(len(tg.nodes), 4)  # Root + 3 stages
         self.assertEqual(root.id, tg.root_id)
-        
+
         # Test ready tasks sequencing
         ready = tg.get_ready_tasks()
         self.assertEqual(len(ready), 1)
         self.assertEqual(ready[0].title, "Gather Context")
-        
+
         # Mark completed and check next ready task
         ready[0].status = "completed"
         ready_next = tg.get_ready_tasks()
@@ -288,7 +288,7 @@ class TestAdvancedFeatures(unittest.TestCase):
         """Verify VerificationPipeline auto-detects frameworks and scans security secrets."""
         from nexus_agent.core.devops import VerificationPipeline
         pipeline = VerificationPipeline(workspace=self.workspace)
-        
+
         # We wrote dummy python files main.py and utils.py in setUp
         fw = pipeline.test_runner.detect_framework()
         self.assertEqual(fw, "unittest")

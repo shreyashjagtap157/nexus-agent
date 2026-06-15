@@ -1,6 +1,5 @@
 """Tests for `core/project_context.py` — `ProjectContextLoader`."""
 
-import os
 import tempfile
 import time
 import unittest

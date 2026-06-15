@@ -149,7 +149,8 @@ class SetupWizard:
         gpu_detected = gpu_name != "Not detected"
         has_cuda = False
         if "NVIDIA" in gpu_name:
-            import os as _os, shutil
+            import os as _os
+            import shutil
             if shutil.which("nvcc") or _os.environ.get("CUDA_PATH") or _os.environ.get("CUDA_HOME"):
                 has_cuda = True
 

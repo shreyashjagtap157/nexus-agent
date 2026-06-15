@@ -2,45 +2,18 @@
 
 from __future__ import annotations
 
-import json
-import os
-import re
-import subprocess
 import sys
-import threading
-import time
-from pathlib import Path
-from typing import Any
 
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.table import Table
-
-from nexus_agent import __version__
-from nexus_agent.cli.renderer import (
-    HAS_MSVCRT,
-    TokenUsage,
-    alternate_screen,
-    clear_to_end,
-    disable_mouse,
-    enable_mouse,
-    hide_cursor,
-    main_screen,
-    move_to,
-    show_cursor,
-)
-from nexus_agent.core.config import save_config
-from nexus_agent.cli.commands.provider_mixin import ProviderCommandsMixin
-from nexus_agent.cli.commands.session_mixin import SessionCommandsMixin
-from nexus_agent.cli.commands.debug_mixin import DebugCommandsMixin
-from nexus_agent.cli.commands.tool_mixin import ToolCommandsMixin
-from nexus_agent.cli.commands.misc_mixin import MiscCommandsMixin
 from nexus_agent.cli.commands.agent_mixin import AgentCommandsMixin
 from nexus_agent.cli.commands.config_mixin import ConfigCommandsMixin
+from nexus_agent.cli.commands.debug_mixin import DebugCommandsMixin
 from nexus_agent.cli.commands.interactive_mixin import InteractiveCommandsMixin
-from nexus_agent.cli.commands.runtime_mixin import RuntimeCommandsMixin
+from nexus_agent.cli.commands.misc_mixin import MiscCommandsMixin
 from nexus_agent.cli.commands.model_mixin import ModelCommandsMixin
+from nexus_agent.cli.commands.provider_mixin import ProviderCommandsMixin
+from nexus_agent.cli.commands.runtime_mixin import RuntimeCommandsMixin
+from nexus_agent.cli.commands.session_mixin import SessionCommandsMixin
+from nexus_agent.cli.commands.tool_mixin import ToolCommandsMixin
 
 SLASH_COMMANDS = [
     {"name": "/help", "description": "Show available commands"},
