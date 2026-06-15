@@ -101,7 +101,7 @@ class CritiqueResult:
 #  Critic prompt templates                                                      #
 # --------------------------------------------------------------------------- #
 
-CRITIC_SYSTEM_PROMPT = """You are a rigorous code and response critic. Your job is to evaluate 
+CRITIC_SYSTEM_PROMPT = """You are a rigorous code and response critic. Your job is to evaluate
 the quality of an AI assistant's output and identify issues.
 
 You MUST respond with a valid JSON object containing exactly these fields:

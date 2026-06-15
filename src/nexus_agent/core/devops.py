@@ -242,8 +242,7 @@ class GitCheckpointer:
             res = subprocess.run(
                 ["git", "branch", "--show-current"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             return res.stdout.strip() if res.returncode == 0 else None
@@ -257,8 +256,7 @@ class GitCheckpointer:
             res = subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if res.returncode != 0:
@@ -330,8 +328,7 @@ class VulnerabilityScanner:
             audit = subprocess.run(
                 ["pip-audit", "-r", "requirements.txt"] if (self.workspace / "requirements.txt").exists() else ["pip-audit"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if audit.returncode != 0:
@@ -351,8 +348,7 @@ class VulnerabilityScanner:
             audit = subprocess.run(
                 ["npm", "audit", "--audit-level=high"],
                 cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
             )
             if audit.returncode != 0:

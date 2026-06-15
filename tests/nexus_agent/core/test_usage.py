@@ -382,7 +382,7 @@ class TestSummarize:
         cost_str = f"{s.estimated_cost:.10f}"
         # Check we don't have more than 6 decimal places
         assert "." in cost_str
-        decimals = cost_str.split(".")[1]
+        cost_str.split(".")[1]
         # May have trailing zeros but the underlying float is rounded
 
 

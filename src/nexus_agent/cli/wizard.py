@@ -156,13 +156,10 @@ class SetupWizard:
 
         if gpu_detected and has_cuda:
             default_runtime = "cuda"
-            default_label = "CUDA (GPU)"
         elif gpu_detected:
             default_runtime = "cpu"
-            default_label = "CPU (GPU detected but no CUDA toolkit)"
         else:
             default_runtime = "cpu"
-            default_label = "CPU (no GPU detected)"
 
         install_now = self._confirm(
             f"  Would you like to install the [cyan]{default_runtime}[/cyan] runtime now?",

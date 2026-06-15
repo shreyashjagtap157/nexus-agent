@@ -700,7 +700,7 @@ class InputHandlerMixin:
         term_lines = shutil.get_terminal_size().lines
 
         max_name = min(max(len(c["name"]) for c in commands), term_width - 25) if commands else 20
-        query_lower = query.lower()
+        query.lower()
 
         MAX_VISIBLE = min(10, max(3, term_lines - 6))
         total_items = len(commands)

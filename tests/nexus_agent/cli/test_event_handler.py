@@ -263,7 +263,7 @@ class TestRunAgentEventTypes(unittest.TestCase):
         ]
         self.app._run_agent("test")
         # Should not be called with assistant role (empty response)
-        assistant_calls = [
+        [
             c for c in self.app._session_mgr.save_message.call_args_list
             if c.kwargs.get("role") == "assistant"
         ]

@@ -159,7 +159,6 @@ class ModelCommandsMixin:
             and hasattr(self._engine, "model_name")
         )
         active_name = self._engine.model_name if is_active else None
-        active_provider = self._provider_name or "local"
 
         def make_table(title: str, items: list, provider_label: str = "") -> Table:
             tbl = Table(title=title, show_header=True, header_style="bold")
@@ -177,7 +176,6 @@ class ModelCommandsMixin:
             return tbl
 
         if grouped:
-            active_provider = self._provider_name or "local"
             if local_models:
                 self.console.print(make_table("Local Models", local_models, "local"))
                 self.console.print()

@@ -396,7 +396,7 @@ class BenchmarkRunner:
         import nexus_agent.memory.memory_manager
         import nexus_agent.session.manager
         import nexus_agent.tools.base
-        config = nexus_agent.core.config.load_config()
+        nexus_agent.core.config.load_config()
 
         elapsed = (time.perf_counter() - start) * 1000
         result.cold_start_ms = round(elapsed, 1)
@@ -422,10 +422,10 @@ def save_benchmark_result(result: BenchmarkResult) -> Path:
 
 def load_benchmark_history(limit: int = 20) -> list[BenchmarkResult]:
     """Load recent benchmark results for trend display.
-    
+
     Args:
         limit: Maximum number of results to load.
-    
+
     Returns:
         List of BenchmarkResult sorted by timestamp (newest first).
     """

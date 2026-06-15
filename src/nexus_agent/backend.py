@@ -130,7 +130,7 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
     # 3. Initialize session (creates or resumes)
     from nexus_agent.session.manager import SessionManager
     session_data_dir = config.get("data_dir", "~/.nexus-agent/sessions")
-    session_mgr = SessionManager(data_dir=session_data_dir)
+    SessionManager(data_dir=session_data_dir)
 
     # 4. Create tool registry
     from nexus_agent.tools.boomerang import BoomerangTool

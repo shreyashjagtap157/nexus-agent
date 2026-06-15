@@ -194,7 +194,7 @@ class BaseCommands:
                 label_parts.append(" " * gap)
 
         label_line = " " * pad + "".join(label_parts)
-        ptr_color = effort_colors.get(levels[idx], "yellow")
+        effort_colors.get(levels[idx], "yellow")
         marker_line = " " * (pad + centers[idx]) + "\u25b2"
 
         bar_chars = ["\u2500"] * total_w

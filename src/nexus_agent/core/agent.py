@@ -685,8 +685,7 @@ Current workspace: {workspace}
                 continue
 
             rework_needed, reflection_events = self._handle_reflection(truncated_input, response)
-            for ev in reflection_events:
-                yield ev
+            yield from reflection_events
             if rework_needed:
                 continue
 
@@ -793,8 +792,7 @@ Current workspace: {workspace}
                 'has_tool_calls': False,
                 'tool_calls': [],
             })())
-            for ev in reflection_events:
-                yield ev
+            yield from reflection_events
             if rework_needed:
                 continue
 

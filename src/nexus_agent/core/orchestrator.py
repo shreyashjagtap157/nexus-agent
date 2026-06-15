@@ -164,7 +164,6 @@ class Orchestrator:
         )
 
         collected_output = ""
-        first_chunk = True
         try:
             for event in sub_agent.run_stream(subtask.description):
                 # Capture the agent's output for the result
@@ -176,7 +175,6 @@ class Orchestrator:
                     subtask.status = "failed"
                     subtask.error = str(event.data)
                 yield event
-                first_chunk = False
 
             # Check if the sub-agent signaled completion or failure
             if subtask.status != "failed":
@@ -442,7 +440,7 @@ class Orchestrator:
         task_graph = TaskGraph(session_id=session_id, workspace=self.workspace, provider=self.provider)
         yield AgentEvent(type="content", data="[cyan]Decomposing objective recursively...[/cyan]\n")
 
-        root_node = task_graph.decompose(goal)
+        task_graph.decompose(goal)
         yield AgentEvent(type="content", data=f"\n{task_graph.to_markdown()}\n\n")
 
         # 2. Iterate task loop
@@ -466,7 +464,6 @@ class Orchestrator:
 
                 subtask_attempts = 0
                 max_subtask_retries = 2
-                success = False
                 nla_correction_block = ""
 
                 while subtask_attempts < max_subtask_retries:
@@ -610,7 +607,6 @@ class Orchestrator:
 
                         yield AgentEvent(type="content", data=f"[bold green]✅ Sub-Task '{task.title}' completed successfully![/bold green]\n")
                         yield AgentEvent(type="content", data=f"{task_graph.to_markdown()}\n")
-                        success = True
                         break
                     else:
                         # Sub-Task failed this attempt
