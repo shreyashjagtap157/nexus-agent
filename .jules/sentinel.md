@@ -1,4 +1,4 @@
-## 2024-05-18 - Fix command injection in Sandbox fallback
-**Vulnerability:** The command isolation sandbox (`Sandbox.execute`) fell back to executing commands via `sh -c` or `powershell` with unparsed string commands when `shlex.split()` failed to parse due to unmatched quotes or syntax errors. This bypasses array-based shell escaping and presents a command injection vulnerability.
-**Learning:** Fallbacks intended to improve developer experience (e.g., executing malformed strings in a subshell) can completely undermine the primary security isolation mechanism if they revert to inherently unsafe functions like `sh -c`.
-**Prevention:** If the safe parsing mechanism (`shlex.split()`) fails to interpret input securely, the operation must be rejected entirely rather than passed on to a less secure evaluation layer.
+## 2025-02-14 - [CRITICAL] Cross-Site WebSocket Hijacking (CSWSH)
+**Vulnerability:** The FastAPI server enabled CORS correctly for standard HTTP requests via `CORSMiddleware` but exposed a WebSocket endpoint (`@app.websocket("/api/ws/{session_id}")`) without manually verifying the `Origin` header.
+**Learning:** `CORSMiddleware` in FastAPI only applies to HTTP requests, not WebSocket connections. As a result, WebSockets require explicit `Origin` validation within the endpoint to prevent Cross-Site WebSocket Hijacking (CSWSH) attacks, where malicious sites can execute commands through the agent's WebSocket.
+**Prevention:** Always manually validate the `Origin` header inside the WebSocket connection handler logic against a whitelist of allowed origins (`127.0.0.1`, `localhost`) before calling `await websocket.accept()`.
