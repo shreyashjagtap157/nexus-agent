@@ -152,9 +152,9 @@ class ReadFileTool(Tool):
             start = (start_line if start_line is not None else 1) - 1
             end = end_line if end_line is not None else total_lines
             if start < 0 or start >= total_lines:
-                return f"Error: start_line {start_line} is out of range (file has {total_lines} lines)."
+                return f"Error: start_line {start_line} out of range (max {total_lines})."
             if end < 1 or end > total_lines:
-                return f"Error: end_line {end_line} is out of range (file has {total_lines} lines)."
+                return f"Error: end_line {end_line} out of range (max {total_lines})."
             if start >= end:
                 return "Error: start_line must be less than end_line."
             lines = lines[start:end]
@@ -319,13 +319,13 @@ class SearchFilesTool(Tool):
 
         # ReDoS protection: block patterns with catastrophic backtracking risk
         if any(bad in pattern for bad in ["*+", "++", "?+", "*?", "+?", "??", "**"]):
-            return "Error: Dangerous regular expression pattern (nested/consecutive quantifiers detected)."
+            return "Error: Dangerous regex pattern (nested/consecutive quantifiers detected)."
         if re.search(r"\([^\)]*[\*\+\?][^\)]*\)[\*\+\?]", pattern):
-            return "Error: Dangerous regular expression pattern (potential ReDoS nesting detected)."
+            return "Error: Dangerous regex pattern (potential ReDoS nesting detected)."
         if re.search(r"\(\?:[^\)]*[\*\+\?][^\)]*\)[\*\+\?]", pattern):
-            return "Error: Dangerous regular expression pattern (nested quantifiers in group)."
+            return "Error: Dangerous regex pattern (nested quantifiers in group)."
         if re.search(r"\[\^[^\]]*\][\*\+\?][\*\+\?]", pattern):
-            return "Error: Dangerous regular expression pattern (consecutive quantifiers on character class)."
+            return "Error: Dangerous regex pattern (consecutive quantifiers on char class)."
         # Pattern complexity check: reject excessively long patterns or those with too many groups
         if len(pattern) > 500:
             return "Error: Pattern too long (max 500 characters)."

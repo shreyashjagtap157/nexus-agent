@@ -34,7 +34,7 @@ class InteractiveUIMixin:
         ``value=None`` act as non-selectable separators.  Returns the
         selected value or ``None`` if the user pressed Esc.
         """
-        selectable = [i for i, (l, v) in enumerate(items) if v is not None]
+        selectable = [i for i, (_l, v) in enumerate(items) if v is not None]
         if not selectable:
             return None
         idx = selectable[0]
