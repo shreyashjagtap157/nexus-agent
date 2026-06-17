@@ -79,6 +79,7 @@ class CouncilTool(Tool):
         if not topic or not topic.strip():
             return "Error: 'topic' is required."
         from nexus_agent.core.debate import Council
+
         council = Council(
             provider=self._provider,
             approval_threshold=0.6,
