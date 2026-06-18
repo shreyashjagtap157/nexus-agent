@@ -18,7 +18,9 @@ Design notes:
 """
 
 from __future__ import annotations
+import os
 
+import os
 import hashlib
 import logging
 from collections.abc import Iterable
