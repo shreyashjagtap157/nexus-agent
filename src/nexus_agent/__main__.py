@@ -228,7 +228,9 @@ def session_checkpoint(description: str) -> None:
     console = Console()
     mgr = SessionManager()
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+    from itertools import islice
+    from nexus_agent.utils.fs import fast_rglob
+    files = [str(f) for f in islice(fast_rglob(Path.cwd(), "*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
