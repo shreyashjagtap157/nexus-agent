@@ -1,7 +1,14 @@
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
+
+# Mock blessed module before importing nexus_agent code, as it's not installed in CI
+mock_terminal = MagicMock()
+sys.modules["blessed"] = MagicMock(Terminal=mock_terminal)
+
+from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin  # noqa: E402
 
 
 class _MockApp:
@@ -17,9 +24,6 @@ class _MockApp:
         self._current_mode = MagicMock()
         self._current_mode.value = "auto"
         self._rebuild_welcome = MagicMock()
-
-
-from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
 
 
 class TestReadInput(unittest.TestCase):

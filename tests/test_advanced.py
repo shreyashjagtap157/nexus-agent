@@ -130,7 +130,7 @@ class TestAdvancedFeatures(unittest.TestCase):
         mock_provider.model_name = "mock-model"
 
         from nexus_agent.llm.base import LLMResponse
-        mock_response = LLMResponse(content="I am a mock agent.", tool_calls=[], finish_reason="stop")  # noqa: E501
+        mock_response = LLMResponse(content="I am a mock agent.", tool_calls=[], finish_reason="stop")
         mock_provider.chat_completion.return_value = mock_response
         mock_provider.count_message_tokens.return_value = 10
 
