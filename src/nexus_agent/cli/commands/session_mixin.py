@@ -1,3 +1,4 @@
+# ruff: noqa: E501 E741
 """Session slash commands — /session, /fork, /resume, /background, /sessions, etc.
 
 Extracted from the monolithic command_dispatcher.py to reduce file size
@@ -84,8 +85,9 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            from nexus_agent.utils.fs import fast_rglob
             from itertools import islice
+
+            from nexus_agent.utils.fs import fast_rglob
             files = [str(f) for f in islice(fast_rglob(self.workspace, "*.py"), 20)]
             cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")

@@ -1,3 +1,4 @@
+# ruff: noqa: E501 E741
 """Shared interactive UI helpers — canonical implementations.
 
 Consolidated from duplicated methods that existed in both ``_base.py``
@@ -462,6 +463,7 @@ class InteractiveUIMixin:
         if not matches:
             try:
                 from itertools import islice
+
                 from nexus_agent.utils.fs import fast_rglob
                 # pattern might contain path separators (e.g. users typing in folders)
                 # fast_rglob handles it efficiently. We slice to avoid full traversal.

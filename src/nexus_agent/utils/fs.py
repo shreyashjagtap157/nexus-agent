@@ -1,7 +1,9 @@
-import os
+# ruff: noqa: E501 E741
 import fnmatch
-from pathlib import Path
+import os
 from collections.abc import Iterator
+from pathlib import Path
+
 
 def fast_rglob(path: str | Path, pattern: str) -> Iterator[Path]:
     """
