@@ -8,6 +8,7 @@ from typing import Any
 import click
 
 from nexus_agent import __app_name__, __version__
+from nexus_agent.utils.fs import fast_rglob
 
 
 @click.group(invoke_without_command=True)
@@ -227,8 +228,10 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
+    import itertools
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+
+    files = [str(f) for f in itertools.islice(fast_rglob(Path.cwd(), "*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
