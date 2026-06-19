@@ -200,7 +200,7 @@ class TestCoerceInt(unittest.TestCase):
 class TestWebFetchTool(unittest.TestCase):
     """`WebFetchTool` end-to-end (with mocked httpx)."""
 
-    def _mock_response(self, text: str, status: int = 200, ctype: str = "text/html; charset=utf-8", url: str = "https://x.com/"):
+    def _mock_response(self, text: str, status: int = 200, ctype: str = "text/html; charset=utf-8", url: str = "https://x.com/"):  # noqa: E501
         r = MagicMock()
         r.status_code = status
         r.headers = {"content-type": ctype}
