@@ -25,6 +25,7 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +264,8 @@ class ProjectContextLoader:
         return f"<ProjectContextLoader workspace={self.workspace}>"
 
 
-def load_project_context(workspace: str | Path, **kwargs: object) -> str:
+
+
+def load_project_context(workspace: str | Path, **kwargs: Any) -> str:
     """Convenience: create a loader, load, and return the string."""
     return ProjectContextLoader(workspace, **kwargs).load()
