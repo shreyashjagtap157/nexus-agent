@@ -7,6 +7,9 @@ from unittest.mock import MagicMock, patch
 # Mock blessed for CI environments where it is not installed
 sys.modules["blessed"] = MagicMock()
 
+from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin  # noqa: E402
+
+
 class _MockApp:
     """Minimal app that satisfies MinimalInputHandlerMixin attribute requirements."""
 
@@ -20,9 +23,6 @@ class _MockApp:
         self._current_mode = MagicMock()
         self._current_mode.value = "auto"
         self._rebuild_welcome = MagicMock()
-
-
-from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
 
 
 class TestReadInput(unittest.TestCase):
