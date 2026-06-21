@@ -1,8 +1,12 @@
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+# Mock blessed so it doesn't fail import when not installed
+mock_blessed = MagicMock()
+sys.modules["blessed"] = mock_blessed
 
 class _MockApp:
     """Minimal app that satisfies MinimalInputHandlerMixin attribute requirements."""
