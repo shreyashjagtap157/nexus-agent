@@ -1,7 +1,8 @@
 import fnmatch
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
+
 
 def fast_rglob(directory: Path | str, pattern: str) -> Iterator[Path]:
     """
