@@ -10,10 +10,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +433,15 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    # Prevent Cross-Site WebSocket Hijacking (CSWSH) by validating the Origin header
+    origin = websocket.headers.get("origin")
+    if origin:
+        parsed_origin = urllib.parse.urlparse(origin)
+        if parsed_origin.hostname not in ("127.0.0.1", "localhost"):
+            logger.warning(f"Rejecting WebSocket connection from unauthorized origin: {origin}")
+            await websocket.close(code=1008, reason="Unauthorized origin")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)

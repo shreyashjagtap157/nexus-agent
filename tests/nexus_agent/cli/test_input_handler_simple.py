@@ -1,7 +1,12 @@
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
+import sys
+from unittest.mock import patch
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
+# Mock blessed to prevent test collection failures in CI where it's not installed
+sys.modules['blessed'] = MagicMock()
 
 
 class _MockApp:
