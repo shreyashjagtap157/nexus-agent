@@ -172,7 +172,16 @@ class SimplePlugin(NexusPlugin):
 
         with patch("sys.version_info", (3, 9)):
             with patch("importlib.metadata.entry_points") as mock_entry_points:
-                mock_entry_points.return_value = mock_eps
+                # To trigger the TypeError we simulate the 3.9 entry_points not accepting `group=` kwarg
+                mock_entry_points.side_effect = TypeError("entry_points() got an unexpected keyword argument 'group'")
+
+                # Mock it again to be called without kwargs in the exception block
+                def mock_ep_no_args(*args, **kwargs):
+                    if 'group' in kwargs:
+                        raise TypeError()
+                    return mock_eps
+                mock_entry_points.side_effect = mock_ep_no_args
+
                 res = self.pm.discover_and_load()
 
         assert "legacy_ep" in res
