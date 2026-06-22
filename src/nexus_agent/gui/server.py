@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +432,24 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    # Security: Validate Origin to prevent Cross-Site WebSocket Hijacking (CSWSH)
+    origin = websocket.headers.get("Origin")
+    if origin:
+        parsed_origin = urllib.parse.urlparse(origin)
+        host_header = websocket.headers.get("Host", "")
+        # Allow if origin matches Host header, or is explicitly localhost for testing
+        allowed_hosts = {"127.0.0.1", "localhost"}
+        if host_header:
+            allowed_hosts.add(host_header.split(":")[0])
+
+        if parsed_origin.hostname not in allowed_hosts:
+            logger.warning(
+                f"WebSocket connection rejected: Unauthorized Origin {origin} "
+                f"for session {session_id}"
+            )
+            await websocket.close(code=1008, reason="Unauthorized Origin")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
