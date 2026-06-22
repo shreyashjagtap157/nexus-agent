@@ -1,7 +1,10 @@
 """Tests for interactive_ui.py — InteractiveUIMixin (menus, validation, model config)."""
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
+
+sys.modules["blessed"] = MagicMock()
 
 
 class _MockApp:

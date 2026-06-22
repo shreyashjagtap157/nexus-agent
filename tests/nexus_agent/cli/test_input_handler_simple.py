@@ -1,7 +1,11 @@
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
+
+# Inject a mock for 'blessed' to bypass module load errors when not installed.
+sys.modules["blessed"] = MagicMock()
 
 
 class _MockApp:
