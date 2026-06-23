@@ -23,6 +23,7 @@ import hashlib
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -142,7 +143,7 @@ class ProjectContextLoader:
         workspace_str = str(self.workspace)
         # 1) Workspace root (most specific, highest priority)
         for name in self.rules_files:
-            candidates.append(os.path.join(workspace_str, name))
+            candidates.append(Path(workspace_str, name))
         # 2) Ancestors
         if self.walk_ancestors:
             parent = os.path.dirname(workspace_str)
@@ -150,7 +151,7 @@ class ProjectContextLoader:
                 if parent == os.path.dirname(parent):
                     break
                 for name in self.rules_files:
-                    candidates.append(os.path.join(parent, name))
+                    candidates.append(Path(parent, name))
                 parent = os.path.dirname(parent)
         # 3) Descendants (optional, depth-limited)
         if self.walk_descendants:
@@ -169,10 +170,10 @@ class ProjectContextLoader:
                             # Allow explicit project subdirs like .github, .nexus
                             if entry.name in (".github", ".nexus"):
                                 for name in self.rules_files:
-                                    out.append(os.path.join(entry.path, name))
+                                    out.append(Path(entry.path, name))
                             continue
                         for name in self.rules_files:
-                            out.append(os.path.join(entry.path, name))
+                            out.append(Path(entry.path, name))
                         out.extend(self._descendants(entry.path, depth - 1))
         except (PermissionError, OSError) as e:
             logger.debug(f"Cannot list {root}: {e}")

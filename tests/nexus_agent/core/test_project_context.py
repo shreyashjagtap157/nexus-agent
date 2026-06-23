@@ -214,7 +214,7 @@ class TestProjectContextLoader(unittest.TestCase):
         self.assertIsInstance(files[0], LoadedFile)
         self.assertEqual(files[0].size, len("hello"))
         self.assertEqual(len(files[0].sha1), 8)
-        self.assertTrue(files[0].path.endswith("AGENTS.md"))
+        self.assertTrue(str(files[0].path).endswith("AGENTS.md"))
 
     def test_force_reload(self):
         _write(self.root / "AGENTS.md", "v1")
