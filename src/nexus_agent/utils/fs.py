@@ -20,9 +20,10 @@ def fast_rglob(directory: str | Path, pattern: str) -> Iterator[Path]:
             for entry in it:
                 try:
                     if entry.is_dir(follow_symlinks=False):
-                        if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                        if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa: E501
                             continue
-                        skip_dirs = {
+                        skip_dirs = {  # noqa: E501
+
                             "node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"
                         }
                         if entry.name in skip_dirs:
