@@ -383,7 +383,7 @@ class SearchFilesTool(Tool):
                             if entry.name in skip_dirs:
                                 continue
                             yield from self._iter_files(Path(entry.path))
-                        elif entry.is_file():
+                        elif entry.is_file(follow_symlinks=True):
                             yield Path(entry.path)
                     except OSError:
                         continue
