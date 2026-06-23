@@ -1,7 +1,8 @@
-import os
 import fnmatch
+import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
+
 
 def fast_rglob(directory: str | Path, pattern: str) -> Iterator[Path]:
     """
@@ -21,12 +22,15 @@ def fast_rglob(directory: str | Path, pattern: str) -> Iterator[Path]:
                     if entry.is_dir(follow_symlinks=False):
                         if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
                             continue
-                        skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
+                        skip_dirs = {
+                            "node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"
+                        }
                         if entry.name in skip_dirs:
                             continue
                         yield from fast_rglob(entry.path, pattern)
                     elif entry.is_file(follow_symlinks=True):
-                        if fnmatch.fnmatch(entry.name, pattern) or fnmatch.fnmatch(entry.path, pattern):
+                        if fnmatch.fnmatch(entry.name, pattern) or \
+                                fnmatch.fnmatch(entry.path, pattern):
                             yield Path(entry.path)
                 except OSError:
                     continue
