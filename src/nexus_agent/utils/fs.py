@@ -29,8 +29,9 @@ def fast_rglob(directory: str | Path, pattern: str) -> Iterator[Path]:
                             continue
                         yield from fast_rglob(entry.path, pattern)
                     elif entry.is_file(follow_symlinks=True):
-                        if fnmatch.fnmatch(entry.name, pattern) or \
-                                fnmatch.fnmatch(entry.path, pattern):
+                        name_match = fnmatch.fnmatch(entry.name, pattern)
+                        path_match = fnmatch.fnmatch(entry.path, pattern)
+                        if name_match or path_match:
                             yield Path(entry.path)
                 except OSError:
                     continue
