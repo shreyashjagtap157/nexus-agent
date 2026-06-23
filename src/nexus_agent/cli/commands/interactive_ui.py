@@ -461,12 +461,11 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
-                        rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                import itertools
+                from nexus_agent.utils.fs import fast_rglob
+                for p in itertools.islice(fast_rglob(self.workspace, f"*{prefix}*"), 20):
+                    rel = p.relative_to(self.workspace)
+                    matches.append(str(rel.as_posix()))
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]

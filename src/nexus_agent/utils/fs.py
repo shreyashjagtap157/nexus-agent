@@ -1,0 +1,40 @@
+import fnmatch
+import os
+from collections.abc import Iterator
+from pathlib import Path
+
+
+def fast_rglob(directory: str | Path, pattern: str) -> Iterator[Path]:
+    """
+    Recursively yield files matching the pattern using os.scandir.
+
+    ⚡ Bolt Optimization:
+    Avoids creating intermediate Path objects for every directory compared to
+    pathlib.rglob. This significantly speeds up file traversal when dealing
+    with deeply nested folders and prevents large memory overhead.
+
+    Uses follow_symlinks=True for files and False for directories.
+    """
+    try:
+        with os.scandir(directory) as it:
+            for entry in it:
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa: E501
+                            continue
+                        skip_dirs = {  # noqa: E501
+
+                            "node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"
+                        }
+                        if entry.name in skip_dirs:
+                            continue
+                        yield from fast_rglob(entry.path, pattern)
+                    elif entry.is_file(follow_symlinks=True):
+                        name_match = fnmatch.fnmatch(entry.name, pattern)
+                        path_match = fnmatch.fnmatch(entry.path, pattern)
+                        if name_match or path_match:
+                            yield Path(entry.path)
+                except OSError:
+                    continue
+    except OSError:
+        pass
