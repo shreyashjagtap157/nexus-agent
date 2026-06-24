@@ -1,3 +1,4 @@
+import os
 """
 FastAPI GUI Server for NexusAgent.
 
