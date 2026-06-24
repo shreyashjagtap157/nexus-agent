@@ -16,6 +16,7 @@ import time
 from typing import Any
 
 from nexus_agent.core.config import save_config
+from nexus_agent.utils.fs import fast_rglob
 
 
 class InteractiveUIMixin:
@@ -34,7 +35,7 @@ class InteractiveUIMixin:
         ``value=None`` act as non-selectable separators.  Returns the
         selected value or ``None`` if the user pressed Esc.
         """
-        selectable = [i for i, (l, v) in enumerate(items) if v is not None]
+        selectable = [i for i, (lbl, v) in enumerate(items) if v is not None]
         if not selectable:
             return None
         idx = selectable[0]
@@ -461,7 +462,7 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
+                for p in fast_rglob(self.workspace, f"*{prefix}*"):
                     if p.is_file():
                         rel = p.relative_to(self.workspace)
                         matches.append(str(rel.as_posix()))
