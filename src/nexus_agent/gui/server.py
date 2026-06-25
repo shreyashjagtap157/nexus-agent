@@ -10,10 +10,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +433,27 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("origin")
+    if origin:
+        parsed_origin = urllib.parse.urlparse(origin).hostname
+        config = state_manager.get("config")
+        srv_config = config.get("gui", {}) if config else {}
+        bind_host = srv_config.get("host", "127.0.0.1")
+        allowed_origins = {"127.0.0.1", "localhost"}
+        if bind_host != "0.0.0.0":
+            allowed_origins.add(bind_host)
+
+        # Allow if the origin hostname matches the Host header
+        # This allows LAN access when bound to 0.0.0.0
+        host_header = websocket.headers.get("host")
+        if host_header:
+            allowed_origins.add(host_header.split(":")[0])
+
+        if parsed_origin not in allowed_origins:
+            logger.warning(f"Rejected WebSocket connection from unauthorized origin: {origin}")
+            await websocket.close(code=1008)
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
