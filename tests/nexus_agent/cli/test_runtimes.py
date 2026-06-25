@@ -262,6 +262,7 @@ class TestScanRuntimes(unittest.TestCase):
         self.assertEqual(runtimes[-1].name, "CPU")
 
     @unittest.skip("Crashes with real JAX/XLA on this env")
+    @unittest.skip("Crashes with real JAX/XLA on this env")
     def test_scan_runtimes_smoke(self):
         """scan_runtimes should never crash regardless of system state."""
         runtimes = scan_runtimes()
