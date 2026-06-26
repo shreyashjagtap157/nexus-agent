@@ -431,6 +431,16 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("origin")
+    host = websocket.headers.get("host")
+    if origin and host:
+        from urllib.parse import urlparse
+        parsed_origin = urlparse(origin)
+        if parsed_origin.netloc != host:
+            logger.warning(f"CSWSH blocked: Origin {origin} does not match Host {host}")
+            await websocket.close(code=1008, reason="Cross-Site WebSocket Hijacking blocked.")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
