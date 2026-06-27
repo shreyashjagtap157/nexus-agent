@@ -1,8 +1,8 @@
 """NexusAgent CLI entry point."""
 
+import itertools
 import os
 import sys
-import itertools
 from pathlib import Path
 from typing import Any
 

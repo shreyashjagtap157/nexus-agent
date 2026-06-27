@@ -6,9 +6,9 @@ and group session-related logic together.
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
-import itertools
 import time
 from pathlib import Path
 
