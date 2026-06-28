@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +432,32 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    # Prevent Cross-Site WebSocket Hijacking (CSWSH)
+    origin = websocket.headers.get("origin")
+    if origin:
+        if origin == "null":
+            logger.warning("Rejected WebSocket connection: origin is null")
+            await websocket.close(code=1008)
+            return
+
+        parsed_origin = urllib.parse.urlparse(origin)
+        host_header = websocket.headers.get("host")
+
+        if parsed_origin.netloc and host_header:
+            origin_host = parsed_origin.hostname
+            # Note: request host header may include port
+            req_host = host_header.split(":")[0] if host_header else ""
+            allowed_local = {"127.0.0.1", "localhost"}
+            is_local = origin_host in allowed_local and req_host in allowed_local
+
+            if origin_host != req_host and not is_local:
+                logger.warning(
+                    f"Rejected WebSocket connection: Origin ({parsed_origin.netloc}) "
+                    f"does not match Host ({host_header})"
+                )
+                await websocket.close(code=1008)
+                return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
@@ -633,7 +660,9 @@ def start_gui_server(
     state_manager.set("session_manager", SessionManager(data_dir=f"{data_dir_path}/sessions"))
     state_manager.set("permission_manager", PermissionManager())
     state_manager.get("permission_manager").load_from_config(state_manager.get("config"))
-    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))
+    import os
+    expanded_path = os.path.expanduser(data_dir_path)
+    state_manager.set("usage_tracker", UsageTracker(path=Path(expanded_path) / "usage.json"))
 
     # Initialize RuntimeManager
     rm = RuntimeManager(state_manager.get("config"))
