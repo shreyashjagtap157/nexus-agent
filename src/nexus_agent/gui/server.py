@@ -10,10 +10,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +433,25 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    # Cross-Site WebSocket Hijacking (CSWSH) protection
+    # We must explicitly validate the Origin header since WebSockets don't follow CORS rules.
+    origin = websocket.headers.get("origin")
+    host = websocket.headers.get("host")
+    if origin:
+        if origin == "null":
+            logger.warning(f"Rejected WebSocket connection from null origin. Host: {host}")
+            await websocket.close(code=1008, reason="Invalid Origin")
+            return
+        parsed_origin = urllib.parse.urlparse(origin)
+        # For local UI development, we often see origins like http://localhost:5173
+        # connecting to backend on http://127.0.0.1:8000.
+        # We enforce that the origin is local (localhost or 127.0.0.1) instead of matching host strictly.
+        allowed_hosts = {"localhost", "127.0.0.1", host.split(":")[0] if host else ""}
+        if parsed_origin.hostname not in allowed_hosts:
+            logger.warning(f"CSWSH protection: rejected WebSocket from origin {origin}. Expected host {host}")
+            await websocket.close(code=1008, reason="Cross-Site WebSocket Hijacking detected")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
