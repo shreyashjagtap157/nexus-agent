@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Agent slash commands — /mode, /effort, /goal, /plan, /build, /debate, etc.
 
 Extracted from the monolithic command_dispatcher.py.
@@ -7,6 +8,7 @@ from __future__ import annotations
 
 import subprocess
 import time
+from typing import Any
 
 from nexus_agent.core.config import save_config
 
@@ -87,10 +89,10 @@ class AgentCommandsMixin:
                 return
 
     def _render_effort_selector(self, levels: tuple, labels: tuple, idx: int):
-        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        PAD = 22
+        effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
+        pad = 22
 
-        plain_labels = [str(l) for l in labels]
+        plain_labels = [str(lbl) for lbl in labels]
         widths = [len(w) for w in plain_labels]
         gap = 4
         total_w = sum(widths) + gap * (len(widths) - 1)
@@ -103,7 +105,7 @@ class AgentCommandsMixin:
 
         label_parts = []
         for i, lab in enumerate(plain_labels):
-            clr = EFFORT_COLORS.get(lab, "0")
+            clr = effort_colors.get(lab, "0")
             if i == idx:
                 label_parts.append(f"\033[1;{clr}m{lab}\033[0m")
             else:
@@ -111,20 +113,22 @@ class AgentCommandsMixin:
             if i < len(plain_labels) - 1:
                 label_parts.append(" " * gap)
 
-        label_line = " " * PAD + "".join(label_parts)
-        ptr_color = EFFORT_COLORS.get(levels[idx], "33")
-        marker_line = " " * (PAD + centers[idx]) + f"\033[1;{ptr_color}m\u25b2\033[0m"
+        label_line = " " * pad + "".join(label_parts)
+        ptr_color = effort_colors.get(levels[idx], "33")
+        marker_line = " " * (pad + centers[idx]) + f"\033[1;{ptr_color}m\u25b2\033[0m"
 
         left_w = total_w // 2
         right_w = total_w - left_w
 
         import sys as _sys
+        dash = chr(0x2500)
+        cross = chr(0x252C)
         lines = [
             "",
             "  Effort",
             "",
-            f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}{'\u2500' * left_w}\u252c{'\u2500' * right_w}",
+            f"{' ' * pad}Faster{' ' * (left_w - 6)}Smarter",
+            f"{' ' * pad}{dash * left_w}{cross}{dash * right_w}",
         ]
         lines.append(marker_line)
         lines.append(label_line)
@@ -304,7 +308,6 @@ class AgentCommandsMixin:
                     break
 
         if not stripped:
-            label = "project" if self._vector_use_project else "global"
             self.r.system_message("Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")
             return
 
@@ -653,11 +656,11 @@ class AgentCommandsMixin:
 
             migrated = 0
             skipped = 0
-            PAGE_SIZE = 50
+            page_size = 50
             offset = 0
 
             while offset < total:
-                entries = mem.long_term.list_all(limit=PAGE_SIZE, offset=offset)
+                entries = mem.long_term.list_all(limit=page_size, offset=offset)
                 if not entries:
                     break
 
@@ -680,13 +683,13 @@ class AgentCommandsMixin:
                     migrated += 1
 
                     # Progress line every 10 entries
-                    if migrated % 10 == 0 or (migrated + skipped) % PAGE_SIZE == 0:
+                    if migrated % 10 == 0 or (migrated + skipped) % page_size == 0:
                         done = migrated + skipped
                         pct = int((done / total) * 100)
                         bar = "█" * (pct // 4) + "░" * (25 - pct // 4)
                         self.console.print(f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] new  [dim]skipped {skipped}[/dim]")
 
-                offset += PAGE_SIZE
+                offset += page_size
 
             after_count = vs.count()
 
