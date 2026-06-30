@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import logging
 import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +433,22 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    # Cross-Site WebSocket Hijacking (CSWSH) protection
+    origin = websocket.headers.get("origin")
+    if origin is not None:
+        if origin == "null":
+            await websocket.close(code=1008, reason="Cross-Site WebSocket Hijacking prevented")
+            return
+
+        parsed_origin = urllib.parse.urlparse(origin)
+        host_header = websocket.headers.get("host", "")
+        origin_hostname = parsed_origin.hostname
+        host_hostname = host_header.split(":")[0] if host_header else None
+
+        if origin_hostname != host_hostname:
+            await websocket.close(code=1008, reason="Cross-Site WebSocket Hijacking prevented")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
