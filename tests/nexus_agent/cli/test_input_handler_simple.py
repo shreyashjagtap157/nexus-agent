@@ -1,8 +1,9 @@
+"""Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
+
 import sys
 from unittest.mock import MagicMock
 
 sys.modules["blessed"] = MagicMock()
-"""Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
 import unittest  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402

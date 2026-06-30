@@ -1,8 +1,9 @@
+"""Tests for interactive_ui.py — InteractiveUIMixin (menus, validation, model config)."""
+
 import sys
 from unittest.mock import MagicMock
 
 sys.modules["blessed"] = MagicMock()
-"""Tests for interactive_ui.py — InteractiveUIMixin (menus, validation, model config)."""
 
 import unittest  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402
