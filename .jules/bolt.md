@@ -1,4 +1,11 @@
+## 2024-05-14 - Lazy Evaluation of rglob with itertools.islice
 
-## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
-**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
-**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.
+**Learning:** When using generator-based traversal functions like `pathlib.Path.rglob()` to find a limited number of files, combining a list comprehension with slicing (e.g. `[str(f) for f in path.rglob(...)][:limit]`) forces the Python interpreter to greedily exhaust the entire generator into memory before slicing. In large repositories, this causes massive CPU spikes, slows down execution, and risks an Out-Of-Memory (OOM) crash.
+
+**Action:** Always use `itertools.islice()` around the generator directly (e.g. `[str(f) for f in itertools.islice(path.rglob(...), limit)]`) to guarantee lazy consumption of the iterator. This terminates the traversal immediately after the limit is reached, saving significant time and memory.
+
+## 2024-05-14 - Lazy Evaluation of rglob with itertools.islice
+
+**Learning:** When using generator-based traversal functions like `pathlib.Path.rglob()` to find a limited number of files, combining a list comprehension with slicing (e.g. `[str(f) for f in path.rglob(...)][:limit]`) forces the Python interpreter to greedily exhaust the entire generator into memory before slicing. In large repositories, this causes massive CPU spikes, slows down execution, and risks an Out-Of-Memory (OOM) crash.
+
+**Action:** Always use `itertools.islice()` around the generator directly (e.g. `[str(f) for f in itertools.islice(path.rglob(...), limit)]`) to guarantee lazy consumption of the iterator. This terminates the traversal immediately after the limit is reached, saving significant time and memory.
