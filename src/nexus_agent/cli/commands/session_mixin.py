@@ -108,9 +108,9 @@ class SessionCommandsMixin:
                     self.r.system_message("No checkpoints.")
                     return
                 for cp in checkpoints[:10]:
-                    self.console.print(
-                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"
-                    )
+                    desc = cp.get("description", "")
+                    created = cp.get("created", "")
+                    self.console.print(f"  [{cp['id'][:12]}] {desc}  [dim]{created}[/dim]")
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
         else:
