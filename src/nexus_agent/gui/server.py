@@ -506,7 +506,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 await websocket.send_json(
                     {
                         "type": "error",
-                        "content": "No model loaded. Please load a model or configure a provider first.",  # noqa: E501
+                        "content": "No model loaded. Please load a model or configure a provider first.",  # noqa: E501  # noqa: E501
                     }
                 )
                 await websocket.send_json({"type": "done", "iterations": 0})
