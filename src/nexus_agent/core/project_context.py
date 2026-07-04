@@ -24,6 +24,7 @@ import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+import os
 
 logger = logging.getLogger(__name__)
 
