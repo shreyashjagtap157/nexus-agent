@@ -227,8 +227,8 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
-    from pathlib import Path
     import itertools
+    from pathlib import Path
     # Lazily evaluate rglob to avoid greedy traversal of large directories
     files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
