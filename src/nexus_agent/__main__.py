@@ -227,8 +227,11 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
+    import itertools
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+    # Bolt: Lazily evaluate rglob using itertools.islice to prevent entire tree
+    # traversal and OOM issues
+    files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
