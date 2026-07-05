@@ -84,8 +84,13 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
-            cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
+            import itertools
+            # Bolt: Lazily evaluate rglob using itertools.islice to prevent entire tree
+            # traversal and OOM issues
+            files = [str(f) for f in itertools.islice(self.workspace.rglob("*.py"), 20)]
+            cp_id = self._session_mgr.create_checkpoint(
+                files, description=args or "Manual checkpoint"
+            )
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:
             self.r.system_message("Session manager unavailable.")
