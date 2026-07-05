@@ -1,6 +1,5 @@
 """NexusAgent CLI entry point."""
 
-import itertools
 import os
 import sys
 from pathlib import Path
@@ -281,6 +280,7 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
+    import itertools
     from pathlib import Path
 
     # ⚡ Bolt: Use itertools.islice for lazy evaluation to prevent OOM

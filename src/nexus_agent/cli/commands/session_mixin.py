@@ -6,7 +6,6 @@ and group session-related logic together.
 
 from __future__ import annotations
 
-import itertools
 import json
 import os
 import time
@@ -91,6 +90,8 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
+            import itertools
+
             # ⚡ Bolt: Use itertools.islice for lazy evaluation to prevent OOM
             # and improve speed in large repositories.
             files = [str(f) for f in itertools.islice(self.workspace.rglob("*.py"), 20)]
