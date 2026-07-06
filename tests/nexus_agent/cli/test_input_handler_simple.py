@@ -2,6 +2,8 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+import sys
+sys.modules["blessed"] = MagicMock()
 
 
 class _MockApp:
