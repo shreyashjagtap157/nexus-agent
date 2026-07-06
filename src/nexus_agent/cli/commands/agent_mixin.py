@@ -113,7 +113,8 @@ class AgentCommandsMixin:
 
         label_line = " " * PAD + "".join(label_parts)
         ptr_color = EFFORT_COLORS.get(levels[idx], "33")
-        marker_line = " " * (PAD + centers[idx]) + f"\033[1;{ptr_color}m\u25b2\033[0m"
+        marker_char = chr(0x25b2)
+        marker_line = " " * (PAD + centers[idx]) + f"\033[1;{ptr_color}m{marker_char}\033[0m"
 
         left_w = total_w // 2
         right_w = total_w - left_w
@@ -124,7 +125,7 @@ class AgentCommandsMixin:
             "  Effort",
             "",
             f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}{'\u2500' * left_w}\u252c{'\u2500' * right_w}",
+            f"{chr(32) * PAD}{chr(0x2500) * left_w}{chr(0x252c)}{chr(0x2500) * right_w}",
         ]
         lines.append(marker_line)
         lines.append(label_line)

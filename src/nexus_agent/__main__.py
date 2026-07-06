@@ -1,5 +1,6 @@
 """NexusAgent CLI entry point."""
 
+import itertools
 import os
 import sys
 from pathlib import Path
@@ -220,18 +221,17 @@ def session_resume(session_id: str) -> None:
 @session.command("checkpoint")
 @click.argument("description", type=str, default="Manual checkpoint")
 def session_checkpoint(description: str) -> None:
-    """Create a session checkpoint (snapshot of working tree)."""
+    """Create a session checkpoint."""
     from rich.console import Console
 
     from nexus_agent.session.manager import SessionManager
 
     console = Console()
     mgr = SessionManager()
-    from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+
+    files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
-
 
 @session.command("rollback")
 @click.argument("checkpoint_id", type=str, required=False)
