@@ -1,6 +1,11 @@
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
-import unittest
+import sys  # noqa: E402
+from unittest.mock import MagicMock
+sys.modules['blessed'] = MagicMock()
+
+
+import unittest  # noqa: E402
 from unittest.mock import MagicMock, patch
 
 
@@ -19,7 +24,7 @@ class _MockApp:
         self._rebuild_welcome = MagicMock()
 
 
-from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
+from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin  # noqa: E402
 
 
 class TestReadInput(unittest.TestCase):
