@@ -3,7 +3,7 @@
 import os
 import sys
 from pathlib import Path
-import itertools
+    import itertools
 from typing import Any
 
 import click
@@ -229,7 +229,7 @@ def session_checkpoint(description: str) -> None:
     console = Console()
     mgr = SessionManager()
     from pathlib import Path
-import itertools
+    import itertools
     files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
