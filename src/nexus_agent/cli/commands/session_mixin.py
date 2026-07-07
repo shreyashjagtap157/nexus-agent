@@ -7,6 +7,7 @@ and group session-related logic together.
 from __future__ import annotations
 
 import json
+import itertools
 import os
 import time
 from pathlib import Path
@@ -84,7 +85,8 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
+            # ⚡ Bolt optimization: Lazily evaluate rglob to prevent O(N) memory/time overhead
+            files = [str(f) for f in itertools.islice(self.workspace.rglob("*.py"), 20)]
             cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:
