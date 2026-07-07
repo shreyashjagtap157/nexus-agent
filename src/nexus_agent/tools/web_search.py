@@ -81,7 +81,7 @@ class WebSearchTool(Tool):
 
             # Recursively iterate related topics including nested category Topics
             def process_topics(topics: list, depth: int = 0) -> None:
-                for topic in topics[:max_results - len(results)]:
+                for topic in topics[: max_results - len(results)]:
                     if len(results) >= max_results:
                         break
                     if isinstance(topic, dict):
