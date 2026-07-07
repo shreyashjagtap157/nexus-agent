@@ -35,8 +35,7 @@ def _ast_validate_python(source: str, path_label: str) -> str | None:
         return None
     except SyntaxError as e:
         return (
-            f"❌ AST validation failed for {path_label}: "
-            f"line {e.lineno}, col {e.offset}: {e.msg}"
+            f"❌ AST validation failed for {path_label}: line {e.lineno}, col {e.offset}: {e.msg}"
         )
 
 
@@ -100,12 +99,12 @@ class CodeEditTool(Tool):
             },
             "validate_ast": {
                 "type": "boolean",
-                "description": "For Python files, refuse the edit if the result fails ast.parse (default: true)",
+                "description": "For Python files, refuse the edit if the result fails ast.parse (default: true)",  # noqa: E501
                 "required": False,
             },
             "canonicalize": {
                 "type": "boolean",
-                "description": "For Python files, normalise the result via ast.unparse (default: false)",
+                "description": "For Python files, normalise the result via ast.unparse (default: false)",  # noqa: E501
                 "required": False,
             },
         }
@@ -114,8 +113,7 @@ class CodeEditTool(Tool):
     def permission_level(self) -> str:
         return "read-write"
 
-    def execute(self, path: str, old_content: str, new_content: str,
-                **kwargs: Any) -> str:
+    def execute(self, path: str, old_content: str, new_content: str, **kwargs: Any) -> str:
         replace_all = kwargs.get("replace_all", False)
         validate_ast = kwargs.get("validate_ast", True)
         canonicalize = kwargs.get("canonicalize", False)
@@ -144,9 +142,7 @@ class CodeEditTool(Tool):
             lines = original.splitlines()
             target_lines = old_content.splitlines()
             if target_lines:
-                matches = difflib.get_close_matches(
-                    target_lines[0], lines, n=3, cutoff=0.6
-                )
+                matches = difflib.get_close_matches(target_lines[0], lines, n=3, cutoff=0.6)
                 if matches:
                     suggestions = "\n".join(f"  - {m}" for m in matches)
                     return (
@@ -257,8 +253,7 @@ class InsertLinesTool(Tool):
     def permission_level(self) -> str:
         return "read-write"
 
-    def execute(self, path: str, line_number: int, content: str,
-                **kwargs: Any) -> str:
+    def execute(self, path: str, line_number: int, content: str, **kwargs: Any) -> str:
         try:
             file_path = self._resolve_path(path)
         except (ValueError, ToolError) as e:
@@ -277,7 +272,9 @@ class InsertLinesTool(Tool):
 
         # Validate line_number range
         if line_number < 1 or line_number > len(lines) + 1:
-            return f"Error: line_number {line_number} is out of range (file has {len(lines)} lines)."
+            return (
+                f"Error: line_number {line_number} is out of range (file has {len(lines)} lines)."
+            )
 
         idx = line_number - 1
 
@@ -299,9 +296,7 @@ class InsertLinesTool(Tool):
             logger.error("Error writing file %s: %s", path, e, exc_info=True)
             return "Error: Failed to write file."
 
-        return (
-            f"Inserted {len(new_lines)} lines at line {line_number} in {path}"
-        )
+        return f"Inserted {len(new_lines)} lines at line {line_number} in {path}"
 
     def _resolve_path(self, path: str) -> Path:
         return Tool.resolve_workspace_path(self.workspace, path)

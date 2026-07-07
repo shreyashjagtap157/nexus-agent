@@ -37,7 +37,7 @@ PRIVATE_NETWORKS = [
 CLOUD_METADATA_IPS = {
     "169.254.169.254",  # AWS/GCP/Azure
     "100.100.100.200",  # Alibaba
-    "192.0.0.192",      # Oracle
+    "192.0.0.192",  # Oracle
 }
 
 DISALLOWED_HOST_PATTERNS = [
@@ -108,8 +108,9 @@ def _resolve_browser_executable(configured: str | None) -> str | None:
         resolved = shutil.which(configured)
         if resolved:
             return resolved
-        logger.warning("Configured browser path %r not found; falling back to auto-detect.",
-                       configured)
+        logger.warning(
+            "Configured browser path %r not found; falling back to auto-detect.", configured
+        )
 
     for name in ("chromium", "chromium-browser", "google-chrome", "chrome", "msedge"):
         resolved = shutil.which(name)
@@ -128,8 +129,7 @@ class BrowserTool(Tool):
 
     MAX_CONTENT_LENGTH = 4000
 
-    def __init__(self, workspace: Path | None = None,
-                 config: BrowserConfig | None = None):
+    def __init__(self, workspace: Path | None = None, config: BrowserConfig | None = None):
         self.workspace = workspace or Path.cwd()
         self.config = config or BrowserConfig.from_env(self.workspace)
         # Lazy: a per-instance data dir if the user did not provide one
@@ -195,7 +195,7 @@ class BrowserTool(Tool):
             return text
         # Find a safe truncation point by backing up to the last space
         truncated = text[:max_length]
-        last_space = truncated.rfind(' ')
+        last_space = truncated.rfind(" ")
         if last_space > max_length // 2:
             return truncated[:last_space] + "..."
         return truncated + "..."
@@ -216,6 +216,7 @@ class BrowserTool(Tool):
         # Resolve host to IP
         try:
             import socket
+
             addr = socket.getaddrinfo(host, None)[0][4][0]
         except (OSError, ValueError):
             return f"Error: Cannot resolve hostname '{host}'."
@@ -239,8 +240,9 @@ class BrowserTool(Tool):
 
         return None
 
-    def execute(self, action: str, url: str = "", selector: str = "",
-                 output_path: str = "", **kwargs: Any) -> str:
+    def execute(
+        self, action: str, url: str = "", selector: str = "", output_path: str = "", **kwargs: Any
+    ) -> str:
         if action == "navigate" and not url:
             return "Error: A valid target URL is required for navigation."
 
@@ -253,6 +255,7 @@ class BrowserTool(Tool):
         # 1. Try Playwright headless automation
         try:
             from playwright.sync_api import sync_playwright  # noqa: F401
+
             return self._execute_playwright(action, url, selector, output_path)
         except ImportError:
             logger.info("Playwright not installed. Falling back to HTTPX scraper.")
@@ -267,6 +270,7 @@ class BrowserTool(Tool):
         """Initialize the persistent Playwright headless browser context if not already active."""
         if self._playwright is None:
             from playwright.sync_api import sync_playwright
+
             self._playwright = sync_playwright().start()
 
             launch_kwargs: dict[str, Any] = {
@@ -289,8 +293,7 @@ class BrowserTool(Tool):
             self._context.set_default_timeout(self.config.navigation_timeout_ms)
             self._page = self._context.new_page()
 
-    def _execute_playwright(self, action: str, url: str, selector: str,
-                             output_path: str) -> str:
+    def _execute_playwright(self, action: str, url: str, selector: str, output_path: str) -> str:
         try:
             self._ensure_browser()
             assert self._page is not None
@@ -301,7 +304,7 @@ class BrowserTool(Tool):
                 title = page.title()
                 text = page.locator("body").inner_text()
                 clean_text = self._clean_markdown(text)
-                return f"### Webpage: {title}\nURL: {url}\n\nContent:\n{self._safe_truncate(clean_text, self.MAX_CONTENT_LENGTH)}"
+                return f"### Webpage: {title}\nURL: {url}\n\nContent:\n{self._safe_truncate(clean_text, self.MAX_CONTENT_LENGTH)}"  # noqa: E501
 
             elif action == "read":
                 if not url:
@@ -309,7 +312,7 @@ class BrowserTool(Tool):
                 page.goto(url, wait_until="domcontentloaded")
                 if selector:
                     content = page.locator(selector).first.inner_text()
-                    return f"### Content under selector '{selector}':\n{self._safe_truncate(content, self.MAX_CONTENT_LENGTH)}"
+                    return f"### Content under selector '{selector}':\n{self._safe_truncate(content, self.MAX_CONTENT_LENGTH)}"  # noqa: E501
                 text = page.locator("body").inner_text()
                 return self._safe_truncate(self._clean_markdown(text), self.MAX_CONTENT_LENGTH)
 
@@ -334,7 +337,9 @@ class BrowserTool(Tool):
                     target_file = Path(output_path).expanduser().resolve()
                     target_file.parent.mkdir(parents=True, exist_ok=True)
                 else:
-                    shot_dir = self.config.screenshot_dir or (self.workspace / ".nexus-agent" / "screenshots")
+                    shot_dir = self.config.screenshot_dir or (
+                        self.workspace / ".nexus-agent" / "screenshots"
+                    )
                     shot_dir.mkdir(parents=True, exist_ok=True)
                     target_file = shot_dir / "web_capture.png"
 
@@ -352,9 +357,11 @@ class BrowserTool(Tool):
         import httpx
 
         if action in ("click", "screenshot"):
-            return (f"Action '{action}' requires headless browser engines. "
-                    f"Install Playwright with `pip install playwright && playwright install`, "
-                    f"or set NEXUS_BROWSER_EXECUTABLE to a Chromium binary on disk.")
+            return (
+                f"Action '{action}' requires headless browser engines. "
+                f"Install Playwright with `pip install playwright && playwright install`, "
+                f"or set NEXUS_BROWSER_EXECUTABLE to a Chromium binary on disk."
+            )
 
         if not url:
             return "Error: A valid target URL is required."
@@ -431,7 +438,7 @@ class BrowserTool(Tool):
         extracted = parser.get_text()
         clean = self._clean_markdown(extracted)
 
-        return f"### Webpage Scraped (Fallback Mode): {url}\n\nContent:\n{self._safe_truncate(clean, self.MAX_CONTENT_LENGTH)}"
+        return f"### Webpage Scraped (Fallback Mode): {url}\n\nContent:\n{self._safe_truncate(clean, self.MAX_CONTENT_LENGTH)}"  # noqa: E501
 
     def _clean_markdown(self, text: str) -> str:
         """Strip duplicate spacing and empty lines, collapse multiple blank lines."""

@@ -52,15 +52,15 @@ class BatchEditTool(Tool):
                         },
                         "target_content": {
                             "type": "string",
-                            "description": "The exact block of code to search for. Must match exactly including indentation.",
+                            "description": "The exact block of code to search for. Must match exactly including indentation.",  # noqa: E501
                         },
                         "replacement_content": {
                             "type": "string",
                             "description": "The block of code to replace the target content with.",
-                        }
+                        },
                     },
                     "required": ["path", "target_content", "replacement_content"],
-                }
+                },
             }
         }
 
@@ -78,9 +78,13 @@ class BatchEditTool(Tool):
 
         for edit in edits:
             if not isinstance(edit, dict):
-                return "Error: Each edit must be a dictionary with path, target_content, and replacement_content."
-            if "path" not in edit or "target_content" not in edit or "replacement_content" not in edit:
-                return "Error: Each edit must have path, target_content, and replacement_content fields."
+                return "Error: Each edit must be a dictionary with path, target_content, and replacement_content."  # noqa: E501
+            if (
+                "path" not in edit
+                or "target_content" not in edit
+                or "replacement_content" not in edit
+            ):
+                return "Error: Each edit must have path, target_content, and replacement_content fields."  # noqa: E501
 
         in_memory_files: dict[Path, str] = {}
         original_contents: dict[Path, str] = {}
@@ -109,7 +113,7 @@ class BatchEditTool(Tool):
                     error_msg = f"Cannot stat file {rel_path}: {e}"
                     raise OSError(error_msg) from e
                 if file_size > max_size:
-                    error_msg = f"File too large for batch edit: {rel_path} ({file_size / 1024 / 1024:.1f}MB > 10MB)"
+                    error_msg = f"File too large for batch edit: {rel_path} ({file_size / 1024 / 1024:.1f}MB > 10MB)"  # noqa: E501
                     raise ValueError(error_msg)
 
                 if target_file in in_memory_files:
@@ -147,10 +151,12 @@ class BatchEditTool(Tool):
 
             summary = []
             for path in completed_paths:
-                summary.append(f"  - Clean replacement completed: {path.relative_to(self.workspace)}")
+                summary.append(
+                    f"  - Clean replacement completed: {path.relative_to(self.workspace)}"
+                )
             return (
-                f"✅ Atomic batch transaction succeeded! Successfully modified {len(completed_paths)} files:\n" +
-                "\n".join(summary)
+                f"✅ Atomic batch transaction succeeded! Successfully modified {len(completed_paths)} files:\n"  # noqa: E501
+                + "\n".join(summary)
             )
 
         except (ValueError, FileNotFoundError, OSError) as e:
@@ -160,7 +166,7 @@ class BatchEditTool(Tool):
                     current_on_disk = path.read_text(encoding="utf-8")
                     if current_on_disk != original_text:
                         logger.error(
-                            f"Rollback aborted for {path}: file was modified on disk after our write. "
+                            f"Rollback aborted for {path}: file was modified on disk after our write. "  # noqa: E501
                             f"Manual intervention required."
                         )
                         continue
