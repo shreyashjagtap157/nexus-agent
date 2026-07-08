@@ -49,7 +49,7 @@ class ImportGraphTool(Tool):
                 "type": "string",
                 "description": "Module name or file path to check dependents of (required if action='find_dependents')",
                 "required": False,
-            }
+            },
         }
 
     @property
@@ -86,7 +86,9 @@ class ImportGraphTool(Tool):
 
             if not dependents:
                 return f"No modules found that import '{target}'."
-            return f"### Modules importing '{target}':\n" + "\n".join(f"- `{d}`" for d in dependents)
+            return f"### Modules importing '{target}':\n" + "\n".join(
+                f"- `{d}`" for d in dependents
+            )
 
         return f"Unknown action: '{action}'."
 
@@ -153,7 +155,7 @@ class CallGraphTool(Tool):
                 "type": "string",
                 "description": "Function name to search usages of across this file",
                 "required": False,
-            }
+            },
         }
 
     @property
@@ -187,15 +189,21 @@ class CallGraphTool(Tool):
                     callers.append(caller)
 
             if not callers:
-                return f"No function calls targeting '{trace_function}' detected inside `{file_path}`."
-            return f"### Function '{trace_function}' is called by:\n" + "\n".join(f"- `{c}`" for c in callers)
+                return (
+                    f"No function calls targeting '{trace_function}' detected inside `{file_path}`."
+                )
+            return f"### Function '{trace_function}' is called by:\n" + "\n".join(
+                f"- `{c}`" for c in callers
+            )
 
         else:
             # Return call map
             lines = [f"### Static Call Graph for `{file_path}`"]
             for caller, callees in call_map.items():
                 if callees:
-                    lines.append(f"- `{caller}` calls: {', '.join(f'`{c}`' for c in sorted(callees))}")
+                    lines.append(
+                        f"- `{caller}` calls: {', '.join(f'`{c}`' for c in sorted(callees))}"
+                    )
             return "\n".join(lines)
 
     def _build_call_graph(self, tree: ast.AST) -> dict[str, set[str]]:
@@ -249,7 +257,9 @@ class RenameTool(Tool):
 
     @property
     def description(self) -> str:
-        return "AST-based find-and-replace to safely rename symbols/variables across scope in a file."
+        return (
+            "AST-based find-and-replace to safely rename symbols/variables across scope in a file."
+        )
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -265,7 +275,7 @@ class RenameTool(Tool):
             "new_symbol": {
                 "type": "string",
                 "description": "New replacement symbol name",
-            }
+            },
         }
 
     @property
@@ -355,11 +365,14 @@ class RenameTool(Tool):
 
             # Atomic rename
             os.replace(tmp_path, str(target))
-            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."
+            return (
+                f"Successfully renamed '{old_symbol}' to '{new_symbol}' "
+                f"({replacements} replacements) in `{file_path}`."
+            )
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
             # fallback to simple regex rename if ast unparse has quirks or is python version specific
             try:
-                pattern = r'\b' + re.escape(old_symbol) + r'\b'
+                pattern = r"\b" + re.escape(old_symbol) + r"\b"
                 count = 0
                 lines = []
                 for line in source.splitlines():
@@ -381,6 +394,9 @@ class RenameTool(Tool):
                     shutil.copy2(target, bak_path)
 
                 os.replace(tmp_path, str(target))
-                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."
+                return (
+                    f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' "
+                    f"({count} regex replacements) in `{file_path}`."
+                )
             except (OSError, ValueError, UnicodeEncodeError) as re_err:
                 return f"Failed to rewrite file content: {re_err} (AST error: {e})"
