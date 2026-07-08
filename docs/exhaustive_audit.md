@@ -3,7 +3,7 @@
 **Generated:** June 8, 2026  
 **Last Verified: June 08, 2026 — full test suite verified via CI
 **Codebase:** 86 Python source files, ~24,990 lines  
-**Tests:** 831 passing, 1 skipped, 0 failed  
+**Tests:** 831 passing, 1 skipped, 0 failed
 **Coverage:** CLI (29 files), Core (21 files), LLM (14 files), Tools (16 files), Memory (6 files), Session (5 files), MCP (4 files), Skills (4 files), Permissions (3 files), GUI (8 files), Training (3 files), Protocol (2 files)
 
 ---
