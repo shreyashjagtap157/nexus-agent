@@ -7,6 +7,7 @@ interactive menus, model config HUD, or provider connection flows.
 
 from __future__ import annotations
 
+import itertools
 import os
 import re
 import subprocess
@@ -34,7 +35,7 @@ class InteractiveUIMixin:
         ``value=None`` act as non-selectable separators.  Returns the
         selected value or ``None`` if the user pressed Esc.
         """
-        selectable = [i for i, (l, v) in enumerate(items) if v is not None]
+        selectable = [i for i, (label, v) in enumerate(items) if v is not None]
         if not selectable:
             return None
         idx = selectable[0]
@@ -461,12 +462,11 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
-                        rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                # ⚡ Bolt: Use itertools.islice over a generator expression to lazily evaluate rglob
+                file_gen = (p for p in self.workspace.rglob(f"*{prefix}*") if p.is_file())
+                for p in itertools.islice(file_gen, 20):
+                    rel = p.relative_to(self.workspace)
+                    matches.append(str(rel.as_posix()))
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]
