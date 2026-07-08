@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
@@ -18,6 +19,7 @@ import webbrowser
 from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import urlparse
 
 import psutil
 import uvicorn
@@ -76,16 +78,18 @@ class StateManager:
 
 
 # Global instances shared across endpoints
-state_manager = StateManager({
-    "config": {},
-    "workspace": Path.cwd(),
-    "runtime_manager": None,
-    "memory_manager": None,
-    "session_manager": None,
-    "permission_manager": None,
-    "active_session_id": None,
-    "engine": None,
-})
+state_manager = StateManager(
+    {
+        "config": {},
+        "workspace": Path.cwd(),
+        "runtime_manager": None,
+        "memory_manager": None,
+        "session_manager": None,
+        "permission_manager": None,
+        "active_session_id": None,
+        "engine": None,
+    }
+)
 
 
 def get_free_port() -> int:
@@ -123,7 +127,9 @@ async def security_middleware(request: Request, call_next):
             hits = _rate_limit_store[client_ip]
             _rate_limit_store[client_ip] = [t for t in hits if t > window_start]
             if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX:
-                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+                return JSONResponse(
+                    status_code=429, content={"detail": "Rate limit exceeded. Try again later."}
+                )
             _rate_limit_store[client_ip].append(now)
 
         # Request body size limit
@@ -182,6 +188,7 @@ class SessionCreateRequest(BaseModel):
 
 # --- API ENDPOINTS ---
 
+
 @app.get("/api/status")
 async def get_status():
     """Get status of the agent core."""
@@ -215,7 +222,7 @@ async def get_status():
             "vram": hw_info.get("vram"),
             "npu": hw_info.get("npu"),
             "recommended": hw_info.get("recommended_model_size"),
-        }
+        },
     }
 
 
@@ -229,14 +236,16 @@ async def get_models():
     # Format list
     serialized = []
     for m in models:
-        serialized.append({
-            "name": m["name"],
-            "filename": m["filename"],
-            "path": str(m["path"]),
-            "size_str": m["size_str"],
-            "quantization": m.get("quantization", "unknown"),
-            "format": m.get("format", "gguf"),
-        })
+        serialized.append(
+            {
+                "name": m["name"],
+                "filename": m["filename"],
+                "path": str(m["path"]),
+                "size_str": m["size_str"],
+                "quantization": m.get("quantization", "unknown"),
+                "format": m.get("format", "gguf"),
+            }
+        )
     return serialized
 
 
@@ -245,7 +254,9 @@ async def load_model(req: ModelLoadRequest):
     """Load a model using local engine fine-tuning settings & guardrails."""
     try:
         # Check guardrails first
-        guardrail_level = state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")
+        guardrail_level = (
+            state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")
+        )
         mgr = ModelManager()
         chk = mgr.evaluate_loading_guardrail(req.model_path, guardrail_level)
         if not chk["allowed"]:
@@ -253,19 +264,22 @@ async def load_model(req: ModelLoadRequest):
 
         # Construct loading parameters with dynamic settings
         load_kwargs: dict[str, Any] = {}
-        if req.gpu_layers is not None: load_kwargs["gpu_layers"] = req.gpu_layers
-        if req.context_size is not None: load_kwargs["context_size"] = req.context_size
-        if req.threads is not None: load_kwargs["threads"] = req.threads
-        if req.flash_attention is not None: load_kwargs["flash_attention"] = req.flash_attention
-        if req.unified_kv_cache is not None: load_kwargs["unified_kv_cache"] = req.unified_kv_cache
-        if req.kv_quant_type is not None: load_kwargs["kv_quant_type"] = req.kv_quant_type
+        if req.gpu_layers is not None:
+            load_kwargs["gpu_layers"] = req.gpu_layers
+        if req.context_size is not None:
+            load_kwargs["context_size"] = req.context_size
+        if req.threads is not None:
+            load_kwargs["threads"] = req.threads
+        if req.flash_attention is not None:
+            load_kwargs["flash_attention"] = req.flash_attention
+        if req.unified_kv_cache is not None:
+            load_kwargs["unified_kv_cache"] = req.unified_kv_cache
+        if req.kv_quant_type is not None:
+            load_kwargs["kv_quant_type"] = req.kv_quant_type
 
         # Select and swap active LocalEngine — close previous engine first
         old_engine = state_manager.get("engine")
-        engine = LocalEngine(
-            model_path=req.model_path,
-            **load_kwargs
-        )
+        engine = LocalEngine(model_path=req.model_path, **load_kwargs)
         state_manager.set("engine", engine)
         if old_engine is not None:
             try:
@@ -360,7 +374,7 @@ async def get_tasks():
             "root_id": tg.root_id,
             "progress": tg.get_progress(),
             "nodes": {nid: node.to_dict() for nid, node in tg.nodes.items()},
-            "markdown": tg.to_markdown()
+            "markdown": tg.to_markdown(),
         }
     return {"message": "No active task graph for this session."}
 
@@ -373,7 +387,7 @@ async def get_nla(session_id: str):
     return {
         "session_id": session_id,
         "records": [r.to_dict() for r in records],
-        "summary": nla.generate_session_summary()
+        "summary": nla.generate_session_summary(),
     }
 
 
@@ -381,7 +395,13 @@ async def get_nla(session_id: str):
 async def trigger_debate():
     """Convening parallel code debate reviews."""
     try:
-        diff_res = subprocess.run(["git", "diff", "HEAD"], cwd=str(state_manager.get("workspace")), capture_output=True, text=True, timeout=10)
+        diff_res = subprocess.run(
+            ["git", "diff", "HEAD"],
+            cwd=str(state_manager.get("workspace")),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         changes = diff_res.stdout or "Simulated: refactoring core pipeline structures"
     except (subprocess.TimeoutExpired, OSError, ValueError) as e:
         logger.debug(f"Git diff failed, using simulated changes: {e}")
@@ -395,7 +415,7 @@ async def trigger_debate():
         "scores": verdict.reviewer_scores,
         "summary": verdict.consensus_summary,
         "issues": verdict.aggregated_issues,
-        "recommendations": verdict.recommendations
+        "recommendations": verdict.recommendations,
     }
 
 
@@ -414,23 +434,50 @@ async def trigger_verify():
             for s in report.secrets_found
         ],
         "vulnerabilities": report.vulnerabilities_found,
-        "traceback_analysis": report.traceback_analysis
+        "traceback_analysis": report.traceback_analysis,
     }
 
 
 @app.post("/api/commit")
 async def trigger_commit():
     """Auto-generate conventional commits from staged modifications."""
-    tool = SmartCommitTool(workspace=state_manager.get("workspace"), provider=state_manager.get("engine"))
+    tool = SmartCommitTool(
+        workspace=state_manager.get("workspace"), provider=state_manager.get("engine")
+    )
     msg = tool.execute()
     return {"message": msg}
 
 
 # --- WEBSOCKET REAL-TIME STREAMING ---
 
+
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+
+    origin = websocket.headers.get("origin")
+    host = websocket.headers.get("host")
+    if origin is not None:
+        if origin == "null":
+            logger.warning("Rejected WebSocket connection: origin is null")
+            await websocket.close(code=1008)
+            return
+        parsed_origin = urlparse(origin)
+        origin_host = parsed_origin.hostname
+
+        if host:
+            if host.startswith("["):
+                host_hostname = host[1 : host.find("]")]
+            else:
+                host_hostname = host.split(":")[0]
+
+            if origin_host != host_hostname:
+                logger.warning(
+                    f"Rejected WebSocket connection: Origin {origin_host} != Host {host_hostname}"
+                )
+                await websocket.close(code=1008)
+                return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
@@ -455,13 +502,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             engine = state_manager.get("engine")
             is_loaded = getattr(engine, "is_loaded", True) if engine else False
             if not engine or not is_loaded:
-                await websocket.send_json({
-                    "type": "error",
-                    "content": "No model loaded. Please load a model or configure a provider first."
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "content": "No model loaded. Please configure a provider first.",
+                    }
+                )
                 await websocket.send_json({"type": "done", "iterations": 0})
                 continue
-
 
             # Prepare active tools
             tools = [
@@ -475,7 +523,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 GitTool(state_manager.get("workspace")),
                 WebSearchTool(),
                 WebFetchTool(),
-                TodoWriteTool(persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"),
+                TodoWriteTool(
+                    persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"
+                ),
             ]
             memory_tool = MemoryTool()
             if state_manager.get("memory_manager"):
@@ -491,10 +541,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             agent_cfg = AgentLoopConfig(
                 mode=AgentMode(mode_str),
                 workspace=state_manager.get("workspace"),
-                max_iterations=state_manager.get("config").get("agent", {}).get("max_iterations", 50),
+                max_iterations=state_manager.get("config")
+                .get("agent", {})
+                .get("max_iterations", 50),
                 temperature=state_manager.get("config").get("agent", {}).get("temperature", 0.1),
                 max_tokens=state_manager.get("config").get("agent", {}).get("max_tokens", 4096),
-                permission_callback=lambda tc: state_manager.get("permission_manager").check_and_approve(
+                permission_callback=lambda tc: state_manager.get(
+                    "permission_manager"
+                ).check_and_approve(
                     tool_name=tc.name,
                     arguments=tc.arguments,
                 ),
@@ -513,9 +567,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 try:
                     for event in agent.run(agent_prompt):
                         # Dispatch events back to async websocket thread safely
-                        asyncio.run_coroutine_threadsafe(
-                            send_agent_event(ws, event), loop
-                        )
+                        asyncio.run_coroutine_threadsafe(send_agent_event(ws, event), loop)
                 except (RuntimeError, ValueError, OSError, LookupError) as ex:
                     logger.exception("Agent thread execution failure")
                     asyncio.run_coroutine_threadsafe(
@@ -523,19 +575,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     )
 
             loop = asyncio.get_running_loop()
-            thread = threading.Thread(
-                target=run_agent_loop,
-                args=(loop, websocket, prompt)
-            )
+            thread = threading.Thread(target=run_agent_loop, args=(loop, websocket, prompt))
 
             def _log_thread_error(future):
                 exc = future.exception()
                 if exc:
                     logger.error(f"Agent thread failed: {exc}")
 
-            future = asyncio.run_coroutine_threadsafe(
-                asyncio.to_thread(thread.start), loop
-            )
+            future = asyncio.run_coroutine_threadsafe(asyncio.to_thread(thread.start), loop)
             future.add_done_callback(_log_thread_error)
 
     except WebSocketDisconnect:
@@ -555,18 +602,22 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
             case "content_chunk":
                 await ws.send_json({"type": "chunk", "content": event.data})
             case "tool_call":
-                await ws.send_json({
-                    "type": "tool_call",
-                    "name": event.data.get("name"),
-                    "arguments": event.data.get("arguments"),
-                })
+                await ws.send_json(
+                    {
+                        "type": "tool_call",
+                        "name": event.data.get("name"),
+                        "arguments": event.data.get("arguments"),
+                    }
+                )
             case "tool_result":
-                await ws.send_json({
-                    "type": "tool_result",
-                    "name": event.data.get("name"),
-                    "success": event.data.get("success"),
-                    "output": event.data.get("output", "")[:2000],  # Truncate long logs
-                })
+                await ws.send_json(
+                    {
+                        "type": "tool_result",
+                        "name": event.data.get("name"),
+                        "success": event.data.get("success"),
+                        "output": event.data.get("output", "")[:2000],  # Truncate long logs
+                    }
+                )
             case "error":
                 await ws.send_json({"type": "error", "content": str(event.data)})
             case "done":
@@ -575,10 +626,12 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
                 if sm:
                     # Capture history
                     sm.save_message("user", content=event.data.get("prompt", ""))
-                await ws.send_json({
-                    "type": "done",
-                    "iterations": event.data.get("iterations", 0),
-                })
+                await ws.send_json(
+                    {
+                        "type": "done",
+                        "iterations": event.data.get("iterations", 0),
+                    }
+                )
     except (RuntimeError, OSError) as e:
         logger.error(f"Failed to send websocket message: {e}")
 
@@ -602,6 +655,7 @@ frontend_dir = Path(__file__).parent / "frontend"
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 else:
+
     @app.get("/")
     async def get_index():
         return HTMLResponse(content=_welcome_html())
@@ -621,11 +675,14 @@ def start_gui_server(
     # Load configuration
     workspace_path = workspace or Path.cwd()
     state_manager.set("workspace", workspace_path)
-    state_manager.set("config", load_config(
-        config_path=config_path,
-        workspace=workspace_path,
-        data_dir=data_dir,
-    ))
+    state_manager.set(
+        "config",
+        load_config(
+            config_path=config_path,
+            workspace=workspace_path,
+            data_dir=data_dir,
+        ),
+    )
 
     # Initialize shared subsystems
     data_dir_path = state_manager.get("config").get("_data_dir", "~/.nexus-agent")
@@ -633,23 +690,31 @@ def start_gui_server(
     state_manager.set("session_manager", SessionManager(data_dir=f"{data_dir_path}/sessions"))
     state_manager.set("permission_manager", PermissionManager())
     state_manager.get("permission_manager").load_from_config(state_manager.get("config"))
-    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))
+    state_manager.set(
+        "usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json")
+    )
 
     # Initialize RuntimeManager
     rm = RuntimeManager(state_manager.get("config"))
     state_manager.set("runtime_manager", rm)
 
     # Preload engine using ProviderFactory
-    active_provider = provider or state_manager.get("config").get("providers", {}).get("active", "local")
+    active_provider = provider or state_manager.get("config").get("providers", {}).get(
+        "active", "local"
+    )
     target_model = model_path
     if active_provider == "local" and not target_model:
         target_model = state_manager.get("config").get("local_model", {}).get("default_model", "")
 
     try:
-        state_manager.set("engine", ProviderFactory.create_provider(active_provider, state_manager.get("config"), target_model))
+        state_manager.set(
+            "engine",
+            ProviderFactory.create_provider(
+                active_provider, state_manager.get("config"), target_model
+            ),
+        )
     except (ImportError, ValueError, OSError, RuntimeError) as e:
         logger.warning(f"Failed to preload LLM provider '{active_provider}': {e}")
-
 
     # Set up host/port
     srv_config = state_manager.get("config").get("gui", {})
@@ -673,9 +738,11 @@ def start_gui_server(
 
     # Automatically launch browser if requested
     if open_browser:
+
         def launch_browser():
             time.sleep(1.5)
             webbrowser.open(url)
+
         threading.Thread(target=launch_browser, daemon=True).start()
 
     # Run Uvicorn ASGI server
