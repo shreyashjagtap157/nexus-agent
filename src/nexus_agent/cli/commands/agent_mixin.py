@@ -128,7 +128,7 @@ class AgentCommandsMixin:
             "  Effort",
             "",
             f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}" + chr(0x2500) * left_w + chr(0x252C) + chr(0x2500) * right_w,
+            f"{' ' * PAD}─{'─' * (left_w - 1)}┬{'─' * (right_w - 1)}─",
         ]
         lines.append(marker_line)
         lines.append(label_line)
