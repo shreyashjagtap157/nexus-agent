@@ -1,5 +1,7 @@
 """NexusAgent CLI entry point."""
 
+import itertools
+import itertools
 import os
 import sys
 from pathlib import Path
@@ -228,7 +230,8 @@ def session_checkpoint(description: str) -> None:
     console = Console()
     mgr = SessionManager()
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+    # ⚡ Bolt: Use itertools.islice to lazily evaluate rglob, avoiding full traversal
+    files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
@@ -344,7 +347,8 @@ def hardware() -> None:
         f"[cyan]GPU:[/cyan] {hw.get('gpu', 'Not detected')}",
         f"[cyan]VRAM:[/cyan] {hw.get('vram', 'N/A')}",
         "",
-        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",
+        f"[bold green]Recommended max model size:[/bold green] "
+        f"{hw.get('recommended_model_size', 'unknown')}",
     ]
 
     console.print(Panel.fit(
