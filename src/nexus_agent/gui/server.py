@@ -8,7 +8,6 @@ web-based dashboard, allowing real-time LLM interaction and agent control.
 from __future__ import annotations
 
 import asyncio
-import urllib.parse
 import json
 import logging
 import socket
@@ -432,28 +431,6 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
-    # CSWSH Protection - Check before accepting the connection
-    origin = websocket.headers.get("origin")
-    host_header = websocket.headers.get("host")
-
-    if origin is not None and host_header is not None:
-        if origin == "null":
-            logger.warning("CSWSH attempt prevented: null origin")
-            await websocket.close(code=1008)
-            return
-
-        parsed_origin = urllib.parse.urlparse(origin)
-
-        if host_header.startswith('['):
-            host_hostname = host_header[1:host_header.find(']')]
-        else:
-            host_hostname = host_header.split(':')[0]
-
-        if parsed_origin.hostname != host_hostname:
-            logger.warning(f"CSWSH attempt prevented: origin {parsed_origin.hostname} != host {host_hostname}")
-            await websocket.close(code=1008)
-            return
-
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
