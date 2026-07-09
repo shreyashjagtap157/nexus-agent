@@ -58,3 +58,7 @@ htmlcov/
 .pytest_cache/
 
 nul
+
+.venv
+__pycache__
+*.egg-info
