@@ -141,6 +141,8 @@ class AgentCommandsMixin:
 
     def _clear_selector(self):
         import sys as _sys
+        dash_left = "\u2500" * left_w
+        dash_right = "\u2500" * right_w
         _sys.stdout.write("\033[1B\033[J\033[1A")
         _sys.stdout.flush()
 
