@@ -431,6 +431,34 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+
+    # CSWSH Protection: Validate Origin against Host header
+    origin = websocket.headers.get("origin")
+    host = websocket.headers.get("host", "")
+
+    if origin is not None:
+        import urllib.parse
+        parsed_origin = urllib.parse.urlparse(origin)
+        origin_host = parsed_origin.netloc
+
+        # Handle cases where host might include port or IPv6 brackets
+        host_name = host
+        if host.startswith('['):
+            # Extract IPv6 address
+            host_name = host[1:host.find(']')]
+        else:
+            host_name = host.split(':')[0]
+
+        origin_host_name = origin_host
+        if origin_host.startswith('['):
+            origin_host_name = origin_host[1:origin_host.find(']')]
+        else:
+            origin_host_name = origin_host.split(':')[0]
+
+        if origin == "null" or origin_host_name != host_name:
+            await websocket.close(code=1008)
+            logger.warning(f"Rejected WebSocket connection due to Origin mismatch: {origin} vs {host}")
+            return
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
