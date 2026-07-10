@@ -223,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"jax": None, "jaxlib": None, "jax.experimental": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
@@ -261,7 +261,6 @@ class TestScanRuntimes(unittest.TestCase):
         self.assertEqual(runtimes[0].name, "CUDA")
         self.assertEqual(runtimes[-1].name, "CPU")
 
-    @unittest.skip('Fails on CI with multiprocessing issues')
     def test_scan_runtimes_smoke(self):
         """scan_runtimes should never crash regardless of system state."""
         runtimes = scan_runtimes()
