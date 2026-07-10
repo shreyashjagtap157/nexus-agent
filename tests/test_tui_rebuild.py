@@ -24,16 +24,22 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         # Mock ResourceMonitor so it doesn't bypass psutil patches
         mock_mon = MagicMock()
         mock_mon.snapshot.return_value = MagicMock(
-            cpu_percent=12.5, cpu_threads=4,
-            ram_str="4.0G/16G", gpu_percent=35, vram_str="",
+            cpu_percent=12.5,
+            cpu_threads=4,
+            ram_str="4.0G/16G",
+            gpu_percent=35,
+            vram_str="",
         )
-        with patch("sys.stdout.write", stdout_mock), \
-             patch("shutil.get_terminal_size", return_value=MagicMock(columns=80, lines=24)), \
-             patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon), \
-             patch("subprocess.run") as mock_run:
-
+        with (
+            patch("sys.stdout.write", stdout_mock),
+            patch("shutil.get_terminal_size", return_value=MagicMock(columns=80, lines=24)),
+            patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon),
+            patch("subprocess.run") as mock_run,
+        ):
             # Mock git diff
-            mock_run.return_value = MagicMock(returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n")
+            mock_run.return_value = MagicMock(
+                returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n"
+            )
 
             self.renderer.welcome(
                 model_name="Llama-3-8B-Q4",
@@ -43,13 +49,13 @@ class TestTuiRebuildFeatures(unittest.TestCase):
                 context_size=8192,
                 tokens=self.tokens,
                 metrics=self.metrics,
-                active_agents=2
+                active_agents=2,
             )
 
             # Retrieve the calls to sys.stdout.write
             written_data = "".join(call[0][0] for call in stdout_mock.call_args_list)
 
-            # Ensure model name, CPU/GPU stats, RAM stats, token IO, context, git diff and processes are present
+            # Ensure model name, CPU/GPU stats, RAM stats, token IO, context, and diff are present
             self.assertIn("Llama-3-8B-Q4", written_data)
             self.assertIn("Mem: 4.0G/16G", written_data)
             self.assertIn("CPU: 4t", written_data)
@@ -66,14 +72,18 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         # Mock ResourceMonitor so it doesn't bypass psutil patches
         mock_mon = MagicMock()
         mock_mon.snapshot.return_value = MagicMock(
-            cpu_percent=5.0, cpu_threads=8,
-            ram_str="2.0G/8G", gpu_percent=0, vram_str="",
+            cpu_percent=5.0,
+            cpu_threads=8,
+            ram_str="2.0G/8G",
+            gpu_percent=0,
+            vram_str="",
         )
-        with patch("sys.stdout.write", stdout_mock), \
-             patch("shutil.get_terminal_size", return_value=MagicMock(columns=60, lines=24)), \
-             patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon), \
-             patch("subprocess.run") as mock_run:
-
+        with (
+            patch("sys.stdout.write", stdout_mock),
+            patch("shutil.get_terminal_size", return_value=MagicMock(columns=60, lines=24)),
+            patch("nexus_agent.cli.resource_monitor.ResourceMonitor.get", return_value=mock_mon),
+            patch("subprocess.run") as mock_run,
+        ):
             mock_run.return_value = MagicMock(returncode=0, stdout="0\t0\tfile.py\n")
 
             self.renderer.welcome(
@@ -84,7 +94,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
                 context_size=4096,
                 tokens=self.tokens,
                 metrics=self.metrics,
-                active_agents=0
+                active_agents=0,
             )
 
             written_data = "".join(call[0][0] for call in stdout_mock.call_args_list)
@@ -193,9 +203,11 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         mock_db.get_path.return_value = "/mock/model.gguf"
         app._models_db = mock_db
 
-        with patch("os.path.isfile", return_value=True), \
-             patch.object(app, "_init_engine"), \
-             patch.object(app, "_init_agent"):
+        with (
+            patch("os.path.isfile", return_value=True),
+            patch.object(app, "_init_engine"),
+            patch.object(app, "_init_agent"),
+        ):
             # Command with unquoted spaces
             app._cmd_model("switch Nemotron 3 Nano 4B")
             mock_db.get_path.assert_called_with("Nemotron 3 Nano 4B")
@@ -203,12 +215,13 @@ class TestTuiRebuildFeatures(unittest.TestCase):
 
             # Command with quoted name
             mock_db.reset_mock()
-            app._cmd_model("switch \"Nemotron 3 Nano 4B\"")
+            app._cmd_model('switch "Nemotron 3 Nano 4B"')
             mock_db.get_path.assert_called_with("Nemotron 3 Nano 4B")
 
     def test_workspace_session_auto_resume(self):
-        """Verify the session orchestrator resumes the last session by default unless new_session is True."""
+        """Verify session orchestrator resumes last session by default."""
         from pathlib import Path
+
         app = NexusApp(quiet=True, workspace=Path("/mock/workspace"))
         self.addCleanup(app._cleanup)
 
@@ -222,18 +235,19 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         app._engine = MagicMock()
         app._engine.model_name = "test-model"
 
-        with patch("nexus_agent.cli.session_handler.MemoryManager"), \
-             patch("nexus_agent.cli.session_handler.CheckpointManager"), \
-             patch("nexus_agent.cli.session_handler.PermissionManager"), \
-             patch("nexus_agent.cli.session_handler.ModelsDB"), \
-             patch("nexus_agent.cli.session_handler.AuthStore"), \
-             patch("nexus_agent.cli.session_handler.RuntimeManager"), \
-             patch("nexus_agent.tools.browser.BrowserTool"), \
-             patch("nexus_agent.tools.rag_search.RepositoryRAGTool"), \
-             patch.object(app, "_init_mcp"), \
-             patch.object(app, "_init_skills"), \
-             patch.object(app, "_init_engine"):
-
+        with (
+            patch("nexus_agent.cli.session_handler.MemoryManager"),
+            patch("nexus_agent.cli.session_handler.CheckpointManager"),
+            patch("nexus_agent.cli.session_handler.PermissionManager"),
+            patch("nexus_agent.cli.session_handler.ModelsDB"),
+            patch("nexus_agent.cli.session_handler.AuthStore"),
+            patch("nexus_agent.cli.session_handler.RuntimeManager"),
+            patch("nexus_agent.tools.browser.BrowserTool"),
+            patch("nexus_agent.tools.rag_search.RepositoryRAGTool"),
+            patch.object(app, "_init_mcp"),
+            patch.object(app, "_init_skills"),
+            patch.object(app, "_init_engine"),
+        ):
             # Case 1: auto resume
             app._new_session = False
             app._session_id = None
@@ -262,10 +276,10 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         expected_dir = os.path.abspath(os.path.join(data_dir_path, "runtimes", test_backend))
 
         # Ensure the test directory exists for activate_runtime to check it
-        with patch("os.path.exists", return_value=True), \
-             patch("importlib.invalidate_caches") as mock_invalidate:
-
-            original_sys_path = list(sys.path)
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("importlib.invalidate_caches") as mock_invalidate,
+        ):
             try:
                 # Remove the directory if it's already in sys.path somehow
                 if expected_dir in sys.path:
@@ -281,7 +295,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
                     sys.path.remove(expected_dir)
 
     def test_custom_model_tuning_parameters(self):
-        """Verify that model tuning parameters are validated and passed to LocalEngine constructor."""
+        """Verify model tuning parameters are validated and passed to LocalEngine constructor."""
         from nexus_agent.llm.runtime_manager import RuntimeManager
 
         config = {
@@ -312,9 +326,10 @@ class TestTuiRebuildFeatures(unittest.TestCase):
         self.assertEqual(rm._reasoning_depth, 10)
 
         # Now mock LocalEngine constructor and verify the parameters are passed
-        with patch("nexus_agent.llm.runtime_manager.LocalEngine") as mock_engine_cls, \
-             patch("pathlib.Path.exists", return_value=True):
-
+        with (
+            patch("nexus_agent.llm.runtime_manager.LocalEngine") as mock_engine_cls,
+            patch("pathlib.Path.exists", return_value=True),
+        ):
             rm.select_engine("/mock/model.gguf")
             mock_engine_cls.assert_called_once()
             kwargs = mock_engine_cls.call_args[1]
@@ -328,4 +343,3 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             self.assertEqual(kwargs["keep_in_memory"], False)
             self.assertEqual(kwargs["use_agent_protocol"], True)
             self.assertEqual(kwargs["reasoning_depth"], 10)
-
