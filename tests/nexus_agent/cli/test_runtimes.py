@@ -217,13 +217,13 @@ class TestCheckTpu(unittest.TestCase):
     """Test JAX/TPU runtime detection."""
 
     def test_jax_imported(self):
-        with patch.dict("sys.modules", {"jax": MagicMock(__file__="/path/jax/__init__.py")}):
+        with patch.dict("sys.modules", {"jax": MagicMock(__file__="/path/jax/__init__.py"), "jaxlib": MagicMock(__file__="/path/jaxlib/__init__.py")}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 1)
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"jax": None, "jaxlib": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
@@ -261,7 +261,17 @@ class TestScanRuntimes(unittest.TestCase):
         self.assertEqual(runtimes[0].name, "CUDA")
         self.assertEqual(runtimes[-1].name, "CPU")
 
-    def test_scan_runtimes_smoke(self):
+    @patch("nexus_agent.cli.runtimes._check_tpu", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_openvino", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_vllm", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_sglang", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_mlx", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_tensorrt", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_rocm", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_vulkan", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_cuda", return_value=[])
+    @patch("nexus_agent.cli.runtimes._check_cpu", return_value=[RuntimeInfo(name="CPU default", provider="local", available=True, priority=10)])
+    def test_scan_runtimes_smoke(self, mock_cpu, mock_cuda, mock_vulkan, mock_rocm, mock_trt, mock_mlx, mock_sglang, mock_vllm, mock_ov, mock_tpu):
         """scan_runtimes should never crash regardless of system state."""
         runtimes = scan_runtimes()
         self.assertIsInstance(runtimes, list)
