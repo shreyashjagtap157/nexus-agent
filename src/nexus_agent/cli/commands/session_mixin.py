@@ -91,7 +91,7 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            # ⚡ Bolt: Lazily evaluate rglob to prevent traversing the whole repo before slicing. O(N) -> O(1).
+            # ⚡ Bolt: Lazily evaluate rglob to prevent traversing the whole repo before slicing.
             files = [str(f) for f in itertools.islice(self.workspace.rglob("*.py"), 20)]
             cp_id = self._session_mgr.create_checkpoint(
                 files, description=args or "Manual checkpoint"

@@ -283,7 +283,7 @@ def session_checkpoint(description: str) -> None:
     mgr = SessionManager()
     from pathlib import Path
 
-    # ⚡ Bolt: Lazily evaluate rglob to prevent traversing the whole repo before slicing. O(N) -> O(1).
+    # ⚡ Bolt: Lazily evaluate rglob to prevent traversing the whole repo before slicing.
     files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
