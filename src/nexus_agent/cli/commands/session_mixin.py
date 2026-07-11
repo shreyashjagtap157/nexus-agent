@@ -91,7 +91,7 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            # ⚡ Bolt: Use itertools.islice for lazy evaluation of rglob to prevent greedy memory consumption
+            # ⚡ Bolt: Use itertools.islice to lazily evaluate rglob
             files = [str(f) for f in itertools.islice(self.workspace.rglob("*.py"), 20)]
             cp_id = self._session_mgr.create_checkpoint(
                 files, description=args or "Manual checkpoint"
@@ -109,7 +109,8 @@ class SessionCommandsMixin:
                     return
                 for cp in checkpoints[:10]:
                     self.console.print(
-                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"
+                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  "
+                        f"[dim]{cp.get('created', '')}[/dim]"
                     )
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
