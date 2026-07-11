@@ -1,4 +1,4 @@
-"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""
+"""RAG Search Tool — Offline repository semantic search."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ class RepositoryRAGTool(Tool):
             },
             "reindex": {
                 "type": "boolean",
-                "description": "Force scan and rebuild of the repository FTS5 index before querying.",
+                "description": "Force scan and rebuild index.",
             }
         }
 
@@ -133,8 +133,8 @@ class RepositoryRAGTool(Tool):
         """)
         conn.commit()
 
-        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
-        exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}
+        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build"}
+        exclude_extensions = {".png", ".jpg", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}
 
         # Regex symbol patterns
         py_class_pat = re.compile(r'^\s*class\s+(\w+)')
