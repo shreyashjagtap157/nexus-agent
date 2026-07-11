@@ -183,9 +183,9 @@ class SmartCommitTool(Tool):
             if self.provider:
                 # LLM based generation
                 system = (
-                    "You are a git expert. Analyze the provided git diff and output a single, perfect conventional "
-                    "commit message. Use conventional commits formatting (e.g. feat: add task graph module, "
-                    "fix: resolve context timeout issue, docs: update readme). Do NOT add extra explanations, "
+                    "You are a git expert. Analyze git diff and output a single, perfect conventional "
+                    "commit message. Use conventional format (e.g. feat: add task graph module, "
+                    "fix: resolve context timeout, docs: update readme). Do NOT add extra explanations, "
                     "backticks, or code blocks. Just output the raw commit message."
                 )
                 user = f"Git Diff:\n{diff_text[:3000]}"
@@ -226,7 +226,7 @@ class PRGeneratorTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Auto-generates a Pull Request title and technical summary describing branch changes."
+        return "Auto-generates a Pull Request title and technical summary of changes."
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -273,8 +273,8 @@ class PRGeneratorTool(Tool):
 
             if self.provider:
                 system = (
-                    "You are a principal engineer. Create a compelling, professional Pull Request title and description "
-                    "based on the provided commit messages and change stats. Format the description in Markdown with:\n"
+                    "You are a principal engineer. Create a professional Pull Request title and description "
+                    "based on commit messages and change stats. Format the description in Markdown with:\n"
                     "- **Overview**: Summary of changes\n"
                     "- **Key Features / Fixes**: Bullet points explaining modifications\n"
                     "- **Dependencies**: List of modified key files"
@@ -345,7 +345,7 @@ class CIAnalyzerTool(Tool):
 
         # Heuristic extraction of failing lines
         for line in lines:
-            if any(k in line.lower() for k in ["fail", "error", "exception", "traceback", "panic", "fatal"]):
+            if any(k in line.lower() for k in ["fail", "error", "exception", "traceback"]):
                 capture = True
                 captured_lines = 0
 
@@ -359,8 +359,8 @@ class CIAnalyzerTool(Tool):
 
         if self.provider:
             system = (
-                "You are an expert DevOps engineer and debugger. Read the provided CI log output block. "
-                "Diagnose exactly why the CI failed, highlight the root error file/line/context, and provide "
+                "You are an expert DevOps engineer and debugger. Read the CI log output block. "
+                "Diagnose why the CI failed, highlight the root error file/line/context, and provide "
                 "the exact corrective actions to fix it."
             )
             res = self.provider.chat_completion([
