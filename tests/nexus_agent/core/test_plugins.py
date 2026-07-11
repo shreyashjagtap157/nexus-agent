@@ -119,7 +119,8 @@ class SimplePlugin(NexusPlugin):
 
         with patch("sys.version_info", (3, 11)):
             with patch("importlib.metadata.entry_points") as mock_eps:
-                mock_eps.return_value = [mock_ep]
+                mock_eps.return_value.get.return_value = [mock_ep]
+                mock_eps.return_value.select.return_value = [mock_ep]
                 res = self.pm.discover_and_load()
 
         assert "ep_plugin" in res
@@ -136,7 +137,8 @@ class SimplePlugin(NexusPlugin):
         with patch("nexus_agent.core.plugins.dir", return_value=["MyEPPlugin"]):
             with patch("sys.version_info", (3, 11)):
                 with patch("importlib.metadata.entry_points") as mock_eps:
-                    mock_eps.return_value = [mock_ep]
+                    mock_eps.return_value.get.return_value = [mock_ep]
+                    mock_eps.return_value.select.return_value = [mock_ep]
                     res = self.pm.discover_and_load()
 
         assert "ep_subclass_plugin" in res
@@ -149,7 +151,8 @@ class SimplePlugin(NexusPlugin):
 
         with patch("sys.version_info", (3, 11)):
             with patch("importlib.metadata.entry_points") as mock_eps:
-                mock_eps.return_value = [mock_ep]
+                mock_eps.return_value.get.return_value = [mock_ep]
+                mock_eps.return_value.select.return_value = [mock_ep]
                 res = self.pm.discover_and_load()
 
         assert "failed_ep" in res

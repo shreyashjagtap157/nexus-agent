@@ -56,7 +56,9 @@ class PluginInfo:
 class PluginManager:
     """Orchestrates dynamic discovery, loading, and registration of plugins."""
 
-    def __init__(self, workspace: Path | None = None, plugin_dirs: list[Path] | None = None) -> None:
+    def __init__(
+        self, workspace: Path | None = None, plugin_dirs: list[Path] | None = None
+    ) -> None:
         self.workspace = workspace or Path.cwd()
         self.plugin_dirs = plugin_dirs or [
             self.workspace / ".nexus" / "plugins",
@@ -82,7 +84,9 @@ class PluginManager:
 
         return dict(self.plugins)
 
-    def register_command(self, plugin_name: str, command_name: str, callback: Callable[[Any, str], None]) -> None:
+    def register_command(
+        self, plugin_name: str, command_name: str, callback: Callable[[Any, str], None]
+    ) -> None:
         """Expose a slash command from a plugin.
 
         The command name must start with a slash (e.g., '/mycmd').
@@ -97,7 +101,11 @@ class PluginManager:
         """Expose a Tool from a plugin to be appended to the AgentLoop."""
         if plugin_name in self.plugins:
             self.plugins[plugin_name].tools.append(tool_instance)
-            logger.info(f"Registered plugin tool: {getattr(tool_instance, 'name', type(tool_instance).__name__)} from {plugin_name}")
+            logger.info(
+                f"Registered plugin tool: "
+                f"{getattr(tool_instance, 'name', type(tool_instance).__name__)} "
+                f"from {plugin_name}"
+            )
 
     def _load_file_plugin(self, file_path: Path) -> None:
         name = file_path.stem
@@ -142,7 +150,9 @@ class PluginManager:
                         break
 
             if not registered:
-                info.error = "No entry point ('register_plugin' function or 'NexusPlugin' subclass) found."
+                info.error = (
+                    "No entry point ('register_plugin' function or 'NexusPlugin' subclass) found."
+                )
                 self.plugins[name] = info
 
         except Exception as e:
@@ -153,9 +163,11 @@ class PluginManager:
     def _load_entry_points(self) -> None:
         """Load plugins registered under package entry points 'nexus_agent.plugins'."""
         eps = importlib.metadata.entry_points()
-        group = eps.get("nexus_agent.plugins", []) \
-            if hasattr(eps, "get") else eps.select(group="nexus_agent.plugins")
-
+        group = (
+            eps.get("nexus_agent.plugins", [])
+            if hasattr(eps, "get")
+            else eps.select(group="nexus_agent.plugins")
+        )
 
         for ep in group:
             name = ep.name
