@@ -11,7 +11,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as functional
 
 
 class RecurrentBlock(nn.Module):
@@ -92,7 +92,7 @@ class RecurrentBlock(nn.Module):
             mask_expanded = mask.unsqueeze(1).unsqueeze(2)
             attn = attn.masked_fill(~mask_expanded, float("-inf"))
 
-        attn_weights = F.softmax(attn, dim=-1)
+        attn_weights = functional.softmax(attn, dim=-1)
         attn_weights = self.dropout(attn_weights)
 
         attn_out = torch.matmul(attn_weights, v)
@@ -104,7 +104,7 @@ class RecurrentBlock(nn.Module):
         residual = x
         x = self.norm2(x)
         x = self.ff_up(x)
-        x = F.gelu(x)
+        x = functional.gelu(x)
         x = self.ff_down(x)
         x = residual + self.dropout(x)
 
