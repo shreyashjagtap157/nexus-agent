@@ -70,10 +70,7 @@ class BoomerangTaskRegistry:
 
     def list_active(self) -> list[dict[str, Any]]:
         with self._lock:
-            return [
-                t.to_dict() for t in self._tasks.values()
-                if t.status in ("running", "pending")
-            ]
+            return [t.to_dict() for t in self._tasks.values() if t.status in ("running", "pending")]
 
     def list_all(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -137,6 +134,7 @@ def spawn_agent(
         raw = sub_output if isinstance(sub_output, str) else str(sub_output or "")
 
         import re as _re
+
         result_match = _re.search(r"<result>(.*?)</result>", raw, _re.DOTALL)
         output = result_match.group(1).strip() if result_match else raw.strip()
 
@@ -194,9 +192,15 @@ def ask_agent(
     try:
         if provider and hasattr(provider, "chat_completion"):
             from nexus_agent.llm.base import Message, Role
+
             messages = [
                 Message(role=Role.SYSTEM, content=system_prompt),
-                Message(role=Role.USER, content=f"Context:\n{context}\n\nQuestion:\n{question}" if context else question),
+                Message(
+                    role=Role.USER,
+                    content=f"Context:\n{context}\n\nQuestion:\n{question}"
+                    if context
+                    else question,
+                ),
             ]
             response = provider.chat_completion(messages=messages, temperature=0.3, max_tokens=1024)
             answer = (response.content or "").strip()
@@ -271,6 +275,7 @@ def delegate_task(
 
             raw = sub_output if isinstance(sub_output, str) else str(sub_output or "")
             import re as _re
+
             result_match = _re.search(r"<result>(.*?)</result>", raw, _re.DOTALL)
             output = result_match.group(1).strip() if result_match else raw.strip()
 
