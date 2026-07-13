@@ -23,7 +23,14 @@ from typing import Annotated, Any
 
 import psutil
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, WebSocketException
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -476,8 +483,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             if origin_hostname != host_hostname:
                 raise WebSocketException(code=1008, reason="Origin mismatch")
         except Exception:
-            await websocket.close(code=1008)
-            return
+            raise WebSocketException(code=1008, reason="Invalid origin or host")
 
     state_manager.set("active_session_id", session_id)
 

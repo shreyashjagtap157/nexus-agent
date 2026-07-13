@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from nexus_agent.gui.server import app
-from unittest.mock import patch, MagicMock
 from starlette.websockets import WebSocketDisconnect
+
+from nexus_agent.gui.server import app
 
 client = TestClient(app)
 
@@ -31,7 +33,9 @@ def test_websocket_cswsh_protection(mock_state_manager_get):
     mock_state_manager_get.side_effect = mock_get
 
     # Same origin
-    with client.websocket_connect("/api/ws/test", headers={"Origin": "http://testserver"}) as websocket:
+    with client.websocket_connect(
+        "/api/ws/test", headers={"Origin": "http://testserver"}
+    ) as websocket:
         websocket.send_json({"prompt": "hello", "mode": "auto"})
 
     # No origin
@@ -40,7 +44,9 @@ def test_websocket_cswsh_protection(mock_state_manager_get):
 
     # Origin mismatch
     with pytest.raises(WebSocketDisconnect) as exc_info:
-        with client.websocket_connect("/api/ws/test", headers={"Origin": "http://attacker.com"}) as ws:
+        with client.websocket_connect(
+            "/api/ws/test", headers={"Origin": "http://attacker.com"}
+        ) as ws:
             ws.receive_json()
     assert exc_info.value.code == 1008
 
