@@ -29,7 +29,6 @@ from fastapi import (
     Request,
     WebSocket,
     WebSocketDisconnect,
-    WebSocketException,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -461,15 +460,13 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
-    await websocket.accept()
-    logger.info(f"WebSocket client connected for session: {session_id}")
-
     # CSWSH Protection
     origin = websocket.headers.get("origin")
     host = websocket.headers.get("host")
     if origin is not None:
         if origin == "null":
-            raise WebSocketException(code=1008, reason="Origin null is not allowed")
+            await websocket.close(code=1008)
+            return
         try:
             parsed_origin = urllib.parse.urlparse(origin)
             origin_hostname = parsed_origin.hostname
@@ -481,9 +478,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 host_hostname = host_hostname.split(":")[0]
 
             if origin_hostname != host_hostname:
-                raise WebSocketException(code=1008, reason="Origin mismatch")
+                await websocket.close(code=1008)
+                return
         except Exception:
-            raise WebSocketException(code=1008, reason="Invalid origin or host")
+            await websocket.close(code=1008)
+            return
+
+    await websocket.accept()
+    logger.info(f"WebSocket client connected for session: {session_id}")
 
     state_manager.set("active_session_id", session_id)
 
@@ -510,7 +512,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 await websocket.send_json(
                     {
                         "type": "error",
-                        "content": "No model loaded. Please load a model or configure a provider first."  # noqa: E501,
+                        "content": "No model loaded. Please load a model or configure a provider first.",  # noqa: E501,
                     }
                 )
                 await websocket.send_json({"type": "done", "iterations": 0})
