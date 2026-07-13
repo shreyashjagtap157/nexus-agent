@@ -208,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict('sys.modules', {'openvino': None, 'openvino.runtime': None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -223,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict('sys.modules', {'jax': None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
@@ -261,7 +261,9 @@ class TestScanRuntimes(unittest.TestCase):
         self.assertEqual(runtimes[0].name, "CUDA")
         self.assertEqual(runtimes[-1].name, "CPU")
 
-    def test_scan_runtimes_smoke(self):
+    @patch('nexus_agent.cli.runtimes._check_tpu', return_value=[])
+    @patch('nexus_agent.cli.runtimes._check_openvino', return_value=[])
+    def test_scan_runtimes_smoke(self, mock_ov, mock_tpu):
         """scan_runtimes should never crash regardless of system state."""
         runtimes = scan_runtimes()
         self.assertIsInstance(runtimes, list)
