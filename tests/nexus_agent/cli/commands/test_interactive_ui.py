@@ -1,3 +1,6 @@
+import sys
+from unittest.mock import MagicMock
+sys.modules['blessed'] = MagicMock()
 """Tests for interactive_ui.py — InteractiveUIMixin (menus, validation, model config)."""
 
 import unittest
