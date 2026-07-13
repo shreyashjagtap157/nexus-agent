@@ -2,7 +2,8 @@
 
 import sys  # noqa: I001
 from unittest.mock import MagicMock
-sys.modules['blessed'] = MagicMock()
+
+sys.modules["blessed"] = MagicMock()
 
 import unittest  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402

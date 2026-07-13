@@ -2,7 +2,8 @@
 
 import sys  # noqa: I001
 from unittest.mock import MagicMock
-sys.modules['blessed'] = MagicMock()
+
+sys.modules["blessed"] = MagicMock()
 
 import unittest  # noqa: E402
 from unittest.mock import MagicMock, patch  # noqa: E402
@@ -13,6 +14,7 @@ class _MockApp:
 
     def __init__(self):
         import tempfile
+
         self.r = MagicMock()
         self.r.error = MagicMock()
         self.r.system_message = MagicMock()
@@ -137,6 +139,7 @@ class TestValidateProviderKey(unittest.TestCase):
     @patch("httpx.get")
     def test_timeout(self, mock_get):
         from httpx import TimeoutException
+
         mock_get.side_effect = TimeoutException("timed out")
         ok, msg = self.app._validate_provider_key("openai", "sk-key")
         self.assertFalse(ok)
@@ -145,6 +148,7 @@ class TestValidateProviderKey(unittest.TestCase):
     @patch("httpx.get")
     def test_connection_error(self, mock_get):
         from httpx import ConnectError
+
         mock_get.side_effect = ConnectError("connection failed")
         ok, msg = self.app._validate_provider_key("openai", "sk-key")
         self.assertFalse(ok)
@@ -163,9 +167,7 @@ class TestFindFiles(unittest.TestCase):
 
     def setUp(self):
         self.app = _MockApp()
-        self.app._find_files = InteractiveUIMixin._find_files.__get__(
-            self.app, type(self.app)
-        )
+        self.app._find_files = InteractiveUIMixin._find_files.__get__(self.app, type(self.app))
 
     @patch("subprocess.run")
     def test_git_ls_files(self, mock_run):
@@ -181,6 +183,7 @@ class TestFindFiles(unittest.TestCase):
     def test_git_fails_fallback_to_rglob(self, mock_run):
         import tempfile
         from pathlib import Path
+
         mock_run.side_effect = FileNotFoundError
         # Create a real temp file for rglob to find
         tmp_dir = Path(tempfile.mkdtemp())
@@ -236,9 +239,7 @@ class TestInteractiveAddModel(unittest.TestCase):
     def test_valid_model_added(self, mock_abspath, mock_isfile):
         self.app._read_line.side_effect = ["my_model", "/fake/path/model.gguf"]
         self.app._interactive_add_model()
-        self.app._models_db.add.assert_called_once_with(
-            "my_model", "/fake/path/model.gguf"
-        )
+        self.app._models_db.add.assert_called_once_with("my_model", "/fake/path/model.gguf")
 
     @patch("os.path.isfile", return_value=False)
     @patch("os.path.abspath", return_value="/fake/path/missing.gguf")
@@ -281,8 +282,8 @@ class TestInteractiveConnectProvider(unittest.TestCase):
 
     def setUp(self):
         self.app = _MockApp()
-        self.app._interactive_connect_provider = InteractiveUIMixin._interactive_connect_provider.__get__(
-            self.app, type(self.app)
+        self.app._interactive_connect_provider = (
+            InteractiveUIMixin._interactive_connect_provider.__get__(self.app, type(self.app))
         )
         self.app._interactive_menu = MagicMock(return_value="openai")
         self.app._read_line = MagicMock(return_value="sk-test-key")
@@ -374,7 +375,17 @@ class TestInteractiveModelConfigParamOps(unittest.TestCase):
     # Param line formatting tested inline in the tests above (int, float, choice)
 
     def test_adjust_param_int(self):
-        params = [{"key": "gpu_layers", "label": "GPU Layers", "val": 32, "type": "int", "min": 0, "max": 128, "step": 1}]
+        params = [
+            {
+                "key": "gpu_layers",
+                "label": "GPU Layers",
+                "val": 32,
+                "type": "int",
+                "min": 0,
+                "max": 128,
+                "step": 1,
+            }
+        ]
         # Adjust +1
         params[0]["val"] = max(params[0]["min"], min(params[0]["max"], params[0]["val"] + 1))
         self.assertEqual(params[0]["val"], 33)
@@ -385,7 +396,9 @@ class TestInteractiveModelConfigParamOps(unittest.TestCase):
         self.assertEqual(params[0]["val"], 128)  # Clamped to max
 
     def test_adjust_param_float(self):
-        params = [{"key": "temperature", "val": 0.5, "type": "float", "min": 0.0, "max": 2.0, "step": 0.1}]
+        params = [
+            {"key": "temperature", "val": 0.5, "type": "float", "min": 0.0, "max": 2.0, "step": 0.1}
+        ]
         params[0]["val"] = max(params[0]["min"], min(params[0]["max"], params[0]["val"] + 0.1))
         params[0]["val"] = round(params[0]["val"], 1)
         self.assertEqual(params[0]["val"], 0.6)
@@ -421,9 +434,7 @@ class TestInteractiveModelConfigScreen(unittest.TestCase):
         self.app.console = MagicMock()
         self.app._interactive_model_config("/path/to/model.gguf")
         # Should save config values
-        self.assertEqual(
-            self.app._config["local_model"].get("gpu_layers", None), 32
-        )
+        self.assertEqual(self.app._config["local_model"].get("gpu_layers", None), 32)
 
     @patch("nexus_agent.cli.commands.interactive_ui.sys.stdout.write")
     @patch("nexus_agent.cli.commands.interactive_ui.sys.stdout.flush")
