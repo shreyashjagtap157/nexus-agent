@@ -1,3 +1,7 @@
+
+import sys
+from unittest.mock import MagicMock
+sys.modules['blessed'] = MagicMock()  # noqa: E402
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
 import unittest

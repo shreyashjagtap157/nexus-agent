@@ -1,3 +1,7 @@
+
+import sys
+from unittest.mock import MagicMock
+sys.modules['blessed'] = MagicMock()  # noqa: E402
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
 import unittest
