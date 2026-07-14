@@ -444,18 +444,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     if origin is not None:
         if origin == "null":
             raise WebSocketException(code=1008, reason="Invalid Origin")
-
         parsed_origin = urllib.parse.urlparse(origin).hostname
-
         host_header = websocket.headers.get("host", "")
         if host_header.startswith("["):
             expected_host = host_header[1:host_header.find("]")]
         else:
             expected_host = host_header.split(":")[0]
-
         if parsed_origin != expected_host:
             raise WebSocketException(code=1008, reason="Invalid Origin")
-
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
