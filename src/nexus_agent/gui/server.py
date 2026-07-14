@@ -10,10 +10,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -21,7 +23,14 @@ from typing import Annotated, Any
 
 import psutil
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -431,6 +440,22 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("origin")
+    if origin is not None:
+        if origin == "null":
+            raise WebSocketException(code=1008, reason="Invalid Origin")
+
+        parsed_origin = urllib.parse.urlparse(origin).hostname
+
+        host_header = websocket.headers.get("host", "")
+        if host_header.startswith("["):
+            expected_host = host_header[1:host_header.find("]")]
+        else:
+            expected_host = host_header.split(":")[0]
+
+        if parsed_origin != expected_host:
+            raise WebSocketException(code=1008, reason="Invalid Origin")
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
