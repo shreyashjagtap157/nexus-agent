@@ -19,7 +19,9 @@ class _MockApp:
         self._rebuild_welcome = MagicMock()
 
 
-from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
+import sys  # noqa: E402, I001
+sys.modules['blessed'] = MagicMock()
+from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin  # noqa: E402, I001
 
 
 class TestReadInput(unittest.TestCase):
