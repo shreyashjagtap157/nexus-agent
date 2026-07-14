@@ -2,8 +2,3 @@
 **Vulnerability:** The command isolation sandbox (`Sandbox.execute`) fell back to executing commands via `sh -c` or `powershell` with unparsed string commands when `shlex.split()` failed to parse due to unmatched quotes or syntax errors. This bypasses array-based shell escaping and presents a command injection vulnerability.
 **Learning:** Fallbacks intended to improve developer experience (e.g., executing malformed strings in a subshell) can completely undermine the primary security isolation mechanism if they revert to inherently unsafe functions like `sh -c`.
 **Prevention:** If the safe parsing mechanism (`shlex.split()`) fails to interpret input securely, the operation must be rejected entirely rather than passed on to a less secure evaluation layer.
-
-## 2026-07-14 - Fix Cross-Site WebSocket Hijacking in GUI Server
-**Vulnerability:** The FastAPI WebSocket endpoint `/api/ws/{session_id}` in `src/nexus_agent/gui/server.py` accepted all connections without validating the `Origin` header. This allowed malicious sites to connect to the local server via WebSocket and execute commands or steal agent logs if a user visited the attacker's site while the local server was running.
-**Learning:** WebSockets are not automatically protected by Same-Origin Policy (SOP) or Cross-Origin Resource Sharing (CORS) rules in most web frameworks. They require explicit manual validation of the `Origin` against the expected `Host`.
-**Prevention:** Always validate the `Origin` header before calling `await websocket.accept()` in WebSocket endpoints. Explicitly handle edge cases like `origin == "null"`, and properly extract the hostname to ignore port numbers and support IPv6. Programmatic clients (no `Origin` header) should be safely allowed.
