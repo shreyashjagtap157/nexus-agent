@@ -509,8 +509,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     {
                         "type": "error",
                         "content": (
-                            "No model loaded. Please load a model "
-                            "or configure a provider first."
+                            "No model loaded. Please load a model or configure a provider first."
                         ),
                     }
                 )
