@@ -1,9 +1,10 @@
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+
+import sys
 sys.modules['blessed'] = MagicMock()
 
 
