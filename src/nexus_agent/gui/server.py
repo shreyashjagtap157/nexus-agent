@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -21,7 +22,14 @@ from typing import Annotated, Any
 
 import psutil
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -431,6 +439,19 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("origin")
+    if origin is not None:
+        if origin == "null":
+            raise WebSocketException(code=1008, reason="Invalid Origin")
+        parsed_origin = urllib.parse.urlparse(origin).hostname
+        host_header = websocket.headers.get("host", "")
+        if host_header.startswith("["):
+            expected_host = host_header[1:host_header.find("]")]
+        else:
+            expected_host = host_header.split(":")[0]
+        if parsed_origin != expected_host:
+            raise WebSocketException(code=1008, reason="Invalid Origin")
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
@@ -438,7 +459,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Wait for user input prompt
-            data_str = await websocket.receive_text(max_size=65536)
+            data_str = await websocket.receive_text()
+            if len(data_str) > 65536:
+                raise ValueError("Message too large")
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
             mode_str = data.get("mode", "auto").lower()
@@ -540,6 +563,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket client disconnected for session: {session_id}")
+    except WebSocketException:
+        raise
     except (RuntimeError, json.JSONDecodeError, OSError):
         logger.exception("WebSocket endpoint error")
 
@@ -633,7 +658,9 @@ def start_gui_server(
     state_manager.set("session_manager", SessionManager(data_dir=f"{data_dir_path}/sessions"))
     state_manager.set("permission_manager", PermissionManager())
     state_manager.get("permission_manager").load_from_config(state_manager.get("config"))
-    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))
+
+    import os as _os
+    state_manager.set("usage_tracker", UsageTracker(path=Path(_os.path.expanduser(data_dir_path)) / "usage.json"))
 
     # Initialize RuntimeManager
     rm = RuntimeManager(state_manager.get("config"))

@@ -5,9 +5,12 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from blessed import Terminal
-
-_term = Terminal()
+try:
+    from blessed import Terminal
+    _term = Terminal()
+except ImportError:
+    # Fallback for environments without blessed
+    _term = None
 
 SLASH_COMMANDS = [
     {"name": "/help", "description": "Show available commands"},
@@ -130,6 +133,9 @@ class BaseCommands:
         if prompt_text:
             self.r.console.print(prompt_text, end="")
         result = ""
+        if _term is None:
+            return input()
+
         while True:
             key = _term.inkey(timeout=0.1)
             if not key:
