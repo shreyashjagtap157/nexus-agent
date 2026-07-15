@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 sys.modules["blessed"] = MagicMock()
 
 import unittest  # noqa: E402
-from unittest.mock import patch  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
 
 
 class _MockApp:
