@@ -10,10 +10,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +433,26 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("Origin")
+    if origin is not None:
+        if origin == "null":
+            await websocket.close(code=1008, reason="Origin validation failed")
+            return
+        parsed_origin = urllib.parse.urlparse(origin)
+        host_header = websocket.headers.get("Host", "")
+        if host_header.startswith('['):
+            end = host_header.find(']')
+            if end != -1:
+                host_host = host_header[1:end]
+            else:
+                host_host = host_header
+        else:
+            host_host = host_header.split(':')[0]
+
+        if parsed_origin.hostname != host_host:
+            await websocket.close(code=1008, reason="Origin validation failed")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
@@ -438,7 +460,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Wait for user input prompt
-            data_str = await websocket.receive_text(max_size=65536)
+            data_str = await websocket.receive_text()
+            if len(data_str) > 65536:
+                raise ValueError("Payload too large")
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
             mode_str = data.get("mode", "auto").lower()
