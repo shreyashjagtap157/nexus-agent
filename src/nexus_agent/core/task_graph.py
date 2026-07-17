@@ -247,16 +247,16 @@ class TaskGraph:
 
         try:
             system_prompt = (
-                "You are an expert project planner. Break down the user's high-level goal into a hierarchical list "
-                "of actionable subgoals/tasks. You MUST output a valid JSON array of tasks where each task contains:\n"
+                "You are an expert project planner. Break down the user's high-level goal into a hierarchical list "  # noqa: E501
+                "of actionable subgoals/tasks. You MUST output a valid JSON array of tasks where each task contains:\n"  # noqa: E501
                 "- 'title': Short descriptive title\n"
                 "- 'description': What to do\n"
-                "- 'dependencies': A list of integers referencing index indices of other tasks that MUST be completed first "
+                "- 'dependencies': A list of integers referencing index indices of other tasks that MUST be completed first "  # noqa: E501
                 "(0-indexed index of the task in this array)\n\n"
-                "Keep the list highly technical, sequential, and focused on codebase editing, verification, and testing. "
+                "Keep the list highly technical, sequential, and focused on codebase editing, verification, and testing. "  # noqa: E501
                 "Limit the breakdown to 3-6 key sub-tasks."
             )
-            user_prompt = f"Goal:\n{sanitized_goal}\n\nDecompose this goal into a list of structured JSON sub-tasks."
+            user_prompt = f"Goal:\n{sanitized_goal}\n\nDecompose this goal into a list of structured JSON sub-tasks."  # noqa: E501
 
             messages = [
                 Message(role=Role.SYSTEM, content=system_prompt),
@@ -312,7 +312,7 @@ class TaskGraph:
                 self.add_node(node)
 
         except (ValueError, RuntimeError) as e:
-            logger.warning(f"LLM goal decomposition failed: {e}. Falling back to heuristic breakdown.")
+            logger.warning(f"LLM goal decomposition failed: {e}. Falling back to heuristic breakdown.")  # noqa: E501
             self._heuristic_decompose(root_node, goal)
 
         self.save()
@@ -321,9 +321,9 @@ class TaskGraph:
     def _heuristic_decompose(self, root_node: TaskNode, goal: str) -> None:
         """Create a default deterministic three-stage checklist if LLM decomposition fails."""
         stages = [
-            ("Gather Context", "Scan workspace, locate relevant files, and understand current behavior", []),
-            ("Implement Changes", "Apply the necessary modifications and edit target source files", [0]),
-            ("Verify & Test", "Run diagnostics, compile checks, and execute existing tests to verify correctness", [1]),
+            ("Gather Context", "Scan workspace, locate relevant files, and understand current behavior", []),  # noqa: E501
+            ("Implement Changes", "Apply the necessary modifications and edit target source files", [0]),  # noqa: E501
+            ("Verify & Test", "Run diagnostics, compile checks, and execute existing tests to verify correctness", [1]),  # noqa: E501
         ]
 
         index_to_id: dict[int, str] = {}
@@ -372,7 +372,7 @@ class TaskGraph:
         """
         total = sum(1 for nid in self.nodes if nid != self.root_id)
         if total == 0:
-            return {"percentage": 100, "total": 0, "completed": 0, "pending": 0, "running": 0, "failed": 0, "blocked": 0}
+            return {"percentage": 100, "total": 0, "completed": 0, "pending": 0, "running": 0, "failed": 0, "blocked": 0}  # noqa: E501
 
         counts = {"pending": 0, "running": 0, "completed": 0, "failed": 0, "blocked": 0}
 

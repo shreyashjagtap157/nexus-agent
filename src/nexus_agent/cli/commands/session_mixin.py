@@ -233,7 +233,7 @@ class SessionCommandsMixin:
     def _cmd_copy(self, args: str):
         """Copy to clipboard. Usage: /copy [last|N|session|<text>]."""
         try:
-            import pyperclip
+            import pyperclip  # type: ignore
         except ImportError:
             self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")  # noqa: E501
             return

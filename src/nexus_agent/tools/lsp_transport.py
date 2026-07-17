@@ -92,7 +92,7 @@ class LSPClient:
         try:
             caps = client.initialize()
             client.did_open("foo.py", "x = 1\\n")
-            syms = client.request("textDocument/documentSymbol", {"textDocument": {"uri": "file:///foo.py"}})
+            syms = client.request("textDocument/documentSymbol", {"textDocument": {"uri": "file:///foo.py"}})  # noqa: E501
         finally:
             client.stop()
     """

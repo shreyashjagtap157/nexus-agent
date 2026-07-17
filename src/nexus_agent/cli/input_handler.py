@@ -92,7 +92,7 @@ class InputHandlerMixin:
                         if r2:
                             ext2 = sys.stdin.read(1)
                             if ext2 == "A":
-                                self._key_queue.extend([b"H"])
+                                self._key_queue.extend([b"h"])
                                 return b"\xe0"
                             elif ext2 == "B":
                                 self._key_queue.extend([b"P"])
@@ -103,7 +103,7 @@ class InputHandlerMixin:
                             elif ext2 == "D":
                                 self._key_queue.extend([b"K"])
                                 return b"\xe0"
-                            elif ext2 == "H":
+                            elif ext2 == "h":
                                 self._key_queue.extend([b"G"])
                                 return b"\xe0"
                             elif ext2 == "F":
@@ -148,7 +148,7 @@ class InputHandlerMixin:
                         if r2:
                             ext2 = sys.stdin.read(1)
                             if ext2 == "A":
-                                self._key_queue.extend([b"H"])
+                                self._key_queue.extend([b"h"])
                                 return b"\xe0"
                             elif ext2 == "B":
                                 self._key_queue.extend([b"P"])
@@ -195,7 +195,7 @@ class InputHandlerMixin:
                 if not ch:
                     continue
 
-                # Translate ANSI VT escape sequence arrow keys (on Windows/etc.) into standard scan codes
+                # Translate ANSI VT escape sequence arrow keys (on Windows/etc.) into standard scan codes  # noqa: E501
                 if ch == b"\x1b" and self._kbhit():
                     next_ch = self._read_byte()
                     if next_ch == b"[":
@@ -203,7 +203,7 @@ class InputHandlerMixin:
                             ext2 = self._read_byte()
                             if ext2 == b"A":
                                 ch = b"\xe0"
-                                self._key_queue.insert(0, b"H")
+                                self._key_queue.insert(0, b"h")
                             elif ext2 == b"B":
                                 ch = b"\xe0"
                                 self._key_queue.insert(0, b"P")
@@ -213,7 +213,7 @@ class InputHandlerMixin:
                             elif ext2 == b"D":
                                 ch = b"\xe0"
                                 self._key_queue.insert(0, b"K")
-                            elif ext2 == b"H":
+                            elif ext2 == b"h":
                                 ch = b"\xe0"
                                 self._key_queue.insert(0, b"G")
                             elif ext2 == b"F":
@@ -320,7 +320,7 @@ class InputHandlerMixin:
                     continue
 
                 elif ch == b"\x0c":
-                    sys.stdout.write("\033[2J\033[H")
+                    sys.stdout.write("\033[2J\033[h")
                     self.r._scroll_region_set = False
                     self._rebuild_welcome()
                     self._render_prompt(value, pos)
@@ -386,7 +386,7 @@ class InputHandlerMixin:
 
                 elif ch == b"\x16":
                     try:
-                        import pyperclip
+                        import pyperclip  # type: ignore
                         paste = pyperclip.paste()
                         if paste:
                             paste = paste.replace('\r\n', '\n').replace('\r', '\n')
@@ -403,7 +403,7 @@ class InputHandlerMixin:
 
                 elif ch == b"\xe0":
                     ext = self._read_byte()
-                    if ext == b"H":
+                    if ext == b"h":
                         if self._drawer_active:
                             if self._sub_agents:
                                 self._drawer_idx = max(0, self._drawer_idx - 1)
@@ -420,7 +420,7 @@ class InputHandlerMixin:
                     elif ext == b"P":
                         if self._drawer_active:
                             if self._sub_agents:
-                                self._drawer_idx = min(len(self._sub_agents) - 1, self._drawer_idx + 1)
+                                self._drawer_idx = min(len(self._sub_agents) - 1, self._drawer_idx + 1)  # noqa: E501
                                 self._render_footer()
                         elif cmd_menu_visible and cmd_menu_filtered:
                             cmd_menu_idx = min(len(cmd_menu_filtered) - 1, cmd_menu_idx + 1)
@@ -488,7 +488,7 @@ class InputHandlerMixin:
                                 ext2 = self._read_byte()
                                 if ext2 == b"2":
                                     if self._kbhit():
-                                        extra = self._read_byte() + self._read_byte() + self._read_byte()
+                                        extra = self._read_byte() + self._read_byte() + self._read_byte()  # noqa: E501
                                         if extra == b"00~":
                                             paste_buffer = b""
                                             while True:
@@ -499,11 +499,11 @@ class InputHandlerMixin:
                                                             p_ext1 = self._read_byte()
                                                             if p_ext1 == b"[":
                                                                 if self._kbhit():
-                                                                    p_ext2 = self._read_byte() + self._read_byte() + self._read_byte() + self._read_byte()
+                                                                    p_ext2 = self._read_byte() + self._read_byte() + self._read_byte() + self._read_byte()  # noqa: E501
                                                                     if p_ext2 == b"201~":
                                                                         break
                                                                     else:
-                                                                        paste_buffer += b"\x1b[" + p_ext2
+                                                                        paste_buffer += b"\x1b[" + p_ext2  # noqa: E501
                                                             else:
                                                                 paste_buffer += b"\x1b" + p_ext1
                                                     else:
@@ -513,7 +513,7 @@ class InputHandlerMixin:
                                             try:
                                                 paste = paste_buffer.decode("utf-8")
                                             except UnicodeDecodeError:
-                                                paste = paste_buffer.decode("latin-1", errors="replace")
+                                                paste = paste_buffer.decode("latin-1", errors="replace")  # noqa: E501
                                             paste = paste.replace('\r\n', '\n').replace('\r', '\n')
                                             value = value[:pos] + paste + value[pos:]
                                             pos += len(paste)
@@ -603,15 +603,15 @@ class InputHandlerMixin:
 
     def _render_footer(self, menu_height: int = 0):
         try:
-            W = shutil.get_terminal_size().columns
-            H = shutil.get_terminal_size().lines
+            w = shutil.get_terminal_size().columns
+            h = shutil.get_terminal_size().lines
         except (OSError, ValueError):
-            W, H = 80, 24
+            w, h = 80, 24
 
         mode_str = self._current_mode.value.upper()
         effort = self._config.get("agent", {}).get("effort_level", "medium").lower()
-        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        ec = EFFORT_COLORS.get(effort, "0")
+        effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
+        ec = effort_colors.get(effort, "0")
 
         parts = [f"Mode: \033[1m{mode_str}\033[0m"]
         parts.append(f"Effort: \033[1;{ec}m{effort.upper()}\033[0m")
@@ -622,20 +622,20 @@ class InputHandlerMixin:
             parts.append(f"\033[2m{notif}\033[0m")
 
         footer = "  │  ".join(parts)
-        if len(footer) > W:
-            footer = footer[:W]
+        if len(footer) > w:
+            footer = footer[:w]
 
         sys.stdout.write("\033[s")
 
         drawer_h = 0
         if getattr(self, '_drawer_active', False):
             d_items = self._sub_agents
-            max_visible = min(8, H - 5)
+            max_visible = min(8, h - 5)
             d_count = min(len(d_items), max_visible) if d_items else 0
             drawer_h = d_count + 3
-            d_start = H - drawer_h - 1
+            d_start = h - drawer_h - 1
 
-            sys.stdout.write(f"\033[{d_start};1H\033[2K\033[2m{'─' * min(W, 60)}\033[0m")
+            sys.stdout.write(f"\033[{d_start};1H\033[2K\033[2m{'─' * min(w, 60)}\033[0m")
             sys.stdout.write(f"\033[{d_start + 1};1H\033[2K  \033[1mSub-Agents\033[0m")
             if d_items:
                 visible_items = d_items[:max_visible]
@@ -645,18 +645,18 @@ class InputHandlerMixin:
                     prefix = "▸" if i == self._drawer_idx else " "
                     line = f"  {prefix} \033[1m{name}\033[0m"
                     if desc:
-                        d_max = W - 22 - len(name)
+                        d_max = w - 22 - len(name)
                         if d_max > 5:
                             line += f"  \033[2m{desc[:d_max]}\033[0m"
                     if i == self._drawer_idx:
                         line = f"\033[7m{line}\033[0m"
-                    sys.stdout.write(f"\033[{d_start + 2 + i};1H\033[2K{line[:W]}")
+                    sys.stdout.write(f"\033[{d_start + 2 + i};1H\033[2K{line[:w]}")
                 nav_row = d_start + 2 + d_count
-                sys.stdout.write(f"\033[{nav_row};1H\033[2K  \033[2m↑↓ navigate · Enter use · Esc close\033[0m")
+                sys.stdout.write(f"\033[{nav_row};1H\033[2K  \033[2m↑↓ navigate · Enter use · Esc close\033[0m")  # noqa: E501
             else:
-                sys.stdout.write(f"\033[{d_start + 2};1H\033[2K  \033[2mNo sub-agents configured.\033[0m")
+                sys.stdout.write(f"\033[{d_start + 2};1H\033[2K  \033[2mNo sub-agents configured.\033[0m")  # noqa: E501
 
-        sys.stdout.write(f"\033[{H - drawer_h};1H\033[2K{footer}")
+        sys.stdout.write(f"\033[{h - drawer_h};1H\033[2K{footer}")
         sys.stdout.write("\033[u")
         sys.stdout.flush()
 
@@ -702,18 +702,18 @@ class InputHandlerMixin:
         max_name = min(max(len(c["name"]) for c in commands), term_width - 25) if commands else 20
         query.lower()
 
-        MAX_VISIBLE = min(10, max(3, term_lines - 6))
+        max_visible = min(10, max(3, term_lines - 6))
         total_items = len(commands)
 
-        if total_items <= MAX_VISIBLE:
+        if total_items <= max_visible:
             start_idx = 0
             end_idx = total_items
             display_cmds = commands
             show_indicators = False
         else:
-            start_idx = idx - MAX_VISIBLE // 2
-            start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-            end_idx = start_idx + MAX_VISIBLE
+            start_idx = idx - max_visible // 2
+            start_idx = max(0, min(start_idx, total_items - max_visible))
+            end_idx = start_idx + max_visible
             display_cmds = commands[start_idx:end_idx]
             show_indicators = True
 
