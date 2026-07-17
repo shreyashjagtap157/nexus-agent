@@ -280,8 +280,8 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
-    from pathlib import Path
     import itertools
+    from pathlib import Path
 
     # bolt-opt: Use itertools.islice to lazily evaluate rglob and avoid OOM/performance hits
     files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
@@ -401,7 +401,9 @@ def hardware() -> None:
         f"[cyan]GPU:[/cyan] {hw.get('gpu', 'Not detected')}",
         f"[cyan]VRAM:[/cyan] {hw.get('vram', 'N/A')}",
         "",
-        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",
+        f"[bold green]Recommended max model size:[/bold green] "
+        f"{hw.get('recommended_model_size', 'unknown')}", # noqa: E501
+
     ]
 
     console.print(

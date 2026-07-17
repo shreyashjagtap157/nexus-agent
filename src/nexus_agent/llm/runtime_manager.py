@@ -395,7 +395,7 @@ class RuntimeManager:
                 sys.path.insert(0, target_dir_abs)
                 importlib.invalidate_caches()
                 logger.info(
-                    f"Activated isolated runtime backend '{backend}' by prepending to sys.path: {target_dir_abs}"
+                    f"Activated isolated runtime backend '{backend}' by prepending to sys.path: {target_dir_abs}" # noqa: E501
                 )
 
     @staticmethod
@@ -547,7 +547,7 @@ class RuntimeManager:
         rt = INSTALLABLE_RUNTIMES.get(backend)
         if not rt:
             raise ValueError(
-                f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}"
+                f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}" # noqa: E501
             )
 
         runtime_type = rt.get("runtime_type", "")
@@ -555,9 +555,9 @@ class RuntimeManager:
         # External servers — just print install instructions
         if runtime_type == "external_server":
             install_guides = {
-                "ollama": "Visit https://ollama.com to download and install, then run: ollama pull <model>",
-                "lm_studio": "Download from https://lmstudio.ai and enable the local API server in Settings.",
-                "koboldcpp": "Download from https://github.com/LostRuins/koboldcpp/releases and run with --openai-compat.",
+                "ollama": "Visit https://ollama.com to download and install, then run: ollama pull <model>", # noqa: E501
+                "lm_studio": "Download from https://lmstudio.ai and enable the local API server in Settings.", # noqa: E501
+                "koboldcpp": "Download from https://github.com/LostRuins/koboldcpp/releases and run with --openai-compat.", # noqa: E501
             }
             guide = install_guides.get(backend, f"Download and install {rt['name']} manually.")
             if progress_callback:
