@@ -15,11 +15,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, TypedDict
 
+import platformdirs
 import yaml
 
 logger = logging.getLogger(__name__)
-
-import platformdirs
 
 APP_NAME = "nexus-agent"
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "_default_config.yaml"
@@ -53,8 +52,8 @@ def _deep_merge(base: dict, override: dict, _depth: int = 0) -> dict:
 
     Includes a recursion-depth guard to prevent infinite recursion.
     """
-    MAX_DEPTH = 20
-    if _depth > MAX_DEPTH:
+    max_depth = 20
+    if _depth > max_depth:
         logger.warning("Maximum recursion depth exceeded in _deep_merge, using override value")
         return deepcopy(override)
     result = deepcopy(base)
@@ -216,13 +215,13 @@ def load_config(
 
 def _strip_secrets(cfg: dict) -> dict:
     """Return a copy of cfg with internal keys and API keys removed."""
-    SECRET_KEYS = {"api_key", "api_secret", "secret_key", "password", "token",
+    secret_keys = {"api_key", "api_secret", "secret_key", "password", "token",
                    "access_token", "refresh_token", "private_key", "client_secret"}
     out = {}
     for k, v in cfg.items():
         if k.startswith("_"):
             continue
-        if k.lower() in SECRET_KEYS:
+        if k.lower() in secret_keys:
             continue
         if isinstance(v, dict):
             out[k] = _strip_secrets(v)

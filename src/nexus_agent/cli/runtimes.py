@@ -113,7 +113,7 @@ def _check_vulkan() -> list[RuntimeInfo]:
         directml = _which("onnxruntime")
         if not directml:
             try:
-                import onnxruntime
+                import onnxruntime  # type: ignore
                 directml = onnxruntime.__file__
             except ImportError:
                 directml = None
@@ -148,7 +148,7 @@ def _check_cpu() -> list[RuntimeInfo]:
         pass
     # Transformers / Optimum
     try:
-        import transformers
+        import transformers  # type: ignore
         runtimes.append(RuntimeInfo(
             name="HuggingFace Transformers", provider="local",
             available=True, path=transformers.__file__,
@@ -179,7 +179,7 @@ def _check_rocm() -> list[RuntimeInfo]:
 def _check_openvino() -> list[RuntimeInfo]:
     runtimes = []
     try:
-        import openvino
+        import openvino  # type: ignore
         runtimes.append(RuntimeInfo(
             name="OpenVINO", provider="openvino",
             available=True, path=openvino.__file__,
@@ -193,7 +193,7 @@ def _check_openvino() -> list[RuntimeInfo]:
 def _check_tpu() -> list[RuntimeInfo]:
     runtimes = []
     try:
-        import jax
+        import jax  # type: ignore
         runtimes.append(RuntimeInfo(
             name="JAX (TPU/GPU)", provider="tpu",
             available=True, path=jax.__file__,
@@ -207,7 +207,7 @@ def _check_tpu() -> list[RuntimeInfo]:
 def _check_vllm() -> list[RuntimeInfo]:
     runtimes = []
     try:
-        import vllm
+        import vllm  # type: ignore
         runtimes.append(RuntimeInfo(
             name="vLLM", provider="vllm",
             available=True, path=vllm.__file__,
@@ -233,7 +233,7 @@ def _check_vllm() -> list[RuntimeInfo]:
 def _check_sglang() -> list[RuntimeInfo]:
     runtimes = []
     try:
-        import sglang
+        import sglang  # type: ignore
         runtimes.append(RuntimeInfo(
             name="SGLang", provider="sglang",
             available=True, path=sglang.__file__,
@@ -258,7 +258,7 @@ def _check_sglang() -> list[RuntimeInfo]:
 def _check_mlx() -> list[RuntimeInfo]:
     runtimes = []
     try:
-        import mlx
+        import mlx  # type: ignore
         runtimes.append(RuntimeInfo(
             name="MLX (Apple Silicon)", provider="mlx",
             available=True, path=mlx.__file__,
@@ -267,7 +267,7 @@ def _check_mlx() -> list[RuntimeInfo]:
     except ImportError:
         pass
     try:
-        import mlx_lm
+        import mlx_lm  # type: ignore
         runtimes.append(RuntimeInfo(
             name="MLX LM", provider="mlx",
             available=True, path=mlx_lm.__file__,
@@ -286,7 +286,7 @@ def _check_external_servers() -> list[RuntimeInfo]:
         ("Ollama", "ollama", "http://localhost:11434/api/tags", "Local LLM server"),
         ("LM Studio", "lm_studio", "http://localhost:1234/v1/models", "Desktop LLM app with API"),
         ("KoboldCpp", "koboldcpp", "http://localhost:5001/v1/models", "GGUF inference server"),
-        ("TabbyAPI (ExLlamaV2)", "exllamav2", "http://localhost:5000/v1/models", "ExLlamaV2 inference API"),
+        ("TabbyAPI (ExLlamaV2)", "exllamav2", "http://localhost:5000/v1/models", "ExLlamaV2 inference API"),  # noqa: E501
     ]
     for name, provider, url, desc in probes:
         try:
@@ -313,7 +313,7 @@ def _check_external_servers() -> list[RuntimeInfo]:
 def _check_tensorrt() -> list[RuntimeInfo]:
     runtimes = []
     try:
-        import tensorrt_llm
+        import tensorrt_llm  # type: ignore
         runtimes.append(RuntimeInfo(
             name="TensorRT-LLM", provider="tensorrt_llm",
             available=True, path=tensorrt_llm.__file__,

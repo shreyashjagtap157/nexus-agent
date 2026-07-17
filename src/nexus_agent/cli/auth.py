@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 # ── Optional dependency detection ─────────────────────────────────────
 
 try:
-    import keyring as _keyring
-    from keyring.errors import KeyringError as _KeyringError
+    import keyring as _keyring  # type: ignore
+    from keyring.errors import KeyringError as _KeyringError  # type: ignore
 
     HAS_KEYRING = True
 except ImportError:
@@ -44,7 +44,7 @@ except ImportError:
     HAS_KEYRING = False
 
 try:
-    from cryptography.fernet import Fernet as _Fernet
+    from cryptography.fernet import Fernet as _Fernet  # type: ignore
 
     HAS_FERNET = True
 except ImportError:
@@ -252,7 +252,7 @@ class FernetFileBackend:
         else:
             try:
                 subprocess.run(
-                    ["icacls", str(self._path), "/inheritance:r", "/grant", f"{os.environ['USERNAME']}:(F)"],
+                    ["icacls", str(self._path), "/inheritance:r", "/grant", f"{os.environ['USERNAME']}:(F)"],  # noqa: E501
                     capture_output=True, timeout=10,
                 )
             except (OSError, subprocess.TimeoutExpired, ValueError, KeyError):
@@ -405,7 +405,7 @@ class AuthStore:
                     "OS keychain forced but unavailable. "
                     "Install keyring: pip install keyring"
                 )
-            self._key_backend = KeychainBackend() if KeychainBackend.is_available() else self._metadata
+            self._key_backend = KeychainBackend() if KeychainBackend.is_available() else self._metadata  # noqa: E501
         elif force_backend == self.BACKEND_FILE:
             self._key_backend = self._metadata
         elif KeychainBackend.is_available():

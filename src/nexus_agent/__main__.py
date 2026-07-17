@@ -13,12 +13,12 @@ from nexus_agent import __app_name__, __version__
 @click.group(invoke_without_command=True)
 @click.version_option(__version__, prog_name=__app_name__)
 @click.option("--model", "-m", type=str, default=None, help="Path to GGUF model file or model name")
-@click.option("--model-path", type=click.Path(exists=True), default=None, help="Path to model file on disk")
-@click.option("--provider", "-p", type=str, default=None, help="LLM provider: local, openai, anthropic, etc.")
-@click.option("--offline", is_flag=True, default=False, help="Force offline mode (local model only)")
-@click.option("--gpu-layers", type=int, default=None, help="Number of layers to offload to GPU (requires CUDA)")
-@click.option("--config", "-c", type=click.Path(exists=True), default=None, help="Path to config file")
-@click.option("--data-dir", type=click.Path(), default=None, help="Data directory for sessions/memory")
+@click.option("--model-path", type=click.Path(exists=True), default=None, help="Path to model file on disk")  # noqa: E501
+@click.option("--provider", "-p", type=str, default=None, help="LLM provider: local, openai, anthropic, etc.")  # noqa: E501
+@click.option("--offline", is_flag=True, default=False, help="Force offline mode (local model only)")  # noqa: E501
+@click.option("--gpu-layers", type=int, default=None, help="Number of layers to offload to GPU (requires CUDA)")  # noqa: E501
+@click.option("--config", "-c", type=click.Path(exists=True), default=None, help="Path to config file")  # noqa: E501
+@click.option("--data-dir", type=click.Path(), default=None, help="Data directory for sessions/memory")  # noqa: E501
 @click.option("--verbose", is_flag=True, default=False, help="Show verbose debug output")
 @click.option("--quiet", is_flag=True, default=False, help="Suppress non-essential output")
 @click.pass_context
@@ -60,10 +60,10 @@ def wizard() -> None:
     wizard.run()
 
 @cli.command()
-@click.option("--prompt", "-p", type=str, default=None, help="Initial prompt (non-interactive mode)")
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--prompt", "-p", type=str, default=None, help="Initial prompt (non-interactive mode)")  # noqa: E501
+@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")  # noqa: E501
 @click.option("--session", "-s", type=str, default=None, help="Session ID to resume")
-@click.option("--new", "-n", is_flag=True, default=False, help="Start a new session instead of resuming the last active one")
+@click.option("--new", "-n", is_flag=True, default=False, help="Start a new session instead of resuming the last active one")  # noqa: E501
 @click.option("--verbose", is_flag=True, default=False, help="Show verbose output")
 @click.option("--quiet", is_flag=True, default=False, help="Minimal output")
 @click.pass_context
@@ -93,7 +93,7 @@ def chat(ctx: click.Context, prompt: str | None, workspace: str,
 @click.option("--host", "-h", type=str, default=None, help="Host to bind to")
 @click.option("--port", type=int, default=None, help="Port to bind to")
 @click.option("--no-browser", is_flag=True, default=False, help="Don't open browser automatically")
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")  # noqa: E501
 @click.pass_context
 def gui(ctx: click.Context, host: str | None, port: int | None,
         no_browser: bool, workspace: str) -> None:
@@ -344,7 +344,7 @@ def hardware() -> None:
         f"[cyan]GPU:[/cyan] {hw.get('gpu', 'Not detected')}",
         f"[cyan]VRAM:[/cyan] {hw.get('vram', 'N/A')}",
         "",
-        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",
+        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",  # noqa: E501
     ]
 
     console.print(Panel.fit(
@@ -384,7 +384,7 @@ def browse(ctx: click.Context, url: str, action: str) -> None:
 
 @cli.command()
 @click.argument("task", type=str)
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")  # noqa: E501
 @click.option("--model-path", type=click.Path(exists=True), help="Model to use")
 @click.pass_context
 def plan(ctx: click.Context, task: str, workspace: str, model_path: str | None) -> None:
@@ -421,7 +421,7 @@ def plan(ctx: click.Context, task: str, workspace: str, model_path: str | None) 
         elif event.type == "error":
             console.print(f"\n[red]Error: {event.data}[/red]")
     console.print("\n")
-    console.print(Panel.fit("[bold green]Plan Complete (read-only mode)[/bold green]", border_style="green"))
+    console.print(Panel.fit("[bold green]Plan Complete (read-only mode)[/bold green]", border_style="green"))  # noqa: E501
 
 
 @cli.command()
@@ -485,7 +485,7 @@ def doctor(model: str | None, provider: str, benchmark: bool, json_output: bool)
 
 
 @cli.command()
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")  # noqa: E501
 def devops(workspace: str) -> None:
     """Run the DevOps verification pipeline (linters, secrets, tests)."""
     from rich.console import Console

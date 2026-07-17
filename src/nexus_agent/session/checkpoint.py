@@ -56,11 +56,11 @@ class Checkpoint:
             try:
                 backup_file = cp_dir / CheckpointManager._safe_filename(file_path)
                 if backup_file.exists():
-                    self._files[file_path] = backup_file.read_text(encoding="utf-8", errors="replace")
+                    self._files[file_path] = backup_file.read_text(encoding="utf-8", errors="replace")  # noqa: E501
                 else:
                     self._files[file_path] = None
             except (OSError, UnicodeDecodeError, ValueError) as ex:
-                logger.warning("Could not load backup file %s for checkpoint %s: %s", file_path, self.id, ex)
+                logger.warning("Could not load backup file %s for checkpoint %s: %s", file_path, self.id, ex)  # noqa: E501
                 self._files[file_path] = None
 
     def to_dict(self, max_content_length: int | None = None) -> dict[str, Any]:

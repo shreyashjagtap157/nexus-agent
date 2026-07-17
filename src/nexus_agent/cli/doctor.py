@@ -34,23 +34,23 @@ class HealthMetric:
     value: str | float | int | bool
     unit: str = ""
     status: str = "ok"           # ok | warn | error | info
-    ok: bool | None = None       # None = not applicable (info)
+    is_ok: bool | None = None       # None = not applicable (info)
 
     @classmethod
     def ok(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
-        return cls(name=name, value=value, unit=unit, status="ok", ok=True)
+        return cls(name=name, value=value, unit=unit, status="ok", is_ok=True)
 
     @classmethod
     def warn(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
-        return cls(name=name, value=value, unit=unit, status="warn", ok=False)
+        return cls(name=name, value=value, unit=unit, status="warn", is_ok=False)
 
     @classmethod
     def error(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
-        return cls(name=name, value=value, unit=unit, status="error", ok=False)
+        return cls(name=name, value=value, unit=unit, status="error", is_ok=False)
 
     @classmethod
     def info(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
-        return cls(name=name, value=value, unit=unit, status="info", ok=None)
+        return cls(name=name, value=value, unit=unit, status="info", is_ok=None)
 
 
 @dataclass
@@ -105,7 +105,7 @@ def check_system() -> list[HealthMetric]:
 
     # RAM
     try:
-        import psutil
+        import psutil  # type: ignore
         vm = psutil.virtual_memory()
         total_gb = vm.total / (1024**3)
         avail_gb = vm.available / (1024**3)
@@ -116,7 +116,7 @@ def check_system() -> list[HealthMetric]:
     # Disk for ~/.nexus-agent
     try:
         nexus_dir = Path("~/.nexus-agent").expanduser()
-        nexus_dir.mkdir(parents=True, exist_ok=True)
+        nexus_dir.mkdir(parents=True, exist_is_ok=True)
         du = shutil.disk_usage(nexus_dir)
         free_gb = du.free / (1024**3)
         metrics.append(HealthMetric.ok("Disk (data dir)", f"{free_gb:.1f}G free", "GB"))
@@ -150,7 +150,7 @@ def _detect_gpu() -> str | None:
             capture_output=True, text=True, timeout=5,
         )
         if res.returncode == 0:
-            lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+            lines = [line.strip() for line in res.stdout.splitlines() if line.strip()]
             if lines:
                 parts = [p.strip() for p in lines[0].split(",")]
                 name = parts[0]
@@ -161,11 +161,10 @@ def _detect_gpu() -> str | None:
 
     # NVIDIA via pynvml
     try:
-        from pynvml import (
+        from pynvml import (  # type: ignore
             nvmlDeviceGetCount,
             nvmlDeviceGetName,
             nvmlInit,
-            nvmlSystemGetDriverVersion,
         )
         nvmlInit()
         count = nvmlDeviceGetCount()
@@ -410,7 +409,7 @@ class BenchmarkRunner:
 
 def save_benchmark_result(result: BenchmarkResult) -> Path:
     """Save a benchmark result to the doctor report directory."""
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    REPORT_DIR.mkdir(parents=True, exist_is_ok=True)
     timestamp = int(time.time())
     path = REPORT_DIR / f"benchmark_{timestamp}.json"
     path.write_text(
@@ -455,7 +454,7 @@ def print_report(report: DoctorReport) -> None:
     console = Console()
 
     console.print()
-    console.print(Panel.fit("[bold]🩺 Nexus Doctor — Full Diagnostic Report[/bold]", border_style="cyan"))
+    console.print(Panel.fit("[bold]🩺 Nexus Doctor — Full Diagnostic Report[/bold]", border_style="cyan"))  # noqa: E501
     console.print()
 
     # ── System ──
@@ -470,7 +469,7 @@ def print_report(report: DoctorReport) -> None:
     console.print()
 
     # ── Python Env ──
-    py_table = Table(title="Python Environment", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+    py_table = Table(title="Python Environment", box=box.SIMPLE, title_style="bold cyan", show_header=False)  # noqa: E501
     py_table.add_column("Package", style="cyan", width=22)
     py_table.add_column("Version", style="white")
     py_table.add_column("Status", width=8)
@@ -483,7 +482,7 @@ def print_report(report: DoctorReport) -> None:
     # ── Benchmarks ──
     bench = report.benchmarks
     if bench:
-        bm_table = Table(title="Benchmarks", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+        bm_table = Table(title="Benchmarks", box=box.SIMPLE, title_style="bold cyan", show_header=False)  # noqa: E501
         bm_table.add_column("Metric", style="cyan", width=22)
         bm_table.add_column("Value", style="white")
         bm_table.add_column("Status", width=8)

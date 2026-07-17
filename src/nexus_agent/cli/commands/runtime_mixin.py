@@ -87,7 +87,7 @@ class RuntimeCommandsMixin:
 
             if RuntimeManager.is_runtime_installed(backend):
                 self.r.system_message(
-                    f"{backend} runtime is already installed. Use /runtime reinstall {backend} to reinstall."
+                    f"{backend} runtime is already installed. Use /runtime reinstall {backend} to reinstall."  # noqa: E501
                 )
                 return
 
@@ -171,7 +171,7 @@ class RuntimeCommandsMixin:
                 backend = name.lower()
                 if not RuntimeManager.is_runtime_installed(backend):
                     self.r.error(
-                        f"Runtime '{backend}' is not installed. Run /runtime install {backend} first."
+                        f"Runtime '{backend}' is not installed. Run /runtime install {backend} first."  # noqa: E501
                     )
                     return
                 self._config.setdefault("runtime", {})["active"] = backend
@@ -261,7 +261,7 @@ class RuntimeCommandsMixin:
   [cyan]/runtime list[/cyan]       \u2014 Show detected runtimes
   [cyan]/runtime scan[/cyan]       \u2014 Re-scan for runtimes
   [cyan]/runtime select <n>[/cyan] \u2014 Select active runtime by name
-  [cyan]/runtime install <b>[/cyan]  \u2014 Install a runtime backend (cpu|cuda|vulkan|metal|rocm|onnx)
+  [cyan]/runtime install <b>[/cyan]  \u2014 Install a runtime backend
   [cyan]/runtime reinstall <b>[/cyan]\u2014 Force reinstall a runtime backend
   [cyan]/runtime uninstall <b>[/cyan]\u2014 Uninstall a runtime backend
   [cyan]/runtime switch <b>[/cyan]  \u2014 Switch runtime type (auto|llama-cpp|onnx)

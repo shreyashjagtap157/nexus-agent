@@ -50,7 +50,7 @@ class EventHandlerMixin:
                 self.r.error("No model loaded. Use --model or set NEXUS_MODEL_PATH.")
                 return
 
-            in_tokens = self._engine.count_tokens(user_input) if self._engine else len(user_input.split())
+            in_tokens = self._engine.count_tokens(user_input) if self._engine else len(user_input.split())  # noqa: E501
             self._tokens.input_tokens += in_tokens
             self._tokens.total_input += in_tokens
             self._tokens.current_request.input_tokens = in_tokens
@@ -93,7 +93,7 @@ class EventHandlerMixin:
                 if event.type == "thinking":
                     new_verb = random.choice(SPINNER_VERBS_PRESENT)
                     self.r.update_spinner(new_verb)
-                    self.r.update_agent_state("thinking", detail=new_verb, iteration=self._agent.iteration_count if self._agent else 0)
+                    self.r.update_agent_state("thinking", detail=new_verb, iteration=self._agent.iteration_count if self._agent else 0)  # noqa: E501
 
                 elif event.type == "content":
                     full_response = event.data
@@ -108,7 +108,7 @@ class EventHandlerMixin:
                 elif event.type == "content_complete":
                     full_response = event.data
                     if isinstance(event.data, str):
-                        out_tokens = self._engine.count_tokens(event.data) if self._engine else len(event.data.split())
+                        out_tokens = self._engine.count_tokens(event.data) if self._engine else len(event.data.split())  # noqa: E501
                         self._tokens.output_tokens += out_tokens
                         self._tokens.total_output += out_tokens
                         self._tokens.current_request.output_tokens = out_tokens
