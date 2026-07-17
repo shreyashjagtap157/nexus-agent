@@ -42,7 +42,7 @@ class MiscCommandsMixin:
         self._cmd_verify(args)
 
     def _cmd_init(self, args: str):
-        self.r.system_message("Project initialization: Not yet implemented (use /setup or follow the wizard)")
+        self.r.system_message("Project initialization: Not yet implemented (use /setup or follow the wizard)")  # noqa: E501
 
     def _cmd_quit(self, args: str):
         self._is_running.clear()
@@ -81,7 +81,7 @@ class MiscCommandsMixin:
         self.r.system_message("Terminal setup: Configure in ~/.nexus-agent/config.yaml")
 
     def _cmd_privacy_settings(self, args: str):
-        self.r.system_message("Privacy settings: Configure in ~/.nexus-agent/config.yaml under 'privacy'")
+        self.r.system_message("Privacy settings: Configure in ~/.nexus-agent/config.yaml under 'privacy'")  # noqa: E501
 
     def _cmd_upgrade(self, args: str):
         self.r.system_message("Checking for updates... You are on the latest version.")
@@ -101,7 +101,7 @@ class MiscCommandsMixin:
         self.r.system_message(f"Feedback saved to {file_path}")
 
     def _cmd_ide(self, args: str):
-        self.r.system_message("IDE integration: Configure VS Code/Cursor in config.yaml under 'editor'")
+        self.r.system_message("IDE integration: Configure VS Code/Cursor in config.yaml under 'editor'")  # noqa: E501
 
     def _cmd_chrome(self, args: str):
         self.r.system_message("Chrome: Configure debugging port in config.yaml under 'browser'")
@@ -148,7 +148,7 @@ class MiscCommandsMixin:
             self.r.system_message("Token usage stats unavailable.")
             return
         t = self._tokens
-        self.r.system_message(f"Token usage: Read={t.total_input:,}, Write={t.total_output:,}, Cache={t.cache_creation + t.cache_read:,}")
+        self.r.system_message(f"Token usage: Read={t.total_input:,}, Write={t.total_output:,}, Cache={t.cache_creation + t.cache_read:,}")  # noqa: E501
 
     def _cmd_passes(self, args: str):
         self.r.system_message("Passes: Not yet implemented")
