@@ -36,12 +36,15 @@ class MinimalInputHandlerMixin:
             self._rebuild_welcome()
         elif cmd == "/status":
             effort = self._config.get("agent", {}).get("effort_level", "medium").lower()
-            self.r.system_message(f"Mode: {self._current_mode.value.upper()} | Effort: {effort.upper()}")
+            self.r.system_message(
+                f"Mode: {self._current_mode.value.upper()} | Effort: {effort.upper()}"
+            )
         else:
             # For other commands, try to delegate to BaseCommands handler
             try:
                 from nexus_agent.cli.commands._base import BaseCommands
-                if hasattr(BaseCommands, '_handle_slash_command'):
+
+                if hasattr(BaseCommands, "_handle_slash_command"):
                     # Call the base implementation
                     BaseCommands._handle_slash_command(self, command)
                     return
@@ -57,9 +60,13 @@ class MinimalInputHandlerMixin:
         cmds = list(self.SLASH_COMMANDS)
         for i in range(0, len(cmds), 2):
             c1 = cmds[i] if i < len(cmds) else ""
-            c2 = cmds[i+1] if i+1 < len(cmds) else None
+            c2 = cmds[i + 1] if i + 1 < len(cmds) else None
             if c2:
-                self.console.print(f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]    [bold]{c2['name']:<15}[/bold] [dim]{c2['description']}[/dim]")
+                self.console.print(
+                    f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]    [bold]{c2['name']:<15}[/bold] [dim]{c2['description']}[/dim]"
+                )
             else:
-                self.console.print(f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]")
+                self.console.print(
+                    f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]"
+                )
         self.r.divider()
