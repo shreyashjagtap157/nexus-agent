@@ -2,7 +2,8 @@
 Autonomous DevOps Pipeline — Local CI/CD static scanning, vulnerability audits, and test suites.
 
 Enables the agent to create git checkpoints, auto-detect local test frameworks, run linters,
-parse stack traces, scan for secrets, run dependency vulnerability audits, and self-heal test failures.
+parse stack traces, scan for secrets, run dependency vulnerability audits, \
+and self-heal test failures.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SecretMatch:
     """A matched potential secret pattern in code."""
+
     file_path: str
     line_number: int
     matched_pattern: str
@@ -30,6 +32,7 @@ class SecretMatch:
 @dataclass
 class PipelineReport:
     """Consolidated execution report for the DevOps verification pipeline."""
+
     success: bool
     test_framework_detected: str | None
     tests_passed: bool
@@ -70,12 +73,18 @@ class TestRunner:
             for f in files:
                 if (self.workspace / f).exists():
                     if fw == "pytest-fallback":
-                        if (self.workspace / "pyproject.toml").exists() or list((self.workspace / "tests").glob("**/*.py")):
+                        # bolt-opt: use any() instead of list() for lazy generator evaluation
+                        if (self.workspace / "pyproject.toml").exists() or any(
+                            (self.workspace / "tests").glob("**/*.py")
+                        ):
                             return "pytest"
                     else:
                         return fw.replace("-fallback", "")
 
-        if list(self.workspace.glob("*.py")) or list((self.workspace / "src").glob("**/*.py") if (self.workspace / "src").exists() else []):
+        # bolt-opt: use any() instead of list() for lazy generator evaluation
+        if any(self.workspace.glob("*.py")) or (
+            (self.workspace / "src").exists() and any((self.workspace / "src").glob("**/*.py"))
+        ):
             return "unittest"
 
         return None
@@ -98,7 +107,7 @@ class TestRunner:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=120
+                timeout=120,
             )
             return res.returncode == 0, res.stdout
         except subprocess.TimeoutExpired as te:
@@ -140,7 +149,7 @@ class LinterRunner:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=30
+                timeout=30,
             )
             output = f"--- Linter: {' '.join(cmd)} ---\n{res.stdout}"
             return res.returncode == 0, output
@@ -153,7 +162,8 @@ class LinterRunner:
     def run_all(self) -> tuple[bool, str]:
         """Run all available linters sequentially."""
         linter_cmds = []
-        if (self.workspace / "pyproject.toml").exists() or list(self.workspace.glob("*.py")):
+        # bolt-opt: use any() instead of list() for lazy generator evaluation
+        if (self.workspace / "pyproject.toml").exists() or any(self.workspace.glob("*.py")):
             linter_cmds.append(["ruff", "check", "."])
             linter_cmds.append(["mypy", "."])
         if (self.workspace / "package.json").exists():
@@ -178,22 +188,34 @@ class SecretScanner:
     """Scans workspace files for potential secrets and credentials."""
 
     PATTERNS = {
-        "Generic Password/Secret": r'(?:password|passwd|secret|passphrase|private_key|app_secret|client_secret)\s*[:=]\s*[\'"][a-zA-Z0-9_\-\.\/\+\=\~\!\@\#\$\%\^\&\*\(\)]+[\'"]',
-        "Slack Token": r'xox[bapr]-[0-9]{12}-[a-zA-Z0-9]{24}',
-        "GitHub Personal Access Token": r'ghp_[a-zA-Z0-9]{36}',
-        "AWS API Key/Secret": r'(?:AKIA[0-9A-Z]{16}|[a-zA-Z0-9+/]{40})',
-        "Google API Key": r'AIzaSy[a-zA-Z0-9\-_]{33}',
-        "Database Connection URL": r'(?:mongodb|postgres|postgresql|mysql|redis|sqlite):\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_\-\~\!\@\#]+@[a-zA-Z0-9_\-\.]+:[0-9]+',
+        "Generic Password/Secret": r'(?:password|passwd|secret|passphrase|private_key|app_secret|client_secret)\s*[:=]\s*[\'"][a-zA-Z0-9_\-\.\/\+\=\~\!\@\#\$\%\^\&\*\(\)]+[\'"]', # noqa: E501
+        "Slack Token": r"xox[bapr]-[0-9]{12}-[a-zA-Z0-9]{24}",
+        "GitHub Personal Access Token": r"ghp_[a-zA-Z0-9]{36}",
+        "AWS API Key/Secret": r"(?:AKIA[0-9A-Z]{16}|[a-zA-Z0-9+/]{40})",
+        "Google API Key": r"AIzaSy[a-zA-Z0-9\-_]{33}",
+        "Database Connection URL": r"(?:mongodb|postgres|postgresql|mysql|redis|sqlite):\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_\-\~\!\@\#]+@[a-zA-Z0-9_\-\.]+:[0-9]+", # noqa: E501
     }
 
     EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__", "build", "dist", ".nexus-agent"}
-    VALID_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".yaml", ".yml", ".json", ".ini", ".conf", ".go", ".rs"}
+    VALID_EXTENSIONS = {
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".yaml",
+        ".yml",
+        ".json",
+        ".ini",
+        ".conf",
+        ".go",
+        ".rs",
+    }
 
     def __init__(self, workspace: Path):
         self.workspace = workspace
         self._compiled_patterns = {
-            name: re.compile(pattern, re.IGNORECASE)
-            for name, pattern in self.PATTERNS.items()
+            name: re.compile(pattern, re.IGNORECASE) for name, pattern in self.PATTERNS.items()
         }
 
     def scan(self) -> list[SecretMatch]:
@@ -216,12 +238,14 @@ class SecretScanner:
                                 continue
                             for name, compiled_re in self._compiled_patterns.items():
                                 if compiled_re.search(line):
-                                    matches.append(SecretMatch(
-                                        file_path=str(file_path.relative_to(self.workspace)),
-                                        line_number=line_idx,
-                                        matched_pattern=line.strip()[:100],
-                                        pattern_name=name
-                                    ))
+                                    matches.append(
+                                        SecretMatch(
+                                            file_path=str(file_path.relative_to(self.workspace)),
+                                            line_number=line_idx,
+                                            matched_pattern=line.strip()[:100],
+                                            pattern_name=name,
+                                        )
+                                    )
                     except (OSError, UnicodeDecodeError, re.error) as e:
                         logger.warning(f"Failed to scan {file_path}: {e}")
         except (OSError, ValueError) as e:
@@ -271,7 +295,10 @@ class GitCheckpointer:
             )
 
             import uuid
-            branch_name = f"nexus-safety-{int(os.path.getmtime(str(self.workspace)))}-{uuid.uuid4().hex[:6]}"
+
+            branch_name = (
+                f"nexus-safety-{int(os.path.getmtime(str(self.workspace)))}-{uuid.uuid4().hex[:6]}"
+            )
             subprocess.run(
                 ["git", "checkout", "-b", branch_name],
                 cwd=str(self.workspace),
@@ -279,7 +306,12 @@ class GitCheckpointer:
                 stderr=subprocess.DEVNULL,
             )
             return branch_name
-        except (OSError, ValueError, subprocess.CalledProcessError, subprocess.SubprocessError) as e:
+        except (
+            OSError,
+            ValueError,
+            subprocess.CalledProcessError,
+            subprocess.SubprocessError,
+        ) as e:
             logger.warning(f"Failed to create safety branch: {e}")
             return None
 
@@ -312,7 +344,10 @@ class VulnerabilityScanner:
     def scan_python(self) -> list[str]:
         """Run pip-audit for Python vulnerabilities."""
         vulns: list[str] = []
-        if not ((self.workspace / "requirements.txt").exists() or (self.workspace / "pyproject.toml").exists()):
+        if not (
+            (self.workspace / "requirements.txt").exists()
+            or (self.workspace / "pyproject.toml").exists()
+        ):
             return vulns
 
         try:
@@ -326,7 +361,9 @@ class VulnerabilityScanner:
                 return vulns
 
             audit = subprocess.run(
-                ["pip-audit", "-r", "requirements.txt"] if (self.workspace / "requirements.txt").exists() else ["pip-audit"],
+                ["pip-audit", "-r", "requirements.txt"]
+                if (self.workspace / "requirements.txt").exists()
+                else ["pip-audit"],
                 cwd=str(self.workspace),
                 capture_output=True,
                 text=True,
@@ -373,14 +410,14 @@ def parse_traceback(stderr: str) -> str | None:
             lines.append(f"  Error Detail: `{error.strip()}`")
         return "\n".join(lines)
 
-    js_match = re.findall(r'at [^(]*\(([^:]+):(\d+):(\d+)\)', stderr)
+    js_match = re.findall(r"at [^(]*\(([^:]+):(\d+):(\d+)\)", stderr)
     if js_match:
         lines = ["### JavaScript Stacktrace Analysis:"]
         for file, line, col in js_match[:3]:
             lines.append(f"- File: `{file}` (Line: {line}, Column: {col})")
         return "\n".join(lines)
 
-    go_match = re.findall(r'([^ \t\n]+):(\d+) \+0x[0-9a-fA-F]+', stderr)
+    go_match = re.findall(r"([^ \t\n]+):(\d+) \+0x[0-9a-fA-F]+", stderr)
     if go_match:
         lines = ["### Go Panic Analysis:"]
         for file, line in go_match[:3]:
@@ -455,7 +492,7 @@ class VerificationPipeline:
                 secrets_found=secrets,
                 vulnerabilities_found=vulns,
                 traceback_analysis=trace,
-                git_checkpoint_branch=checkpoint
+                git_checkpoint_branch=checkpoint,
             )
         finally:
             if original_branch and checkpoint:
