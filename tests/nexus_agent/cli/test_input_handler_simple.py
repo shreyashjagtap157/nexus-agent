@@ -19,6 +19,15 @@ class _MockApp:
         self._rebuild_welcome = MagicMock()
 
 
+import sys
+import types
+
+# Global mock for blessed to avoid ImportError in test modules
+if "blessed" not in sys.modules:
+    mock_blessed = types.ModuleType("blessed")
+    mock_blessed.Terminal = MagicMock
+    sys.modules["blessed"] = mock_blessed
+
 from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
 
 

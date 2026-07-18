@@ -18,8 +18,7 @@ from nexus_agent.tools.browser import (
 
 class TestBrowserConfig(unittest.TestCase):
     def test_from_env_no_vars(self):
-        env = {k: v for k, v in os.environ.items()
-               if not k.startswith("NEXUS_BROWSER_")}
+        env = {k: v for k, v in os.environ.items() if not k.startswith("NEXUS_BROWSER_")}
         with patch.dict(os.environ, env, clear=True):
             cfg = BrowserConfig.from_env(Path("/tmp/ws"))
         self.assertIsNone(cfg.executable_path)
@@ -117,8 +116,7 @@ class TestBrowserToolConfigurable(unittest.TestCase):
         self.tmpdir.cleanup()
 
     def test_constructor_accepts_browserconfig(self):
-        cfg = BrowserConfig(executable_path="/custom/chrome",
-                             navigation_timeout_ms=5000)
+        cfg = BrowserConfig(executable_path="/custom/chrome", navigation_timeout_ms=5000)
         tool = BrowserTool(workspace=self.workspace, config=cfg)
         self.assertEqual(tool.config.executable_path, "/custom/chrome")
         self.assertEqual(tool.config.navigation_timeout_ms, 5000)
@@ -127,9 +125,10 @@ class TestBrowserToolConfigurable(unittest.TestCase):
     def test_default_user_data_dir_is_temp(self):
         tool = BrowserTool(workspace=self.workspace)
         self.assertTrue(tool.config.user_data_dir.exists())
-        self.assertTrue(str(tool.config.user_data_dir).startswith(
-            tempfile.gettempdir().rstrip("/\\")
-        ) or "nexus_browser" in str(tool.config.user_data_dir))
+        self.assertTrue(
+            str(tool.config.user_data_dir).startswith(tempfile.gettempdir().rstrip("/\\"))
+            or "nexus_browser" in str(tool.config.user_data_dir)
+        )
         tool.close()
 
     def test_explicit_user_data_dir_preserved(self):

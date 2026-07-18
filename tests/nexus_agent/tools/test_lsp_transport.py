@@ -29,6 +29,7 @@ _RUN_SUBPROC = os.environ.get("nexus_run_subprocess_tests") == "1"
 
 def _sys_executable() -> str:
     import sys as _s
+
     return _s.executable
 
 
@@ -136,8 +137,7 @@ def _make_started_client(stdout: FakeStdout, stdin: FakeStdin) -> LSPClient:
 class TestLSPClientFraming(unittest.TestCase):
     """Drive the reader loop with a fake stdout — no real subprocess needed."""
 
-    def _wait_dispatched(self, client: LSPClient, request_id: int,
-                          timeout: float = 2.0) -> Any:
+    def _wait_dispatched(self, client: LSPClient, request_id: int, timeout: float = 2.0) -> Any:
         deadline = time.time() + timeout
         while time.time() < deadline:
             with client._lock:
@@ -150,7 +150,9 @@ class TestLSPClientFraming(unittest.TestCase):
     def test_request_returns_result(self):
         stdout, stdin = FakeStdout(), FakeStdin()
         client = _make_started_client(stdout, stdin)
-        stdout.feed({"jsonrpc": "2.0", "id": 1, "result": {"capabilities": {"hoverProvider": True}}})
+        stdout.feed(
+            {"jsonrpc": "2.0", "id": 1, "result": {"capabilities": {"hoverProvider": True}}}
+        )
 
         with client._id_lock:
             req_id = client._next_id
@@ -187,7 +189,13 @@ class TestLSPClientFraming(unittest.TestCase):
 
         # Feed the error response *with the matching id* so the dispatcher can
         # resolve the pending request.
-        stdout.feed({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": "Method not found"}})
+        stdout.feed(
+            {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": -32601, "message": "Method not found"},
+            }
+        )
 
         client._reader_thread = threading.Thread(target=client._read_loop, daemon=True)
         client._reader_thread.start()
@@ -280,7 +288,7 @@ class TestLSPClientIntegrationSubprocess(unittest.TestCase):
         server = workspace / "fake_lsp.py"
         server.write_text(
             "import json, sys, time\n"
-            "REPLIES = [{\"result\": {\"capabilities\": {\"hoverProvider\": True}}}]\n"
+            'REPLIES = [{"result": {"capabilities": {"hoverProvider": True}}}]\n'
             "def read_msg():\n"
             "    headers = {}\n"
             "    while True:\n"
@@ -298,7 +306,8 @@ class TestLSPClientIntegrationSubprocess(unittest.TestCase):
             "    return json.loads(body)\n"
             "def write_msg(msg):\n"
             "    body = json.dumps(msg).encode('utf-8')\n"
-            "    sys.stdout.buffer.write(('Content-Length: ' + str(len(body)) + '\\r\\n\\r\\n').encode())\n"
+            "    cl = 'Content-Length: ' + str(len(body)) + '\\r\\n\\r\\n'\\n"
+            "    sys.stdout.buffer.write(cl.encode())\\n"
             "    sys.stdout.buffer.write(body)\n"
             "    sys.stdout.buffer.flush()\n"
             "for reply in REPLIES:\n"

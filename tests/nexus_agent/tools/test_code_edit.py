@@ -32,7 +32,9 @@ class TestCodeEditToolBasic(unittest.TestCase):
     def test_replace_all(self):
         f = self.workspace / "a.py"
         f.write_text("x = 1\nx = 1\nx = 1\n")
-        out = self.tool.execute(path="a.py", old_content="x = 1", new_content="x = 2", replace_all=True)
+        out = self.tool.execute(
+            path="a.py", old_content="x = 1", new_content="x = 2", replace_all=True
+        )
         self.assertIn("edited successfully", out)
         self.assertEqual(f.read_text(), "x = 2\nx = 2\nx = 2\n")
 
@@ -76,9 +78,11 @@ class TestCodeEditASTValidation(unittest.TestCase):
     def test_edit_producing_invalid_python_is_rejected(self):
         f = self.workspace / "good.py"
         f.write_text("def foo():\n    return 1\n")
-        out = self.tool.execute(path="good.py",
-                                 old_content="def foo():\n    return 1",
-                                 new_content="def foo(:\n    return 1")
+        out = self.tool.execute(
+            path="good.py",
+            old_content="def foo():\n    return 1",
+            new_content="def foo(:\n    return 1",
+        )
         self.assertIn("invalid Python", out)
         # File should NOT be modified
         self.assertEqual(f.read_text(), "def foo():\n    return 1\n")
@@ -86,10 +90,12 @@ class TestCodeEditASTValidation(unittest.TestCase):
     def test_validation_disabled_allows_invalid_python(self):
         f = self.workspace / "good.py"
         f.write_text("def foo():\n    return 1\n")
-        out = self.tool.execute(path="good.py",
-                                 old_content="def foo():\n    return 1",
-                                 new_content="def foo(:\n    return 1",
-                                 validate_ast=False)
+        out = self.tool.execute(
+            path="good.py",
+            old_content="def foo():\n    return 1",
+            new_content="def foo(:\n    return 1",
+            validate_ast=False,
+        )
         self.assertIn("edited successfully", out)
 
     def test_edit_on_file_with_existing_syntax_error_rejected(self):

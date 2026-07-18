@@ -34,6 +34,7 @@ def tmpd():
 
 # ---- estimate_cost ----
 
+
 class TestEstimateCost:
     def test_openai_gpt4o(self):
         cost = estimate_cost("openai", "gpt-4o", 1_000_000, 1_000_000)
@@ -85,6 +86,7 @@ class TestEstimateCost:
 
 # ---- UsageEntry ----
 
+
 class TestUsageEntry:
     def test_roundtrip(self):
         e = UsageEntry(
@@ -122,6 +124,7 @@ class TestUsageEntry:
 
 # ---- UsageTracker basics ----
 
+
 class TestUsageTrackerBasics:
     def test_empty_init_no_path(self):
         t = UsageTracker()
@@ -135,8 +138,11 @@ class TestUsageTrackerBasics:
     def test_record_returns_entry_with_cost(self):
         t = UsageTracker()
         e = t.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=100, completion_tokens=50,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
         )
         assert e.prompt_tokens == 100
         assert e.completion_tokens == 50
@@ -145,17 +151,22 @@ class TestUsageTrackerBasics:
 
     def test_record_appends(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=2, completion_tokens=2)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=2, completion_tokens=2
+        )
         assert len(t.entries()) == 2
 
     def test_record_negative_tokens_clamped(self):
         t = UsageTracker()
         e = t.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=-10, completion_tokens=-5,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=-10,
+            completion_tokens=-5,
         )
         assert e.prompt_tokens == 0
         assert e.completion_tokens == 0
@@ -163,25 +174,34 @@ class TestUsageTrackerBasics:
     def test_record_with_label(self):
         t = UsageTracker()
         e = t.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=1, completion_tokens=1, label="first turn",
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=1,
+            completion_tokens=1,
+            label="first turn",
         )
         assert e.label == "first turn"
 
     def test_empty_session_id_becomes_unknown(self):
         t = UsageTracker()
         e = t.record(
-            session_id="", provider="openai", model="gpt-4o",
-            prompt_tokens=1, completion_tokens=1,
+            session_id="",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=1,
+            completion_tokens=1,
         )
         assert e.session_id == "unknown"
 
     def test_clear(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
         n = t.clear()
         assert n == 2
         assert t.entries() == []
@@ -192,10 +212,12 @@ class TestUsageTrackerBasics:
 
     def test_clear_session(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
-        t.record(session_id="s2", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
+        t.record(
+            session_id="s2", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
         n = t.clear_session("s1")
         assert n == 1
         remaining = t.entries()
@@ -204,8 +226,9 @@ class TestUsageTrackerBasics:
 
     def test_clear_session_no_match(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
         assert t.clear_session("nonexistent") == 0
         assert len(t.entries()) == 1
 
@@ -216,28 +239,46 @@ class TestUsageTrackerBasics:
 
 # ---- UsageTracker persistence ----
 
+
 class TestUsageTrackerPersistence:
     def test_save_creates_file(self, tmpd):
         path = tmpd / "usage.json"
         t = UsageTracker(path)
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=10, completion_tokens=5)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
+        )
         assert path.exists()
 
     def test_save_creates_parent_dirs(self, tmpd):
         path = tmpd / "nested" / "dir" / "usage.json"
         t = UsageTracker(path)
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
         assert path.exists()
 
     def test_reload_from_disk(self, tmpd):
         path = tmpd / "usage.json"
         t1 = UsageTracker(path)
-        t1.record(session_id="s1", provider="openai", model="gpt-4o",
-                  prompt_tokens=10, completion_tokens=5, label="first")
-        t1.record(session_id="s2", provider="anthropic", model="claude-3-5-sonnet-latest",
-                  prompt_tokens=20, completion_tokens=10)
+        t1.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
+            label="first",
+        )
+        t1.record(
+            session_id="s2",
+            provider="anthropic",
+            model="claude-3-5-sonnet-latest",
+            prompt_tokens=20,
+            completion_tokens=10,
+        )
 
         t2 = UsageTracker(path)
         entries = t2.entries()
@@ -260,8 +301,9 @@ class TestUsageTrackerPersistence:
     def test_atomic_write_via_tmp_replace(self, tmpd, monkeypatch):
         path = tmpd / "usage.json"
         t = UsageTracker(path)
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
         # Verify no leftover temp files
         leftovers = list(path.parent.glob(".usage.*.tmp"))
         assert leftovers == []
@@ -272,11 +314,13 @@ class TestUsageTrackerPersistence:
         path.mkdir()
         t = UsageTracker(path)
         # Should log a warning, not raise
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
 
 
 # ---- summarize ----
+
 
 class TestSummarize:
     def test_empty_summarize(self):
@@ -291,10 +335,20 @@ class TestSummarize:
 
     def test_summarize_totals(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=200, completion_tokens=100)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=200,
+            completion_tokens=100,
+        )
         s = t.summarize()
         assert s.entries == 2
         assert s.prompt_tokens == 300
@@ -304,10 +358,20 @@ class TestSummarize:
 
     def test_summarize_by_session(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
-        t.record(session_id="s2", provider="openai", model="gpt-4o",
-                 prompt_tokens=10, completion_tokens=5)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
+        t.record(
+            session_id="s2",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
+        )
         s = t.summarize()
         assert "s1" in s.by_session
         assert "s2" in s.by_session
@@ -316,18 +380,33 @@ class TestSummarize:
 
     def test_summarize_by_model(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=0)
-        t.record(session_id="s1", provider="anthropic", model="claude-3-5-sonnet-latest",
-                 prompt_tokens=100, completion_tokens=0)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=0,
+        )
+        t.record(
+            session_id="s1",
+            provider="anthropic",
+            model="claude-3-5-sonnet-latest",
+            prompt_tokens=100,
+            completion_tokens=0,
+        )
         s = t.summarize()
         assert "openai/gpt-4o" in s.by_model
         assert "anthropic/claude-3-5-sonnet-latest" in s.by_model
 
     def test_summarize_by_day(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
         s = t.summarize()
         days = list(s.by_day.keys())
         assert len(days) == 1
@@ -339,10 +418,20 @@ class TestSummarize:
 
     def test_summarize_filter_by_session(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
-        t.record(session_id="s2", provider="openai", model="gpt-4o",
-                 prompt_tokens=200, completion_tokens=100)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
+        t.record(
+            session_id="s2",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=200,
+            completion_tokens=100,
+        )
         s = t.summarize(session_id="s1")
         assert s.total_tokens == 150
         assert "s1" in s.by_session
@@ -351,8 +440,13 @@ class TestSummarize:
     def test_summarize_filter_by_time_range(self):
         now = time.time()
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
         # All entries should be within (now - 1h, now + 1h)
         s = t.summarize(since_ts=now - 3600, until_ts=now + 3600)
         assert s.total_tokens == 150
@@ -362,10 +456,20 @@ class TestSummarize:
 
     def test_summarize_sort_by_cost_desc(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=10, completion_tokens=0)  # cheap
-        t.record(session_id="s2", provider="openai", model="gpt-4o",
-                 prompt_tokens=1_000_000, completion_tokens=0)  # expensive
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=0,
+        )  # cheap
+        t.record(
+            session_id="s2",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=1_000_000,
+            completion_tokens=0,
+        )  # expensive
         s = t.summarize()
         models = list(s.by_model.keys())
         assert models[0] == "openai/gpt-4o"
@@ -375,8 +479,9 @@ class TestSummarize:
 
     def test_summarize_round_to_6_decimals(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=1, completion_tokens=1)
+        t.record(
+            session_id="s1", provider="openai", model="gpt-4o", prompt_tokens=1, completion_tokens=1
+        )
         s = t.summarize()
         # estimated_cost is rounded to 6 decimals
         cost_str = f"{s.estimated_cost:.10f}"
@@ -388,11 +493,17 @@ class TestSummarize:
 
 # ---- UsageSummary.to_lines ----
 
+
 class TestUsageSummaryToLines:
     def test_to_lines_basic(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
         s = t.summarize()
         lines = s.to_lines()
         assert any("Entries: 1" in ln for ln in lines)
@@ -402,10 +513,20 @@ class TestUsageSummaryToLines:
 
     def test_to_lines_with_breakdowns(self):
         t = UsageTracker()
-        t.record(session_id="s1", provider="openai", model="gpt-4o",
-                 prompt_tokens=100, completion_tokens=50)
-        t.record(session_id="s2", provider="anthropic", model="claude-3-5-sonnet-latest",
-                 prompt_tokens=200, completion_tokens=100)
+        t.record(
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
+        )
+        t.record(
+            session_id="s2",
+            provider="anthropic",
+            model="claude-3-5-sonnet-latest",
+            prompt_tokens=200,
+            completion_tokens=100,
+        )
         s = t.summarize()
         lines = s.to_lines()
         joined = "\n".join(lines)
@@ -416,8 +537,13 @@ class TestUsageSummaryToLines:
     def test_to_lines_respects_top_n(self):
         t = UsageTracker()
         for i in range(10):
-            t.record(session_id=f"s{i}", provider="openai", model="gpt-4o",
-                     prompt_tokens=10 * (i + 1), completion_tokens=0)
+            t.record(
+                session_id=f"s{i}",
+                provider="openai",
+                model="gpt-4o",
+                prompt_tokens=10 * (i + 1),
+                completion_tokens=0,
+            )
         s = t.summarize()
         lines = s.to_lines(top_n=2)
         joined = "\n".join(lines)
@@ -426,6 +552,7 @@ class TestUsageSummaryToLines:
 
 
 # ---- day_key helper ----
+
 
 class TestDayKey:
     def test_returns_iso_date(self):

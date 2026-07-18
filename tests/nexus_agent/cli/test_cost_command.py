@@ -31,6 +31,7 @@ class FakeDispatcher:
 def _bind_cost_handler(dispatcher):
     """Bind `_cmd_cost` to the FakeDispatcher (mirror of the real one)."""
     from nexus_agent.cli.command_dispatcher import CommandDispatcherMixin
+
     dispatcher._cmd_cost = CommandDispatcherMixin._cmd_cost.__get__(dispatcher)
 
 
@@ -69,8 +70,11 @@ class TestCostHandler(unittest.TestCase):
 
     def test_today_with_data(self):
         self.d.usage_tracker.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=100, completion_tokens=50,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=100,
+            completion_tokens=50,
         )
         self.d._cmd_cost("today")
         joined = "\n".join(self.d._messages)
@@ -79,28 +83,40 @@ class TestCostHandler(unittest.TestCase):
 
     def test_week(self):
         self.d.usage_tracker.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=10, completion_tokens=5,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
         )
         self.d._cmd_cost("week")
         self.assertTrue(any("openai/gpt-4o" in m for m in self.d._messages))
 
     def test_all(self):
         self.d.usage_tracker.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=10, completion_tokens=5,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
         )
         self.d._cmd_cost("all")
         self.assertTrue(any("openai/gpt-4o" in m for m in self.d._messages))
 
     def test_session_breakdown(self):
         self.d.usage_tracker.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=10, completion_tokens=5,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
         )
         self.d.usage_tracker.record(
-            session_id="s2", provider="openai", model="gpt-4o",
-            prompt_tokens=20, completion_tokens=10,
+            session_id="s2",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=20,
+            completion_tokens=10,
         )
         self.d._cmd_cost("session")
         joined = "\n".join(self.d._messages)
@@ -114,12 +130,18 @@ class TestCostHandler(unittest.TestCase):
 
     def test_model_breakdown(self):
         self.d.usage_tracker.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=10, completion_tokens=5,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
         )
         self.d.usage_tracker.record(
-            session_id="s1", provider="anthropic", model="claude-3-5-sonnet-latest",
-            prompt_tokens=20, completion_tokens=10,
+            session_id="s1",
+            provider="anthropic",
+            model="claude-3-5-sonnet-latest",
+            prompt_tokens=20,
+            completion_tokens=10,
         )
         self.d._cmd_cost("model")
         joined = "\n".join(self.d._messages)
@@ -137,8 +159,11 @@ class TestCostHandler(unittest.TestCase):
 
     def test_days_valid(self):
         self.d.usage_tracker.record(
-            session_id="s1", provider="openai", model="gpt-4o",
-            prompt_tokens=10, completion_tokens=5,
+            session_id="s1",
+            provider="openai",
+            model="gpt-4o",
+            prompt_tokens=10,
+            completion_tokens=5,
         )
         self.d._cmd_cost("days=1")
         joined = "\n".join(self.d._messages)
@@ -156,6 +181,7 @@ class TestUsageHandler(unittest.TestCase):
         self.tmpd.mkdir(parents=True, exist_ok=True)
         self.d = FakeDispatcher(self.tmpd)
         from nexus_agent.cli.command_dispatcher import CommandDispatcherMixin
+
         self.d._cmd_usage = CommandDispatcherMixin._cmd_usage.__get__(self.d)
 
     def tearDown(self):

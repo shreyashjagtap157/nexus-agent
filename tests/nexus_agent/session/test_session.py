@@ -33,7 +33,9 @@ class TestSessionManager(unittest.TestCase):
 
     def test_resume_session_partial_match(self):
         sid = self.mgr.create_session(
-            model="claude-3", provider="anthropic", workspace=str(self.tmpdir.name),
+            model="claude-3",
+            provider="anthropic",
+            workspace=str(self.tmpdir.name),
         )
         resumed = self.mgr.resume_session(sid[:8])
         self.assertIsNotNone(resumed)

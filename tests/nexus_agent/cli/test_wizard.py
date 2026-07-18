@@ -28,9 +28,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -64,9 +62,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -99,7 +95,7 @@ class TestSetupWizard(unittest.TestCase):
                 wizard = SetupWizard(
                     console=self.console,
                     prompt_func=self.prompt_mock,
-                    confirm_func=self.confirm_mock
+                    confirm_func=self.confirm_mock,
                 )
                 wizard.run()
 

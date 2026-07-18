@@ -139,9 +139,7 @@ class TestProcessUserInput(unittest.TestCase):
     def test_session_message_saved(self):
         """Message should be saved to session manager."""
         self.app._process_user_input("hello")
-        self.app._session_mgr.save_message.assert_called_with(
-            "user", content="hello", type="user"
-        )
+        self.app._session_mgr.save_message.assert_called_with("user", content="hello", type="user")
 
 
 class TestRunAgentEventTypes(unittest.TestCase):
@@ -149,7 +147,6 @@ class TestRunAgentEventTypes(unittest.TestCase):
 
     def setUp(self):
         self.app = _MockApp()
-
 
     def _make_event(self, event_type: str, data=None):
         e = MagicMock(spec=AgentEvent)
@@ -181,11 +178,14 @@ class TestRunAgentEventTypes(unittest.TestCase):
         tool_data = {"name": "read_file", "arguments": {"path": "test.py"}}
         self.app._agent.run_stream.return_value = [
             self._make_event("tool_call", tool_data),
-            self._make_event("tool_result", {
-                "name": "read_file",
-                "output": "file content",
-                "success": True,
-            }),
+            self._make_event(
+                "tool_result",
+                {
+                    "name": "read_file",
+                    "output": "file content",
+                    "success": True,
+                },
+            ),
             self._make_event("content_complete", "done"),
         ]
         self.app._run_agent("test")
@@ -230,7 +230,8 @@ class TestRunAgentEventTypes(unittest.TestCase):
         self.app.r.error.assert_called_with("Something went wrong")
         # Spinner result also saves a system message after the error, so check calls
         error_calls = [
-            c for c in self.app._session_mgr.save_message.call_args_list
+            c
+            for c in self.app._session_mgr.save_message.call_args_list
             if c.kwargs.get("content") == "Something went wrong"
         ]
         self.assertEqual(len(error_calls), 1)
@@ -264,7 +265,8 @@ class TestRunAgentEventTypes(unittest.TestCase):
         self.app._run_agent("test")
         # Should not be called with assistant role (empty response)
         [
-            c for c in self.app._session_mgr.save_message.call_args_list
+            c
+            for c in self.app._session_mgr.save_message.call_args_list
             if c.kwargs.get("role") == "assistant"
         ]
         # With empty full_response, it shouldn't save assistant message

@@ -35,6 +35,7 @@ class TestMCPClient(unittest.TestCase):
     @patch("subprocess.Popen")
     def test_client_start_fails_no_command(self, mock_popen):
         from nexus_agent.mcp.client import MCPClient
+
         client = MCPClient(command="", env={})
         self.assertFalse(client.start(startup_timeout=1))
         client.close()
@@ -42,6 +43,7 @@ class TestMCPClient(unittest.TestCase):
     @patch("subprocess.Popen")
     def test_client_close_cleanup(self, mock_popen):
         from nexus_agent.mcp.client import MCPClient
+
         mock_proc = MagicMock()
         mock_proc.poll.return_value = None
         mock_proc.stdout = None
@@ -57,11 +59,13 @@ class TestMCPClient(unittest.TestCase):
 class TestMCPServer(unittest.TestCase):
     def test_server_initialization(self):
         from nexus_agent.mcp.server import MCPServer
+
         server = MCPServer(tools=[])
         self.assertIsNotNone(server)
 
     def test_server_handle_initialize(self):
         from nexus_agent.mcp.server import MCPServer
+
         mock_transport = MagicMock()
         server = MCPServer(tools=[])
         server._transport = mock_transport
@@ -75,6 +79,7 @@ class TestMCPServer(unittest.TestCase):
 
     def test_server_handle_tools_list(self):
         from nexus_agent.mcp.server import MCPServer
+
         mock_transport = MagicMock()
         mock_tool = MagicMock()
         mock_tool.name = "test_tool"

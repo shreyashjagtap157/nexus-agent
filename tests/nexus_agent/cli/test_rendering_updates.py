@@ -18,7 +18,8 @@ class TestPerRequestRendering(unittest.TestCase):
         display = req.display()
         # Strip ANSI colors for comparison
         import re
-        plain = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', display)
+
+        plain = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", display)
         self.assertIn("↓1,000", plain)
         self.assertIn("↑500", plain)
         self.assertIn("+10", plain)
@@ -28,6 +29,7 @@ class TestPerRequestRendering(unittest.TestCase):
     def test_empty_display(self):
         req = PerRequest()
         self.assertEqual(req.display(), "")
+
 
 class TestTokenUsageGlyphs(unittest.TestCase):
     def test_display_short_glyphs(self):
@@ -45,10 +47,11 @@ class TestTokenUsageGlyphs(unittest.TestCase):
         self.assertIn("↓100", detail)
         self.assertIn("↑50", detail)
 
+
 class TestResourceMonitor(unittest.TestCase):
     def setUp(self):
         self.mon = ResourceMonitor.get()
-        self.mon.stop() # Reset state
+        self.mon.stop()  # Reset state
 
     def test_subscription_lifecycle(self):
         # Initially inactive
@@ -75,13 +78,14 @@ class TestResourceMonitor(unittest.TestCase):
             ram_total_gb=16.0,
             gpu_percent=40,
             vram_used_gb=2.1,
-            vram_total_gb=8.0
+            vram_total_gb=8.0,
         )
         line = format_resource_line(snap)
         self.assertIn("CPU 16%", line)
         self.assertIn("RAM 4.2G/16G", line)
         self.assertIn("GPU 40%", line)
         self.assertIn("VRAM 2.1G/8G", line)
+
 
 class TestDiffAccumulation(unittest.TestCase):
     def test_add_diff(self):

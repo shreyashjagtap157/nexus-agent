@@ -26,7 +26,9 @@ class TestConfig(unittest.TestCase):
         config_path = self.config_dir / "config.json"
         conf = {"agent": {"mode": "plan"}, "theme": "dark"}
         save_config(conf, config_path=str(config_path))
-        loaded = load_config(config_path=str(config_path), workspace=self.config_dir, data_dir=self.config_dir)
+        loaded = load_config(
+            config_path=str(config_path), workspace=self.config_dir, data_dir=self.config_dir
+        )
         self.assertEqual(loaded.get("agent", {}).get("mode"), "plan")
         self.assertEqual(loaded.get("theme"), "dark")
 
@@ -52,6 +54,7 @@ class TestSQLiteStore(unittest.TestCase):
     def test_init_and_close(self):
         class TestStore(SQLiteStore):
             SCHEMA_SQL = "CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, value TEXT);"
+
         store = TestStore(self.db_path)
         conn = store._get_conn()
         cursor = conn.execute("SELECT COUNT(*) FROM test")
@@ -61,6 +64,7 @@ class TestSQLiteStore(unittest.TestCase):
     def test_context_manager(self):
         class TestStore(SQLiteStore):
             SCHEMA_SQL = ""
+
         with TestStore(self.db_path) as store:
             conn = store._get_conn()
             self.assertIsNotNone(conn)
@@ -68,6 +72,7 @@ class TestSQLiteStore(unittest.TestCase):
     def test_thread_safety_lock(self):
         class TestStore(SQLiteStore):
             SCHEMA_SQL = ""
+
         store = TestStore(self.db_path)
         self.assertTrue(hasattr(store, "_lock"))
         store.close()

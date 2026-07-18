@@ -15,9 +15,7 @@ from nexus_agent.core.plugins import NexusPlugin, PluginInfo, PluginManager
 
 class _NexusPluginSubclass(NexusPlugin):
     def initialize(self) -> None:
-        self.manager.register_command(
-            self.name, "/testclass", lambda d, a: None
-        )
+        self.manager.register_command(self.name, "/testclass", lambda d, a: None)
 
 
 class TestPlugins(unittest.TestCase):
@@ -84,7 +82,9 @@ class SimplePlugin(NexusPlugin):
         assert "No entry point" in res["no_entry"].error
 
     def test_load_plugin_syntax_error_handles_gracefully(self):
-        (self.tmpd / "bad_syntax.py").write_text("def register_plugin(m): \n  invalid syntax here {{{")
+        (self.tmpd / "bad_syntax.py").write_text(
+            "def register_plugin(m): \n  invalid syntax here {{{"
+        )
         res = self.pm.discover_and_load()
         assert "bad_syntax" in res
         assert res["bad_syntax"].error is not None

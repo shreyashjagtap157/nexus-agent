@@ -37,8 +37,11 @@ class TestACPMemoryIntegration(unittest.TestCase):
             self.assertIn(field, entry, f"{msg}: missing '{field}' in {entry}")
         for field in ("created_at", "updated_at", "access_count", "score"):
             self.assertIn(field, entry, f"{msg}: missing '{field}' in {entry}")
-            self.assertIsInstance(entry[field], (int, float),
-                                  f"{msg}: '{field}' should be numeric, got {type(entry[field])}")
+            self.assertIsInstance(
+                entry[field],
+                (int, float),
+                f"{msg}: '{field}' should be numeric, got {type(entry[field])}",
+            )
 
     # --- Direct MemoryManager tests ---
 
@@ -47,7 +50,9 @@ class TestACPMemoryIntegration(unittest.TestCase):
         self.assertGreaterEqual(len(entries), 3)
         for e in entries:
             self.assertIn("source", e, f"Missing source: {e.get('id', '?')}")
-            self.assertIn(e["source"], ("working", "long_term", "episodic", "vector", "user_profile"))
+            self.assertIn(
+                e["source"], ("working", "long_term", "episodic", "vector", "user_profile")
+            )
             self._check_rust_entry(e)
 
     def test_list_all_unified_working_filter(self):
@@ -97,7 +102,9 @@ class TestACPMemoryIntegration(unittest.TestCase):
         wm_entries = [e for e in entries if e["source"] == "working"]
         self.assertGreaterEqual(len(wm_entries), 1)
         for e in wm_entries:
-            self.assertTrue(e["id"].startswith("wm:"), f"Working ID should start with 'wm:': {e['id']}")
+            self.assertTrue(
+                e["id"].startswith("wm:"), f"Working ID should start with 'wm:': {e['id']}"
+            )
 
     def test_user_profile_id_format(self):
         self.memory.user_profile.set("preferences.editor", "vscode")

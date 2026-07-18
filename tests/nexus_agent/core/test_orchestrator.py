@@ -47,18 +47,16 @@ class TestOrchestratorInit(unittest.TestCase):
         self.assertEqual(orch.workspace, Path("/test/workspace"))
 
     def test_init_creates_planner_and_executor(self):
-        with patch("nexus_agent.core.orchestrator.Planner") as mock_planner, \
-             patch("nexus_agent.core.orchestrator.Executor") as mock_executor:
+        with (
+            patch("nexus_agent.core.orchestrator.Planner") as mock_planner,
+            patch("nexus_agent.core.orchestrator.Executor") as mock_executor,
+        ):
             Orchestrator(
                 provider=self.provider,
                 tools=self.tools,
             )
-            mock_planner.assert_called_once_with(
-                self.provider, self.tools, workspace=Path.cwd()
-            )
-            mock_executor.assert_called_once_with(
-                self.provider, self.tools, workspace=Path.cwd()
-            )
+            mock_planner.assert_called_once_with(self.provider, self.tools, workspace=Path.cwd())
+            mock_executor.assert_called_once_with(self.provider, self.tools, workspace=Path.cwd())
 
     def test_init_default_workspace_is_cwd(self):
         orch = Orchestrator(provider=self.provider, tools=self.tools)
@@ -69,8 +67,10 @@ class TestOrchestratorInit(unittest.TestCase):
         self.assertIsNone(orch.approval_callback)
 
     def test_init_kwargs_forwarded(self):
-        with patch("nexus_agent.core.orchestrator.Planner") as mock_planner, \
-             patch("nexus_agent.core.orchestrator.Executor") as mock_executor:
+        with (
+            patch("nexus_agent.core.orchestrator.Planner") as mock_planner,
+            patch("nexus_agent.core.orchestrator.Executor") as mock_executor,
+        ):
             Orchestrator(
                 provider=self.provider,
                 tools=self.tools,
@@ -78,14 +78,18 @@ class TestOrchestratorInit(unittest.TestCase):
                 temperature=0.5,
             )
             mock_planner.assert_called_once_with(
-                self.provider, self.tools,
+                self.provider,
+                self.tools,
                 workspace=Path.cwd(),
-                max_iterations=50, temperature=0.5,
+                max_iterations=50,
+                temperature=0.5,
             )
             mock_executor.assert_called_once_with(
-                self.provider, self.tools,
+                self.provider,
+                self.tools,
                 workspace=Path.cwd(),
-                max_iterations=50, temperature=0.5,
+                max_iterations=50,
+                temperature=0.5,
             )
 
 
@@ -117,14 +121,18 @@ class TestOrchestratorRunTask(unittest.TestCase):
         self.executor_patch.stop()
 
     def test_run_task_yields_state_change_planning(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_chunk", "plan steps"),
-            _event("content_complete", "detailed plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_chunk", "executing step 1"),
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "plan steps"),
+                _event("content_complete", "detailed plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "executing step 1"),
+                _event("content_complete", "done"),
+            ]
+        )
 
         events = list(self.orch.run_task("test task"))
         event_types = [e.type for e in events]
@@ -140,23 +148,26 @@ class TestOrchestratorRunTask(unittest.TestCase):
             _event("content_complete", "final plan"),
         ]
         self.mock_planner.plan.return_value = FakeIterator(plan_events)
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         events = list(self.orch.run_task("test task"))
         plan_content_events = [
-            e for e in events
-            if e.type == "content_chunk" or e.type == "content_complete"
+            e for e in events if e.type == "content_chunk" or e.type == "content_complete"
         ]
         self.assertGreaterEqual(len(plan_content_events), 1)
 
     def test_run_task_planner_failure(self):
         """When planner returns no content, should yield an error."""
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_chunk", ""),
-            _event("content_complete", ""),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", ""),
+                _event("content_complete", ""),
+            ]
+        )
 
         events = list(self.orch.run_task("test task"))
         has_error = any(e.type == "error" for e in events)
@@ -165,10 +176,12 @@ class TestOrchestratorRunTask(unittest.TestCase):
         self.mock_executor.execute_plan.assert_not_called()
 
     def test_run_task_plan_only_stops_after_plan(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_chunk", "plan"),
-            _event("content_complete", "complete plan"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "plan"),
+                _event("content_complete", "complete plan"),
+            ]
+        )
 
         events = list(self.orch.run_task("test task", plan_only=True))
         # Should have a done event with executed=False
@@ -179,31 +192,37 @@ class TestOrchestratorRunTask(unittest.TestCase):
         self.mock_executor.execute_plan.assert_not_called()
 
     def test_run_task_executor_called(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_chunk", "plan"),
-            _event("content_complete", "complete plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_chunk", "working..."),
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "plan"),
+                _event("content_complete", "complete plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "working..."),
+                _event("content_complete", "done"),
+            ]
+        )
 
         list(self.orch.run_task("test task"))
-        self.mock_executor.execute_plan.assert_called_once_with(
-            "test task", "complete plan"
-        )
+        self.mock_executor.execute_plan.assert_called_once_with("test task", "complete plan")
 
     def test_run_task_with_approval_callback_approved(self):
         callback = MagicMock(return_value=True)
         self.orch.approval_callback = callback
 
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_chunk", "plan"),
-            _event("content_complete", "approved plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "plan"),
+                _event("content_complete", "approved plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         list(self.orch.run_task("test task"))
         callback.assert_called_once_with("approved plan")
@@ -213,10 +232,12 @@ class TestOrchestratorRunTask(unittest.TestCase):
         callback = MagicMock(return_value=False)
         self.orch.approval_callback = callback
 
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_chunk", "plan"),
-            _event("content_complete", "rejected plan"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "plan"),
+                _event("content_complete", "rejected plan"),
+            ]
+        )
 
         events = list(self.orch.run_task("test task"))
         callback.assert_called_once_with("rejected plan")
@@ -229,41 +250,50 @@ class TestOrchestratorRunTask(unittest.TestCase):
         self.assertFalse(done_events[0].data["executed"])
 
     def test_run_task_passes_task_to_planner(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_complete", "plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         list(self.orch.run_task("my specific task"))
         self.mock_planner.plan.assert_called_once_with("my specific task")
 
     def test_run_task_yields_executor_events(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_complete", "plan text"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_chunk", "exec step 1"),
-            _event("content_chunk", "exec step 2"),
-            _event("content_complete", "final"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "plan text"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "exec step 1"),
+                _event("content_chunk", "exec step 2"),
+                _event("content_complete", "final"),
+            ]
+        )
 
         events = list(self.orch.run_task("task"))
-        exec_chunks = [
-            e for e in events
-            if e.type == "content_chunk" and e.data.startswith("exec")
-        ]
+        exec_chunks = [e for e in events if e.type == "content_chunk" and e.data.startswith("exec")]
         # At least some executor content chunks should appear
         self.assertGreaterEqual(len(exec_chunks), 1)
 
     def test_run_task_yields_state_change_executing(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_complete", "plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         events = list(self.orch.run_task("task"))
         state_changes = [e for e in events if e.type == "state_change"]
@@ -271,12 +301,16 @@ class TestOrchestratorRunTask(unittest.TestCase):
         self.assertEqual(len(executing_states), 1)
 
     def test_run_task_yields_done_at_end(self):
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_complete", "plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         events = list(self.orch.run_task("task"))
         # run_task doesn't yield a "done" event in the normal path;
@@ -288,12 +322,16 @@ class TestOrchestratorRunTask(unittest.TestCase):
     def test_run_task_yields_state_change_waiting_approval(self):
         callback = MagicMock(return_value=True)
         self.orch.approval_callback = callback
-        self.mock_planner.plan.return_value = FakeIterator([
-            _event("content_complete", "plan"),
-        ])
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_planner.plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "plan"),
+            ]
+        )
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         events = list(self.orch.run_task("task"))
         state_changes = [e for e in events if e.type == "state_change"]
@@ -351,8 +389,9 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
         self.pipeline_patch.stop()
         self.debate_patch.stop()
 
-    def _make_task(self, task_id="task1", title="Test Task", description="Do something",
-                   status="pending"):
+    def _make_task(
+        self, task_id="task1", title="Test Task", description="Do something", status="pending"
+    ):
         task = MagicMock()
         task.id = task_id
         task.title = title
@@ -365,7 +404,11 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
         self.mock_taskgraph.decompose.return_value = self._make_task("root")
         self.mock_taskgraph.get_ready_tasks.return_value = []
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 0, "pending": 0, "failed": 0, "blocked": 0
+            "completed": 0,
+            "total": 0,
+            "pending": 0,
+            "failed": 0,
+            "blocked": 0,
         }
 
         events = list(self.orch.run_autonomous("build a website"))
@@ -378,7 +421,11 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
         self.mock_taskgraph.decompose.return_value = root_task
         self.mock_taskgraph.get_ready_tasks.return_value = []
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 1, "pending": 0, "failed": 0, "blocked": 0
+            "completed": 0,
+            "total": 1,
+            "pending": 0,
+            "failed": 0,
+            "blocked": 0,
         }
 
         list(self.orch.run_autonomous("build a website"))
@@ -392,13 +439,19 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
             [],
         ]
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 1, "total": 1, "pending": 0, "failed": 0, "blocked": 0
+            "completed": 1,
+            "total": 1,
+            "pending": 0,
+            "failed": 0,
+            "blocked": 0,
         }
 
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_chunk", "writing tests..."),
-            _event("content_complete", "tests done"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_chunk", "writing tests..."),
+                _event("content_complete", "tests done"),
+            ]
+        )
 
         # Mock full pipeline pass
         mock_report = MagicMock()
@@ -428,13 +481,18 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
             [],
         ]
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 1, "pending": 0,
-            "failed": 1, "blocked": 0
+            "completed": 0,
+            "total": 1,
+            "pending": 0,
+            "failed": 1,
+            "blocked": 0,
         }
 
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "code written"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "code written"),
+            ]
+        )
 
         # DevOps pipeline fails
         mock_report = MagicMock()
@@ -458,17 +516,24 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
         task = self._make_task("t3", "Refactor", "Refactor code")
         self.mock_taskgraph.decompose.return_value = task
         self.mock_taskgraph.get_ready_tasks.side_effect = [
-            [task,],
+            [
+                task,
+            ],
             [],
         ]
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 1, "pending": 0,
-            "failed": 1, "blocked": 0
+            "completed": 0,
+            "total": 1,
+            "pending": 0,
+            "failed": 1,
+            "blocked": 0,
         }
 
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "refactored"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "refactored"),
+            ]
+        )
 
         # DevOps passes
         mock_report = MagicMock()
@@ -499,13 +564,18 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
             [],
         ]
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 1, "pending": 0,
-            "failed": 1, "blocked": 0
+            "completed": 0,
+            "total": 1,
+            "pending": 0,
+            "failed": 1,
+            "blocked": 0,
         }
 
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "config added"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "config added"),
+            ]
+        )
 
         # DevOps finds secrets
         mock_secret = MagicMock()
@@ -532,9 +602,11 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
             {"completed": 1, "total": 1, "pending": 0, "failed": 0, "blocked": 0},
         ]
 
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         mock_report = MagicMock()
         mock_report.tests_passed = True
@@ -555,12 +627,15 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
 
     def test_autonomous_blocked_tasks(self):
         """When tasks are blocked/pending but no ready tasks, should log warning."""
-        task = self._make_task("blocked1", "Blocked", "Blocked by dependency",
-                              status="blocked")
+        task = self._make_task("blocked1", "Blocked", "Blocked by dependency", status="blocked")
         self.mock_taskgraph.decompose.return_value = task
         self.mock_taskgraph.get_ready_tasks.return_value = []
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 2, "pending": 1, "failed": 0, "blocked": 1
+            "completed": 0,
+            "total": 2,
+            "pending": 1,
+            "failed": 0,
+            "blocked": 1,
         }
 
         events = list(self.orch.run_autonomous("build a website"))
@@ -576,7 +651,11 @@ class TestOrchestratorRunAutonomous(unittest.TestCase):
             [],
         ]
         self.mock_taskgraph.get_progress.return_value = {
-            "completed": 0, "total": 1, "pending": 0, "failed": 1, "blocked": 0
+            "completed": 0,
+            "total": 1,
+            "pending": 0,
+            "failed": 1,
+            "blocked": 0,
         }
 
         # Executor raises an error
@@ -649,12 +728,18 @@ class TestOrchestratorDebateReworkedCode(unittest.TestCase):
         self.mock_tg.decompose.return_value = task
         self.mock_tg.get_ready_tasks.side_effect = [[task], []]
         self.mock_tg.get_progress.return_value = {
-            "completed": 1, "total": 1, "pending": 0, "failed": 0, "blocked": 0
+            "completed": 1,
+            "total": 1,
+            "pending": 0,
+            "failed": 0,
+            "blocked": 0,
         }
 
-        self.mock_executor.execute_plan.return_value = FakeIterator([
-            _event("content_complete", "done"),
-        ])
+        self.mock_executor.execute_plan.return_value = FakeIterator(
+            [
+                _event("content_complete", "done"),
+            ]
+        )
 
         mock_report = MagicMock()
         mock_report.tests_passed = True
@@ -680,6 +765,7 @@ print("Hello, World!")
 
         # Create a temp workspace for this test
         import tempfile
+
         self.orch.workspace = Path(tempfile.mkdtemp())
         target = self.orch.workspace / "src" / "main.py"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -704,6 +790,7 @@ hacked
         self.mock_debate.run_debate.return_value = mock_verdict
 
         import tempfile
+
         self.orch.workspace = Path(tempfile.mkdtemp())
         # Should not crash — path traversal should be silently blocked
         list(self.orch.run_autonomous("build a website"))

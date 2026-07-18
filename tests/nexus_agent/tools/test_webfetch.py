@@ -112,7 +112,7 @@ class TestHTMLToMarkdown(unittest.TestCase):
         self.assertIn("three", out)
         # each on its own line
         lines = out.split("\n")
-        self.assertGreater(len([l for l in lines if l.strip()]), 0)
+        self.assertGreater(len([line for line in lines if line.strip()]), 0)
 
     def test_collapse_whitespace(self):
         html = "<p>hello     world\n\n\n   again</p>"
@@ -200,7 +200,13 @@ class TestCoerceInt(unittest.TestCase):
 class TestWebFetchTool(unittest.TestCase):
     """`WebFetchTool` end-to-end (with mocked httpx)."""
 
-    def _mock_response(self, text: str, status: int = 200, ctype: str = "text/html; charset=utf-8", url: str = "https://x.com/"):
+    def _mock_response(
+        self,
+        text: str,
+        status: int = 200,
+        ctype: str = "text/html; charset=utf-8",
+        url: str = "https://x.com/",
+    ):
         r = MagicMock()
         r.status_code = status
         r.headers = {"content-type": ctype}
@@ -222,44 +228,44 @@ class TestWebFetchTool(unittest.TestCase):
 
     def test_404_returns_error(self):
         tool = WebFetchTool(cache_ttl_s=0)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response("nope", status=404)
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/missing")
         self.assertIn("404", out)
 
     def test_rejects_non_html(self):
         tool = WebFetchTool(cache_ttl_s=0)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 "binary", ctype="application/octet-stream"
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/file")
         self.assertIn("content-type", out.lower())
 
     def test_fetches_and_converts(self):
         tool = WebFetchTool(cache_ttl_s=0)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 "<html><body><h1>Hello</h1><p>World</p></body></html>"
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/")
         self.assertIn("# Hello", out)
         self.assertIn("World", out)
 
     def test_max_chars_truncates(self):
         tool = WebFetchTool(cache_ttl_s=0, max_chars=20)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 "<p>" + "x" * 1000 + "</p>"
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/", max_chars=20)
         self.assertIn("truncated", out)
         self.assertLess(len(out), 200)
@@ -272,12 +278,10 @@ class TestWebFetchTool(unittest.TestCase):
 
     def test_cache_hits_second_call(self):
         tool = WebFetchTool(cache_ttl_s=300, cache_size=4)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
-            ctx.__enter__.return_value.get.return_value = self._mock_response(
-                "<p>cached</p>"
-            )
-            MockClient.return_value = ctx
+            ctx.__enter__.return_value.get.return_value = self._mock_response("<p>cached</p>")
+            mock_client.return_value = ctx
             out1 = tool.execute("https://x.com/")
             # The client should have been called once.
             self.assertEqual(ctx.__enter__.return_value.get.call_count, 1)
@@ -289,24 +293,20 @@ class TestWebFetchTool(unittest.TestCase):
 
     def test_no_cache_bypasses_cache(self):
         tool = WebFetchTool(cache_ttl_s=300, cache_size=4)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
-            ctx.__enter__.return_value.get.return_value = self._mock_response(
-                "<p>cached</p>"
-            )
-            MockClient.return_value = ctx
+            ctx.__enter__.return_value.get.return_value = self._mock_response("<p>cached</p>")
+            mock_client.return_value = ctx
             tool.execute("https://x.com/")
             tool.execute("https://x.com/", no_cache=True)
             self.assertEqual(ctx.__enter__.return_value.get.call_count, 2)
 
     def test_cache_expires(self):
         tool = WebFetchTool(cache_ttl_s=1, cache_size=4)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
-            ctx.__enter__.return_value.get.return_value = self._mock_response(
-                "<p>cached</p>"
-            )
-            MockClient.return_value = ctx
+            ctx.__enter__.return_value.get.return_value = self._mock_response("<p>cached</p>")
+            mock_client.return_value = ctx
             tool.execute("https://x.com/")
             time.sleep(1.2)
             tool.execute("https://x.com/")
@@ -314,22 +314,20 @@ class TestWebFetchTool(unittest.TestCase):
 
     def test_network_error_returns_error_string(self):
         tool = WebFetchTool(cache_ttl_s=0)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.side_effect = OSError("no internet")
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/")
         self.assertIn("Error", out)
         self.assertIn("no internet", out)
 
     def test_clear_cache(self):
         tool = WebFetchTool(cache_ttl_s=300, cache_size=4)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
-            ctx.__enter__.return_value.get.return_value = self._mock_response(
-                "<p>x</p>"
-            )
-            MockClient.return_value = ctx
+            ctx.__enter__.return_value.get.return_value = self._mock_response("<p>x</p>")
+            mock_client.return_value = ctx
             tool.execute("https://x.com/")
             self.assertEqual(len(tool._cache), 1)
             tool.clear_cache()
@@ -337,26 +335,26 @@ class TestWebFetchTool(unittest.TestCase):
 
     def test_latin1_fallback(self):
         tool = WebFetchTool(cache_ttl_s=0)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             r = self._mock_response("ignored")
             # Build a content with bytes that are not valid utf-8
             r.content = b"<p>Caf\xe9</p>"
             r.headers = {"content-type": "text/html; charset=latin-1"}
             ctx.__enter__.return_value.get.return_value = r
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/")
         self.assertIn("Caf", out)
 
     def test_relative_url_resolution(self):
         tool = WebFetchTool(cache_ttl_s=0)
-        with patch("httpx.Client") as MockClient:
+        with patch("httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 '<html><body><a href="/about">about</a></body></html>',
                 url="https://x.com/foo",
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             out = tool.execute("https://x.com/foo")
         self.assertIn("[about](https://x.com/about)", out)
 

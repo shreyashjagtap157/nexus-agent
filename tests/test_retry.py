@@ -151,7 +151,9 @@ class TestRetryAfterSeconds(unittest.TestCase):
 
     def test_ignores_http_date(self):
         req = httpx.Request("GET", "https://x")
-        resp = httpx.Response(429, request=req, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"})
+        resp = httpx.Response(
+            429, request=req, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}
+        )
         err = httpx.HTTPStatusError("x", request=req, response=resp)
         self.assertIsNone(_retry_after_seconds(err))
 
@@ -321,6 +323,7 @@ class TestChatWithRetry(unittest.TestCase):
 
     def _make_response(self, content="hello"):
         from nexus_agent.llm.base import LLMResponse
+
         return LLMResponse(
             content=content,
             tool_calls=[],
@@ -331,6 +334,7 @@ class TestChatWithRetry(unittest.TestCase):
 
     def test_chat_completion_retries_then_succeeds(self):
         from nexus_agent.llm.base import Message, Role
+
         provider = MagicMock()
         provider.chat_completion.side_effect = [
             httpx.ReadTimeout("x"),
@@ -349,6 +353,7 @@ class TestChatWithRetry(unittest.TestCase):
 
     def test_chat_completion_propagates_non_retryable(self):
         from nexus_agent.llm.base import Message, Role
+
         provider = MagicMock()
         provider.chat_completion.side_effect = ValueError("nope")
         p = RetryPolicy(max_attempts=5, initial_backoff_s=0.001)
@@ -362,6 +367,7 @@ class TestChatWithRetry(unittest.TestCase):
 
     def test_streaming_returns_iter(self):
         from nexus_agent.llm.base import StreamChunk
+
         provider = MagicMock()
         chunks = [StreamChunk(content="a", finish_reason=None)]
         provider.chat_completion_stream.return_value = iter(chunks)
@@ -378,6 +384,7 @@ class TestChatWithRetry(unittest.TestCase):
 
     def test_pass_through_kwargs(self):
         from nexus_agent.llm.base import Message, Role
+
         provider = MagicMock()
         provider.chat_completion.return_value = self._make_response()
         chat_with_retry(

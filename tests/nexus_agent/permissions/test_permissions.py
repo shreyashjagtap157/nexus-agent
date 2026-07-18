@@ -115,7 +115,7 @@ class TestPermissionManager(unittest.TestCase):
                 "mode": "allow",
                 "tools": {
                     "read_file": {"mode": "allow"},
-                }
+                },
             }
         }
         self.mgr.load_from_config(config)

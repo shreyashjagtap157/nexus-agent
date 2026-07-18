@@ -72,7 +72,8 @@ class TestCallGraphTool(unittest.TestCase):
 
     def test_build_call_graph(self):
         f = self.workspace / "code.py"
-        f.write_text(textwrap.dedent("""
+        f.write_text(
+            textwrap.dedent("""
             def foo():
                 bar()
 
@@ -82,7 +83,8 @@ class TestCallGraphTool(unittest.TestCase):
             def baz():
                 foo()
                 bar()
-        """).strip())
+        """).strip()
+        )
         out = self.tool.execute(file_path="code.py")
         self.assertIn("foo", out)
         self.assertIn("bar", out)
@@ -90,7 +92,8 @@ class TestCallGraphTool(unittest.TestCase):
 
     def test_trace_function(self):
         f = self.workspace / "code.py"
-        f.write_text(textwrap.dedent("""
+        f.write_text(
+            textwrap.dedent("""
             def caller():
                 helper()
 
@@ -99,7 +102,8 @@ class TestCallGraphTool(unittest.TestCase):
 
             def helper():
                 pass
-        """).strip())
+        """).strip()
+        )
         out = self.tool.execute(file_path="code.py", trace_function="helper")
         self.assertIn("caller", out)
         self.assertIn("other", out)
@@ -145,11 +149,13 @@ class TestRenameTool(unittest.TestCase):
 
     def test_rename_function(self):
         f = self.workspace / "code.py"
-        f.write_text(textwrap.dedent("""
+        f.write_text(
+            textwrap.dedent("""
             def foo():
                 return 1
             x = foo()
-        """).strip())
+        """).strip()
+        )
         out = self.tool.execute(file_path="code.py", old_symbol="foo", new_symbol="bar")
         self.assertIn("renamed", out)
         self.assertIn("def bar", f.read_text())
