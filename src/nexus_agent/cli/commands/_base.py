@@ -5,7 +5,10 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from blessed import Terminal
+try:
+    from blessed import Terminal
+except ImportError:
+    Terminal = None
 
 _term = Terminal()
 
@@ -25,10 +28,10 @@ SLASH_COMMANDS = [
     {"name": "/session", "description": "Show active session info"},
     {"name": "/stats", "description": "Conversation statistics"},
     {"name": "/memory", "description": "Search/edit CLAUDE.md memory files"},
-    {"name": "/memory vector stats", "description": "Vector store statistics (count, engine mode, dimensions)"},
-    {"name": "/memory vector query", "description": "Semantic similarity search via vector embeddings"},
-    {"name": "/memory vector migrate", "description": "Re-embed all existing FTS5 memories into the vector store"},
-    {"name": "/memory vector download", "description": "Download ONNX embedding model for higher-quality vectors"},
+    {"name": "/memory vector stats", "description": "Vector store stats (count, mode, dims)"},
+    {"name": "/memory vector query", "description": "Semantic similarity search via vectors"},
+    {"name": "/memory vector migrate", "description": "Re-embed FTS5 memories into vectors"},
+    {"name": "/memory vector download", "description": "Download ONNX model for better vectors"},
     {"name": "/reflect", "description": "Critique last assistant response"},
     {"name": "/task", "description": "View task graph progress"},
     {"name": "/debate", "description": "Convene multi-agent expert panel"},
@@ -111,8 +114,8 @@ SLASH_COMMANDS = [
     {"name": "/view", "description": "Set view mode (default|focus|verbose)"},
     {"name": "/tui", "description": "Toggle fullscreen/inline mode"},
     {"name": "/quit", "description": "Exit NexusAgent"},
-    {"name": "/nla", "description": "Natural Language Autoencoder reasoning telemetry & offline learning"},
-    {"name": "/explain", "description": "Verbalize underlying concepts and strategies of the last step"},
+    {"name": "/nla", "description": "NLA reasoning telemetry & offline learning"},
+    {"name": "/explain", "description": "Verbalize underlying concepts of the last step"},
 ]
 
 
@@ -171,7 +174,8 @@ class BaseCommands:
         self._refresh_status()
 
     def _render_effort_selector(self, levels: tuple, labels: tuple, idx: int):
-        effort_colors = {"low": "green", "medium": "cyan", "high": "yellow", "xhigh": "magenta", "max": "red"}
+        effort_colors = {"low": "green", "medium": "cyan",
+                         "high": "yellow", "xhigh": "magenta", "max": "red"}
         pad = 22
 
         plain_labels = [str(label) for label in labels]

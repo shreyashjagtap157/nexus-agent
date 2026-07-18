@@ -55,15 +55,17 @@ class TestLSPClientToolFallback(unittest.TestCase):
 
     def test_hover_python_docstring(self):
         py = self.workspace / "code.py"
-        py.write_text(textwrap.dedent(
-            """
+        py.write_text(
+            textwrap.dedent(
+                """
             def greet(name):
                 '''Say hi to the given name.'''
                 return f"hi {name}"
 
             x = greet("world")
             """
-        ).lstrip())
+            ).lstrip()
+        )
         # The def is on line 1, so point at it.
         out = self.tool.execute(action="hover", file="code.py", line=1, character=5)
         self.assertIn("Say hi", out)
@@ -121,10 +123,12 @@ class TestLSPClientToolDispatchesToLSP(unittest.TestCase):
     def test_diagnostics_dispatches_to_lsp(self):
         self.fake_client.request.return_value = {
             "items": [
-                {"range": {"start": {"line": 0, "character": 0}},
-                 "severity": 1,
-                 "message": "name 'x' is unused",
-                 "source": "pyflakes"}
+                {
+                    "range": {"start": {"line": 0, "character": 0}},
+                    "severity": 1,
+                    "message": "name 'x' is unused",
+                    "source": "pyflakes",
+                }
             ]
         }
         out = self.tool.execute(action="diagnostics", file="foo.py")
@@ -140,8 +144,16 @@ class TestLSPClientToolDispatchesToLSP(unittest.TestCase):
 
     def test_document_symbols_renders(self):
         self.fake_client.request.return_value = [
-            {"name": "foo", "kind": 12, "location": {"range": {"start": {"line": 0, "character": 0}}}},
-            {"name": "Bar", "kind": 5, "location": {"range": {"start": {"line": 5, "character": 0}}}},
+            {
+                "name": "foo",
+                "kind": 12,
+                "location": {"range": {"start": {"line": 0, "character": 0}}},
+            },
+            {
+                "name": "Bar",
+                "kind": 5,
+                "location": {"range": {"start": {"line": 5, "character": 0}}},
+            },
         ]
         out = self.tool.execute(action="document_symbols", file="foo.py")
         self.assertIn("foo", out)
@@ -149,8 +161,10 @@ class TestLSPClientToolDispatchesToLSP(unittest.TestCase):
 
     def test_completion_renders(self):
         self.fake_client.request.return_value = {
-            "items": [{"label": "append", "detail": "list.append()"},
-                      {"label": "extend", "detail": "list.extend()"}]
+            "items": [
+                {"label": "append", "detail": "list.append()"},
+                {"label": "extend", "detail": "list.extend()"},
+            ]
         }
         out = self.tool.execute(action="completion", file="foo.py", line=1, character=0)
         self.assertIn("append", out)
@@ -167,7 +181,11 @@ class TestLSPClientToolDispatchesToLSP(unittest.TestCase):
 
     def test_rename_with_edits(self):
         self.fake_client.request.return_value = {
-            "changes": {"file:///foo.py": [{"range": {"start": {"line": 0, "character": 4}}, "newText": "bar"}]}
+            "changes": {
+                "file:///foo.py": [
+                    {"range": {"start": {"line": 0, "character": 4}}, "newText": "bar"}
+                ]
+            }
         }
         out = self.tool.execute(action="rename", file="foo.py", line=1, character=0, new_name="bar")
         self.assertIn("1 location", out)

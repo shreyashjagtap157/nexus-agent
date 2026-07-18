@@ -19,9 +19,9 @@ class TestBatchEditTool(unittest.TestCase):
     def test_single_file_edit(self):
         f = self.workspace / "a.py"
         f.write_text("x = 1\n")
-        out = self.tool.execute(edits=[
-            {"path": "a.py", "target_content": "x = 1", "replacement_content": "x = 99"}
-        ])
+        out = self.tool.execute(
+            edits=[{"path": "a.py", "target_content": "x = 1", "replacement_content": "x = 99"}]
+        )
         self.assertIn("succeeded", out)
         self.assertEqual(f.read_text(), "x = 99\n")
 
@@ -30,10 +30,12 @@ class TestBatchEditTool(unittest.TestCase):
         b = self.workspace / "b.py"
         a.write_text("a = 1\n")
         b.write_text("b = 1\n")
-        out = self.tool.execute(edits=[
-            {"path": "a.py", "target_content": "a = 1", "replacement_content": "a = 2"},
-            {"path": "b.py", "target_content": "b = 1", "replacement_content": "b = 2"},
-        ])
+        out = self.tool.execute(
+            edits=[
+                {"path": "a.py", "target_content": "a = 1", "replacement_content": "a = 2"},
+                {"path": "b.py", "target_content": "b = 1", "replacement_content": "b = 2"},
+            ]
+        )
         self.assertIn("succeeded", out)
         self.assertEqual(a.read_text(), "a = 2\n")
         self.assertEqual(b.read_text(), "b = 2\n")
@@ -42,10 +44,12 @@ class TestBatchEditTool(unittest.TestCase):
         a = self.workspace / "a.py"
         a.write_text("a = 1\n")
         with self.assertRaises(RuntimeError) as ctx:
-            self.tool.execute(edits=[
-                {"path": "a.py", "target_content": "a = 1", "replacement_content": "a = 2"},
-                {"path": "missing.py", "target_content": "x", "replacement_content": "y"},
-            ])
+            self.tool.execute(
+                edits=[
+                    {"path": "a.py", "target_content": "a = 1", "replacement_content": "a = 2"},
+                    {"path": "missing.py", "target_content": "x", "replacement_content": "y"},
+                ]
+            )
         self.assertIn("Batch edit failed", str(ctx.exception))
         # File should have been rolled back
         self.assertEqual(a.read_text(), "a = 1\n")
@@ -55,10 +59,12 @@ class TestBatchEditTool(unittest.TestCase):
         self.assertIn("No edits", out)
 
     def test_missing_field_in_edit(self):
-        out = self.tool.execute(edits=[
-            {"path": "a.py", "target_content": "x", "replacement_content": "y"},
-            {"path": "b.py", "target_content": "x"},  # missing replacement_content
-        ])
+        out = self.tool.execute(
+            edits=[
+                {"path": "a.py", "target_content": "x", "replacement_content": "y"},
+                {"path": "b.py", "target_content": "x"},  # missing replacement_content
+            ]
+        )
         self.assertIn("Error", out)
 
     def test_edit_not_dict(self):
@@ -69,23 +75,25 @@ class TestBatchEditTool(unittest.TestCase):
         f = self.workspace / "a.py"
         f.write_text("hello\n")
         with self.assertRaises(RuntimeError):
-            self.tool.execute(edits=[
-                {"path": "a.py", "target_content": "missing text", "replacement_content": "X"}
-            ])
+            self.tool.execute(
+                edits=[
+                    {"path": "a.py", "target_content": "missing text", "replacement_content": "X"}
+                ]
+            )
 
     def test_ambiguous_match_rejected(self):
         f = self.workspace / "a.py"
         f.write_text("x = 1\nx = 1\nx = 1\n")
         with self.assertRaises(RuntimeError):
-            self.tool.execute(edits=[
-                {"path": "a.py", "target_content": "x = 1", "replacement_content": "x = 2"}
-            ])
+            self.tool.execute(
+                edits=[{"path": "a.py", "target_content": "x = 1", "replacement_content": "x = 2"}]
+            )
 
     def test_path_outside_workspace(self):
         with self.assertRaises(RuntimeError):
-            self.tool.execute(edits=[
-                {"path": "../escape.py", "target_content": "x", "replacement_content": "y"}
-            ])
+            self.tool.execute(
+                edits=[{"path": "../escape.py", "target_content": "x", "replacement_content": "y"}]
+            )
 
 
 if __name__ == "__main__":

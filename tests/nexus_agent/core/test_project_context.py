@@ -37,6 +37,7 @@ class TestProjectContextLoader(unittest.TestCase):
             try:
                 if path.is_dir():
                     import shutil
+
                     shutil.rmtree(path, ignore_errors=True)
                 elif path.exists():
                     path.unlink()

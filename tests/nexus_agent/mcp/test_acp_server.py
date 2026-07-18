@@ -19,11 +19,13 @@ class MockAgent:
 
     def run_stream(self, text):
         """Yield AgentEvent-compatible objects with .type, .data, .timestamp."""
+
         class Event:
             def __init__(self, type, data=None):
                 self.type = type
                 self.data = data
                 import time
+
                 self.timestamp = time.time()
 
         yield Event("thinking", "Thinking about it...")
@@ -47,8 +49,7 @@ class TestACPServer(unittest.IsolatedAsyncioTestCase):
         input_data = '{"jsonrpc": "2.0", "id": 1, "method": "get_status", "params": {}}\n'
         output = io.StringIO()
 
-        with patch("sys.stdin", io.StringIO(input_data)), \
-             patch("sys.stdout", output):
+        with patch("sys.stdin", io.StringIO(input_data)), patch("sys.stdout", output):
             with patch("sys.stdin.readline", side_effect=[input_data, ""]):
                 await self.server.run()
 
@@ -58,11 +59,12 @@ class TestACPServer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res["result"]["mode"], "auto")
 
     async def test_prompt_events(self):
-        input_data = '{"jsonrpc": "2.0", "id": 42, "method": "prompt", "params": {"text": "Hello!"}}\n'
+        input_data = (
+            '{"jsonrpc": "2.0", "id": 42, "method": "prompt", "params": {"text": "Hello!"}}\n'
+        )
         output = io.StringIO()
 
-        with patch("sys.stdin", io.StringIO(input_data)), \
-             patch("sys.stdout", output):
+        with patch("sys.stdin", io.StringIO(input_data)), patch("sys.stdout", output):
             with patch("sys.stdin.readline", side_effect=[input_data, ""]):
                 await self.server.run()
 
@@ -87,11 +89,10 @@ class TestACPServer(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(final_resp["result"]["status"], "completed")
 
     async def test_invalid_json(self):
-        input_data = 'not json\n'
+        input_data = "not json\n"
         output = io.StringIO()
 
-        with patch("sys.stdin", io.StringIO(input_data)), \
-             patch("sys.stdout", output):
+        with patch("sys.stdin", io.StringIO(input_data)), patch("sys.stdout", output):
             with patch("sys.stdin.readline", side_effect=[input_data, ""]):
                 await self.server.run()
 
@@ -102,8 +103,7 @@ class TestACPServer(unittest.IsolatedAsyncioTestCase):
         input_data = '{"jsonrpc": "2.0", "id": 1, "method": "foo", "params": {}}\n'
         output = io.StringIO()
 
-        with patch("sys.stdin", io.StringIO(input_data)), \
-             patch("sys.stdout", output):
+        with patch("sys.stdin", io.StringIO(input_data)), patch("sys.stdout", output):
             with patch("sys.stdin.readline", side_effect=[input_data, ""]):
                 await self.server.run()
 
@@ -114,8 +114,7 @@ class TestACPServer(unittest.IsolatedAsyncioTestCase):
         input_data = '{"jsonrpc": "2.0", "id": 1, "method": "stop", "params": {}}\n'
         output = io.StringIO()
 
-        with patch("sys.stdin", io.StringIO(input_data)), \
-             patch("sys.stdout", output):
+        with patch("sys.stdin", io.StringIO(input_data)), patch("sys.stdout", output):
             with patch("sys.stdin.readline", side_effect=[input_data, ""]):
                 await self.server.run()
 

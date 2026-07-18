@@ -1,4 +1,4 @@
-"""Tests for the memory module — MemoryManager, WorkingMemory, LongTermMemory, EpisodicMemory, UserProfile."""
+"""Tests for the memory module."""
 
 import tempfile
 import unittest

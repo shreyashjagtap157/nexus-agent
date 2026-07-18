@@ -178,6 +178,7 @@ class TestVectorStoreWithCustomEngine(unittest.TestCase):
 
 class _HashEngineV1:
     """Simple deterministic embedding engine (v1) using md5 hashes."""
+
     DIMENSIONS = 384
 
     @property
@@ -190,6 +191,7 @@ class _HashEngineV1:
 
     def embed(self, text: str) -> list[float]:
         import hashlib
+
         vec = [0.0] * self.DIMENSIONS
         for i, chunk in enumerate(text.split()):
             h = int(hashlib.md5(chunk.encode()).hexdigest()[:8], 16)
@@ -208,6 +210,7 @@ class _HashEngineV2:
     Produces different vectors from ``_HashEngineV1`` for the same text,
     simulating an upgraded embedding model.
     """
+
     DIMENSIONS = 384
 
     @property
@@ -220,6 +223,7 @@ class _HashEngineV2:
 
     def embed(self, text: str) -> list[float]:
         import hashlib
+
         vec = [0.0] * self.DIMENSIONS
         for i, chunk in enumerate(text.split()):
             h = int(hashlib.sha256(chunk.encode()).hexdigest()[:8], 16)
@@ -270,7 +274,9 @@ class TestEngineUpgradeRebuild(unittest.TestCase):
         for eid in before:
             if eid in after:
                 self.assertAlmostEqual(
-                    before[eid], after[eid], places=5,
+                    before[eid],
+                    after[eid],
+                    places=5,
                     msg=f"Score for {eid} should match after rebuild with same engine",
                 )
 
@@ -321,12 +327,18 @@ class TestEngineUpgradeRebuild(unittest.TestCase):
         # id1 (python async) should rank high in both, but scores will differ
         self.assertIn("id1", before, "id1 (python async) must appear in V1 results")
         if "id4" in before:
-            self.assertGreater(before["id1"], before["id4"],
-                               "V1 engine: python async entry should outrank fox entry")
+            self.assertGreater(
+                before["id1"],
+                before["id4"],
+                "V1 engine: python async entry should outrank fox entry",
+            )
         self.assertIn("id1", after, "id1 (python async) must appear in V2 results")
         if "id4" in after:
-            self.assertGreater(after["id1"], after["id4"],
-                               "V2 engine after rebuild: python async entry should outrank fox entry")
+            self.assertGreater(
+                after["id1"],
+                after["id4"],
+                "V2 engine after rebuild: python async entry should outrank fox entry",
+            )
 
 
 class TestMigrationPipeline(unittest.TestCase):
@@ -350,9 +362,9 @@ class TestMigrationPipeline(unittest.TestCase):
         total = stats.get("total_entries", 0)
         migrated = 0
         offset = 0
-        PAGE_SIZE = 50
+        page_size = 50
         while offset < total:
-            entries = self.mgr.long_term.list_all(limit=PAGE_SIZE, offset=offset)
+            entries = self.mgr.long_term.list_all(limit=page_size, offset=offset)
             if not entries:
                 break
             for entry in entries:
@@ -365,7 +377,7 @@ class TestMigrationPipeline(unittest.TestCase):
                     continue
                 vs.store(eid, content, category=category)
                 migrated += 1
-            offset += PAGE_SIZE
+            offset += page_size
         return migrated
 
     def test_migrate_empty_does_nothing(self):

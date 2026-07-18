@@ -12,7 +12,9 @@ class TestSkillRegistry(unittest.TestCase):
         self.tmpdir = tempfile.TemporaryDirectory()
         self.skills_dir = Path(self.tmpdir.name) / "skills"
         self.skills_dir.mkdir()
-        self.registry = SkillRegistry(search_dirs=[self.skills_dir], workspace=Path(self.tmpdir.name))
+        self.registry = SkillRegistry(
+            search_dirs=[self.skills_dir], workspace=Path(self.tmpdir.name)
+        )
 
     def tearDown(self):
         self.tmpdir.cleanup()
@@ -47,11 +49,7 @@ class TestSkillRegistry(unittest.TestCase):
     def test_get_skill(self):
         skill_file = self.skills_dir / "my_tool.md"
         skill_file.write_text(
-            "---\n"
-            "name: my_tool\n"
-            "description: Custom tool\n"
-            "---\n"
-            "Do the thing.\n",
+            "---\nname: my_tool\ndescription: Custom tool\n---\nDo the thing.\n",
             encoding="utf-8",
         )
         self.registry.discover_skills()

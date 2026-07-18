@@ -175,9 +175,14 @@ class TestTodoStore(unittest.TestCase):
         s.add("crit", priority="critical")
         s.add("high", priority="high")
         todos = s.list()
-        self.assertEqual([t.priority for t in todos], [
-            TodoPriority.CRITICAL, TodoPriority.HIGH, TodoPriority.LOW,
-        ])
+        self.assertEqual(
+            [t.priority for t in todos],
+            [
+                TodoPriority.CRITICAL,
+                TodoPriority.HIGH,
+                TodoPriority.LOW,
+            ],
+        )
 
     def test_list_filter_by_status(self):
         s = TodoStore()

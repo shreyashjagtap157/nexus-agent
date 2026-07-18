@@ -174,16 +174,18 @@ class TestVectorCommands(unittest.TestCase):
     def test_query_empty_store(self):
         self._run_vector("query async python")
         self.assertTrue(
-            any("semantic matches" in m.lower() for m in self.app.messages) or
-            any("not available" in m.lower() for m in self.app.messages),
+            any("semantic matches" in m.lower() for m in self.app.messages)
+            or any("not available" in m.lower() for m in self.app.messages),
             f"Expected no-matches message: {self.app.messages}",
         )
 
     def test_query_returns_results(self):
-        self._seed([
-            ("python async await programming", "code"),
-            ("javascript event loop callback", "code"),
-        ])
+        self._seed(
+            [
+                ("python async await programming", "code"),
+                ("javascript event loop callback", "code"),
+            ]
+        )
         self.app.messages.clear()
         self._run_vector("query python async")
         # Should find at least one result (printed via console, not system_message)
@@ -315,11 +317,13 @@ class TestVectorCommands(unittest.TestCase):
         )
 
     def test_filter_matches(self):
-        self._seed([
-            ("python async", "code"),
-            ("cooking pasta", "recipe"),
-            ("javascript callback", "code"),
-        ])
+        self._seed(
+            [
+                ("python async", "code"),
+                ("cooking pasta", "recipe"),
+                ("javascript callback", "code"),
+            ]
+        )
         self._run_vector("filter code")
         self.assertTrue(
             any("code" in str(call).lower() for call in self.app.console.print.call_args_list),
@@ -333,12 +337,14 @@ class TestVectorCommands(unittest.TestCase):
         through the CLI handler for: lowercase, UPPERCASE, and MixedCase queries.
         """
         # Store entries with diverse casing in categories
-        self._seed([
-            ("entry with pascal case", "CodeStyle"),
-            ("entry with uppercase", "MYCAT"),
-            ("entry with lowercase", "devops"),
-            ("entry in another cat", "misc"),
-        ])
+        self._seed(
+            [
+                ("entry with pascal case", "CodeStyle"),
+                ("entry with uppercase", "MYCAT"),
+                ("entry with lowercase", "devops"),
+                ("entry in another cat", "misc"),
+            ]
+        )
 
         vs = self.memory.vector
 
@@ -348,7 +354,8 @@ class TestVectorCommands(unittest.TestCase):
         self._run_vector("filter codestyle")
         no_entries = [m for m in self.app.messages if "no entries" in m.lower()]
         self.assertEqual(
-            len(no_entries), 0,
+            len(no_entries),
+            0,
             f"Expected match for 'codestyle' (stored as 'CodeStyle'), got: {self.app.messages}",
         )
         # Direct store access confirms exactly 1 entry matched
@@ -361,7 +368,8 @@ class TestVectorCommands(unittest.TestCase):
         self._run_vector("filter mycat")
         no_entries = [m for m in self.app.messages if "no entries" in m.lower()]
         self.assertEqual(
-            len(no_entries), 0,
+            len(no_entries),
+            0,
             f"Expected match for 'mycat' (stored as 'MYCAT'), got: {self.app.messages}",
         )
         matched = vs.list_all(category="mycat")
@@ -440,16 +448,21 @@ class TestVectorCommands(unittest.TestCase):
         - short ``-p`` before subcommand: ``-p filter <cat>``
         """
         # Seed global store with 2 entries in "config" category
-        self._seed([
-            ("global config alpha", "config"),
-            ("global config beta", "config"),
-        ])
+        self._seed(
+            [
+                ("global config alpha", "config"),
+                ("global config beta", "config"),
+            ]
+        )
         # Seed project store with 3 entries in the same category
-        self._seed([
-            ("project config gamma", "config"),
-            ("project config delta", "config"),
-            ("project config epsilon", "config"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("project config gamma", "config"),
+                ("project config delta", "config"),
+                ("project config epsilon", "config"),
+            ],
+            target=self.project_memory,
+        )
 
         # Sanity check: each store has the right count
         self.assertEqual(self.memory.vector.count(), 2)
@@ -477,13 +490,17 @@ class TestVectorCommands(unittest.TestCase):
         self.app.console.reset_mock()
         self._run_vector("--project filter config")
         _assert_filter_calls(self.app.console.print.call_args_list, 3, "project")
-        self.assertEqual(self.memory.vector.count(), 2, "Global store untouched by --project filter")
+        self.assertEqual(
+            self.memory.vector.count(), 2, "Global store untouched by --project filter"
+        )
 
         # 3. Project scope with --project after subcommand: filter --project <cat>
         self.app.console.reset_mock()
         self._run_vector("filter --project config")
         _assert_filter_calls(self.app.console.print.call_args_list, 3, "project")
-        self.assertEqual(self.memory.vector.count(), 2, "Global store untouched by filter --project")
+        self.assertEqual(
+            self.memory.vector.count(), 2, "Global store untouched by filter --project"
+        )
 
         # 4. Project scope with short -p before subcommand: -p filter <cat>
         self.app.console.reset_mock()
@@ -549,15 +566,20 @@ class TestVectorCommands(unittest.TestCase):
         self.app.messages.clear()
         self._run_vector("--project migrate")
         self.assertEqual(
-            self.project_memory.vector.count(), 3,
+            self.project_memory.vector.count(),
+            3,
             "Expected 3 project entries migrated",
         )
         self.assertEqual(
-            self.memory.vector.count(), 0,
+            self.memory.vector.count(),
+            0,
             "Global vector store untouched by --project migrate",
         )
         self.assertTrue(
-            any("migration complete" in m.lower() and "project" in m.lower() for m in self.app.messages),
+            any(
+                "migration complete" in m.lower() and "project" in m.lower()
+                for m in self.app.messages
+            ),
             f"Expected 'migration complete' and 'project' in message: {self.app.messages}",
         )
         self.assertFalse(self.app.errors)
@@ -566,15 +588,20 @@ class TestVectorCommands(unittest.TestCase):
         self.app.messages.clear()
         self._run_vector("migrate")
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Expected 2 global entries migrated",
         )
         self.assertEqual(
-            self.project_memory.vector.count(), 3,
+            self.project_memory.vector.count(),
+            3,
             "Project vector store unaffected by global migrate",
         )
         self.assertTrue(
-            any("migration complete" in m.lower() and "global" in m.lower() for m in self.app.messages),
+            any(
+                "migration complete" in m.lower() and "global" in m.lower()
+                for m in self.app.messages
+            ),
             f"Expected 'migration complete' and 'global' in message: {self.app.messages}",
         )
         self.assertFalse(self.app.errors)
@@ -591,8 +618,8 @@ class TestVectorCommands(unittest.TestCase):
     def test_delete_nonexistent(self):
         self._run_vector("delete nonexistent_id_xyz")
         self.assertTrue(
-            any("not available" in m.lower() for m in self.app.messages) or
-            any("vector entry found" in m.lower() for m in self.app.messages),
+            any("not available" in m.lower() for m in self.app.messages)
+            or any("vector entry found" in m.lower() for m in self.app.messages),
             f"Expected not-found or not-available message: {self.app.messages}",
         )
 
@@ -642,16 +669,18 @@ class TestVectorCommands(unittest.TestCase):
     def test_clear_empty(self):
         self._run_vector("clear")
         self.assertTrue(
-            any("empty" in m.lower() for m in self.app.messages) or
-            any("not available" in m.lower() for m in self.app.messages),
+            any("empty" in m.lower() for m in self.app.messages)
+            or any("not available" in m.lower() for m in self.app.messages),
             f"Expected empty message: {self.app.messages}",
         )
 
     def test_clear_removes_all(self):
-        self._seed([
-            ("entry one", "cat_a"),
-            ("entry two", "cat_b"),
-        ])
+        self._seed(
+            [
+                ("entry one", "cat_a"),
+                ("entry two", "cat_b"),
+            ]
+        )
         self.assertEqual(self.memory.vector.count(), 2)
         self._run_vector("clear")
         self.assertEqual(self.memory.vector.count(), 0)
@@ -686,15 +715,20 @@ class TestVectorCommands(unittest.TestCase):
         remains unchanged.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global list a", "test"),
-            ("global list b", "test"),
-        ])
-        self._seed([
-            ("project list c", "test"),
-            ("project list d", "test"),
-            ("project list e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global list a", "test"),
+                ("global list b", "test"),
+            ]
+        )
+        self._seed(
+            [
+                ("project list c", "test"),
+                ("project list d", "test"),
+                ("project list e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -760,15 +794,20 @@ class TestVectorCommands(unittest.TestCase):
         remains unchanged.
         """
         # Seed global with 2 entries, project with 3 entries in distinct categories
-        self._seed([
-            ("python async await programming patterns", "code"),
-            ("python decorators and context managers", "code"),
-        ])
-        self._seed([
-            ("project configuration and deployment", "config"),
-            ("project env variables and secrets", "config"),
-            ("project docker compose setup", "config"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("python async await programming patterns", "code"),
+                ("python decorators and context managers", "code"),
+            ]
+        )
+        self._seed(
+            [
+                ("project configuration and deployment", "config"),
+                ("project env variables and secrets", "config"),
+                ("project docker compose setup", "config"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -833,10 +872,12 @@ class TestVectorCommands(unittest.TestCase):
         remains unchanged.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global delete a", "test"),
-            ("global delete b", "test"),
-        ])
+        self._seed(
+            [
+                ("global delete a", "test"),
+                ("global delete b", "test"),
+            ]
+        )
         project_ids: list[str] = []
         for content, cat in [
             ("project delete c", "test"),
@@ -855,11 +896,13 @@ class TestVectorCommands(unittest.TestCase):
         self.app.messages.clear()
         self._run_vector(f"--project delete {target_id}")
         self.assertEqual(
-            self.project_memory.vector.count(), 2,
+            self.project_memory.vector.count(),
+            2,
             "Expected one project entry deleted via --project delete",
         )
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Global store untouched by --project delete",
         )
         self.assertTrue(
@@ -873,11 +916,13 @@ class TestVectorCommands(unittest.TestCase):
         self.app.messages.clear()
         self._run_vector(f"delete --project {target_id}")
         self.assertEqual(
-            self.project_memory.vector.count(), 1,
+            self.project_memory.vector.count(),
+            1,
             "Expected two project entries deleted via delete --project",
         )
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Global store still untouched by delete --project",
         )
         self.assertTrue(
@@ -900,15 +945,20 @@ class TestVectorCommands(unittest.TestCase):
         Verifies the two scopes are fully isolated.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global clear a", "test"),
-            ("global clear b", "test"),
-        ])
-        self._seed([
-            ("project clear c", "test"),
-            ("project clear d", "test"),
-            ("project clear e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global clear a", "test"),
+                ("global clear b", "test"),
+            ]
+        )
+        self._seed(
+            [
+                ("project clear c", "test"),
+                ("project clear d", "test"),
+                ("project clear e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -917,11 +967,13 @@ class TestVectorCommands(unittest.TestCase):
         self.app.messages.clear()
         self._run_vector("--project clear")
         self.assertEqual(
-            self.project_memory.vector.count(), 0,
+            self.project_memory.vector.count(),
+            0,
             "Project store should be cleared",
         )
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Global store untouched by --project clear",
         )
         self.assertTrue(
@@ -934,11 +986,13 @@ class TestVectorCommands(unittest.TestCase):
         self.app.messages.clear()
         self._run_vector("clear")
         self.assertEqual(
-            self.memory.vector.count(), 0,
+            self.memory.vector.count(),
+            0,
             "Global store should be cleared",
         )
         self.assertEqual(
-            self.project_memory.vector.count(), 0,
+            self.project_memory.vector.count(),
+            0,
             "Project store already cleared",
         )
         self.assertTrue(
@@ -978,15 +1032,20 @@ class TestVectorCommands(unittest.TestCase):
         Both non-destructive — counts unchanged.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global rebuild a", "test"),
-            ("global rebuild b", "test"),
-        ])
-        self._seed([
-            ("project rebuild c", "test"),
-            ("project rebuild d", "test"),
-            ("project rebuild e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global rebuild a", "test"),
+                ("global rebuild b", "test"),
+            ]
+        )
+        self._seed(
+            [
+                ("project rebuild c", "test"),
+                ("project rebuild d", "test"),
+                ("project rebuild e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1023,12 +1082,14 @@ class TestVectorCommands(unittest.TestCase):
         )
 
     def test_categories_with_entries(self):
-        self._seed([
-            ("python async", "code"),
-            ("javascript cb", "code"),
-            ("cooking pasta", "recipe"),
-            ("docker compose", "devops"),
-        ])
+        self._seed(
+            [
+                ("python async", "code"),
+                ("javascript cb", "code"),
+                ("cooking pasta", "recipe"),
+                ("docker compose", "devops"),
+            ]
+        )
         self._run_vector("categories")
         # Should render categories table
         self.assertTrue(
@@ -1063,15 +1124,20 @@ class TestVectorCommands(unittest.TestCase):
         Counts unchanged after all operations.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global cat a", "code"),
-            ("global cat b", "config"),
-        ])
-        self._seed([
-            ("project cat c", "config"),
-            ("project cat d", "devops"),
-            ("project cat e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global cat a", "code"),
+                ("global cat b", "config"),
+            ]
+        )
+        self._seed(
+            [
+                ("project cat c", "config"),
+                ("project cat d", "devops"),
+                ("project cat e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1263,10 +1329,12 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         Exercises: _handle_slash_command -> _cmd_memory("vector query ...")
         -> _cmd_memory_vector("query ...") -> _cmd_memory_vector_query(...)
         """
-        self._seed([
-            ("python async await programming", "code"),
-            ("javascript event loop", "code"),
-        ])
+        self._seed(
+            [
+                ("python async await programming", "code"),
+                ("javascript event loop", "code"),
+            ]
+        )
         self._cmd("/memory vector query python async")
         self.assertTrue(
             any("python" in str(call) for call in self.app.console.print.call_args_list),
@@ -1376,16 +1444,21 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         Exercises: _cmd_memory -> _cmd_memory_vector -> _cmd_memory_vector_filter
         """
         # Seed global store with 2 entries in "config" category
-        self._seed([
-            ("global config alpha", "config"),
-            ("global config beta", "config"),
-        ])
+        self._seed(
+            [
+                ("global config alpha", "config"),
+                ("global config beta", "config"),
+            ]
+        )
         # Seed project store with 3 entries in the same category
-        self._seed([
-            ("project config gamma", "config"),
-            ("project config delta", "config"),
-            ("project config epsilon", "config"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("project config gamma", "config"),
+                ("project config delta", "config"),
+                ("project config epsilon", "config"),
+            ],
+            target=self.project_memory,
+        )
 
         # Sanity check: each store has the right count
         self.assertEqual(self.memory.vector.count(), 2)
@@ -1464,15 +1537,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         text is not captured by the MagicMock ``console.print``.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global stat a", "code"),
-            ("global stat b", "config"),
-        ])
-        self._seed([
-            ("project stat c", "config"),
-            ("project stat d", "config"),
-            ("project stat e", "devops"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global stat a", "code"),
+                ("global stat b", "config"),
+            ]
+        )
+        self._seed(
+            [
+                ("project stat c", "config"),
+                ("project stat d", "config"),
+                ("project stat e", "devops"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1509,15 +1587,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         also shows project entries — all through the dispatcher chain.
         """
         # Seed global with 2 entries, project with 3 entries in same category
-        self._seed([
-            ("global list a", "test"),
-            ("global list b", "test"),
-        ])
-        self._seed([
-            ("project list c", "test"),
-            ("project list d", "test"),
-            ("project list e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global list a", "test"),
+                ("global list b", "test"),
+            ]
+        )
+        self._seed(
+            [
+                ("project list c", "test"),
+                ("project list d", "test"),
+                ("project list e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1577,15 +1660,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         the project scope — all through the dispatcher chain.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global clear a", "test"),
-            ("global clear b", "test"),
-        ])
-        self._seed([
-            ("project clear c", "test"),
-            ("project clear d", "test"),
-            ("project clear e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global clear a", "test"),
+                ("global clear b", "test"),
+            ]
+        )
+        self._seed(
+            [
+                ("project clear c", "test"),
+                ("project clear d", "test"),
+                ("project clear e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1594,11 +1682,13 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         self.app.messages.clear()
         self._cmd("/memory vector --project clear")
         self.assertEqual(
-            self.project_memory.vector.count(), 0,
+            self.project_memory.vector.count(),
+            0,
             "Expected project store to be cleared",
         )
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Expected global store to be untouched after --project clear",
         )
         self.assertTrue(
@@ -1611,7 +1701,8 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         self.app.messages.clear()
         self._cmd("/memory vector clear")
         self.assertEqual(
-            self.memory.vector.count(), 0,
+            self.memory.vector.count(),
+            0,
             "Expected global store to be cleared",
         )
         self.assertTrue(
@@ -1629,10 +1720,12 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         dispatcher chain.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global delete a", "test"),
-            ("global delete b", "test"),
-        ])
+        self._seed(
+            [
+                ("global delete a", "test"),
+                ("global delete b", "test"),
+            ]
+        )
         project_ids: list[str] = []
         for content, cat in [
             ("project delete c", "test"),
@@ -1651,15 +1744,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         self.app.messages.clear()
         self._cmd(f"/memory vector delete --project {target_id}")
         self.assertEqual(
-            self.project_memory.vector.count(), 2,
+            self.project_memory.vector.count(),
+            2,
             "Expected one project entry deleted",
         )
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Expected global store unaffected by project delete",
         )
         self.assertTrue(
-            any("deleted vector entry" in m.lower() and "project" in m.lower() for m in self.app.messages),
+            any(
+                "deleted vector entry" in m.lower() and "project" in m.lower()
+                for m in self.app.messages
+            ),
             f"Expected 'deleted' and 'project' in message: {self.app.messages}",
         )
         self.assertFalse(self.app.errors)
@@ -1669,11 +1767,13 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         self.app.messages.clear()
         self._cmd(f"/memory vector --project delete {target_id}")
         self.assertEqual(
-            self.project_memory.vector.count(), 1,
+            self.project_memory.vector.count(),
+            1,
             "Expected two project entries deleted",
         )
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Expected global store still unaffected",
         )
         self.assertFalse(self.app.errors)
@@ -1686,15 +1786,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         searches the project store through the dispatcher chain.
         """
         # Seed global with entries about one topic, project with another
-        self._seed([
-            ("python async await programming patterns", "code"),
-            ("python decorators and context managers", "code"),
-        ])
-        self._seed([
-            ("project configuration and deployment", "config"),
-            ("project env variables and secrets management", "config"),
-            ("project docker compose setup", "config"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("python async await programming patterns", "code"),
+                ("python decorators and context managers", "code"),
+            ]
+        )
+        self._seed(
+            [
+                ("project configuration and deployment", "config"),
+                ("project env variables and secrets management", "config"),
+                ("project docker compose setup", "config"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1744,15 +1849,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         chain — both non-destructive (counts unchanged).
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global rebuild a", "test"),
-            ("global rebuild b", "test"),
-        ])
-        self._seed([
-            ("project rebuild c", "test"),
-            ("project rebuild d", "test"),
-            ("project rebuild e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global rebuild a", "test"),
+                ("global rebuild b", "test"),
+            ]
+        )
+        self._seed(
+            [
+                ("project rebuild c", "test"),
+                ("project rebuild d", "test"),
+                ("project rebuild e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1801,15 +1911,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         self.app.messages.clear()
         self._cmd("/memory vector --project migrate")
         self.assertEqual(
-            self.project_memory.vector.count(), 3,
+            self.project_memory.vector.count(),
+            3,
             "Expected 3 project entries migrated",
         )
         self.assertEqual(
-            self.memory.vector.count(), 0,
+            self.memory.vector.count(),
+            0,
             "Global vector store should be untouched by --project migrate",
         )
         self.assertTrue(
-            any("migration complete" in m.lower() and "project" in m.lower() for m in self.app.messages),
+            any(
+                "migration complete" in m.lower() and "project" in m.lower()
+                for m in self.app.messages
+            ),
             f"Expected 'migration complete' and 'project' in message: {self.app.messages}",
         )
         self.assertFalse(self.app.errors)
@@ -1818,15 +1933,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         self.app.messages.clear()
         self._cmd("/memory vector migrate")
         self.assertEqual(
-            self.memory.vector.count(), 2,
+            self.memory.vector.count(),
+            2,
             "Expected 2 global entries migrated",
         )
         self.assertEqual(
-            self.project_memory.vector.count(), 3,
+            self.project_memory.vector.count(),
+            3,
             "Project vector store should be unaffected by global migrate",
         )
         self.assertTrue(
-            any("migration complete" in m.lower() and "global" in m.lower() for m in self.app.messages),
+            any(
+                "migration complete" in m.lower() and "global" in m.lower()
+                for m in self.app.messages
+            ),
             f"Expected 'migration complete' and 'global' in message: {self.app.messages}",
         )
         self.assertFalse(self.app.errors)
@@ -1841,15 +1961,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
         since categories outputs a Rich ``Table``.
         """
         # Seed global with 2 entries, project with 3 entries
-        self._seed([
-            ("global cat a", "code"),
-            ("global cat b", "config"),
-        ])
-        self._seed([
-            ("project cat c", "config"),
-            ("project cat d", "devops"),
-            ("project cat e", "test"),
-        ], target=self.project_memory)
+        self._seed(
+            [
+                ("global cat a", "code"),
+                ("global cat b", "config"),
+            ]
+        )
+        self._seed(
+            [
+                ("project cat c", "config"),
+                ("project cat d", "devops"),
+                ("project cat e", "test"),
+            ],
+            target=self.project_memory,
+        )
 
         self.assertEqual(self.memory.vector.count(), 2)
         self.assertEqual(self.project_memory.vector.count(), 3)
@@ -1901,15 +2026,20 @@ class TestVectorCommandsViaDispatcher(unittest.TestCase):
 
         try:
             # Seed global with 2 entries, project with 3 entries
-            self._seed([
-                ("global dl a", "code"),
-                ("global dl b", "config"),
-            ])
-            self._seed([
-                ("project dl c", "config"),
-                ("project dl d", "config"),
-                ("project dl e", "devops"),
-            ], target=self.project_memory)
+            self._seed(
+                [
+                    ("global dl a", "code"),
+                    ("global dl b", "config"),
+                ]
+            )
+            self._seed(
+                [
+                    ("project dl c", "config"),
+                    ("project dl d", "config"),
+                    ("project dl e", "devops"),
+                ],
+                target=self.project_memory,
+            )
 
             self.assertEqual(self.memory.vector.count(), 2)
             self.assertEqual(self.project_memory.vector.count(), 3)

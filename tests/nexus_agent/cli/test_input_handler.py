@@ -259,8 +259,10 @@ class TestKbhit(unittest.TestCase):
     def test_empty_queue_returns_false(self):
         self.app._key_queue = []
         # When no msvcrt or select, should return False
-        with patch("nexus_agent.cli.input_handler.msvcrt", None), \
-             patch("nexus_agent.cli.input_handler.select", None):
+        with (
+            patch("nexus_agent.cli.input_handler.msvcrt", None),
+            patch("nexus_agent.cli.input_handler.select", None),
+        ):
             self.assertFalse(self.app._kbhit())
 
     def test_msvcrt_kbhit(self):
@@ -272,8 +274,10 @@ class TestKbhit(unittest.TestCase):
     def test_msvcrt_kbhit_exception(self):
         mock_msvcrt = MagicMock()
         mock_msvcrt.kbhit.side_effect = OSError
-        with patch("nexus_agent.cli.input_handler.msvcrt", mock_msvcrt), \
-             patch("nexus_agent.cli.input_handler.select", None):
+        with (
+            patch("nexus_agent.cli.input_handler.msvcrt", mock_msvcrt),
+            patch("nexus_agent.cli.input_handler.select", None),
+        ):
             self.assertFalse(self.app._kbhit())
 
 
@@ -292,15 +296,19 @@ class TestReadByte(unittest.TestCase):
     def test_msvcrt_getch(self):
         mock_msvcrt = MagicMock()
         mock_msvcrt.getch.return_value = b"a"
-        with patch("nexus_agent.cli.input_handler.msvcrt", mock_msvcrt), \
-             patch("nexus_agent.cli.input_handler.termios", None):
+        with (
+            patch("nexus_agent.cli.input_handler.msvcrt", mock_msvcrt),
+            patch("nexus_agent.cli.input_handler.termios", None),
+        ):
             self.assertEqual(self.app._read_byte(), b"a")
 
     def test_msvcrt_getch_exception(self):
         mock_msvcrt = MagicMock()
         mock_msvcrt.getch.side_effect = OSError
-        with patch("nexus_agent.cli.input_handler.msvcrt", mock_msvcrt), \
-             patch("nexus_agent.cli.input_handler.termios", None):
+        with (
+            patch("nexus_agent.cli.input_handler.msvcrt", mock_msvcrt),
+            patch("nexus_agent.cli.input_handler.termios", None),
+        ):
             result = self.app._read_byte()
             # Falls through to stdin.read(1)
             self.assertEqual(result, b"")
@@ -393,11 +401,17 @@ class TestReadInputBasic(unittest.TestCase):
         def mock_read_byte():
             call_count[0] += 1
             if call_count[0] <= 5:
-                return b"h" if call_count[0] == 1 else \
-                       b"e" if call_count[0] == 2 else \
-                       b"l" if call_count[0] == 3 else \
-                       b"l" if call_count[0] == 4 else \
-                       b"o"
+                return (
+                    b"h"
+                    if call_count[0] == 1
+                    else b"e"
+                    if call_count[0] == 2
+                    else b"l"
+                    if call_count[0] == 3
+                    else b"l"
+                    if call_count[0] == 4
+                    else b"o"
+                )
             # kbhit returns True for the first read, but we need mock_kbhit too
             return b"\r"
 

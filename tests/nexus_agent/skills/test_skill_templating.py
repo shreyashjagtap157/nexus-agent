@@ -137,7 +137,7 @@ class TestRenderTemplateFilters(unittest.TestCase):
         self.assertEqual(out, "AB…")
 
     def test_default_filter_used(self):
-        out = render_template("{{x|default:\"fallback\"}}", {"x": None})
+        out = render_template('{{x|default:"fallback"}}', {"x": None})
         self.assertEqual(out, "fallback")
 
     def test_json_filter(self):
@@ -238,7 +238,7 @@ class TestLoadSkillWithTemplate(unittest.TestCase):
             "    type: string\n"
             "permission_level: read-only\n"
             "---\n"
-            "Hello, {{name}}! Welcome to {{project|default:\"NexusAgent\"}}.\n",
+            'Hello, {{name}}! Welcome to {{project|default:"NexusAgent"}}.\n',
             encoding="utf-8",
         )
         sk = load_skill_from_markdown(self.path)

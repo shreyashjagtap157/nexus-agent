@@ -186,9 +186,7 @@ class TestMemoryTool(unittest.TestCase):
         self.assertEqual(items[0]["content"], "remember this")
 
     def test_store_with_category(self):
-        out = self.tool.execute(
-            action="store", content="x", category="code_pattern"
-        )
+        out = self.tool.execute(action="store", content="x", category="code_pattern")
         self.assertIn("code_pattern", out)
 
     def test_store_empty_content(self):
@@ -199,9 +197,7 @@ class TestMemoryTool(unittest.TestCase):
 
     def test_update_content(self):
         eid = self.mm.store("v1")
-        out = self.tool.execute(
-            action="update", entry_id=eid, content="v2"
-        )
+        out = self.tool.execute(action="update", entry_id=eid, content="v2")
         self.assertIn("Updated", out)
         self.assertEqual(self.mm.get(eid)["content"], "v2")
 
@@ -225,9 +221,7 @@ class TestMemoryTool(unittest.TestCase):
 
     def test_update_empty_content(self):
         eid = self.mm.store("x")
-        out = self.tool.execute(
-            action="update", entry_id=eid, content=""
-        )
+        out = self.tool.execute(action="update", entry_id=eid, content="")
         self.assertIn("Error", out)
 
     def test_forget(self):

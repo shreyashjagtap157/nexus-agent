@@ -14,6 +14,7 @@ class TestPackageImports(unittest.TestCase):
             Orchestrator,
             Planner,
         )
+
         self.assertIsNotNone(AgentLoop)
         self.assertIsNotNone(Planner)
         self.assertIsNotNone(Executor)
@@ -26,6 +27,7 @@ class TestPackageImports(unittest.TestCase):
             ProviderFactory,
         )
         from nexus_agent.llm.providers.openai_provider import OpenAIProvider
+
         self.assertIsNotNone(LLMProvider)
         self.assertIsNotNone(ProviderFactory)
         self.assertIsNotNone(OpenAIProvider)
@@ -33,15 +35,18 @@ class TestPackageImports(unittest.TestCase):
     def test_memory_imports(self) -> None:
         """Verify memory imports."""
         from nexus_agent.memory.memory_manager import MemoryManager
+
         self.assertIsNotNone(MemoryManager)
 
     def test_tools_imports(self) -> None:
         """Verify tool imports."""
         from nexus_agent.tools.base import Tool
+
         self.assertIsNotNone(Tool)
 
     def test_mcp_imports(self) -> None:
         """Verify MCP imports."""
         from nexus_agent.mcp import MCPClient, StdioTransport
+
         self.assertIsNotNone(MCPClient)
         self.assertIsNotNone(StdioTransport)

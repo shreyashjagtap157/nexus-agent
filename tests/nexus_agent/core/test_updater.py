@@ -78,8 +78,9 @@ class TestGetInstalledVersion(unittest.TestCase):
                 # To force the "no source" path, we patch `getattr` itself.
                 with patch(
                     "nexus_agent.core.updater.getattr",
-                    side_effect=lambda obj, name, default=None: default
-                    if name == "__version__" else getattr(obj, name, default),
+                    side_effect=lambda obj, name, default=None: (
+                        default if name == "__version__" else getattr(obj, name, default)
+                    ),
                 ):
                     with self.assertRaises(ValueError):
                         get_installed_version()
@@ -93,98 +94,99 @@ class TestCheckForUpdate(unittest.TestCase):
         return r
 
     def test_returns_true_when_newer(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 200, {"info": {"version": "99.0.0"}}
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertTrue(info.available)
         self.assertEqual(info.latest, "99.0.0")
         self.assertEqual(info.current, "1.0.0")
 
     def test_returns_false_when_same(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 200, {"info": {"version": "1.0.0"}}
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertFalse(info.available)
         self.assertEqual(info.latest, "1.0.0")
 
     def test_returns_false_when_older(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 200, {"info": {"version": "0.5.0"}}
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertFalse(info.available)
 
     def test_404_response(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(404)
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertFalse(info.available)
         self.assertIn("404", info.error or "")
 
     def test_network_error(self):
         import httpx
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.side_effect = httpx.ConnectError("nope")
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertFalse(info.available)
         self.assertIn("nope", info.error or "")
 
     def test_malformed_json(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             r = self._mock_response(200)
             r.json.side_effect = ValueError("not json")
             ctx.__enter__.return_value.get.return_value = r
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertFalse(info.available)
         self.assertIn("not json", info.error or "")
 
     def test_no_version_in_response(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(200, {"info": {}})
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0")
         self.assertFalse(info.available)
         self.assertIn("No version", info.error or "")
 
     def test_uses_custom_package(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 200, {"info": {"version": "2.0.0"}}
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             info = check_for_update("1.0.0", package="other-pkg")
             called_url = ctx.__enter__.return_value.get.call_args.args[0]
         self.assertIn("other-pkg", called_url)
         self.assertTrue(info.available)
 
     def test_uses_timeout(self):
-        with patch("nexus_agent.core.updater.httpx.Client") as MockClient:
+        with patch("nexus_agent.core.updater.httpx.Client") as mock_client:
             ctx = MagicMock()
             ctx.__enter__.return_value.get.return_value = self._mock_response(
                 200, {"info": {"version": "1.0.0"}}
             )
-            MockClient.return_value = ctx
+            mock_client.return_value = ctx
             check_for_update("1.0.0", timeout_s=3.5)
-            client = MockClient.call_args.kwargs
+            client = mock_client.call_args.kwargs
             self.assertEqual(client["timeout"], 3.5)
 
     def test_pypi_url_constant(self):
