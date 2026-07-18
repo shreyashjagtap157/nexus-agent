@@ -120,7 +120,12 @@ class TestCheckCuda(unittest.TestCase):
     def test_nvcc_found(self, mock_run, mock_validate, mock_which):
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Thu_Feb_15_19:55:08_PST_2024\nCuda compilation tools, release 12.1, V12.1.66\n",
+            stdout=(
+                "nvcc: NVIDIA (R) Cuda compiler driver\n"
+                "Copyright (c) 2005-2024 NVIDIA Corporation\n"
+                "Built on Thu_Feb_15_19:55:08_PST_2024\n"
+                "Cuda compilation tools, release 12.1, V12.1.66\n"
+            ),
         )
         runtimes = _check_cuda()
         names = [r.name for r in runtimes]
@@ -226,7 +231,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"openvino": None, "openvino.runtime": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
