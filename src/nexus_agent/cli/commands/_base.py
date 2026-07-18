@@ -6,7 +6,7 @@ import sys
 from typing import Any
 
 try:
-    from blessed import Terminal
+    from blessed import Terminal  # type: ignore
 except ImportError:
     Terminal = None
 
