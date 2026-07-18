@@ -10,7 +10,7 @@ try:
 except ImportError:
     Terminal = None
 
-_term = Terminal()
+_term = Terminal() if Terminal else None
 
 SLASH_COMMANDS = [
     {"name": "/help", "description": "Show available commands"},
