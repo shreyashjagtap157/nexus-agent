@@ -355,7 +355,7 @@ class RenameTool(Tool):
 
             # Atomic rename
             os.replace(tmp_path, str(target))
-            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."  # noqa: E501
+            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
             # fallback to simple regex rename if ast unparse has quirks or is python version specific
             try:
@@ -381,6 +381,6 @@ class RenameTool(Tool):
                     shutil.copy2(target, bak_path)
 
                 os.replace(tmp_path, str(target))
-                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."  # noqa: E501
+                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."
             except (OSError, ValueError, UnicodeEncodeError) as re_err:
                 return f"Failed to rewrite file content: {re_err} (AST error: {e})"

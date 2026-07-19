@@ -47,7 +47,7 @@ class ShellTool(Tool):
             },
             "cwd": {
                 "type": "string",
-                "description": "Working directory for the command (optional, defaults to workspace)",  # noqa: E501
+                "description": "Working directory for the command (optional, defaults to workspace)",
                 "required": False,
             },
             "timeout": {

@@ -459,11 +459,11 @@ class TestEffortLevelCentersAndColors(unittest.TestCase):
 
     def test_center_offsets_are_precise(self):
         """Verify exact center offsets for each effort level."""
-        center_offsets = [25, 37, 46, 56, 65]
+        CENTER_OFFSETS = [25, 37, 46, 56, 65]
         levels = ["low", "medium", "high", "xhigh", "max"]
         label_widths = [3, 6, 4, 5, 3]
         for i, lab in enumerate(levels):
-            offset = center_offsets[i]
+            offset = CENTER_OFFSETS[i]
             self.assertIsInstance(offset, int)
             self.assertGreaterEqual(offset, 0)
             half = label_widths[i] // 2
@@ -474,20 +474,20 @@ class TestEffortLevelCentersAndColors(unittest.TestCase):
 
     def test_color_map_has_all_levels(self):
         """Verify every effort level has a corresponding ANSI color code."""
-        effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        self.assertIn("low", effort_colors)
-        self.assertIn("medium", effort_colors)
-        self.assertIn("high", effort_colors)
-        self.assertIn("xhigh", effort_colors)
-        self.assertIn("max", effort_colors)
-        self.assertEqual(effort_colors["low"], "32")
-        self.assertEqual(effort_colors["medium"], "36")
-        self.assertEqual(effort_colors["high"], "33")
-        self.assertEqual(effort_colors["xhigh"], "35")
-        self.assertEqual(effort_colors["max"], "31")
+        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
+        self.assertIn("low", EFFORT_COLORS)
+        self.assertIn("medium", EFFORT_COLORS)
+        self.assertIn("high", EFFORT_COLORS)
+        self.assertIn("xhigh", EFFORT_COLORS)
+        self.assertIn("max", EFFORT_COLORS)
+        self.assertEqual(EFFORT_COLORS["low"], "32")
+        self.assertEqual(EFFORT_COLORS["medium"], "36")
+        self.assertEqual(EFFORT_COLORS["high"], "33")
+        self.assertEqual(EFFORT_COLORS["xhigh"], "35")
+        self.assertEqual(EFFORT_COLORS["max"], "31")
 
     def test_marker_alignment_consistency(self):
         """Verify center offsets are strictly increasing and well-spaced."""
-        center_offsets = [25, 37, 46, 56, 65]
-        for i in range(1, len(center_offsets)):
-            self.assertGreater(center_offsets[i], center_offsets[i - 1])
+        CENTER_OFFSETS = [25, 37, 46, 56, 65]
+        for i in range(1, len(CENTER_OFFSETS)):
+            self.assertGreater(CENTER_OFFSETS[i], CENTER_OFFSETS[i - 1])
