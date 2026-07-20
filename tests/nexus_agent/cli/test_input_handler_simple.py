@@ -3,6 +3,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
+
 
 class _MockApp:
     """Minimal app that satisfies MinimalInputHandlerMixin attribute requirements."""
@@ -19,7 +21,6 @@ class _MockApp:
         self._rebuild_welcome = MagicMock()
 
 
-from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
 
 
 class TestReadInput(unittest.TestCase):
