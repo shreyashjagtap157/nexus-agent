@@ -119,12 +119,15 @@ class AgentCommandsMixin:
         right_w = total_w - left_w
 
         import sys as _sys
+        pad_str = ' ' * PAD
+        l_dash = '\u2500' * left_w
+        r_dash = '\u2500' * right_w
         lines = [
             "",
             "  Effort",
             "",
-            f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}{'\u2500' * left_w}\u252c{'\u2500' * right_w}",
+            f"{pad_str}Faster{' ' * (left_w - 6)}Smarter",
+            f"{pad_str}{l_dash}\u252c{r_dash}",
         ]
         lines.append(marker_line)
         lines.append(label_line)
