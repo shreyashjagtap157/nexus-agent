@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -21,7 +22,7 @@ from typing import Annotated, Any
 
 import psutil
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, WebSocketException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -431,6 +432,25 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("origin")
+    if origin is not None:
+        if origin == "null":
+            await websocket.close(code=1008, reason="CSWSH protection: Invalid origin")
+            return
+
+        parsed_origin = urllib.parse.urlparse(origin)
+        origin_hostname = parsed_origin.hostname
+
+        host_header = websocket.headers.get("host", "")
+        if host_header.startswith('['):
+            host = host_header[1:host_header.find(']')]
+        else:
+            host = host_header.split(':')[0]
+
+        if origin_hostname != host:
+            await websocket.close(code=1008, reason="CSWSH protection: Origin does not match Host")
+            return
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
@@ -438,7 +458,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Wait for user input prompt
-            data_str = await websocket.receive_text(max_size=65536)
+            data_str = await websocket.receive_text()
+            if len(data_str) > 65536:
+                await websocket.close(code=1009, reason="Message too large")
+                break
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
             mode_str = data.get("mode", "auto").lower()
@@ -540,6 +563,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket client disconnected for session: {session_id}")
+    except WebSocketException:
+        logger.warning(f"WebSocket client closed with exception for session: {session_id}")
     except (RuntimeError, json.JSONDecodeError, OSError):
         logger.exception("WebSocket endpoint error")
 
