@@ -121,9 +121,7 @@ class AgentCommandsMixin:
         left_w = total_w // 2
         right_w = total_w - left_w
 
-        from typing import Any
         import sys as _sys
-        from typing import Any
 
         pad_str = " " * PAD
         left_str = "\u2500" * left_w
@@ -147,9 +145,7 @@ class AgentCommandsMixin:
         _sys.stdout.flush()
 
     def _clear_selector(self):
-        from typing import Any
         import sys as _sys
-        from typing import Any
 
         _sys.stdout.write("\033[1B\033[J\033[1A")
         _sys.stdout.flush()
@@ -266,7 +262,7 @@ class AgentCommandsMixin:
                 "  [dim]  /memory vector query <text>      Semantic similarity search[/dim]"
             )
             self.console.print(
-                "  [dim]  /memory vector migrate            Re-embed all FTS5 memories into vector store[/dim]"
+                "  [dim]  /memory vector migrate            Re-embed all FTS5 memories into vector store[/dim]"  # noqa: E501
             )
             self.console.print(
                 "  [dim]  /memory vector download           Download ONNX embedding model[/dim]"
@@ -287,7 +283,7 @@ class AgentCommandsMixin:
 
         Set by ``_cmd_memory_vector()`` based on the ``--project`` flag.
         """
-        return self._project_memory if getattr(self, "_vector_use_project", False) else self._memory
+        return self._project_memory if getattr(self, "_vector_use_project", False) else self._memory  # noqa: E501
 
     @staticmethod
     def _parse_project_flag_from_args(arg_str: str) -> tuple[bool, str]:
@@ -329,7 +325,7 @@ class AgentCommandsMixin:
         if not stripped:
             label = "project" if self._vector_use_project else "global"
             self.r.system_message(
-                "Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild"
+                "Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild"  # noqa: E501
             )
             return
 
@@ -359,7 +355,7 @@ class AgentCommandsMixin:
             self._cmd_memory_vector_categories()
         else:
             self.r.system_message(
-                "Usage: /memory vector stats | query <text> | list [N] | filter <category> | categories | migrate | download | delete <entry_id> | clear | rebuild"
+                "Usage: /memory vector stats | query <text> | list [N] | filter <category> | categories | migrate | download | delete <entry_id> | clear | rebuild"  # noqa: E501
             )
 
     def _cmd_memory_vector_stats(self, args: str = ""):
@@ -405,7 +401,7 @@ class AgentCommandsMixin:
                 self.console.print("  [dim]✓ ONNX embedding model loaded and ready[/dim]")
             elif mode == "ngram":
                 self.console.print(
-                    "  [dim]ℹ Using ngram fallback — run /memory vector download for ONNX model[/dim]"
+                    "  [dim]ℹ Using ngram fallback — run /memory vector download for ONNX model[/dim]"  # noqa: E501
                 )
         except Exception as exc:
             self.r.error(f"Failed to get vector store stats: {exc}")
@@ -445,7 +441,7 @@ class AgentCommandsMixin:
 
             self.console.print()
             self.console.print(
-                f"  [bold]Vector store ({label}):[/bold] [green]{total}[/green] total entries, showing [cyan]{min(show, len(entries))}[/cyan]"
+                f"  [bold]Vector store ({label}):[/bold] [green]{total}[/green] total entries, showing [cyan]{min(show, len(entries))}[/cyan]"  # noqa: E501
             )
             self.console.print()
 
@@ -497,7 +493,7 @@ class AgentCommandsMixin:
 
             self.console.print()
             self.console.print(
-                f"  [bold]Categories ({label}):[/bold] [green]{len(cats)}[/green] unique, [cyan]{total}[/cyan] total entries"
+                f"  [bold]Categories ({label}):[/bold] [green]{len(cats)}[/green] unique, [cyan]{total}[/cyan] total entries"  # noqa: E501
             )
             self.console.print()
 
@@ -557,7 +553,7 @@ class AgentCommandsMixin:
             label = "project" if getattr(self, "_vector_use_project", False) else "global"
             self.console.print()
             self.console.print(
-                f"  [bold]Category ({label}):[/bold] [cyan]{category}[/cyan]  [dim]({len(entries)} entries)[/dim]"
+                f"  [bold]Category ({label}):[/bold] [cyan]{category}[/cyan]  [dim]({len(entries)} entries)[/dim]"  # noqa: E501
             )
             self.console.print()
 
@@ -603,7 +599,7 @@ class AgentCommandsMixin:
             before = vs.count()
             if before == 0:
                 self.r.system_message(
-                    "Vector store is empty — nothing to rebuild. Run /memory vector migrate to populate from FTS5."
+                    "Vector store is empty — nothing to rebuild. Run /memory vector migrate to populate from FTS5."  # noqa: E501
                 )
                 return
 
@@ -635,7 +631,7 @@ class AgentCommandsMixin:
             deleted = vs.clear()
             label = "project" if getattr(self, "_vector_use_project", False) else "global"
             self.r.system_message(
-                f"Cleared {deleted} vector embeddings ({label}). FTS5 memories untouched. Run /memory vector migrate to re-populate."
+                f"Cleared {deleted} vector embeddings ({label}). FTS5 memories untouched. Run /memory vector migrate to re-populate."  # noqa: E501
             )
         except Exception as exc:
             self.r.error(f"Clear failed: {exc}")
@@ -740,7 +736,7 @@ class AgentCommandsMixin:
                         pct = int((done / total) * 100)
                         bar = "█" * (pct // 4) + "░" * (25 - pct // 4)
                         self.console.print(
-                            f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] new  [dim]skipped {skipped}[/dim]"
+                            f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] new  [dim]skipped {skipped}[/dim]"  # noqa: E501
                         )
 
                 offset += PAGE_SIZE
@@ -810,7 +806,7 @@ class AgentCommandsMixin:
 
             label = "project" if getattr(self, "_vector_use_project", False) else "global"
             self.console.print()
-            self.console.print(f"  [bold]Semantic search ({label}):[/bold] [dim]{query[:80]}[/dim]")
+            self.console.print(f"  [bold]Semantic search ({label}):[/bold] [dim]{query[:80]}[/dim]")  # noqa: E501
             self.console.print(f"  [dim]Found {len(results)} results[/dim]")
             self.console.print()
 
@@ -831,7 +827,7 @@ class AgentCommandsMixin:
                     score_color = "dim"
 
                 self.console.print(
-                    f"  [{score_color}]{bar}[/{score_color}] [{score_color}]{pct:>2}%[/{score_color}]  [{cat}] {content}"
+                    f"  [{score_color}]{bar}[/{score_color}] [{score_color}]{pct:>2}%[/{score_color}]  [{cat}] {content}"  # noqa: E501
                 )
 
             self.console.print()
