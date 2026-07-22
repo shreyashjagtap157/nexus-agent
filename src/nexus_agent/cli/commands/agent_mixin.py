@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import subprocess
 import time
+from typing import Any
 
 from nexus_agent.core.config import save_config
 
@@ -90,7 +91,7 @@ class AgentCommandsMixin:
         effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
         pad = 22
 
-        plain_labels = [str(l) for l in labels]
+        plain_labels = [str(label) for label in labels]
         widths = [len(w) for w in plain_labels]
         gap = 4
         total_w = sum(widths) + gap * (len(widths) - 1)
@@ -304,7 +305,7 @@ class AgentCommandsMixin:
                     break
 
         if not stripped:
-            label = "project" if self._vector_use_project else "global"
+            _ = "project" if self._vector_use_project else "global"
             self.r.system_message("Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")  # noqa: E501
             return
 
