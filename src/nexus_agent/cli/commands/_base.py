@@ -5,7 +5,10 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from blessed import Terminal
+try:
+    from blessed import Terminal
+except ImportError:
+    Terminal = None
 
 _term = Terminal()
 
