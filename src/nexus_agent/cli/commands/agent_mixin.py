@@ -123,7 +123,7 @@ class AgentCommandsMixin:
             "",
             "  Effort",
             "",
-            " " * PAD + "Faster" + " " * (left_w - 6) + "Smarter",
+            " " * PAD + "Faster" + " " * max(0, left_w - 6) + "Smarter",
             " " * PAD + "\u2500" * left_w + "\u252c" + "\u2500" * right_w,
         ]
         lines.append(marker_line)
