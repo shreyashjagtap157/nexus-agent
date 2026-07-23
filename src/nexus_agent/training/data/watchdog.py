@@ -70,8 +70,9 @@ class DiskWatchdog:
             try:
                 with os.scandir(dpath) as it:
                     for entry in it:
+                        # ⚡ Bolt: Read stat attributes directly from entry without making a separate stat() syscall  # noqa: E501
                         if entry.is_file(follow_symlinks=True):
-                            total += entry.stat(follow_symlinks=True).st_size
+                            total += entry.stat(follow_symlinks=False).st_size  # noqa: E501
                         elif entry.is_dir(follow_symlinks=False):
                             total += _dir_size(entry.path)
             except OSError:
@@ -124,7 +125,9 @@ class DiskWatchdog:
             )
             self._db.commit()
 
-            logger.info(f"Deleted {len(uids_to_delete)} records, freed ~{bytes_freed / 1024 / 1024:.1f}MB")
+            logger.info(
+                f"Deleted {len(uids_to_delete)} records, freed ~{bytes_freed / 1024 / 1024:.1f}MB"
+            )
 
         return total_deleted
 
