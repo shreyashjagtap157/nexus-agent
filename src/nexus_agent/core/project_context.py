@@ -9,6 +9,7 @@ Design notes:
 - Walks the workspace tree looking for matching filenames, but does NOT
   recurse into `node_modules`, `.git`, `__pycache__`, `.venv`, etc.
 - Walks UP the directory chain to find rules that apply to the project as
+import os
   a whole (e.g. monorepo with `AGENTS.md` at the repo root).
 - Guards against prompt injection: any file whose lowercase content
   contains a `danger_keywords` entry is skipped (and logged).
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
