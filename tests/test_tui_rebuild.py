@@ -33,7 +33,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
              patch("subprocess.run") as mock_run:
 
             # Mock git diff
-            mock_run.return_value = MagicMock(returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n")
+            mock_run.return_value = MagicMock(returncode=0, stdout="12\t5\tfile1.py\n2\t1\tfile2.py\n")  # noqa: E501
 
             self.renderer.welcome(
                 model_name="Llama-3-8B-Q4",
@@ -49,7 +49,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             # Retrieve the calls to sys.stdout.write
             written_data = "".join(call[0][0] for call in stdout_mock.call_args_list)
 
-            # Ensure model name, CPU/GPU stats, RAM stats, token IO, context, git diff and processes are present
+            # Ensure model name, CPU/GPU stats, RAM stats, token IO, context, git diff and processes are present  # noqa: E501
             self.assertIn("Llama-3-8B-Q4", written_data)
             self.assertIn("Mem: 4.0G/16G", written_data)
             self.assertIn("CPU: 4t", written_data)
@@ -207,7 +207,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             mock_db.get_path.assert_called_with("Nemotron 3 Nano 4B")
 
     def test_workspace_session_auto_resume(self):
-        """Verify the session orchestrator resumes the last session by default unless new_session is True."""
+        """Verify the session orchestrator resumes the last session by default unless new_session is True."""  # noqa: E501
         from pathlib import Path
         app = NexusApp(quiet=True, workspace=Path("/mock/workspace"))
         self.addCleanup(app._cleanup)
@@ -281,7 +281,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
                     sys.path.remove(expected_dir)
 
     def test_custom_model_tuning_parameters(self):
-        """Verify that model tuning parameters are validated and passed to LocalEngine constructor."""
+        """Verify that model tuning parameters are validated and passed to LocalEngine constructor."""  # noqa: E501
         from nexus_agent.llm.runtime_manager import RuntimeManager
 
         config = {

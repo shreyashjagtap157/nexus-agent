@@ -207,8 +207,14 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(len(runtimes), 1)
             self.assertEqual(runtimes[0].provider, "openvino")
 
-    def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+    @patch('nexus_agent.cli.runtimes._check_tpu', return_value=[])
+    @patch('nexus_agent.cli.runtimes._check_rocm', return_value=[])
+    @patch('nexus_agent.cli.runtimes._check_vulkan', return_value=[])
+    @patch('nexus_agent.cli.runtimes._check_cuda', return_value=[])
+    @patch('nexus_agent.cli.runtimes._check_cpu', return_value=[])
+    def test_no_openvino(self, mock_cpu, mock_cuda, mock_vulkan, mock_rocm, mock_tpu):
+
+        with patch.dict("sys.modules", {"openvino": None, "openvino.runtime": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 

@@ -49,9 +49,13 @@ class EpisodicMemory(SQLiteStore):
                 CREATE INDEX IF NOT EXISTS idx_episodes_created ON episodes(created_at);
             """
 
-    def save_session(self, session_id: str, summary: str,
-                     messages_count: int = 0,
-                     metadata: dict[str, Any] | None = None) -> None:
+    def save_session(
+        self,
+        session_id: str,
+        summary: str,
+        messages_count: int = 0,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Save a session summary."""
         if not session_id or not summary:
             return
@@ -60,7 +64,13 @@ class EpisodicMemory(SQLiteStore):
             conn.execute(
                 "INSERT INTO episodes (session_id, summary, messages_count, metadata, created_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (session_id, summary, max(0, messages_count), json.dumps(metadata or {}), time.time()),
+                (
+                    session_id,
+                    summary,
+                    max(0, messages_count),
+                    json.dumps(metadata or {}),
+                    time.time(),
+                ),
             )
             conn.commit()
 
@@ -68,7 +78,7 @@ class EpisodicMemory(SQLiteStore):
         """Sanitize search query for safe FTS5 MATCH queries."""
         terms = []
         for term in query.split():
-            clean_term = term.replace('"', '').replace("'", "''")
+            clean_term = term.replace('"', "").replace("'", "''")
             if clean_term:
                 terms.append(f'"{clean_term}"')
         return " AND ".join(terms) if terms else ""
@@ -94,7 +104,7 @@ class EpisodicMemory(SQLiteStore):
                     (safe_query, limit),
                 )
             except sqlite3.OperationalError:
-                escaped = query.replace('%', '\\%').replace('_', '\\_')
+                escaped = query.replace("%", "\\%").replace("_", "\\_")
                 cursor = conn.execute(
                     "SELECT *, 0 as rank FROM episodes WHERE summary LIKE ? ESCAPE '\\' LIMIT ?",
                     (f"%{escaped}%", limit),
@@ -118,5 +128,3 @@ class EpisodicMemory(SQLiteStore):
                 (limit,),
             )
             return [dict(row) for row in cursor]
-
-

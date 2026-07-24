@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import numpy as np
+
     HAS_NUMPY = True
 except ImportError:
     np = None
@@ -30,6 +31,7 @@ except ImportError:
 
 try:
     import onnxruntime as ort
+
     HAS_ONNX = True
 except ImportError:
     ort = None
@@ -69,7 +71,9 @@ class EmbeddingEngine:
     ONNX_MODEL_REPO = "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx"
 
     def __init__(self, model_dir: str | Path | None = None):
-        self._model_dir = Path(model_dir) if model_dir else Path.home() / ".nexus-agent" / "models" / "embeddings"
+        self._model_dir = (
+            Path(model_dir) if model_dir else Path.home() / ".nexus-agent" / "models" / "embeddings"
+        )
         self._model_dir.mkdir(parents=True, exist_ok=True)
 
         self._mode: str = "ngram"  # fallback default
@@ -108,7 +112,9 @@ class EmbeddingEngine:
             so = ort.SessionOptions()
             so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             self._session = ort.InferenceSession(
-                str(model_path), so, providers=["CPUExecutionProvider"],
+                str(model_path),
+                so,
+                providers=["CPUExecutionProvider"],
             )
             with open(tokenizer_path, encoding="utf-8") as f:
                 self._tokenizer_json = json.load(f)
@@ -197,7 +203,9 @@ class EmbeddingEngine:
             tokens = self._tokenize_onnx(text)
             input_ids = np.array([tokens["input_ids"]], dtype=np.int64)
             attention_mask = np.array([tokens["attention_mask"]], dtype=np.int64)
-            token_type_ids = np.array([tokens.get("token_type_ids", [0] * len(tokens["input_ids"]))], dtype=np.int64)
+            token_type_ids = np.array(
+                [tokens.get("token_type_ids", [0] * len(tokens["input_ids"]))], dtype=np.int64
+            )
 
             result = self._session.run(
                 None,
@@ -260,7 +268,7 @@ class EmbeddingEngine:
             return ids
 
         tokens = ["[CLS]"]
-        for word in _normalize(text).split()[:max_len - 2]:
+        for word in _normalize(text).split()[: max_len - 2]:
             tokens.append(word)
         tokens.append("[SEP]")
 
@@ -302,10 +310,10 @@ class EmbeddingEngine:
         ngrams: list[str] = []
         # 2-grams
         for i in range(len(text) - 1):
-            ngrams.append(text[i:i + 2])
+            ngrams.append(text[i : i + 2])
         # 3-grams
         for i in range(len(text) - 2):
-            ngrams.append(text[i:i + 3])
+            ngrams.append(text[i : i + 3])
 
         if not ngrams:
             return vec
@@ -327,6 +335,7 @@ class EmbeddingEngine:
 # ═══════════════════════════════════════════════════════════════════════
 # Convenience
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     """Cosine similarity between two vectors.

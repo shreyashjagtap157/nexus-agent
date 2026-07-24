@@ -151,7 +151,7 @@ class TestRetryAfterSeconds(unittest.TestCase):
 
     def test_ignores_http_date(self):
         req = httpx.Request("GET", "https://x")
-        resp = httpx.Response(429, request=req, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"})
+        resp = httpx.Response(429, request=req, headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"})  # noqa: E501
         err = httpx.HTTPStatusError("x", request=req, response=resp)
         self.assertIsNone(_retry_after_seconds(err))
 
