@@ -127,7 +127,7 @@ class SessionCommandsMixin:
                     return
                 for cp in checkpoints[:10]:
                     self.console.print(
-                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"
+                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"  # noqa: E501
                     )
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
