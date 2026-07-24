@@ -162,17 +162,19 @@ class VectorStore(SQLiteStore):
                 vec = self._unpack(row["embedding"])
                 score = cosine_similarity(query_vec, vec)
                 if score >= min_score:
-                    scored.append((
-                        score,
-                        {
-                            "id": row["entry_id"],
-                            "content": row["content"],
-                            "category": row["category"],
-                            "source": "vector",
-                            "score": score,
-                            "updated_at": row["updated_at"],
-                        },
-                    ))
+                    scored.append(
+                        (
+                            score,
+                            {
+                                "id": row["entry_id"],
+                                "content": row["content"],
+                                "category": row["category"],
+                                "source": "vector",
+                                "score": score,
+                                "updated_at": row["updated_at"],
+                            },
+                        )
+                    )
 
         scored.sort(key=lambda x: x[0], reverse=True)
         return [entry for _, entry in scored[:limit]]
@@ -211,8 +213,9 @@ class VectorStore(SQLiteStore):
             row = conn.execute("SELECT COUNT(*) as n FROM embeddings").fetchone()
             return row["n"] if row else 0
 
-    def list_all(self, limit: int = 50, offset: int = 0,
-                  category: str | None = None) -> list[dict[str, Any]]:
+    def list_all(
+        self, limit: int = 50, offset: int = 0, category: str | None = None
+    ) -> list[dict[str, Any]]:
         """Enumerate stored embeddings, newest first.
 
         Args:

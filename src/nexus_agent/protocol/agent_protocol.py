@@ -28,6 +28,7 @@ from xml.etree import ElementTree as ET
 # Enums
 # =============================================================================
 
+
 class AgentRole(Enum):
     ARCHITECT = "architect"
     WORKER = "worker"
@@ -81,6 +82,7 @@ class ToolCallStatus(Enum):
 # =============================================================================
 # Tool Call Formats (supports both OpenAI and Anthropic)
 # =============================================================================
+
 
 @dataclass
 class ToolParameter:
@@ -187,6 +189,7 @@ class ToolCall:
 # Core Data Classes
 # =============================================================================
 
+
 @dataclass
 class MemoryEntry:
     key: str
@@ -269,6 +272,7 @@ class ReasoningStep:
 # Execution Event Log
 # =============================================================================
 
+
 class EventLogger:
     """Immutable execution event log."""
 
@@ -277,12 +281,14 @@ class EventLogger:
         self.events: list[dict[str, Any]] = []
 
     def log(self, event_type: str, **data):
-        self.events.append({
-            "event": event_type,
-            "session_id": self.session_id,
-            "timestamp": time.time(),
-            **data,
-        })
+        self.events.append(
+            {
+                "event": event_type,
+                "session_id": self.session_id,
+                "timestamp": time.time(),
+                **data,
+            }
+        )
 
     def to_jsonl(self) -> str:
         return "\n".join(json.dumps(e) for e in self.events)
@@ -301,6 +307,7 @@ class EventLogger:
 # Agent Protocol — XML Input Serializer
 # =============================================================================
 
+
 class AgentInputSerializer:
     """
     Serializes agent state to XML format for LLM prompts.
@@ -312,8 +319,12 @@ class AgentInputSerializer:
             name="file_read",
             description="Read contents of a file",
             parameters=[
-                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),
-                ToolParameter(name="line_start", type="integer", description="Start line (optional)"),
+                ToolParameter(
+                    name="path", type="string", description="Absolute path to file", required=True
+                ),
+                ToolParameter(
+                    name="line_start", type="integer", description="Start line (optional)"
+                ),
                 ToolParameter(name="line_end", type="integer", description="End line (optional)"),
             ],
         ),
@@ -321,34 +332,67 @@ class AgentInputSerializer:
             name="file_write",
             description="Write content to a file (creates or overwrites)",
             parameters=[
-                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),
-                ToolParameter(name="content", type="string", description="Full file content to write", required=True),
+                ToolParameter(
+                    name="path", type="string", description="Absolute path to file", required=True
+                ),
+                ToolParameter(
+                    name="content",
+                    type="string",
+                    description="Full file content to write",
+                    required=True,
+                ),
             ],
         ),
         ToolDefinition(
             name="file_edit",
             description="Edit specific content in a file using old/new content matching",
             parameters=[
-                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),
-                ToolParameter(name="old_content", type="string", description="Exact content to replace", required=True),
-                ToolParameter(name="new_content", type="string", description="Replacement content", required=True),
+                ToolParameter(
+                    name="path", type="string", description="Absolute path to file", required=True
+                ),
+                ToolParameter(
+                    name="old_content",
+                    type="string",
+                    description="Exact content to replace",
+                    required=True,
+                ),
+                ToolParameter(
+                    name="new_content",
+                    type="string",
+                    description="Replacement content",
+                    required=True,
+                ),
             ],
         ),
         ToolDefinition(
             name="command",
             description="Execute a shell command",
             parameters=[
-                ToolParameter(name="command_string", type="string", description="Command to execute", required=True),
+                ToolParameter(
+                    name="command_string",
+                    type="string",
+                    description="Command to execute",
+                    required=True,
+                ),
                 ToolParameter(name="working_dir", type="string", description="Working directory"),
-                ToolParameter(name="timeout_seconds", type="integer", description="Timeout in seconds", default=60),
+                ToolParameter(
+                    name="timeout_seconds",
+                    type="integer",
+                    description="Timeout in seconds",
+                    default=60,
+                ),
             ],
         ),
         ToolDefinition(
             name="web_search",
             description="Search the web for information",
             parameters=[
-                ToolParameter(name="query", type="string", description="Search query", required=True),
-                ToolParameter(name="num_results", type="integer", description="Number of results", default=5),
+                ToolParameter(
+                    name="query", type="string", description="Search query", required=True
+                ),
+                ToolParameter(
+                    name="num_results", type="integer", description="Number of results", default=5
+                ),
             ],
         ),
     ]
@@ -395,8 +439,14 @@ class AgentInputSerializer:
         identity = ET.SubElement(root, "agent_identity")
         ET.SubElement(identity, "name").text = self.agent_info.name or self.agent_info.id
         ET.SubElement(identity, "role").text = self.agent_info.role.value
-        ET.SubElement(identity, "capabilities").text = ", ".join(self.agent_info.capabilities) if self.agent_info.capabilities else "general-purpose"
-        ET.SubElement(identity, "limitations").text = ", ".join(self.agent_info.limitations) if self.agent_info.limitations else "none"
+        ET.SubElement(identity, "capabilities").text = (
+            ", ".join(self.agent_info.capabilities)
+            if self.agent_info.capabilities
+            else "general-purpose"
+        )
+        ET.SubElement(identity, "limitations").text = (
+            ", ".join(self.agent_info.limitations) if self.agent_info.limitations else "none"
+        )
 
         ET.SubElement(root, "goal").text = self.goal
 
@@ -417,19 +467,25 @@ class AgentInputSerializer:
             if self.memory.get("working"):
                 ET.SubElement(mem_el, "working_memory").text = str(self.memory.get("working", ""))
             if self.memory.get("long_term"):
-                ET.SubElement(mem_el, "long_term_memory").text = str(self.memory.get("long_term", ""))
+                ET.SubElement(mem_el, "long_term_memory").text = str(
+                    self.memory.get("long_term", "")
+                )
 
         reasoning_el = ET.SubElement(root, "reasoning_config")
         ET.SubElement(reasoning_el, "thinking_enabled").text = str(self.thinking_enabled).lower()
         ET.SubElement(reasoning_el, "thinking_depth").text = str(self.reasoning_depth)
-        ET.SubElement(reasoning_el, "self_critique_enabled").text = str(self.self_critique_enabled).lower()
+        ET.SubElement(reasoning_el, "self_critique_enabled").text = str(
+            self.self_critique_enabled
+        ).lower()
 
         if self.multi_agent_roster:
             roster_el = ET.SubElement(root, "agent_roster")
             for agent in self.multi_agent_roster:
                 agent_el = ET.SubElement(roster_el, "agent", id=agent.id)
                 ET.SubElement(agent_el, "role").text = agent.role.value
-                ET.SubElement(agent_el, "capabilities").text = ", ".join(agent.capabilities) if agent.capabilities else "general-purpose"
+                ET.SubElement(agent_el, "capabilities").text = (
+                    ", ".join(agent.capabilities) if agent.capabilities else "general-purpose"
+                )
 
         if self.pending_delegations:
             for d in self.pending_delegations:
@@ -503,6 +559,7 @@ class AgentInputSerializer:
 # Agent Protocol — JSON Output Parser
 # =============================================================================
 
+
 class AgentOutputParser:
     """
     Parses JSON output from LLM into structured agent operations.
@@ -547,14 +604,17 @@ class AgentOutputParser:
         """Extract thinking/reasoning steps."""
         thinking = self.data.get("thinking", [])
         if isinstance(thinking, list):
-            return [ReasoningStep(
-                step=i + 1,
-                observation=t.get("observation", ""),
-                hypothesis=t.get("hypothesis", ""),
-                reasoning=t.get("reasoning", t.get("thought", "")),
-                confidence=t.get("confidence", 0.5),
-                halted_early=t.get("halted_early", False),
-            ) for i, t in enumerate(thinking)]
+            return [
+                ReasoningStep(
+                    step=i + 1,
+                    observation=t.get("observation", ""),
+                    hypothesis=t.get("hypothesis", ""),
+                    reasoning=t.get("reasoning", t.get("thought", "")),
+                    confidence=t.get("confidence", 0.5),
+                    halted_early=t.get("halted_early", False),
+                )
+                for i, t in enumerate(thinking)
+            ]
         return []
 
     def get_reasoning(self) -> str:
@@ -592,17 +652,19 @@ class AgentOutputParser:
             op_type = op.get("type", "")
             if op_type not in ("file_read", "file_write", "file_edit"):
                 continue
-            file_ops.append(FileOperation(
-                path=op.get("path", ""),
-                content=op.get("content"),
-                old_content=op.get("old_content"),
-                new_content=op.get("new_content"),
-                line_start=op.get("line_start"),
-                line_end=op.get("line_end"),
-                reason=op.get("reason", ""),
-                operation_type=op_type.replace("file_", ""),
-                status=TaskStatus(op.get("status", "pending")),
-            ))
+            file_ops.append(
+                FileOperation(
+                    path=op.get("path", ""),
+                    content=op.get("content"),
+                    old_content=op.get("old_content"),
+                    new_content=op.get("new_content"),
+                    line_start=op.get("line_start"),
+                    line_end=op.get("line_end"),
+                    reason=op.get("reason", ""),
+                    operation_type=op_type.replace("file_", ""),
+                    status=TaskStatus(op.get("status", "pending")),
+                )
+            )
         return file_ops
 
     def get_commands(self) -> list[Command]:
@@ -612,13 +674,15 @@ class AgentOutputParser:
         for op in ops:
             if op.get("type") != "command":
                 continue
-            cmds.append(Command(
-                command_string=op.get("command_string", op.get("command", "")),
-                working_dir=op.get("working_dir", ""),
-                reason=op.get("reason", ""),
-                timeout_seconds=op.get("timeout_seconds", 60),
-                status=TaskStatus(op.get("status", "pending")),
-            ))
+            cmds.append(
+                Command(
+                    command_string=op.get("command_string", op.get("command", "")),
+                    working_dir=op.get("working_dir", ""),
+                    reason=op.get("reason", ""),
+                    timeout_seconds=op.get("timeout_seconds", 60),
+                    status=TaskStatus(op.get("status", "pending")),
+                )
+            )
         return cmds
 
     def get_tool_calls(self) -> list[ToolCall]:
@@ -633,12 +697,14 @@ class AgentOutputParser:
                 elif "name" in call:
                     calls.append(ToolCall.from_anthropic(call))
                 else:
-                    calls.append(ToolCall(
-                        id=call.get("id", f"call_{uuid.uuid4().hex[:8]}"),
-                        tool_name=call.get("tool_name", call.get("name", "")),
-                        args=call.get("args", call.get("arguments", {})),
-                        status=ToolCallStatus(call.get("status", "pending")),
-                    ))
+                    calls.append(
+                        ToolCall(
+                            id=call.get("id", f"call_{uuid.uuid4().hex[:8]}"),
+                            tool_name=call.get("tool_name", call.get("name", "")),
+                            args=call.get("args", call.get("arguments", {})),
+                            status=ToolCallStatus(call.get("status", "pending")),
+                        )
+                    )
         return calls
 
     def get_delegations(self) -> list[Delegation]:
@@ -648,13 +714,15 @@ class AgentOutputParser:
         delegations = []
         for d in delegated:
             if isinstance(d, dict):
-                delegations.append(Delegation(
-                    to_agent=d.get("to", ""),
-                    task=d.get("task", ""),
-                    task_id=d.get("task_id", f"task_{uuid.uuid4().hex[:8]}"),
-                    constraints=d.get("constraints", ""),
-                    status=TaskStatus.DELEGATED,
-                ))
+                delegations.append(
+                    Delegation(
+                        to_agent=d.get("to", ""),
+                        task=d.get("task", ""),
+                        task_id=d.get("task_id", f"task_{uuid.uuid4().hex[:8]}"),
+                        constraints=d.get("constraints", ""),
+                        status=TaskStatus.DELEGATED,
+                    )
+                )
         return delegations
 
     def get_final_answer(self) -> str:
@@ -671,10 +739,7 @@ class AgentOutputParser:
 
     def has_pending_operations(self) -> bool:
         ops = self.data.get("operations", [])
-        return any(
-            op.get("status") in ("pending", None)
-            for op in ops
-        )
+        return any(op.get("status") in ("pending", None) for op in ops)
 
     def get_next_pending_operation(self) -> dict[str, Any] | None:
         for op in self.data.get("operations", []):
@@ -686,6 +751,7 @@ class AgentOutputParser:
 # =============================================================================
 # Protocol — Main Entry Point
 # =============================================================================
+
 
 class AgentProtocol:
     """
@@ -727,7 +793,8 @@ class AgentProtocol:
         agent_info = AgentInfo(
             id=self.session_id,
             role=agent_role,
-            capabilities=agent_capabilities or ["code_generation", "file_operations", "testing", "reasoning"],
+            capabilities=agent_capabilities
+            or ["code_generation", "file_operations", "testing", "reasoning"],
             name=agent_name or agent_role.value,
         )
 
@@ -752,19 +819,33 @@ class AgentProtocol:
         parser = AgentOutputParser(raw_output)
 
         for step in parser.get_thinking():
-            self.event_logger.log("thought_step", step=step.step, confidence=step.confidence, halted_early=step.halted_early)
+            self.event_logger.log(
+                "thought_step",
+                step=step.step,
+                confidence=step.confidence,
+                halted_early=step.halted_early,
+            )
 
         for op in parser.get_file_operations():
-            self.event_logger.log("operation_pending", type=op.operation_type, path=op.path, status=op.status.value)
+            self.event_logger.log(
+                "operation_pending", type=op.operation_type, path=op.path, status=op.status.value
+            )
 
         for cmd in parser.get_commands():
-            self.event_logger.log("operation_pending", type="command", command=cmd.command_string, status=cmd.status.value)
+            self.event_logger.log(
+                "operation_pending",
+                type="command",
+                command=cmd.command_string,
+                status=cmd.status.value,
+            )
 
         for tc in parser.get_tool_calls():
             self.event_logger.log("tool_call_pending", tool_name=tc.tool_name, call_id=tc.id)
 
         next_action = parser.get_next_action()
-        self.event_logger.log("output_received", next_action=next_action, status=parser.get_status())
+        self.event_logger.log(
+            "output_received", next_action=next_action, status=parser.get_status()
+        )
 
         return parser
 
@@ -798,14 +879,18 @@ class AgentProtocol:
             status="success" if tasks_completed > 0 else "no_tasks",
         )
 
-    def add_task(self, task_type: OperationType, description: str, depends_on: list[str] | None = None) -> Task:
+    def add_task(
+        self, task_type: OperationType, description: str, depends_on: list[str] | None = None
+    ) -> Task:
         task = Task(
             type=task_type,
             description=description,
             depends_on=depends_on or [],
         )
         self.tasks.append(task)
-        self.event_logger.log("task_added", task_id=task.id, type=task_type.value, description=description)
+        self.event_logger.log(
+            "task_added", task_id=task.id, type=task_type.value, description=description
+        )
         return task
 
     def update_task_status(self, task_id: str, status: TaskStatus, result: dict | None = None):

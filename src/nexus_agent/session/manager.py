@@ -17,7 +17,10 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from nexus_agent.session.background import BackgroundSession
 
 from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.storage import SessionStorage
@@ -72,7 +75,7 @@ class SessionManager:
             if threading.current_thread() is threading.main_thread():
                 try:
                     signal.signal(signal.SIGINT, SessionManager._signal_handler)
-                    sigterm = getattr(signal, 'SIGTERM', None)
+                    sigterm = getattr(signal, "SIGTERM", None)
                     if sigterm is not None:
                         signal.signal(sigterm, SessionManager._signal_handler)
                 except (ValueError, RuntimeError, OSError):
@@ -629,23 +632,27 @@ class SessionManager:
         for msg in messages:
             if target_role and msg.get("role") != target_role:
                 continue
-            replay.append({
-                "type": "message",
-                "role": msg.get("role"),
-                "content": msg.get("content"),
-                "timestamp": msg.get("created_at"),
-            })
+            replay.append(
+                {
+                    "type": "message",
+                    "role": msg.get("role"),
+                    "content": msg.get("content"),
+                    "timestamp": msg.get("created_at"),
+                }
+            )
 
         # Then add tool call replay
         for ev in events:
             if target_role == "tool" and ev.get("event_type") != "tool_call":
                 continue
-            replay.append({
-                "type": "event",
-                "event_type": ev.get("event_type"),
-                "data": ev.get("event_data", {}),
-                "timestamp": ev.get("created_at"),
-            })
+            replay.append(
+                {
+                    "type": "event",
+                    "event_type": ev.get("event_type"),
+                    "data": ev.get("event_data", {}),
+                    "timestamp": ev.get("created_at"),
+                }
+            )
 
         replay.sort(key=lambda x: x.get("timestamp", 0))
         return replay

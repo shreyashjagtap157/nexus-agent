@@ -1,3 +1,4 @@
+# noqa: E501
 """
 Long-Term Memory — SQLite-backed persistent memory with FTS5 full-text search
 and **heat-score retention** (inspired by MemoryOS).
@@ -37,12 +38,12 @@ logger = logging.getLogger(__name__)
 # ── Heat Score Configuration ──────────────────────────────────────────
 
 # Default coefficients for heat score calculation
-HEAT_ALPHA: float = 1.0      # Weight for access count (N_visit)
-HEAT_BETA: float = 0.01      # Weight for content length (L_interaction)
-HEAT_GAMMA: float = 2.0      # Weight for recency (time decay)
-HEAT_MU: float = 604800.0    # Time decay constant: 7 days in seconds
-HEAT_PROMOTE_THRESHOLD: float = 50.0   # Heat score above which → promote to long-term
-HEAT_PRUNE_THRESHOLD: float = 1.0      # Heat score below which → eligible for pruning
+HEAT_ALPHA: float = 1.0  # Weight for access count (N_visit)
+HEAT_BETA: float = 0.01  # Weight for content length (L_interaction)
+HEAT_GAMMA: float = 2.0  # Weight for recency (time decay)
+HEAT_MU: float = 604800.0  # Time decay constant: 7 days in seconds
+HEAT_PROMOTE_THRESHOLD: float = 50.0  # Heat score above which → promote to long-term
+HEAT_PRUNE_THRESHOLD: float = 1.0  # Heat score below which → eligible for pruning
 
 # Maximum number of memories before pruning is triggered
 MAX_MEMORIES_BEFORE_PRUNE: int = 5000
@@ -97,8 +98,9 @@ class LongTermMemory(SQLiteStore):
                 CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at);
             """
 
-    def store(self, content: str, category: str = "general",
-              metadata: dict[str, Any] | None = None) -> str:
+    def store(
+        self, content: str, category: str = "general", metadata: dict[str, Any] | None = None
+    ) -> str:
         """Store a memory entry.
 
         Args:
@@ -133,7 +135,7 @@ class LongTermMemory(SQLiteStore):
         """Sanitize search query for safe FTS5 MATCH queries."""
         terms = []
         for term in query.split():
-            clean_term = term.replace('"', '').replace("'", "''")
+            clean_term = term.replace('"', "").replace("'", "''")
             if clean_term:
                 terms.append(f'"{clean_term}"')
         return " AND ".join(terms) if terms else ""
@@ -174,9 +176,7 @@ class LongTermMemory(SQLiteStore):
         """
         with self._lock:
             conn = self._get_conn()
-            cursor = conn.execute(
-                "SELECT id, content, access_count, updated_at FROM memories"
-            )
+            cursor = conn.execute("SELECT id, content, access_count, updated_at FROM memories")
             scores: dict[str, float] = {}
             for row in cursor:
                 mid = row["id"]
@@ -192,9 +192,7 @@ class LongTermMemory(SQLiteStore):
             for mid, heat in scores.items():
                 existing_meta = {}
                 try:
-                    meta_cursor = conn.execute(
-                        "SELECT metadata FROM memories WHERE id = ?", (mid,)
-                    )
+                    meta_cursor = conn.execute("SELECT metadata FROM memories WHERE id = ?", (mid,))
                     meta_row = meta_cursor.fetchone()
                     if meta_row and meta_row["metadata"]:
                         existing_meta = json.loads(meta_row["metadata"])
@@ -253,13 +251,15 @@ class LongTermMemory(SQLiteStore):
                     continue
 
                 content = row["content"] or ""
-                results.append({
-                    "id": row["id"],
-                    "content_preview": content[:100] + "..." if len(content) > 100 else content,
-                    "heat_score": heat,
-                    "category": row["category"],
-                    "access_count": row["access_count"] or 0,
-                })
+                results.append(
+                    {
+                        "id": row["id"],
+                        "content_preview": content[:100] + "..." if len(content) > 100 else content,
+                        "heat_score": heat,
+                        "category": row["category"],
+                        "access_count": row["access_count"] or 0,
+                    }
+                )
 
             results.sort(key=lambda x: x["heat_score"])
             return results[:limit]
@@ -322,12 +322,15 @@ class LongTermMemory(SQLiteStore):
 
             logger.info(
                 "Pruned %d low-heat memories (total was %d, now %d)",
-                len(to_prune), total, max(0, total - len(to_prune)),
+                len(to_prune),
+                total,
+                max(0, total - len(to_prune)),
             )
             return len(to_prune)
 
-    def search(self, query: str, category: str | None = None,
-               limit: int = 10) -> list[dict[str, Any]]:
+    def search(
+        self, query: str, category: str | None = None, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Search memories using FTS5 full-text search.
 
         Args:
@@ -373,16 +376,16 @@ class LongTermMemory(SQLiteStore):
                     )
             except sqlite3.OperationalError:
                 # FTS query syntax error — fall back to LIKE
-                escaped = query.replace('%', '\\%').replace('_', '\\_')
+                escaped = query.replace("%", "\\%").replace("_", "\\_")
                 like_query = f"%{escaped}%"
                 if category:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",  # noqa: E501
                         (like_query, category, limit),
                     )
                 else:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                         (like_query, limit),
                     )
 
@@ -419,8 +422,9 @@ class LongTermMemory(SQLiteStore):
                 return entry
             return None
 
-    def update(self, entry_id: str, content: str | None = None,
-               category: str | None = None) -> bool:
+    def update(
+        self, entry_id: str, content: str | None = None, category: str | None = None
+    ) -> bool:
         """Update an existing memory entry."""
         with self._lock:
             conn = self._get_conn()
@@ -461,12 +465,13 @@ class LongTermMemory(SQLiteStore):
         with self._lock:
             conn = self._get_conn()
             cursor = conn.execute(
-                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"
+                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"  # noqa: E501
             )
             return [dict(row) for row in cursor]
 
-    def list_all(self, category: str | None = None, limit: int = 100,
-                 offset: int = 0) -> list[dict[str, Any]]:
+    def list_all(
+        self, category: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, Any]]:
         """Enumerate memories, newest first.
 
         Args:
@@ -517,5 +522,3 @@ class LongTermMemory(SQLiteStore):
                 "categories": categories,
                 "db_path": str(self.db_path),
             }
-
-

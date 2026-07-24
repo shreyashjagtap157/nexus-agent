@@ -1,3 +1,4 @@
+# noqa: E501
 """
 Memory Manager — Orchestrates all memory subsystems.
 
@@ -74,7 +75,9 @@ class MemoryManager:
                 logger.warning("VectorStore unavailable: %s", exc)
                 self.vector = None
 
-        logger.info("Memory manager initialized at %s (vector=%s)", self.data_dir, self.vector is not None)
+        logger.info(
+            "Memory manager initialized at %s (vector=%s)", self.data_dir, self.vector is not None
+        )
 
     def __del__(self) -> None:
         try:
@@ -145,8 +148,9 @@ class MemoryManager:
 
             return results[:limit]
 
-    def store(self, content: str, category: str = "general",
-              metadata: dict[str, Any] | None = None) -> str:
+    def store(
+        self, content: str, category: str = "general", metadata: dict[str, Any] | None = None
+    ) -> str:
         """Store information in long-term memory **and** vector store.
 
         Args:
@@ -168,8 +172,9 @@ class MemoryManager:
             self._check_compact()
             return entry_id
 
-    def update(self, entry_id: str, content: str | None = None,
-               category: str | None = None) -> bool:
+    def update(
+        self, entry_id: str, content: str | None = None, category: str | None = None
+    ) -> bool:
         """Update an existing long-term memory entry **and** its vector embedding.
 
         If *content* is provided, the embedding is re-computed.
@@ -215,8 +220,9 @@ class MemoryManager:
         with self._lock:
             return self.long_term.get(entry_id)
 
-    def list_all(self, category: str | None = None, limit: int = 100,
-                 offset: int = 0) -> list[dict[str, Any]]:
+    def list_all(
+        self, category: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, Any]]:
         """Enumerate memories, newest first.
 
         Args:
@@ -229,7 +235,9 @@ class MemoryManager:
         """
         with self._lock:
             return self.long_term.list_all(
-                category=category, limit=limit, offset=offset,
+                category=category,
+                limit=limit,
+                offset=offset,
             )
 
     def get_stats(self) -> dict[str, Any]:
@@ -242,7 +250,7 @@ class MemoryManager:
             vs_count = self.vector.count() if self.vector is not None else 0
             up_summary = self.user_profile.get_summary()
             up_count = 1 if up_summary else 0
-            # total = unique entries across countable tiers (vector mirrors long-term, user_profile is singular)
+            # total = unique entries across countable tiers (vector mirrors long-term, user_profile is singular)  # noqa: E501
             total = working_summary["entries"] + lt_total + ep_count
             return {
                 "working": working_summary["entries"],
@@ -273,13 +281,15 @@ class MemoryManager:
             now = time.time()
             for key, entry in list(self.working._store.items()):
                 age_hours = (now - entry["timestamp"]) / 3600
-                scores["working"].append({
-                    "id": f"wm:{key}",
-                    "content_preview": entry["value"][:100],
-                    "access_count": entry["access_count"],
-                    "heat_score": entry["access_count"] * 2.0 + max(0, 10 - age_hours),
-                    "tier": "working",
-                })
+                scores["working"].append(
+                    {
+                        "id": f"wm:{key}",
+                        "content_preview": entry["value"][:100],
+                        "access_count": entry["access_count"],
+                        "heat_score": entry["access_count"] * 2.0 + max(0, 10 - age_hours),
+                        "tier": "working",
+                    }
+                )
             # Long-term — use existing heat score engine
             try:
                 lt_scores = self.long_term.get_heat_scores(limit=500)
@@ -293,12 +303,14 @@ class MemoryManager:
                 recent = self.episodic.get_recent(limit=500)
                 for ep in recent:
                     age_days = (now - ep.get("created_at", now)) / 86400
-                    scores["episodic"].append({
-                        "id": str(ep.get("id", "")),
-                        "content_preview": (ep.get("summary", "") or "")[:100],
-                        "heat_score": max(0, 30 - age_days) / 30.0 * 10.0,
-                        "tier": "episodic",
-                    })
+                    scores["episodic"].append(
+                        {
+                            "id": str(ep.get("id", "")),
+                            "content_preview": (ep.get("summary", "") or "")[:100],
+                            "heat_score": max(0, 30 - age_days) / 30.0 * 10.0,
+                            "tier": "episodic",
+                        }
+                    )
             except Exception as exc:
                 logger.debug("Failed to get episodic scores: %s", exc)
             return scores
@@ -319,7 +331,8 @@ class MemoryManager:
         with self._lock:
             promoted = 0
             keys_to_promote = [
-                key for key, entry in self.working._store.items()
+                key
+                for key, entry in self.working._store.items()
                 if entry["access_count"] >= threshold
             ]
             for key in keys_to_promote:
@@ -367,7 +380,8 @@ class MemoryManager:
                 threshold = 2.0 if aggressive else None
                 target = 500 if aggressive else None
                 result["ltm_pruned"] = self.long_term.prune_low_heat_memories(
-                    threshold=threshold, target_count=target,
+                    threshold=threshold,
+                    target_count=target,
                 )
             except Exception as exc:
                 logger.debug("Long-term compaction failed: %s", exc)
@@ -415,8 +429,9 @@ class MemoryManager:
 
     # ── Cross-tier listing / search (for ACP) ───────────────────────
 
-    def list_all_unified(self, tier: str | None = None, limit: int = 100,
-                         offset: int = 0) -> list[dict[str, Any]]:
+    def list_all_unified(
+        self, tier: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict[str, Any]]:
         """List memories across all tiers.
 
         Args:
@@ -433,16 +448,18 @@ class MemoryManager:
 
             if tier is None or tier == "working":
                 for key, entry in list(self.working._store.items()):
-                    results.append({
-                        "id": f"wm:{key}",
-                        "content": entry["value"],
-                        "source": "working",
-                        "category": entry["category"],
-                        "created_at": entry["timestamp"],
-                        "updated_at": entry["timestamp"],
-                        "access_count": entry["access_count"],
-                        "score": entry["access_count"] * 2.0,
-                    })
+                    results.append(
+                        {
+                            "id": f"wm:{key}",
+                            "content": entry["value"],
+                            "source": "working",
+                            "category": entry["category"],
+                            "created_at": entry["timestamp"],
+                            "updated_at": entry["timestamp"],
+                            "access_count": entry["access_count"],
+                            "score": entry["access_count"] * 2.0,
+                        }
+                    )
 
             if tier is None or tier == "long_term":
                 try:
@@ -450,7 +467,11 @@ class MemoryManager:
                     for e in lt_entries:
                         e["source"] = "long_term"
                         if "score" not in e:
-                            e["score"] = float(e.get("metadata", {}).get("heat_score", 0.0)) if isinstance(e.get("metadata"), dict) else 0.0
+                            e["score"] = (
+                                float(e.get("metadata", {}).get("heat_score", 0.0))
+                                if isinstance(e.get("metadata"), dict)
+                                else 0.0
+                            )
                     results.extend(lt_entries)
                 except Exception as exc:
                     logger.debug("Failed to list long-term: %s", exc)
@@ -488,16 +509,18 @@ class MemoryManager:
                 try:
                     summary = self.user_profile.get_summary()
                     if summary:
-                        results.append({
-                            "id": "user_profile:1",
-                            "content": summary,
-                            "source": "user_profile",
-                            "category": "user_preferences",
-                            "created_at": 0.0,
-                            "updated_at": 0.0,
-                            "access_count": 0,
-                            "score": 10.0,
-                        })
+                        results.append(
+                            {
+                                "id": "user_profile:1",
+                                "content": summary,
+                                "source": "user_profile",
+                                "category": "user_preferences",
+                                "created_at": 0.0,
+                                "updated_at": 0.0,
+                                "access_count": 0,
+                                "score": 10.0,
+                            }
+                        )
                 except Exception as exc:
                     logger.debug("Failed to list profile: %s", exc)
 
@@ -524,8 +547,7 @@ class MemoryManager:
 
             return None
 
-    def save_session_summary(self, session_id: str, summary: str,
-                             messages_count: int = 0) -> None:
+    def save_session_summary(self, session_id: str, summary: str, messages_count: int = 0) -> None:
         """Save a session summary to episodic memory."""
         with self._lock:
             self.episodic.save_session(
