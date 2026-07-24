@@ -7,10 +7,10 @@ from typing import Any
 
 try:
     from blessed import Terminal
+    _term = Terminal()
 except ImportError:
     Terminal = None
-
-_term = Terminal() if Terminal else None
+    _term = None
 
 SLASH_COMMANDS = [
     {"name": "/help", "description": "Show available commands"},
