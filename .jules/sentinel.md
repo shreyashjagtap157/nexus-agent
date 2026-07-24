@@ -2,3 +2,7 @@
 **Vulnerability:** The command isolation sandbox (`Sandbox.execute`) fell back to executing commands via `sh -c` or `powershell` with unparsed string commands when `shlex.split()` failed to parse due to unmatched quotes or syntax errors. This bypasses array-based shell escaping and presents a command injection vulnerability.
 **Learning:** Fallbacks intended to improve developer experience (e.g., executing malformed strings in a subshell) can completely undermine the primary security isolation mechanism if they revert to inherently unsafe functions like `sh -c`.
 **Prevention:** If the safe parsing mechanism (`shlex.split()`) fails to interpret input securely, the operation must be rejected entirely rather than passed on to a less secure evaluation layer.
+## 2024-05-18 - Fix CSWSH vulnerability in WebSocket endpoints
+**Vulnerability:** The FastAPI WebSocket endpoint lacked Origin validation, allowing Cross-Site WebSocket Hijacking (CSWSH). Attackers could connect from a malicious domain, bypassing same-origin policies if the server implicitly trusts cross-origin WS connections.
+**Learning:** WebSockets do not automatically enforce CORS constraints. They allow cross-origin connections unless the `Origin` header is explicitly validated against the target `Host` during the handshake.
+**Prevention:** Always validate `websocket.headers.get("origin")` against `websocket.headers.get("host")` before `await websocket.accept()`. Remember to accurately parse the hostname from both strings, especially accommodating IPv6 addresses and port numbers.
