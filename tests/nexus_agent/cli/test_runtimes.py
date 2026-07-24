@@ -214,7 +214,7 @@ class TestCheckOpenvino(unittest.TestCase):
     @patch('nexus_agent.cli.runtimes._check_cpu', return_value=[])
     def test_no_openvino(self, mock_cpu, mock_cuda, mock_vulkan, mock_rocm, mock_tpu):
 
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"openvino": None, "openvino.runtime": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
