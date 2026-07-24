@@ -301,7 +301,7 @@ class BrowserTool(Tool):
                 title = page.title()
                 text = page.locator("body").inner_text()
                 clean_text = self._clean_markdown(text)
-                return f"### Webpage: {title}\nURL: {url}\n\nContent:\n{self._safe_truncate(clean_text, self.MAX_CONTENT_LENGTH)}"
+                return f"### Webpage: {title}\nURL: {url}\n\nContent:\n{self._safe_truncate(clean_text, self.MAX_CONTENT_LENGTH)}"  # noqa: E501
 
             elif action == "read":
                 if not url:
@@ -309,7 +309,7 @@ class BrowserTool(Tool):
                 page.goto(url, wait_until="domcontentloaded")
                 if selector:
                     content = page.locator(selector).first.inner_text()
-                    return f"### Content under selector '{selector}':\n{self._safe_truncate(content, self.MAX_CONTENT_LENGTH)}"
+                    return f"### Content under selector '{selector}':\n{self._safe_truncate(content, self.MAX_CONTENT_LENGTH)}"  # noqa: E501
                 text = page.locator("body").inner_text()
                 return self._safe_truncate(self._clean_markdown(text), self.MAX_CONTENT_LENGTH)
 
@@ -334,7 +334,7 @@ class BrowserTool(Tool):
                     target_file = Path(output_path).expanduser().resolve()
                     target_file.parent.mkdir(parents=True, exist_ok=True)
                 else:
-                    shot_dir = self.config.screenshot_dir or (self.workspace / ".nexus-agent" / "screenshots")
+                    shot_dir = self.config.screenshot_dir or (self.workspace / ".nexus-agent" / "screenshots")  # noqa: E501
                     shot_dir.mkdir(parents=True, exist_ok=True)
                     target_file = shot_dir / "web_capture.png"
 
@@ -431,7 +431,7 @@ class BrowserTool(Tool):
         extracted = parser.get_text()
         clean = self._clean_markdown(extracted)
 
-        return f"### Webpage Scraped (Fallback Mode): {url}\n\nContent:\n{self._safe_truncate(clean, self.MAX_CONTENT_LENGTH)}"
+        return f"### Webpage Scraped (Fallback Mode): {url}\n\nContent:\n{self._safe_truncate(clean, self.MAX_CONTENT_LENGTH)}"  # noqa: E501
 
     def _clean_markdown(self, text: str) -> str:
         """Strip duplicate spacing and empty lines, collapse multiple blank lines."""
