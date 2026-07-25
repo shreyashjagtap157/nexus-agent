@@ -5,9 +5,12 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from blessed import Terminal
-
-_term = Terminal()
+try:
+    from blessed import Terminal
+    _term = Terminal()
+except ImportError:
+    Terminal = None  # type: ignore
+    _term = None  # type: ignore
 
 SLASH_COMMANDS = [
     {"name": "/help", "description": "Show available commands"},
