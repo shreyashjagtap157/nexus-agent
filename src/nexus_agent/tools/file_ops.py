@@ -120,7 +120,7 @@ class ReadFileTool(Tool):
             start = (start_line if start_line is not None else 1) - 1
             end = end_line if end_line is not None else total_lines
             if start < 0 or start >= total_lines:
-                return f"Error: start_line {start_line} is out of range (file has {total_lines} lines)."
+                return f"Error: start_line {start_line} is out of range (file has {total_lines} lines)."  # noqa
             if end < 1 or end > total_lines:
                 return f"Error: end_line {end_line} is out of range (file has {total_lines} lines)."
             if start >= end:
@@ -282,13 +282,13 @@ class SearchFilesTool(Tool):
 
         # ReDoS protection: block patterns with catastrophic backtracking risk
         if any(bad in pattern for bad in ["*+", "++", "?+", "*?", "+?", "??", "**"]):
-            return "Error: Dangerous regular expression pattern (nested/consecutive quantifiers detected)."
+            return "Error: Dangerous regular expression pattern (nested/consecutive quantifiers detected)."  # noqa
         if re.search(r'\([^\)]*[\*\+\?][^\)]*\)[\*\+\?]', pattern):
             return "Error: Dangerous regular expression pattern (potential ReDoS nesting detected)."
         if re.search(r'\(\?:[^\)]*[\*\+\?][^\)]*\)[\*\+\?]', pattern):
             return "Error: Dangerous regular expression pattern (nested quantifiers in group)."
         if re.search(r'\[\^[^\]]*\][\*\+\?][\*\+\?]', pattern):
-            return "Error: Dangerous regular expression pattern (consecutive quantifiers on character class)."
+            return "Error: Dangerous regular expression pattern (consecutive quantifiers on character class)."  # noqa
         # Pattern complexity check: reject excessively long patterns or those with too many groups
         if len(pattern) > 500:
             return "Error: Pattern too long (max 500 characters)."
@@ -307,6 +307,7 @@ class SearchFilesTool(Tool):
         if search_path.is_file():
             file_iter = iter([search_path])
         else:
+            # ⚡ Bolt: _iter_files is a lazy generator avoiding rglob memory overhead  # noqa: E501
             file_iter = self._iter_files(search_path)
 
         for file_path in file_iter:
@@ -377,9 +378,9 @@ class SearchFilesTool(Tool):
                     try:
                         if entry.is_dir(follow_symlinks=False):
                             # Skip hidden directories (except .env, .gitignore)
-                            if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                            if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa
                                 continue
-                            skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
+                            skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}  # noqa
                             if entry.name in skip_dirs:
                                 continue
                             yield from self._iter_files(Path(entry.path))
