@@ -2,3 +2,8 @@
 **Vulnerability:** The command isolation sandbox (`Sandbox.execute`) fell back to executing commands via `sh -c` or `powershell` with unparsed string commands when `shlex.split()` failed to parse due to unmatched quotes or syntax errors. This bypasses array-based shell escaping and presents a command injection vulnerability.
 **Learning:** Fallbacks intended to improve developer experience (e.g., executing malformed strings in a subshell) can completely undermine the primary security isolation mechanism if they revert to inherently unsafe functions like `sh -c`.
 **Prevention:** If the safe parsing mechanism (`shlex.split()`) fails to interpret input securely, the operation must be rejected entirely rather than passed on to a less secure evaluation layer.
+
+## 2024-05-18 - Fix Cross-Site WebSocket Hijacking
+**Vulnerability:** The WebSocket endpoint did not validate the `Origin` header against the `Host` header. This allowed malicious sites to hijack a local user's WebSocket connection and interact with the agent using the user's local network privileges (CSWSH).
+**Learning:** FastAPI/Starlette WebSockets do not perform CORS validation automatically by default, unlike standard HTTP endpoints behind `CORSMiddleware`.
+**Prevention:** Always manually validate the `Origin` header against the `Host` header in WebSocket endpoints. When doing so, securely compare the extracted hostnames, being careful to properly parse IPv6 addresses and strip port numbers from the `Host` header.
