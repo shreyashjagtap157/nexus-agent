@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
@@ -503,7 +504,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 await websocket.send_json(
                     {
                         "type": "error",
-                        "content": "No model loaded. Please load a model or configure a provider first.",
+                        "content": "No model loaded. Please load a model or configure a provider first.",  # noqa: E501
                     }
                 )
                 await websocket.send_json({"type": "done", "iterations": 0})
