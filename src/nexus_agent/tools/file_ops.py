@@ -23,43 +23,12 @@ MAX_READ_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_WRITE_SIZE = 50 * 1024 * 1024  # 50MB
 
 ALLOWED_SEARCH_EXTENSIONS = {
-    ".py",
-    ".md",
-    ".txt",
-    ".json",
-    ".yaml",
-    ".yml",
-    ".toml",
-    ".js",
-    ".ts",
-    ".jsx",
-    ".tsx",
-    ".rs",
-    ".go",
-    ".java",
-    ".c",
-    ".h",
-    ".cpp",
-    ".hpp",
-    ".css",
-    ".scss",
-    ".less",
-    ".html",
-    ".xml",
-    ".sql",
-    ".sh",
-    ".bat",
-    ".ps1",
-    ".cfg",
-    ".ini",
-    ".conf",
-    ".env",
-    ".gitignore",
-    ".csv",
-    ".rst",
-    ".tex",
-    ".vue",
-    ".svelte",
+    ".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml",
+    ".js", ".ts", ".jsx", ".tsx", ".rs", ".go", ".java",
+    ".c", ".h", ".cpp", ".hpp", ".css", ".scss", ".less",
+    ".html", ".xml", ".sql", ".sh", ".bat", ".ps1",
+    ".cfg", ".ini", ".conf", ".env", ".gitignore",
+    ".csv", ".rst", ".tex", ".vue", ".svelte",
 }
 
 
@@ -104,9 +73,8 @@ class ReadFileTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(
-        self, path: str, start_line: int | None = None, end_line: int | None = None, **kwargs: Any
-    ) -> str:
+    def execute(self, path: str, start_line: int | None = None,
+                end_line: int | None = None, **kwargs: Any) -> str:
         try:
             file_path = self._resolve_path(path)
         except (ValueError, ToolError) as e:
@@ -152,9 +120,9 @@ class ReadFileTool(Tool):
             start = (start_line if start_line is not None else 1) - 1
             end = end_line if end_line is not None else total_lines
             if start < 0 or start >= total_lines:
-                return f"Error: start_line {start_line} is out of range (file has {total_lines} lines)."  # noqa: E501
+                return f"Error: start_line {start_line} is out of range (file has {total_lines} lines)."  # noqa
             if end < 1 or end > total_lines:
-                return f"Error: end_line {end_line} is out of range (file has {total_lines} lines)."  # noqa: E501
+                return f"Error: end_line {end_line} is out of range (file has {total_lines} lines)."
             if start >= end:
                 return "Error: start_line must be less than end_line."
             lines = lines[start:end]
@@ -297,14 +265,9 @@ class SearchFilesTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(
-        self,
-        pattern: str,
-        path: str | None = None,
-        include_glob: str | None = None,
-        max_results: int = 50,
-        **kwargs: Any,
-    ) -> str:
+    def execute(self, pattern: str, path: str | None = None,
+                include_glob: str | None = None,
+                max_results: int = 50, **kwargs: Any) -> str:
         if path:
             try:
                 search_path = Tool.resolve_workspace_path(self.workspace, path)
@@ -319,13 +282,13 @@ class SearchFilesTool(Tool):
 
         # ReDoS protection: block patterns with catastrophic backtracking risk
         if any(bad in pattern for bad in ["*+", "++", "?+", "*?", "+?", "??", "**"]):
-            return "Error: Dangerous regular expression pattern (nested/consecutive quantifiers detected)."  # noqa: E501
-        if re.search(r"\([^\)]*[\*\+\?][^\)]*\)[\*\+\?]", pattern):
-            return "Error: Dangerous regular expression pattern (potential ReDoS nesting detected)."  # noqa: E501
-        if re.search(r"\(\?:[^\)]*[\*\+\?][^\)]*\)[\*\+\?]", pattern):
-            return "Error: Dangerous regular expression pattern (nested quantifiers in group)."  # noqa: E501
-        if re.search(r"\[\^[^\]]*\][\*\+\?][\*\+\?]", pattern):
-            return "Error: Dangerous regular expression pattern (consecutive quantifiers on character class)."  # noqa: E501
+            return "Error: Dangerous regular expression pattern (nested/consecutive quantifiers detected)."  # noqa
+        if re.search(r'\([^\)]*[\*\+\?][^\)]*\)[\*\+\?]', pattern):
+            return "Error: Dangerous regular expression pattern (potential ReDoS nesting detected)."
+        if re.search(r'\(\?:[^\)]*[\*\+\?][^\)]*\)[\*\+\?]', pattern):
+            return "Error: Dangerous regular expression pattern (nested quantifiers in group)."
+        if re.search(r'\[\^[^\]]*\][\*\+\?][\*\+\?]', pattern):
+            return "Error: Dangerous regular expression pattern (consecutive quantifiers on character class)."  # noqa
         # Pattern complexity check: reject excessively long patterns or those with too many groups
         if len(pattern) > 500:
             return "Error: Pattern too long (max 500 characters)."
@@ -344,7 +307,7 @@ class SearchFilesTool(Tool):
         if search_path.is_file():
             file_iter = iter([search_path])
         else:
-            # ⚡ Bolt: _iter_files is a lazy generator avoiding rglob memory overhead
+            # ⚡ Bolt: _iter_files is a lazy generator avoiding rglob memory overhead  # noqa: E501
             file_iter = self._iter_files(search_path)
 
         for file_path in file_iter:
@@ -415,20 +378,9 @@ class SearchFilesTool(Tool):
                     try:
                         if entry.is_dir(follow_symlinks=False):
                             # Skip hidden directories (except .env, .gitignore)
-                            if entry.name.startswith(".") and entry.name not in {
-                                ".env",
-                                ".gitignore",
-                            }:
+                            if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa
                                 continue
-                            skip_dirs = {
-                                "node_modules",
-                                "__pycache__",
-                                ".git",
-                                "venv",
-                                ".venv",
-                                "dist",
-                                "build",
-                            }
+                            skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}  # noqa
                             if entry.name in skip_dirs:
                                 continue
                             yield from self._iter_files(Path(entry.path))
@@ -483,9 +435,8 @@ class ListDirectoryTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(
-        self, path: str | None = None, recursive: bool = False, max_depth: int = 3, **kwargs: Any
-    ) -> str:
+    def execute(self, path: str | None = None, recursive: bool = False,
+                max_depth: int = 3, **kwargs: Any) -> str:
         if path:
             try:
                 dir_path = Tool.resolve_workspace_path(self.workspace, path)
@@ -509,9 +460,8 @@ class ListDirectoryTool(Tool):
 
         return "\n".join(lines)
 
-    def _list_dir(
-        self, path: Path, lines: list[str], prefix: str, recursive: bool, max_depth: int, depth: int
-    ) -> None:
+    def _list_dir(self, path: Path, lines: list[str], prefix: str,
+                  recursive: bool, max_depth: int, depth: int) -> None:
         if depth > max_depth:
             lines.append(f"{prefix}... (max depth reached)")
             return

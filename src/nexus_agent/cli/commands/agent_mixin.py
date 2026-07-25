@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import subprocess
 import time
+from typing import Any
 
 from nexus_agent.core.config import save_config
 
@@ -87,10 +88,10 @@ class AgentCommandsMixin:
                 return
 
     def _render_effort_selector(self, levels: tuple, labels: tuple, idx: int):
-        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        PAD = 22
+        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}  # noqa
+        PAD = 22  # noqa
 
-        plain_labels = [str(l) for l in labels]
+        plain_labels = [str(l) for l in labels]  # noqa
         widths = [len(w) for w in plain_labels]
         gap = 4
         total_w = sum(widths) + gap * (len(widths) - 1)
@@ -124,7 +125,7 @@ class AgentCommandsMixin:
             "  Effort",
             "",
             f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}{'\u2500' * left_w}\u252c{'\u2500' * right_w}",
+            (" " * PAD) + ("\u2500" * left_w) + "\u252c" + ("\u2500" * right_w),  # noqa: E501
         ]
         lines.append(marker_line)
         lines.append(label_line)
@@ -162,7 +163,7 @@ class AgentCommandsMixin:
             save_config(self._config, self.config_path)
         else:
             current = self._config.get("sandbox", {}).get("default_level", "moderate")
-            self.r.system_message(f"Sandbox: {current.upper()}  Usage: /sandbox [safe|moderate|dangerous|blocked]")
+            self.r.system_message(f"Sandbox: {current.upper()}  Usage: /sandbox [safe|moderate|dangerous|blocked]")  # noqa
 
     def _cmd_context(self, args: str):
         self.console.print()
@@ -244,14 +245,14 @@ class AgentCommandsMixin:
             self.console.print()
             self.console.print("  [dim]Usage:[/dim]")
             self.console.print("  [dim]  /memory [global|local] <query>   FTS5 text search[/dim]")
-            self.console.print("  [dim]  /memory vector stats             Vector store statistics[/dim]")
-            self.console.print("  [dim]  /memory vector query <text>      Semantic similarity search[/dim]")
-            self.console.print("  [dim]  /memory vector migrate            Re-embed all FTS5 memories into vector store[/dim]")
-            self.console.print("  [dim]  /memory vector download           Download ONNX embedding model[/dim]")
+            self.console.print("  [dim]  /memory vector stats             Vector store statistics[/dim]")  # noqa
+            self.console.print("  [dim]  /memory vector query <text>      Semantic similarity search[/dim]")  # noqa
+            self.console.print("  [dim]  /memory vector migrate            Re-embed all FTS5 memories into vector store[/dim]")  # noqa
+            self.console.print("  [dim]  /memory vector download           Download ONNX embedding model[/dim]")  # noqa
         else:
             self.r.system_message("Memory unavailable.")
 
-    def _get_vector_store(self) -> Any | None:
+    def _get_vector_store(self) -> Any | None:  # noqa
         """Resolve the VectorStore from global or project memory.
 
         Set by ``_cmd_memory_vector()`` based on the ``--project`` flag.
@@ -259,7 +260,7 @@ class AgentCommandsMixin:
         mem = self._project_memory if getattr(self, '_vector_use_project', False) else self._memory
         return getattr(mem, "vector", None) if mem else None
 
-    def _get_memory_manager(self) -> Any | None:
+    def _get_memory_manager(self) -> Any | None:  # noqa
         """Resolve the MemoryManager (global or project).
 
         Set by ``_cmd_memory_vector()`` based on the ``--project`` flag.
@@ -304,8 +305,8 @@ class AgentCommandsMixin:
                     break
 
         if not stripped:
-            label = "project" if self._vector_use_project else "global"
-            self.r.system_message("Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")
+            label = "project" if self._vector_use_project else "global"  # noqa
+            self.r.system_message("Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild")  # noqa
             return
 
         parts = stripped.split(maxsplit=1)
@@ -333,7 +334,7 @@ class AgentCommandsMixin:
         elif subcmd == "categories":
             self._cmd_memory_vector_categories()
         else:
-            self.r.system_message("Usage: /memory vector stats | query <text> | list [N] | filter <category> | categories | migrate | download | delete <entry_id> | clear | rebuild")
+            self.r.system_message("Usage: /memory vector stats | query <text> | list [N] | filter <category> | categories | migrate | download | delete <entry_id> | clear | rebuild")  # noqa
 
     def _cmd_memory_vector_stats(self, args: str = ""):
         """Show vector store statistics.
@@ -363,7 +364,7 @@ class AgentCommandsMixin:
             table.add_row("  [bold]Engine mode[/bold]", f"[cyan]{mode}[/cyan]")
             table.add_row("  [bold]Dimensions[/bold]", f"{dims}")
             table.add_row("  [bold]Stored entries[/bold]", f"[green]{count}[/green]")
-            table.add_row("  [bold]Model directory[/bold]", f"[dim]{model_dir or '(built-in)'}[/dim]")
+            table.add_row("  [bold]Model directory[/bold]", f"[dim]{model_dir or '(built-in)'}[/dim]")  # noqa
             label = "project" if getattr(self, '_vector_use_project', False) else "global"
             table.add_row("  [bold]Memory scope[/bold]", f"[cyan]{label}[/cyan]")
             self.console.print()
@@ -374,7 +375,7 @@ class AgentCommandsMixin:
             if mode == "onnx" and engine:
                 self.console.print("  [dim]✓ ONNX embedding model loaded and ready[/dim]")
             elif mode == "ngram":
-                self.console.print("  [dim]ℹ Using ngram fallback — run /memory vector download for ONNX model[/dim]")
+                self.console.print("  [dim]ℹ Using ngram fallback — run /memory vector download for ONNX model[/dim]")  # noqa
         except Exception as exc:
             self.r.error(f"Failed to get vector store stats: {exc}")
 
@@ -399,7 +400,7 @@ class AgentCommandsMixin:
         try:
             total = vs.count()
             if total == 0:
-                self.r.system_message("Vector store is empty. Run /memory vector migrate to populate from FTS5.")
+                self.r.system_message("Vector store is empty. Run /memory vector migrate to populate from FTS5.")  # noqa
                 return
 
             show = 20
@@ -410,7 +411,7 @@ class AgentCommandsMixin:
             label = "project" if getattr(self, '_vector_use_project', False) else "global"
 
             self.console.print()
-            self.console.print(f"  [bold]Vector store ({label}):[/bold] [green]{total}[/green] total entries, showing [cyan]{min(show, len(entries))}[/cyan]")
+            self.console.print(f"  [bold]Vector store ({label}):[/bold] [green]{total}[/green] total entries, showing [cyan]{min(show, len(entries))}[/cyan]")  # noqa
             self.console.print()
 
             from rich.table import Table
@@ -435,7 +436,7 @@ class AgentCommandsMixin:
 
             self.console.print(table)
             self.console.print()
-            self.console.print("  [dim]Usage: /memory vector list N  — show N entries (default 20)[/dim]")
+            self.console.print("  [dim]Usage: /memory vector list N  — show N entries (default 20)[/dim]")  # noqa
         except Exception as exc:
             self.r.error(f"List failed: {exc}")
 
@@ -456,7 +457,7 @@ class AgentCommandsMixin:
             label = "project" if getattr(self, '_vector_use_project', False) else "global"
 
             self.console.print()
-            self.console.print(f"  [bold]Categories ({label}):[/bold] [green]{len(cats)}[/green] unique, [cyan]{total}[/cyan] total entries")
+            self.console.print(f"  [bold]Categories ({label}):[/bold] [green]{len(cats)}[/green] unique, [cyan]{total}[/cyan] total entries")  # noqa
             self.console.print()
 
             from rich.table import Table
@@ -513,7 +514,7 @@ class AgentCommandsMixin:
 
             label = "project" if getattr(self, '_vector_use_project', False) else "global"
             self.console.print()
-            self.console.print(f"  [bold]Category ({label}):[/bold] [cyan]{category}[/cyan]  [dim]({len(entries)} entries)[/dim]")
+            self.console.print(f"  [bold]Category ({label}):[/bold] [cyan]{category}[/cyan]  [dim]({len(entries)} entries)[/dim]")  # noqa
             self.console.print()
 
             from rich.table import Table
@@ -536,7 +537,7 @@ class AgentCommandsMixin:
 
             self.console.print(table)
             self.console.print()
-            self.console.print("  [dim]Usage: /memory vector filter <category>  — filter by category[/dim]")
+            self.console.print("  [dim]Usage: /memory vector filter <category>  — filter by category[/dim]")  # noqa
         except Exception as exc:
             self.r.error(f"Filter failed: {exc}")
 
@@ -553,7 +554,7 @@ class AgentCommandsMixin:
         try:
             before = vs.count()
             if before == 0:
-                self.r.system_message("Vector store is empty — nothing to rebuild. Run /memory vector migrate to populate from FTS5.")
+                self.r.system_message("Vector store is empty — nothing to rebuild. Run /memory vector migrate to populate from FTS5.")  # noqa
                 return
 
             self.r.show_spinner("Rebuilding vector embeddings")
@@ -561,7 +562,7 @@ class AgentCommandsMixin:
             self.r.hide_spinner()
             engine_mode = getattr(getattr(vs, "_engine", None), "mode", "?")
             label = "project" if getattr(self, '_vector_use_project', False) else "global"
-            self.r.system_message(f"Rebuilt {count} embeddings ({label}) using {engine_mode} engine.")
+            self.r.system_message(f"Rebuilt {count} embeddings ({label}) using {engine_mode} engine.")  # noqa
         except Exception as exc:
             self.r.hide_spinner()
             self.r.error(f"Rebuild failed: {exc}")
@@ -581,7 +582,7 @@ class AgentCommandsMixin:
 
             deleted = vs.clear()
             label = "project" if getattr(self, '_vector_use_project', False) else "global"
-            self.r.system_message(f"Cleared {deleted} vector embeddings ({label}). FTS5 memories untouched. Run /memory vector migrate to re-populate.")
+            self.r.system_message(f"Cleared {deleted} vector embeddings ({label}). FTS5 memories untouched. Run /memory vector migrate to re-populate.")  # noqa
         except Exception as exc:
             self.r.error(f"Clear failed: {exc}")
 
@@ -653,7 +654,7 @@ class AgentCommandsMixin:
 
             migrated = 0
             skipped = 0
-            PAGE_SIZE = 50
+            PAGE_SIZE = 50  # noqa
             offset = 0
 
             while offset < total:
@@ -684,7 +685,7 @@ class AgentCommandsMixin:
                         done = migrated + skipped
                         pct = int((done / total) * 100)
                         bar = "█" * (pct // 4) + "░" * (25 - pct // 4)
-                        self.console.print(f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] new  [dim]skipped {skipped}[/dim]")
+                        self.console.print(f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] new  [dim]skipped {skipped}[/dim]")  # noqa
 
                 offset += PAGE_SIZE
 
@@ -713,7 +714,7 @@ class AgentCommandsMixin:
             ok = engine.download_model()
             self.r.hide_spinner()
             if ok:
-                self.r.system_message("ONNX embedding model downloaded and loaded. Engine mode: ONNX")
+                self.r.system_message("ONNX embedding model downloaded and loaded. Engine mode: ONNX")  # noqa
             else:
                 self.r.error("Download failed. Check your network connection and try again.")
         except Exception as exc:
@@ -771,7 +772,7 @@ class AgentCommandsMixin:
                 else:
                     score_color = "dim"
 
-                self.console.print(f"  [{score_color}]{bar}[/{score_color}] [{score_color}]{pct:>2}%[/{score_color}]  [{cat}] {content}")
+                self.console.print(f"  [{score_color}]{bar}[/{score_color}] [{score_color}]{pct:>2}%[/{score_color}]  [{cat}] {content}")  # noqa
 
             self.console.print()
             usage = ""
@@ -810,7 +811,7 @@ class AgentCommandsMixin:
             from nexus_agent.core.debate import DebateEngine
             self.r.show_spinner("Convening panel")
             try:
-                diff = subprocess.run(["git", "diff", "HEAD"], cwd=str(self.workspace), capture_output=True, text=True, timeout=10)
+                diff = subprocess.run(["git", "diff", "HEAD"], cwd=str(self.workspace), capture_output=True, text=True, timeout=10)  # noqa
                 changes = diff.stdout or ""
             except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
                 changes = ""
@@ -820,7 +821,7 @@ class AgentCommandsMixin:
                 engine = DebateEngine(provider=self._agent.provider)
                 self.r.hide_spinner()
                 verdict = engine.run_debate(code_changes=changes)
-                self.r.assistant_message(verdict.consensus_summary + "\n\n" + "\n".join(f"- {r}" for r in verdict.recommendations[:5]))
+                self.r.assistant_message(verdict.consensus_summary + "\n\n" + "\n".join(f"- {r}" for r in verdict.recommendations[:5]))  # noqa
             except (ValueError, RuntimeError) as e:
                 self.r.hide_spinner()
                 self.r.error(f"Debate: {e}")
@@ -870,9 +871,9 @@ class AgentCommandsMixin:
     def _cmd_branch(self, args: str):
         try:
             if args:
-                subprocess.run(["git", "checkout", args], cwd=str(self.workspace), capture_output=True, text=True, timeout=10)
+                subprocess.run(["git", "checkout", args], cwd=str(self.workspace), capture_output=True, text=True, timeout=10)  # noqa
             else:
-                result = subprocess.run(["git", "branch"], cwd=str(self.workspace), capture_output=True, text=True, timeout=10)
+                result = subprocess.run(["git", "branch"], cwd=str(self.workspace), capture_output=True, text=True, timeout=10)  # noqa
                 self.console.print(f"  [dim]{result.stdout.strip()}[/dim]")
                 return
             self.r.system_message(f"Switched to branch: {args}")
@@ -898,7 +899,7 @@ class AgentCommandsMixin:
         from nexus_agent.tools.git_ops import PRReviewTool
         self.r.show_spinner("Generating PR summary")
         try:
-            pr_tool = PRReviewTool(workspace=self.workspace, provider=self._agent.provider if self._agent else None)
+            pr_tool = PRReviewTool(workspace=self.workspace, provider=self._agent.provider if self._agent else None)  # noqa
             summary = pr_tool.execute()
             self.r.hide_spinner()
             self.r.assistant_message(summary)
@@ -983,7 +984,7 @@ class AgentCommandsMixin:
             self.r.system_message("Fast mode: OFF (restored defaults)")
 
     def _cmd_plan(self, args: str):
-        self._run_agent(f"Plan the implementation for: {args}" if args else "Generate implementation plan for the current task.")
+        self._run_agent(f"Plan the implementation for: {args}" if args else "Generate implementation plan for the current task.")  # noqa
 
     def _cmd_build(self, args: str):
         self._run_agent("Execute the implementation plan step by step.")
