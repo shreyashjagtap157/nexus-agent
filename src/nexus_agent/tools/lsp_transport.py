@@ -92,7 +92,9 @@ class LSPClient:
         try:
             caps = client.initialize()
             client.did_open("foo.py", "x = 1\\n")
-            syms = client.request("textDocument/documentSymbol", {"textDocument": {"uri": "file:///foo.py"}})
+            syms = client.request(
+                "textDocument/documentSymbol", {"textDocument": {"uri": "file:///foo.py"}}
+            )
         finally:
             client.stop()
     """
@@ -218,7 +220,10 @@ class LSPClient:
                 "textDocument": {
                     "synchronization": {"dynamicRegistration": False, "didSave": True},
                     "completion": {"dynamicRegistration": False},
-                    "hover": {"dynamicRegistration": False, "contentFormat": ["markdown", "plaintext"]},
+                    "hover": {
+                        "dynamicRegistration": False,
+                        "contentFormat": ["markdown", "plaintext"],
+                    },  # noqa: E501
                     "definition": {"dynamicRegistration": False, "linkSupport": True},
                     "references": {"dynamicRegistration": False},
                     "documentSymbol": {"dynamicRegistration": False},
@@ -230,9 +235,7 @@ class LSPClient:
                 "window": {"workDoneProgress": False},
             },
             "initializationOptions": self.config.initialization_options,
-            "workspaceFolders": [
-                {"uri": self.workspace.as_uri(), "name": self.workspace.name}
-            ],
+            "workspaceFolders": [{"uri": self.workspace.as_uri(), "name": self.workspace.name}],
         }
         result = self.request("initialize", params)
         if isinstance(result, dict) and "capabilities" in result:

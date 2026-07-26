@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -21,7 +22,14 @@ from typing import Annotated, Any
 
 import psutil
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -431,6 +439,24 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    origin = websocket.headers.get("origin")
+    host_header = websocket.headers.get("host")
+
+    if not origin or not host_header:
+        await websocket.close(code=1008, reason="Missing Origin or Host header")
+        return
+
+    parsed_origin = urllib.parse.urlparse(origin)
+    origin_hostname = parsed_origin.hostname
+
+    if host_header.startswith('['):
+        host_hostname = host_header[1:host_header.find(']')]
+    else:
+        host_hostname = host_header.split(':')[0]
+
+    if origin_hostname != host_hostname:
+        raise WebSocketException(code=1008, reason="CSWSH protection: Origin does not match Host")
+
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
@@ -438,7 +464,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Wait for user input prompt
-            data_str = await websocket.receive_text(max_size=65536)
+            data_str = await websocket.receive_text()
+            if len(data_str) > 65536:
+                await websocket.send_json({"type": "error", "content": "Input too long"})
+                continue
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
             mode_str = data.get("mode", "auto").lower()
@@ -538,6 +567,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             )
             future.add_done_callback(_log_thread_error)
 
+    except WebSocketException as e:
+        logger.warning(f"WebSocket connection rejected: {e.reason}")
     except WebSocketDisconnect:
         logger.info(f"WebSocket client disconnected for session: {session_id}")
     except (RuntimeError, json.JSONDecodeError, OSError):
