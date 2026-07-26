@@ -37,13 +37,19 @@ class SessionCommandsMixin:
                 sessions = self._session_mgr.list_sessions()
                 if sessions:
                     from rich.table import Table
+
                     table = Table(title="Sessions", show_header=True, header_style="bold magenta")
                     table.add_column("ID", style="cyan")
                     table.add_column("Created", style="green")
                     table.add_column("Messages", justify="right", style="yellow")
                     table.add_column("Model", style="dim")
                     for s in sessions:
-                        table.add_row(s["id"][:12], s["created"], str(s.get("message_count", 0)), s.get("model", ""))
+                        table.add_row(
+                            s["id"][:12],
+                            s["created"],
+                            str(s.get("message_count", 0)),
+                            s.get("model", ""),
+                        )
                     self.console.print(table)
                 else:
                     self.r.system_message("No saved sessions.")
@@ -84,8 +90,27 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
-            cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
+            import itertools
+            import os
+
+            # ⚡ Bolt: Replace slow pathlib.rglob with os.scandir stack logic
+            def _fast_scan():
+                stack = [str(self.workspace)]
+                while stack:
+                    try:
+                        with os.scandir(stack.pop()) as it:
+                            for e in it:
+                                if e.is_dir(follow_symlinks=False) and not e.name.startswith("."):
+                                    stack.append(e.path)
+                                elif e.is_file(follow_symlinks=False) and e.name.endswith(".py"):
+                                    yield e.path
+                    except OSError:
+                        continue
+
+            files = list(itertools.islice(_fast_scan(), 20))
+            cp_id = self._session_mgr.create_checkpoint(
+                files, description=args or "Manual checkpoint"
+            )
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:
             self.r.system_message("Session manager unavailable.")
@@ -98,7 +123,9 @@ class SessionCommandsMixin:
                     self.r.system_message("No checkpoints.")
                     return
                 for cp in checkpoints[:10]:
-                    self.console.print(f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]")
+                    self.console.print(
+                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"  # noqa: E501  # noqa: E501
+                    )
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
         else:
@@ -183,6 +210,7 @@ class SessionCommandsMixin:
                     if mode_str:
                         try:
                             from nexus_agent.core.agent import AgentMode
+
                             self._current_mode = AgentMode(mode_str)
                             if self._agent:
                                 self._agent.mode = self._current_mode
@@ -211,7 +239,10 @@ class SessionCommandsMixin:
             try:
                 sessions = self._session_mgr.list_sessions()
                 if sessions:
-                    items = [(f"{s.get('id', '?')[:16]}  {s.get('name', '')}", s['id']) for s in sessions[:10]]
+                    items = [
+                        (f"{s.get('id', '?')[:16]}  {s.get('name', '')}", s["id"])
+                        for s in sessions[:10]
+                    ]
                     sel = self._interactive_menu(items, "Select session to resume:")
                     if sel:
                         self._cmd_resume(sel)
@@ -235,7 +266,9 @@ class SessionCommandsMixin:
         try:
             import pyperclip
         except ImportError:
-            self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")
+            self.r.system_message(
+                "pyperclip not installed — cannot copy. Try `pip install pyperclip`."
+            )
             return
         text = ""
         if not args or args == "last":
@@ -278,9 +311,7 @@ class SessionCommandsMixin:
             self.r.error(f"Not a directory: {target}")
             return
         if not str(target).startswith(str(self.workspace.resolve())) and not args.startswith("~"):
-            self.r.system_message(
-                f"Note: {target} is outside the workspace {self.workspace}"
-            )
+            self.r.system_message(f"Note: {target} is outside the workspace {self.workspace}")
         self._extra_dirs = getattr(self, "_extra_dirs", []) + [target]
         self.r.system_message(f"Added dir: {target} (in-session only)")
 
@@ -314,6 +345,7 @@ class SessionCommandsMixin:
 
         def run_in_background(prompt: str) -> str:
             from nexus_agent.core.agent import AgentEventType
+
             out: list[str] = []
             for ev in self._agent.run(prompt):
                 if ev.type == AgentEventType.CONTENT_COMPLETE and isinstance(ev.data, str):
@@ -350,6 +382,7 @@ class SessionCommandsMixin:
                 self.r.system_message("No saved sessions.")
                 return
             from rich.table import Table
+
             tbl = Table(title="Sessions", show_header=True, header_style="bold magenta")
             tbl.add_column("ID", style="cyan")
             tbl.add_column("Title", style="green", max_width=40)
@@ -371,6 +404,7 @@ class SessionCommandsMixin:
                 self.r.system_message("No background sessions.")
                 return
             from rich.table import Table
+
             tbl = Table(title="Background Sessions", show_header=True, header_style="bold magenta")
             tbl.add_column("ID", style="cyan")
             tbl.add_column("State", style="yellow")

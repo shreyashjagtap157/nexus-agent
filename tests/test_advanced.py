@@ -392,64 +392,64 @@ class TestCmdMenuSlidingWindow(unittest.TestCase):
         app._footer_log_time = 0.0
 
         total_items = 50
-        MAX_VISIBLE = 10
+        max_visible = 10
         idx = 0
-        start_idx = idx - MAX_VISIBLE // 2
-        start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-        end_idx = start_idx + MAX_VISIBLE
+        start_idx = idx - max_visible // 2
+        start_idx = max(0, min(start_idx, total_items - max_visible))
+        end_idx = start_idx + max_visible
         self.assertEqual(start_idx, 0)
         self.assertEqual(end_idx, 10)
 
     def test_window_centering_mid(self):
         """When selected is in the middle, window is centered."""
         total_items = 50
-        MAX_VISIBLE = 10
+        max_visible = 10
         idx = 25
-        start_idx = idx - MAX_VISIBLE // 2
-        start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-        end_idx = start_idx + MAX_VISIBLE
+        start_idx = idx - max_visible // 2
+        start_idx = max(0, min(start_idx, total_items - max_visible))
+        end_idx = start_idx + max_visible
         self.assertEqual(start_idx, 20)
         self.assertEqual(end_idx, 30)
 
     def test_window_centering_high_bound(self):
         """When selected index is near end, window stops at total."""
         total_items = 50
-        MAX_VISIBLE = 10
+        max_visible = 10
         idx = 49
-        start_idx = idx - MAX_VISIBLE // 2
-        start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-        end_idx = start_idx + MAX_VISIBLE
+        start_idx = idx - max_visible // 2
+        start_idx = max(0, min(start_idx, total_items - max_visible))
+        end_idx = start_idx + max_visible
         self.assertEqual(start_idx, 40)
         self.assertEqual(end_idx, 50)
 
     def test_window_small_list(self):
         """When total items fit within window, no clipping."""
         total_items = 5
-        MAX_VISIBLE = 10
+        max_visible = 10
         idx = 2
-        start_idx = idx - MAX_VISIBLE // 2
-        start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-        end_idx = start_idx + MAX_VISIBLE
+        start_idx = idx - max_visible // 2
+        start_idx = max(0, min(start_idx, total_items - max_visible))
+        end_idx = start_idx + max_visible
         self.assertEqual(start_idx, 0)
         self.assertEqual(end_idx, 10)
 
     def test_window_indicators_low(self):
         """Above indicator shown when start_idx > 0."""
         total_items = 50
-        MAX_VISIBLE = 10
+        max_visible = 10
         idx = 30
-        start_idx = idx - MAX_VISIBLE // 2
-        start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
+        start_idx = idx - max_visible // 2
+        start_idx = max(0, min(start_idx, total_items - max_visible))
         self.assertGreater(start_idx, 0)
 
     def test_window_indicators_end(self):
         """Below indicator shown when remaining > 0."""
         total_items = 50
-        MAX_VISIBLE = 10
+        max_visible = 10
         idx = 0
-        start_idx = idx - MAX_VISIBLE // 2
-        start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-        end_idx = start_idx + MAX_VISIBLE
+        start_idx = idx - max_visible // 2
+        start_idx = max(0, min(start_idx, total_items - max_visible))
+        end_idx = start_idx + max_visible
         remaining = total_items - end_idx
         self.assertGreater(remaining, 0)
 
@@ -459,11 +459,11 @@ class TestEffortLevelCentersAndColors(unittest.TestCase):
 
     def test_center_offsets_are_precise(self):
         """Verify exact center offsets for each effort level."""
-        CENTER_OFFSETS = [25, 37, 46, 56, 65]
+        center_offsets = [25, 37, 46, 56, 65]
         levels = ["low", "medium", "high", "xhigh", "max"]
         label_widths = [3, 6, 4, 5, 3]
         for i, lab in enumerate(levels):
-            offset = CENTER_OFFSETS[i]
+            offset = center_offsets[i]
             self.assertIsInstance(offset, int)
             self.assertGreaterEqual(offset, 0)
             half = label_widths[i] // 2
@@ -474,20 +474,20 @@ class TestEffortLevelCentersAndColors(unittest.TestCase):
 
     def test_color_map_has_all_levels(self):
         """Verify every effort level has a corresponding ANSI color code."""
-        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        self.assertIn("low", EFFORT_COLORS)
-        self.assertIn("medium", EFFORT_COLORS)
-        self.assertIn("high", EFFORT_COLORS)
-        self.assertIn("xhigh", EFFORT_COLORS)
-        self.assertIn("max", EFFORT_COLORS)
-        self.assertEqual(EFFORT_COLORS["low"], "32")
-        self.assertEqual(EFFORT_COLORS["medium"], "36")
-        self.assertEqual(EFFORT_COLORS["high"], "33")
-        self.assertEqual(EFFORT_COLORS["xhigh"], "35")
-        self.assertEqual(EFFORT_COLORS["max"], "31")
+        effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
+        self.assertIn("low", effort_colors)
+        self.assertIn("medium", effort_colors)
+        self.assertIn("high", effort_colors)
+        self.assertIn("xhigh", effort_colors)
+        self.assertIn("max", effort_colors)
+        self.assertEqual(effort_colors["low"], "32")
+        self.assertEqual(effort_colors["medium"], "36")
+        self.assertEqual(effort_colors["high"], "33")
+        self.assertEqual(effort_colors["xhigh"], "35")
+        self.assertEqual(effort_colors["max"], "31")
 
     def test_marker_alignment_consistency(self):
         """Verify center offsets are strictly increasing and well-spaced."""
-        CENTER_OFFSETS = [25, 37, 46, 56, 65]
-        for i in range(1, len(CENTER_OFFSETS)):
-            self.assertGreater(CENTER_OFFSETS[i], CENTER_OFFSETS[i - 1])
+        center_offsets = [25, 37, 46, 56, 65]
+        for i in range(1, len(center_offsets)):
+            self.assertGreater(center_offsets[i], center_offsets[i - 1])
