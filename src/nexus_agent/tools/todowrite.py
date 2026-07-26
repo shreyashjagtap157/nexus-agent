@@ -346,11 +346,11 @@ class TodoWriteTool(Tool):
                     "clear_completed, clear_all, get."
                 ),
             },
-            "content": {"type": "string", "description": "Todo content (for add/update).", "required": False},
-            "todo_id": {"type": "string", "description": "Existing todo id (for update/remove/get).", "required": False},
-            "status": {"type": "string", "description": "pending|in_progress|completed|cancelled", "required": False},
-            "priority": {"type": "string", "description": "low|medium|high|critical", "required": False},
-            "notes": {"type": "string", "description": "Optional free-form notes (add/update).", "required": False},
+            "content": {"type": "string", "description": "Todo content (for add/update).", "required": False},  # noqa: E501
+            "todo_id": {"type": "string", "description": "Existing todo id (for update/remove/get).", "required": False},  # noqa: E501
+            "status": {"type": "string", "description": "pending|in_progress|completed|cancelled", "required": False},  # noqa: E501
+            "priority": {"type": "string", "description": "low|medium|high|critical", "required": False},  # noqa: E501
+            "notes": {"type": "string", "description": "Optional free-form notes (add/update).", "required": False},  # noqa: E501
         }
 
     @property
