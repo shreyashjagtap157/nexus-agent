@@ -4,11 +4,11 @@ from unittest.mock import MagicMock
 # Mock blessed globally to prevent ImportError on systems without it
 sys.modules['blessed'] = MagicMock()
 
-import pytest
-from fastapi.testclient import TestClient
-from starlette.websockets import WebSocketDisconnect
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from starlette.websockets import WebSocketDisconnect  # noqa: E402
 
-from nexus_agent.gui.server import app
+from nexus_agent.gui.server import app  # noqa: E402
 
 client = TestClient(app)
 
@@ -18,7 +18,7 @@ def test_websocket_cswsh_protection_valid_origin():
         "Origin": "http://127.0.0.1:7860",
         "Host": "127.0.0.1:7860"
     }
-    # It should connect successfully (will eventually timeout waiting for json, which is fine, or we can send empty)
+    # It should connect successfully
     with client.websocket_connect("/api/ws/test_session", headers=headers) as websocket:
         websocket.send_text('{"prompt": "hello", "mode": "auto"}')
         # Expecting an error about no model loaded, but the connection was successful
