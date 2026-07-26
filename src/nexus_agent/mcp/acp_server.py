@@ -8,7 +8,7 @@ protocol.
 Protocol:
 - Request: { "jsonrpc": "2.0", "id": 1, "method": "prompt", "params": { "text": "..." } }
 - Response: { "jsonrpc": "2.0", "id": 1, "result": { "content": "...", "usage": { ... } } }
-- Notification: { "jsonrpc": "2.0", "method": "event", "params": { "type": "thinking", "content": "..." } }
+- Notification: { "jsonrpc": "2.0", "method": "event", "params": { "type": "thinking" } }
 """
 
 from __future__ import annotations
@@ -145,7 +145,7 @@ class ACPServer:
             self._send_error(None, -32700, "Parse error: Invalid JSON")
         except Exception as e:
             logger.exception(f"ACP Server: Error handling request: {e}")
-            self._send_error(req_id if 'req_id' in locals() else None, -32603, f"Internal error: {e}")
+            self._send_error(req_id if 'req_id' in locals() else None, -32603, f"Internal error: {e}")  # noqa: E501
 
     async def _handle_prompt(self, req_id: Any, text: str) -> None:
         """Bridge AgentLoop.run_stream() to ACP events."""
