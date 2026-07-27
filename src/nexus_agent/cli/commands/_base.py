@@ -7,7 +7,7 @@ from typing import Any
 
 try:
     from blessed import Terminal
-    _term = Terminal()
+    _term = Terminal() if Terminal else None
 except ImportError:
     Terminal = None
     _term = None
