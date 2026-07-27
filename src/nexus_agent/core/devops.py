@@ -70,12 +70,14 @@ class TestRunner:
             for f in files:
                 if (self.workspace / f).exists():
                     if fw == "pytest-fallback":
-                        if (self.workspace / "pyproject.toml").exists() or list((self.workspace / "tests").glob("**/*.py")):
+                        # ⚡ Bolt: Use any() with glob generators for faster existence checks
+                        if (self.workspace / "pyproject.toml").exists() or any((self.workspace / "tests").glob("**/*.py")):
                             return "pytest"
                     else:
                         return fw.replace("-fallback", "")
 
-        if list(self.workspace.glob("*.py")) or list((self.workspace / "src").glob("**/*.py") if (self.workspace / "src").exists() else []):
+        # ⚡ Bolt: Use any() with glob generators for faster existence checks
+        if any(self.workspace.glob("*.py")) or any((self.workspace / "src").glob("**/*.py") if (self.workspace / "src").exists() else []):
             return "unittest"
 
         return None
@@ -153,7 +155,8 @@ class LinterRunner:
     def run_all(self) -> tuple[bool, str]:
         """Run all available linters sequentially."""
         linter_cmds = []
-        if (self.workspace / "pyproject.toml").exists() or list(self.workspace.glob("*.py")):
+        # ⚡ Bolt: Use any() with glob generators for faster existence checks
+        if (self.workspace / "pyproject.toml").exists() or any(self.workspace.glob("*.py")):
             linter_cmds.append(["ruff", "check", "."])
             linter_cmds.append(["mypy", "."])
         if (self.workspace / "package.json").exists():
