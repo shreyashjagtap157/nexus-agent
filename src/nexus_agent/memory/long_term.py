@@ -377,12 +377,12 @@ class LongTermMemory(SQLiteStore):
                 like_query = f"%{escaped}%"
                 if category:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",  # noqa: E501
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",
                         (like_query, category, limit),
                     )
                 else:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
                         (like_query, limit),
                     )
 
@@ -461,7 +461,7 @@ class LongTermMemory(SQLiteStore):
         with self._lock:
             conn = self._get_conn()
             cursor = conn.execute(
-                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"  # noqa: E501
+                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"
             )
             return [dict(row) for row in cursor]
 

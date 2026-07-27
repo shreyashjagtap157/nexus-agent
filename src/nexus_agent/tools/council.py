@@ -58,7 +58,7 @@ class CouncilTool(Tool):
             },
             "rebuttals": {
                 "type": "boolean",
-                "description": "If true, run a second round where members see each other's votes (default: false).",  # noqa: E501
+                "description": "If true, run a second round where members see each other's votes (default: false).",
                 "required": False,
             },
         }
@@ -79,7 +79,6 @@ class CouncilTool(Tool):
         if not topic or not topic.strip():
             return "Error: 'topic' is required."
         from nexus_agent.core.debate import Council
-
         council = Council(
             provider=self._provider,
             approval_threshold=0.6,

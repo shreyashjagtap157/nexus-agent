@@ -74,7 +74,7 @@ class MemoryManager:
                 logger.warning("VectorStore unavailable: %s", exc)
                 self.vector = None
 
-        logger.info("Memory manager initialized at %s (vector=%s)", self.data_dir, self.vector is not None)  # noqa: E501
+        logger.info("Memory manager initialized at %s (vector=%s)", self.data_dir, self.vector is not None)
 
     def __del__(self) -> None:
         try:
@@ -242,7 +242,7 @@ class MemoryManager:
             vs_count = self.vector.count() if self.vector is not None else 0
             up_summary = self.user_profile.get_summary()
             up_count = 1 if up_summary else 0
-            # total = unique entries across countable tiers (vector mirrors long-term, user_profile is singular)  # noqa: E501
+            # total = unique entries across countable tiers (vector mirrors long-term, user_profile is singular)
             total = working_summary["entries"] + lt_total + ep_count
             return {
                 "working": working_summary["entries"],
@@ -450,7 +450,7 @@ class MemoryManager:
                     for e in lt_entries:
                         e["source"] = "long_term"
                         if "score" not in e:
-                            e["score"] = float(e.get("metadata", {}).get("heat_score", 0.0)) if isinstance(e.get("metadata"), dict) else 0.0  # noqa: E501
+                            e["score"] = float(e.get("metadata", {}).get("heat_score", 0.0)) if isinstance(e.get("metadata"), dict) else 0.0
                     results.extend(lt_entries)
                 except Exception as exc:
                     logger.debug("Failed to list long-term: %s", exc)

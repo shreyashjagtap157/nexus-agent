@@ -1,4 +1,4 @@
-"""Persistent memory system — working, long-term, episodic, user profile, and vector/semantic memory."""  # noqa: E501
+"""Persistent memory system — working, long-term, episodic, user profile, and vector/semantic memory."""
 
 from __future__ import annotations
 

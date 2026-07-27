@@ -64,31 +64,11 @@ class MemoryTool(Tool):
                 "type": "string",
                 "description": "One of: list, get, store, update, forget, stats.",
             },
-            "entry_id": {
-                "type": "string",
-                "description": "Memory ID (for get/update/forget).",
-                "required": False,
-            },
-            "content": {
-                "type": "string",
-                "description": "Memory content (for store/update).",
-                "required": False,
-            },
-            "category": {
-                "type": "string",
-                "description": "Category label (for store/update/list filter).",
-                "required": False,
-            },
-            "limit": {
-                "type": "integer",
-                "description": "Max entries to return (list). Default 10, max 1000.",
-                "required": False,
-            },
-            "offset": {
-                "type": "integer",
-                "description": "Skip this many entries (list). Default 0.",
-                "required": False,
-            },
+            "entry_id": {"type": "string", "description": "Memory ID (for get/update/forget).", "required": False},
+            "content": {"type": "string", "description": "Memory content (for store/update).", "required": False},
+            "category": {"type": "string", "description": "Category label (for store/update/list filter).", "required": False},
+            "limit": {"type": "integer", "description": "Max entries to return (list). Default 10, max 1000.", "required": False},
+            "offset": {"type": "integer", "description": "Skip this many entries (list). Default 0.", "required": False},
         }
 
     @property
@@ -137,10 +117,7 @@ class MemoryTool(Tool):
     # --- actions ---
 
     def _list(
-        self,
-        category: str | None,
-        limit: int | None,
-        offset: int | None,
+        self, category: str | None, limit: int | None, offset: int | None,
     ) -> str:
         items = self._memory.list_all(
             category=category,
@@ -155,7 +132,9 @@ class MemoryTool(Tool):
             ts = m.get("created_at", 0)
             preview = (m.get("content") or "").replace("\n", " ")[:120]
             cat = m.get("category", "general")
-            lines.append(f"  [{m['id'][:8]}] ({cat}, ts={ts:.0f}) {preview}")
+            lines.append(
+                f"  [{m['id'][:8]}] ({cat}, ts={ts:.0f}) {preview}"
+            )
         header = f"{len(items)} memor{'y' if len(items) == 1 else 'ies'}"
         if category:
             header += f" in category {category!r}"
@@ -186,10 +165,7 @@ class MemoryTool(Tool):
         return f"Stored memory [{entry_id}] in category {cat!r}."
 
     def _update(
-        self,
-        entry_id: str | None,
-        content: str | None,
-        category: str | None,
+        self, entry_id: str | None, content: str | None, category: str | None,
     ) -> str:
         if not entry_id:
             return "Error: 'entry_id' is required for action=update."
@@ -223,7 +199,9 @@ class MemoryTool(Tool):
             f"DB path: {stats.get('db_path', '?')}",
         ]
         if cats:
-            cat_lines = ", ".join(f"{c['category']}={c['count']}" for c in cats)
+            cat_lines = ", ".join(
+                f"{c['category']}={c['count']}" for c in cats
+            )
             lines.append(f"By category: {cat_lines}")
         return "\n".join(lines)
 

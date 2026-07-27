@@ -1,4 +1,4 @@
-"""Built-in tools for the agent — file ops, shell, code editing, git, search, RAG, batch edit, browser, code intel, LSP."""  # noqa: E501
+"""Built-in tools for the agent — file ops, shell, code editing, git, search, RAG, batch edit, browser, code intel, LSP."""
 
 from nexus_agent.tools.base import Tool
 from nexus_agent.tools.batch_edit import BatchEditTool

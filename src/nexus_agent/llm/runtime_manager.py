@@ -198,7 +198,7 @@ class LocalModelConfig:
             "llama-3-tool", "mistral-instruct", "command-r",
         }
         if self.chat_format not in valid_chat_formats:
-            raise ValueError(f"Invalid chat_format '{self.chat_format}'. Must be one of {valid_chat_formats}")  # noqa: E501
+            raise ValueError(f"Invalid chat_format '{self.chat_format}'. Must be one of {valid_chat_formats}")
         if self.context_size < 128:
             raise ValueError(f"context_size must be >= 128, got {self.context_size}")
         if self.batch_size < 1:
@@ -223,7 +223,7 @@ class RuntimeManager:
             self._validated_config = LocalModelConfig(**filtered)
         except (TypeError, ValueError) as e:
             logger.warning(f"Local model config validation failed: {e}")
-            self._validated_config = LocalModelConfig(**{k: v for k, v in filtered.items() if k in known_keys})  # noqa: E501
+            self._validated_config = LocalModelConfig(**{k: v for k, v in filtered.items() if k in known_keys})
         self._runtime_override = self._validated_config.runtime
         self._gpu_backend = self._validated_config.gpu_backend
         self._gpu_layers = self._validated_config.gpu_layers
@@ -269,14 +269,14 @@ class RuntimeManager:
 
         target_path = model_path or self._local_config.get("default_model", "")
         if not target_path:
-            raise ValueError("No model path specified. Set default_model in config or provide model_path.")  # noqa: E501
+            raise ValueError("No model path specified. Set default_model in config or provide model_path.")
         resolved_path = Path(target_path).expanduser().resolve()
 
         runtime = self._runtime_override
 
         # Auto-detect runtime if set to auto
         if runtime == "auto":
-            if resolved_path and resolved_path.is_dir() and (resolved_path / "genai_config.json").exists():  # noqa: E501
+            if resolved_path and resolved_path.is_dir() and (resolved_path / "genai_config.json").exists():
                 runtime = "onnx"
             else:
                 runtime = "llama-cpp"
@@ -299,7 +299,7 @@ class RuntimeManager:
         try:
             if runtime == "onnx":
                 if not ONNX_AVAILABLE:
-                    logger.warning("ONNX Runtime is requested but not available. Falling back to llama.cpp.")  # noqa: E501
+                    logger.warning("ONNX Runtime is requested but not available. Falling back to llama.cpp.")
                     runtime = "llama-cpp"
                 else:
                     new_engine = OnnxEngine(
@@ -347,7 +347,7 @@ class RuntimeManager:
             return self._active_engine
 
         except (ValueError, RuntimeError, OSError) as e:
-            logger.error(f"Failed to load new local engine runtime: {e}. Rolling back to old engine.")  # noqa: E501
+            logger.error(f"Failed to load new local engine runtime: {e}. Rolling back to old engine.")
             self._active_engine = old_engine
             raise RuntimeError(f"Failed to switch local engine: {e}") from e
 
@@ -365,7 +365,7 @@ class RuntimeManager:
             if target_dir_abs not in sys.path:
                 sys.path.insert(0, target_dir_abs)
                 importlib.invalidate_caches()
-                logger.info(f"Activated isolated runtime backend '{backend}' by prepending to sys.path: {target_dir_abs}")  # noqa: E501
+                logger.info(f"Activated isolated runtime backend '{backend}' by prepending to sys.path: {target_dir_abs}")
 
     @staticmethod
     def get_recommended_runtimes() -> list[str]:
@@ -402,7 +402,7 @@ class RuntimeManager:
             recs.append("onnx")
 
         # Check for common external server runtimes
-        for server, probe_key in [("ollama", "ollama"), ("lm_studio", "lm_studio"), ("koboldcpp", "koboldcpp")]:  # noqa: E501
+        for server, probe_key in [("ollama", "ollama"), ("lm_studio", "lm_studio"), ("koboldcpp", "koboldcpp")]:
             try:
                 import urllib.request
                 info = INSTALLABLE_RUNTIMES.get(server, {})
@@ -464,10 +464,10 @@ class RuntimeManager:
         if backend == "onnx":
             if not target_dir.exists():
                 return False
-            return (target_dir / "onnxruntime_genai").exists() or list(target_dir.glob("onnxruntime_genai*")) != []  # noqa: E501
+            return (target_dir / "onnxruntime_genai").exists() or list(target_dir.glob("onnxruntime_genai*")) != []
 
         # Python package runtimes (vLLM, SGLang, MLX, ExLlamaV2, TensorRT-LLM)
-        pkg_map = {"vllm": "vllm", "sglang": "sglang", "mlx": "mlx", "exllamav2": "exllamav2", "tensorrt_llm": "tensorrt_llm"}  # noqa: E501
+        pkg_map = {"vllm": "vllm", "sglang": "sglang", "mlx": "mlx", "exllamav2": "exllamav2", "tensorrt_llm": "tensorrt_llm"}
         pkg = pkg_map.get(backend)
         if pkg:
             try:
@@ -481,7 +481,7 @@ class RuntimeManager:
         return False
 
     @staticmethod
-    def install_runtime(backend: str, force_reinstall: bool = False, progress_callback: Any = None) -> bool:  # noqa: E501
+    def install_runtime(backend: str, force_reinstall: bool = False, progress_callback: Any = None) -> bool:
         """Install a runtime backend.
 
         For pip-installable runtimes: installs to isolated target directory.
@@ -492,16 +492,16 @@ class RuntimeManager:
         from pathlib import Path
         rt = INSTALLABLE_RUNTIMES.get(backend)
         if not rt:
-            raise ValueError(f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}")  # noqa: E501
+            raise ValueError(f"Unknown runtime backend: {backend}. Choose from: {', '.join(INSTALLABLE_RUNTIMES.keys())}")
 
         runtime_type = rt.get("runtime_type", "")
 
         # External servers — just print install instructions
         if runtime_type == "external_server":
             install_guides = {
-                "ollama": "Visit https://ollama.com to download and install, then run: ollama pull <model>",  # noqa: E501
-                "lm_studio": "Download from https://lmstudio.ai and enable the local API server in Settings.",  # noqa: E501
-                "koboldcpp": "Download from https://github.com/LostRuins/koboldcpp/releases and run with --openai-compat.",  # noqa: E501
+                "ollama": "Visit https://ollama.com to download and install, then run: ollama pull <model>",
+                "lm_studio": "Download from https://lmstudio.ai and enable the local API server in Settings.",
+                "koboldcpp": "Download from https://github.com/LostRuins/koboldcpp/releases and run with --openai-compat.",
             }
             guide = install_guides.get(backend, f"Download and install {rt['name']} manually.")
             if progress_callback:
@@ -519,7 +519,7 @@ class RuntimeManager:
         target_dir = Path(data_dir_path) / "runtimes" / backend
 
         if not force_reinstall and RuntimeManager.is_runtime_installed(backend):
-            logger.info(f"Runtime {rt['name']} is already installed. Use force_reinstall=True to reinstall.")  # noqa: E501
+            logger.info(f"Runtime {rt['name']} is already installed. Use force_reinstall=True to reinstall.")
             if progress_callback:
                 progress_callback("complete", f"{rt['name']} is already installed")
             return True

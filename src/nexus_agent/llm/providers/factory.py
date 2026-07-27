@@ -148,7 +148,7 @@ class FallbackProvider(LLMProvider):
                 logger.debug(f"FallbackProvider: close() on '{p.name}' failed: {e}")
 
     def __repr__(self) -> str:
-        return f"<FallbackProvider chain={self.name} last_used={self._last_used and self._last_used.name}>"  # noqa: E501
+        return f"<FallbackProvider chain={self.name} last_used={self._last_used and self._last_used.name}>"
 
 
 class ProviderFactory:

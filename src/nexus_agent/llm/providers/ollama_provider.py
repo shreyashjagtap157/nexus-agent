@@ -31,7 +31,7 @@ class OllamaProvider(OpenAIProvider):
         return "ollama"
 
     def get_capabilities(self) -> ProviderCapabilities:
-        # Most modern Ollama models support system messages and streaming, but tool calling depends on model  # noqa: E501
+        # Most modern Ollama models support system messages and streaming, but tool calling depends on model
         return ProviderCapabilities(
             supports_tool_calling=True,
             supports_vision=False,
@@ -47,7 +47,7 @@ class OllamaProvider(OpenAIProvider):
         # We will return common defaults or read from config if provided
         configured = self._config.get("available_models")
         if configured:
-            return [{"id": m, "name": f"{m} (Configured)", "provider": "ollama"} for m in configured]  # noqa: E501
+            return [{"id": m, "name": f"{m} (Configured)", "provider": "ollama"} for m in configured]
         return [
             {"id": "llama3", "name": "Llama 3", "provider": "ollama"},
             {"id": "mistral", "name": "Mistral", "provider": "ollama"},

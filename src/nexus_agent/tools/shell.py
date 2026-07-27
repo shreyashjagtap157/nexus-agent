@@ -16,12 +16,9 @@ from nexus_agent.tools.base import Tool
 class ShellTool(Tool):
     """Execute shell commands in a sandboxed environment."""
 
-    def __init__(
-        self,
-        workspace: Path | None = None,
-        sandbox: Sandbox | None = None,
-        sandbox_config: SandboxConfig | None = None,
-    ):
+    def __init__(self, workspace: Path | None = None,
+                 sandbox: Sandbox | None = None,
+                 sandbox_config: SandboxConfig | None = None):
         self.workspace = workspace or Path.cwd()
         config = sandbox_config or SandboxConfig(mode=SandboxMode.ASK)
         self.sandbox = sandbox or Sandbox(
@@ -50,7 +47,7 @@ class ShellTool(Tool):
             },
             "cwd": {
                 "type": "string",
-                "description": "Working directory for the command (optional, defaults to workspace)",  # noqa: E501
+                "description": "Working directory for the command (optional, defaults to workspace)",
                 "required": False,
             },
             "timeout": {
@@ -68,9 +65,8 @@ class ShellTool(Tool):
     def timeout(self) -> int:
         return 120
 
-    def execute(
-        self, command: str, cwd: str | None = None, timeout: int | None = None, **kwargs: Any
-    ) -> str:
+    def execute(self, command: str, cwd: str | None = None,
+                timeout: int | None = None, **kwargs: Any) -> str:
         # Validate cwd stays within workspace
         if cwd:
             try:

@@ -110,7 +110,7 @@ def _is_retryable(exc: BaseException, policy: RetryPolicy) -> bool:
         return True
     if "timeout" in err_str or "timed out" in err_str:
         return True
-    if "connection" in err_str and ("refused" in err_str or "reset" in err_str or "error" in err_str):  # noqa: E501
+    if "connection" in err_str and ("refused" in err_str or "reset" in err_str or "error" in err_str):
         return True
     if "connect" in err_str and "error" in err_str:
         return True
@@ -263,7 +263,7 @@ class RetryProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
         result, _stats = with_retry(
-            lambda: self._inner.chat_completion_stream(messages, tools, temperature, max_tokens, **kwargs),  # noqa: E501
+            lambda: self._inner.chat_completion_stream(messages, tools, temperature, max_tokens, **kwargs),
             policy=self._policy,
             provider_name=self.name,
         )
@@ -320,7 +320,7 @@ def chat_with_retry(
     """
     if stream:
         result, stats = with_retry(
-            lambda: provider.chat_completion_stream(messages, tools, temperature, max_tokens, **kwargs),  # noqa: E501
+            lambda: provider.chat_completion_stream(messages, tools, temperature, max_tokens, **kwargs),
             policy=policy,
             provider_name=provider.name,
         )

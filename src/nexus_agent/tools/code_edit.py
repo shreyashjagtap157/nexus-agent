@@ -100,12 +100,12 @@ class CodeEditTool(Tool):
             },
             "validate_ast": {
                 "type": "boolean",
-                "description": "For Python files, refuse the edit if the result fails ast.parse (default: true)",  # noqa: E501
+                "description": "For Python files, refuse the edit if the result fails ast.parse (default: true)",
                 "required": False,
             },
             "canonicalize": {
                 "type": "boolean",
-                "description": "For Python files, normalise the result via ast.unparse (default: false)",  # noqa: E501
+                "description": "For Python files, normalise the result via ast.unparse (default: false)",
                 "required": False,
             },
         }
@@ -277,7 +277,7 @@ class InsertLinesTool(Tool):
 
         # Validate line_number range
         if line_number < 1 or line_number > len(lines) + 1:
-            return f"Error: line_number {line_number} is out of range (file has {len(lines)} lines)."  # noqa: E501
+            return f"Error: line_number {line_number} is out of range (file has {len(lines)} lines)."
 
         idx = line_number - 1
 

@@ -23,11 +23,11 @@ class GoogleProvider(OpenAIProvider):
         """
         google_config = dict(config)
         if not google_config.get("api_key"):
-            google_config["api_key"] = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")  # noqa: E501
+            google_config["api_key"] = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         if not google_config.get("model"):
             google_config["model"] = "gemini-1.5-pro"
         if not google_config.get("api_url"):
-            google_config["api_url"] = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"  # noqa: E501
+            google_config["api_url"] = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         super().__init__(google_config)
 
     @property
@@ -40,7 +40,7 @@ class GoogleProvider(OpenAIProvider):
             supports_vision=True,
             supports_streaming=True,
             supports_system_message=True,
-            supports_parallel_tool_calls=False,  # Gemini doesn't support parallel tools well in this layer  # noqa: E501
+            supports_parallel_tool_calls=False,  # Gemini doesn't support parallel tools well in this layer
             max_context_length=1000000,          # Gemini has huge context
             max_output_tokens=8192,
         )
@@ -49,7 +49,7 @@ class GoogleProvider(OpenAIProvider):
         return [
             {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro (Analytical)", "provider": "google"},
             {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash (Fast)", "provider": "google"},
-            {"id": "gemini-2.0-flash-exp", "name": "Gemini 2.0 Flash (Experimental)", "provider": "google"},  # noqa: E501
+            {"id": "gemini-2.0-flash-exp", "name": "Gemini 2.0 Flash (Experimental)", "provider": "google"},
         ]
 
     def validate_config(self) -> list[str]:

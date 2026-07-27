@@ -218,10 +218,7 @@ class LSPClient:
                 "textDocument": {
                     "synchronization": {"dynamicRegistration": False, "didSave": True},
                     "completion": {"dynamicRegistration": False},
-                    "hover": {
-                        "dynamicRegistration": False,
-                        "contentFormat": ["markdown", "plaintext"],
-                    },
+                    "hover": {"dynamicRegistration": False, "contentFormat": ["markdown", "plaintext"]},
                     "definition": {"dynamicRegistration": False, "linkSupport": True},
                     "references": {"dynamicRegistration": False},
                     "documentSymbol": {"dynamicRegistration": False},
@@ -233,7 +230,9 @@ class LSPClient:
                 "window": {"workDoneProgress": False},
             },
             "initializationOptions": self.config.initialization_options,
-            "workspaceFolders": [{"uri": self.workspace.as_uri(), "name": self.workspace.name}],
+            "workspaceFolders": [
+                {"uri": self.workspace.as_uri(), "name": self.workspace.name}
+            ],
         }
         result = self.request("initialize", params)
         if isinstance(result, dict) and "capabilities" in result:

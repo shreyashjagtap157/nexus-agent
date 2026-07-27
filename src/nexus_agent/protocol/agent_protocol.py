@@ -312,8 +312,8 @@ class AgentInputSerializer:
             name="file_read",
             description="Read contents of a file",
             parameters=[
-                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),  # noqa: E501
-                ToolParameter(name="line_start", type="integer", description="Start line (optional)"),  # noqa: E501
+                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),
+                ToolParameter(name="line_start", type="integer", description="Start line (optional)"),
                 ToolParameter(name="line_end", type="integer", description="End line (optional)"),
             ],
         ),
@@ -321,34 +321,34 @@ class AgentInputSerializer:
             name="file_write",
             description="Write content to a file (creates or overwrites)",
             parameters=[
-                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),  # noqa: E501
-                ToolParameter(name="content", type="string", description="Full file content to write", required=True),  # noqa: E501
+                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),
+                ToolParameter(name="content", type="string", description="Full file content to write", required=True),
             ],
         ),
         ToolDefinition(
             name="file_edit",
             description="Edit specific content in a file using old/new content matching",
             parameters=[
-                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),  # noqa: E501
-                ToolParameter(name="old_content", type="string", description="Exact content to replace", required=True),  # noqa: E501
-                ToolParameter(name="new_content", type="string", description="Replacement content", required=True),  # noqa: E501
+                ToolParameter(name="path", type="string", description="Absolute path to file", required=True),
+                ToolParameter(name="old_content", type="string", description="Exact content to replace", required=True),
+                ToolParameter(name="new_content", type="string", description="Replacement content", required=True),
             ],
         ),
         ToolDefinition(
             name="command",
             description="Execute a shell command",
             parameters=[
-                ToolParameter(name="command_string", type="string", description="Command to execute", required=True),  # noqa: E501
+                ToolParameter(name="command_string", type="string", description="Command to execute", required=True),
                 ToolParameter(name="working_dir", type="string", description="Working directory"),
-                ToolParameter(name="timeout_seconds", type="integer", description="Timeout in seconds", default=60),  # noqa: E501
+                ToolParameter(name="timeout_seconds", type="integer", description="Timeout in seconds", default=60),
             ],
         ),
         ToolDefinition(
             name="web_search",
             description="Search the web for information",
             parameters=[
-                ToolParameter(name="query", type="string", description="Search query", required=True),  # noqa: E501
-                ToolParameter(name="num_results", type="integer", description="Number of results", default=5),  # noqa: E501
+                ToolParameter(name="query", type="string", description="Search query", required=True),
+                ToolParameter(name="num_results", type="integer", description="Number of results", default=5),
             ],
         ),
     ]
@@ -395,8 +395,8 @@ class AgentInputSerializer:
         identity = ET.SubElement(root, "agent_identity")
         ET.SubElement(identity, "name").text = self.agent_info.name or self.agent_info.id
         ET.SubElement(identity, "role").text = self.agent_info.role.value
-        ET.SubElement(identity, "capabilities").text = ", ".join(self.agent_info.capabilities) if self.agent_info.capabilities else "general-purpose"  # noqa: E501
-        ET.SubElement(identity, "limitations").text = ", ".join(self.agent_info.limitations) if self.agent_info.limitations else "none"  # noqa: E501
+        ET.SubElement(identity, "capabilities").text = ", ".join(self.agent_info.capabilities) if self.agent_info.capabilities else "general-purpose"
+        ET.SubElement(identity, "limitations").text = ", ".join(self.agent_info.limitations) if self.agent_info.limitations else "none"
 
         ET.SubElement(root, "goal").text = self.goal
 
@@ -417,19 +417,19 @@ class AgentInputSerializer:
             if self.memory.get("working"):
                 ET.SubElement(mem_el, "working_memory").text = str(self.memory.get("working", ""))
             if self.memory.get("long_term"):
-                ET.SubElement(mem_el, "long_term_memory").text = str(self.memory.get("long_term", ""))  # noqa: E501
+                ET.SubElement(mem_el, "long_term_memory").text = str(self.memory.get("long_term", ""))
 
         reasoning_el = ET.SubElement(root, "reasoning_config")
         ET.SubElement(reasoning_el, "thinking_enabled").text = str(self.thinking_enabled).lower()
         ET.SubElement(reasoning_el, "thinking_depth").text = str(self.reasoning_depth)
-        ET.SubElement(reasoning_el, "self_critique_enabled").text = str(self.self_critique_enabled).lower()  # noqa: E501
+        ET.SubElement(reasoning_el, "self_critique_enabled").text = str(self.self_critique_enabled).lower()
 
         if self.multi_agent_roster:
             roster_el = ET.SubElement(root, "agent_roster")
             for agent in self.multi_agent_roster:
                 agent_el = ET.SubElement(roster_el, "agent", id=agent.id)
                 ET.SubElement(agent_el, "role").text = agent.role.value
-                ET.SubElement(agent_el, "capabilities").text = ", ".join(agent.capabilities) if agent.capabilities else "general-purpose"  # noqa: E501
+                ET.SubElement(agent_el, "capabilities").text = ", ".join(agent.capabilities) if agent.capabilities else "general-purpose"
 
         if self.pending_delegations:
             for d in self.pending_delegations:
@@ -727,7 +727,7 @@ class AgentProtocol:
         agent_info = AgentInfo(
             id=self.session_id,
             role=agent_role,
-            capabilities=agent_capabilities or ["code_generation", "file_operations", "testing", "reasoning"],  # noqa: E501
+            capabilities=agent_capabilities or ["code_generation", "file_operations", "testing", "reasoning"],
             name=agent_name or agent_role.value,
         )
 
@@ -752,19 +752,19 @@ class AgentProtocol:
         parser = AgentOutputParser(raw_output)
 
         for step in parser.get_thinking():
-            self.event_logger.log("thought_step", step=step.step, confidence=step.confidence, halted_early=step.halted_early)  # noqa: E501
+            self.event_logger.log("thought_step", step=step.step, confidence=step.confidence, halted_early=step.halted_early)
 
         for op in parser.get_file_operations():
-            self.event_logger.log("operation_pending", type=op.operation_type, path=op.path, status=op.status.value)  # noqa: E501
+            self.event_logger.log("operation_pending", type=op.operation_type, path=op.path, status=op.status.value)
 
         for cmd in parser.get_commands():
-            self.event_logger.log("operation_pending", type="command", command=cmd.command_string, status=cmd.status.value)  # noqa: E501
+            self.event_logger.log("operation_pending", type="command", command=cmd.command_string, status=cmd.status.value)
 
         for tc in parser.get_tool_calls():
             self.event_logger.log("tool_call_pending", tool_name=tc.tool_name, call_id=tc.id)
 
         next_action = parser.get_next_action()
-        self.event_logger.log("output_received", next_action=next_action, status=parser.get_status())  # noqa: E501
+        self.event_logger.log("output_received", next_action=next_action, status=parser.get_status())
 
         return parser
 
@@ -798,14 +798,14 @@ class AgentProtocol:
             status="success" if tasks_completed > 0 else "no_tasks",
         )
 
-    def add_task(self, task_type: OperationType, description: str, depends_on: list[str] | None = None) -> Task:  # noqa: E501
+    def add_task(self, task_type: OperationType, description: str, depends_on: list[str] | None = None) -> Task:
         task = Task(
             type=task_type,
             description=description,
             depends_on=depends_on or [],
         )
         self.tasks.append(task)
-        self.event_logger.log("task_added", task_id=task.id, type=task_type.value, description=description)  # noqa: E501
+        self.event_logger.log("task_added", task_id=task.id, type=task_type.value, description=description)
         return task
 
     def update_task_status(self, task_id: str, status: TaskStatus, result: dict | None = None):

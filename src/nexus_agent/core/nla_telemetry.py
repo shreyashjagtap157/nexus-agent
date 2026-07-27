@@ -203,7 +203,7 @@ class NLATelemetry:
 
         for idx, r in enumerate(records, 1):
             lines.extend([
-                f"\n#### Iteration {idx} — Strategy: `{r.strategy_selected}` (Confidence: {r.confidence_score*100:.0f}%)",  # noqa: E501
+                f"\n#### Iteration {idx} — Strategy: `{r.strategy_selected}` (Confidence: {r.confidence_score*100:.0f}%)",
                 f"**Thought Process:** {r.thought_process[:250]}...",
                 f"**Tools Considered:** {', '.join(f'`{t}`' for t in r.tools_considered)}",
             ])
@@ -221,8 +221,8 @@ class NLATelemetry:
 
         # Redaction patterns for sensitive data
         _REDACT_PATTERNS = [
-            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+'), r'\1=[REDACTED]'),  # noqa: E501
-            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*["\']?\s*:\s*["\']?\S+'), r'\1: [REDACTED]'),  # noqa: E501
+            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+'), r'\1=[REDACTED]'),
+            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*["\']?\s*:\s*["\']?\S+'), r'\1: [REDACTED]'),
         ]
 
         for idx, r in enumerate(records):
@@ -240,7 +240,7 @@ class NLATelemetry:
                 ]
 
                 pairs.append({
-                    "instruction": f"Formulate alternative strategy paths for solving tasks requiring tools: {', '.join(r.tools_considered)}",  # noqa: E501
+                    "instruction": f"Formulate alternative strategy paths for solving tasks requiring tools: {', '.join(r.tools_considered)}",
                     "thought": redacted_thought,
                     "ideal_strategy": r.strategy_selected,
                     "alternatives": redacted_alternatives,

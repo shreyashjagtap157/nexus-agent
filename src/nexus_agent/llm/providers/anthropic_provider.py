@@ -60,7 +60,7 @@ class AnthropicProvider(LLMProvider):
 
     def _get_headers(self) -> dict[str, str]:
         if not self._api_key:
-            raise ValueError("Anthropic API key is missing. Set it in config or via ANTHROPIC_API_KEY env var.")  # noqa: E501
+            raise ValueError("Anthropic API key is missing. Set it in config or via ANTHROPIC_API_KEY env var.")
         return {
             "x-api-key": self._api_key,
             "anthropic-version": "2023-06-01",
@@ -213,7 +213,7 @@ class AnthropicProvider(LLMProvider):
                 usage={
                     "prompt_tokens": result.get("usage", {}).get("input_tokens", 0),
                     "completion_tokens": result.get("usage", {}).get("output_tokens", 0),
-                    "total_tokens": result.get("usage", {}).get("input_tokens", 0) + result.get("usage", {}).get("output_tokens", 0),  # noqa: E501
+                    "total_tokens": result.get("usage", {}).get("input_tokens", 0) + result.get("usage", {}).get("output_tokens", 0),
                 },
                 model=self._model_name,
             )
@@ -295,9 +295,9 @@ class AnthropicProvider(LLMProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": "claude-3-5-sonnet-latest", "name": "Claude 3.5 Sonnet (Default)", "provider": "anthropic"},  # noqa: E501
-            {"id": "claude-3-5-haiku-latest", "name": "Claude 3.5 Haiku (Fast)", "provider": "anthropic"},  # noqa: E501
-            {"id": "claude-3-opus-latest", "name": "Claude 3 Opus (Advanced)", "provider": "anthropic"},  # noqa: E501
+            {"id": "claude-3-5-sonnet-latest", "name": "Claude 3.5 Sonnet (Default)", "provider": "anthropic"},
+            {"id": "claude-3-5-haiku-latest", "name": "Claude 3.5 Haiku (Fast)", "provider": "anthropic"},
+            {"id": "claude-3-opus-latest", "name": "Claude 3 Opus (Advanced)", "provider": "anthropic"},
         ]
 
     def validate_config(self) -> list[str]:
