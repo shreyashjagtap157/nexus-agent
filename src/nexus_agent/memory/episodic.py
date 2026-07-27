@@ -60,7 +60,7 @@ class EpisodicMemory(SQLiteStore):
             conn.execute(
                 "INSERT INTO episodes (session_id, summary, messages_count, metadata, created_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (session_id, summary, max(0, messages_count), json.dumps(metadata or {}), time.time()),
+                (session_id, summary, max(0, messages_count), json.dumps(metadata or {}), time.time()),  # noqa: E501
             )
             conn.commit()
 

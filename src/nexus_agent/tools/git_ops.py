@@ -26,13 +26,36 @@ MAX_OUTPUT_BYTES = 100 * 1024
 
 # Whitelist of allowed git subcommands
 ALLOWED_SUBCOMMANDS = {
-    "status", "log", "diff", "branch", "show", "remote", "tag",
-    "describe", "add", "commit", "push", "pull", "merge", "checkout",
-    "reset", "stash", "init", "clone", "fetch", "rebase", "cherry-pick",
-    "revert", "rm", "mv", "config", "help", "version",
+    "status",
+    "log",
+    "diff",
+    "branch",
+    "show",
+    "remote",
+    "tag",
+    "describe",
+    "add",
+    "commit",
+    "push",
+    "pull",
+    "merge",
+    "checkout",
+    "reset",
+    "stash",
+    "init",
+    "clone",
+    "fetch",
+    "rebase",
+    "cherry-pick",
+    "revert",
+    "rm",
+    "mv",
+    "config",
+    "help",
+    "version",
 }
 
-_ARG_PATTERN = re.compile(r'^[a-zA-Z0-9./\-_=~^]+$')
+_ARG_PATTERN = re.compile(r"^[a-zA-Z0-9./\-_=~^]+$")
 
 
 class GitTool(Tool):
@@ -88,10 +111,10 @@ class GitTool(Tool):
                 return f"Error: Invalid git arguments: {e}"
             for i, token in enumerate(parsed_args):
                 if len(token) > 100:
-                    return f"Error: Argument {i+1} exceeds maximum length of 100 characters."
+                    return f"Error: Argument {i + 1} exceeds maximum length of 100 characters."
                 if not _ARG_PATTERN.match(token):
                     return (
-                        f"Error: Argument {i+1} contains disallowed characters. "
+                        f"Error: Argument {i + 1} contains disallowed characters. "
                         f"Only alphanumeric, ., /, -, and _ are allowed. Got: '{token[:50]}...'"
                     )
 
@@ -164,7 +187,7 @@ class SmartCommitTool(Tool):
                 cwd=str(self.workspace),
                 capture_output=True,
                 text=True,
-                timeout=15
+                timeout=15,
             )
             diff_text = diff_staged.stdout.strip()
             if not diff_text:
@@ -174,7 +197,7 @@ class SmartCommitTool(Tool):
                     cwd=str(self.workspace),
                     capture_output=True,
                     text=True,
-                    timeout=15
+                    timeout=15,
                 )
                 diff_text = diff_unstaged.stdout.strip()
                 if not diff_text:
@@ -183,16 +206,18 @@ class SmartCommitTool(Tool):
             if self.provider:
                 # LLM based generation
                 system = (
-                    "You are a git expert. Analyze the provided git diff and output a single, perfect conventional "
-                    "commit message. Use conventional commits formatting (e.g. feat: add task graph module, "
-                    "fix: resolve context timeout issue, docs: update readme). Do NOT add extra explanations, "
+                    "You are a git expert. Analyze the provided git diff and output a single, perfect conventional "  # noqa: E501
+                    "commit message. Use conventional commits formatting (e.g. feat: add task graph module, "  # noqa: E501
+                    "fix: resolve context timeout issue, docs: update readme). Do NOT add extra explanations, "  # noqa: E501
                     "backticks, or code blocks. Just output the raw commit message."
                 )
                 user = f"Git Diff:\n{diff_text[:3000]}"
-                res = self.provider.chat_completion([
-                    Message(role=Role.SYSTEM, content=system),
-                    Message(role=Role.USER, content=user)
-                ])
+                res = self.provider.chat_completion(
+                    [
+                        Message(role=Role.SYSTEM, content=system),
+                        Message(role=Role.USER, content=user),
+                    ]
+                )
                 return (res.content or "").strip()
             else:
                 # Heuristic fallback
@@ -226,7 +251,9 @@ class PRGeneratorTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Auto-generates a Pull Request title and technical summary describing branch changes."
+        return (
+            "Auto-generates a Pull Request title and technical summary describing branch changes."
+        )
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -254,7 +281,7 @@ class PRGeneratorTool(Tool):
                 cwd=str(self.workspace),
                 capture_output=True,
                 text=True,
-                timeout=15
+                timeout=15,
             )
             commits = commits_res.stdout.strip()
 
@@ -264,7 +291,7 @@ class PRGeneratorTool(Tool):
                 cwd=str(self.workspace),
                 capture_output=True,
                 text=True,
-                timeout=15
+                timeout=15,
             )
             stats = diff_stat.stdout.strip()
 
@@ -273,17 +300,19 @@ class PRGeneratorTool(Tool):
 
             if self.provider:
                 system = (
-                    "You are a principal engineer. Create a compelling, professional Pull Request title and description "
-                    "based on the provided commit messages and change stats. Format the description in Markdown with:\n"
+                    "You are a principal engineer. Create a compelling, professional Pull Request title and description "  # noqa: E501
+                    "based on the provided commit messages and change stats. Format the description in Markdown with:\n"  # noqa: E501
                     "- **Overview**: Summary of changes\n"
                     "- **Key Features / Fixes**: Bullet points explaining modifications\n"
                     "- **Dependencies**: List of modified key files"
                 )
                 user = f"Commits:\n{commits}\n\nDiff Stats:\n{stats}"
-                res = self.provider.chat_completion([
-                    Message(role=Role.SYSTEM, content=system),
-                    Message(role=Role.USER, content=user)
-                ])
+                res = self.provider.chat_completion(
+                    [
+                        Message(role=Role.SYSTEM, content=system),
+                        Message(role=Role.USER, content=user),
+                    ]
+                )
                 return (res.content or "").strip()
             else:
                 # Heuristic markdown
@@ -294,7 +323,7 @@ class PRGeneratorTool(Tool):
                     commits or "*No commits (direct index changes)*",
                     "",
                     "## Stat Summary:",
-                    stats
+                    stats,
                 ]
                 return "\n".join(lines)
 
@@ -345,7 +374,10 @@ class CIAnalyzerTool(Tool):
 
         # Heuristic extraction of failing lines
         for line in lines:
-            if any(k in line.lower() for k in ["fail", "error", "exception", "traceback", "panic", "fatal"]):
+            if any(
+                k in line.lower()
+                for k in ["fail", "error", "exception", "traceback", "panic", "fatal"]
+            ):
                 capture = True
                 captured_lines = 0
 
@@ -359,14 +391,16 @@ class CIAnalyzerTool(Tool):
 
         if self.provider:
             system = (
-                "You are an expert DevOps engineer and debugger. Read the provided CI log output block. "
-                "Diagnose exactly why the CI failed, highlight the root error file/line/context, and provide "
+                "You are an expert DevOps engineer and debugger. Read the provided CI log output block. "  # noqa: E501
+                "Diagnose exactly why the CI failed, highlight the root error file/line/context, and provide "  # noqa: E501
                 "the exact corrective actions to fix it."
             )
-            res = self.provider.chat_completion([
-                Message(role=Role.SYSTEM, content=system),
-                Message(role=Role.USER, content=excerpt)
-            ])
+            res = self.provider.chat_completion(
+                [
+                    Message(role=Role.SYSTEM, content=system),
+                    Message(role=Role.USER, content=excerpt),
+                ]
+            )
             return (res.content or "").strip()
         else:
             # Rule based highlight
