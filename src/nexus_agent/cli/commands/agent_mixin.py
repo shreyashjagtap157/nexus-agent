@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import subprocess
 import time
+from typing import Any
 
 from nexus_agent.core.config import save_config
 
@@ -90,10 +91,10 @@ class AgentCommandsMixin:
                 return
 
     def _render_effort_selector(self, levels: tuple, labels: tuple, idx: int):
-        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        PAD = 22
+        effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
+        pad_len = 22
 
-        plain_labels = [str(l) for l in labels]
+        plain_labels = [str(lbl) for lbl in labels]
         widths = [len(w) for w in plain_labels]
         gap = 4
         total_w = sum(widths) + gap * (len(widths) - 1)
@@ -106,7 +107,7 @@ class AgentCommandsMixin:
 
         label_parts = []
         for i, lab in enumerate(plain_labels):
-            clr = EFFORT_COLORS.get(lab, "0")
+            clr = effort_colors.get(lab, "0")
             if i == idx:
                 label_parts.append(f"\033[1;{clr}m{lab}\033[0m")
             else:
@@ -114,9 +115,9 @@ class AgentCommandsMixin:
             if i < len(plain_labels) - 1:
                 label_parts.append(" " * gap)
 
-        label_line = " " * PAD + "".join(label_parts)
-        ptr_color = EFFORT_COLORS.get(levels[idx], "33")
-        marker_line = " " * (PAD + centers[idx]) + f"\033[1;{ptr_color}m\u25b2\033[0m"
+        label_line = " " * pad_len + "".join(label_parts)
+        ptr_color = effort_colors.get(levels[idx], "33")
+        marker_line = " " * (pad_len + centers[idx]) + f"\033[1;{ptr_color}m\u25b2\033[0m"
 
         left_w = total_w // 2
         right_w = total_w - left_w
@@ -127,8 +128,8 @@ class AgentCommandsMixin:
             "",
             "  Effort",
             "",
-            f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}{'\u2500' * left_w}\u252c{'\u2500' * right_w}",
+            " " * pad_len + "Faster" + " " * (left_w - 6) + "Smarter",
+            " " * pad_len + "\u2500" * left_w + "\u252c" + "\u2500" * right_w,
         ]
         lines.append(marker_line)
         lines.append(label_line)
@@ -259,7 +260,8 @@ class AgentCommandsMixin:
                 "  [dim]  /memory vector query <text>      Semantic similarity search[/dim]"
             )
             self.console.print(
-                "  [dim]  /memory vector migrate            Re-embed all FTS5 memories into vector store[/dim]"
+                "  [dim]  /memory vector migrate            "
+                 "Re-embed all FTS5 memories into vector store[/dim]"
             )
             self.console.print(
                 "  [dim]  /memory vector download           Download ONNX embedding model[/dim]"
@@ -320,10 +322,10 @@ class AgentCommandsMixin:
                     break
 
         if not stripped:
-            label = "project" if self._vector_use_project else "global"
             self.r.system_message(
-                "Usage: /memory vector [--project] stats | query <text> | list [N] | filter <category> | migrate | download | delete <entry_id> | clear | rebuild"
-            )
+            "Usage: /memory vector [--project] stats | query <text> | list [N] | "
+            "filter <category> | migrate | download | delete <entry_id> | clear | rebuild"
+        )
             return
 
         parts = stripped.split(maxsplit=1)
@@ -352,7 +354,8 @@ class AgentCommandsMixin:
             self._cmd_memory_vector_categories()
         else:
             self.r.system_message(
-                "Usage: /memory vector stats | query <text> | list [N] | filter <category> | categories | migrate | download | delete <entry_id> | clear | rebuild"
+                "Usage: /memory vector stats | query <text> | list [N] | filter <category> | "
+            "categories | migrate | download | delete <entry_id> | clear | rebuild"
             )
 
     def _cmd_memory_vector_stats(self, args: str = ""):
@@ -398,7 +401,8 @@ class AgentCommandsMixin:
                 self.console.print("  [dim]✓ ONNX embedding model loaded and ready[/dim]")
             elif mode == "ngram":
                 self.console.print(
-                    "  [dim]ℹ Using ngram fallback — run /memory vector download for ONNX model[/dim]"
+                    "  [dim]ℹ Using ngram fallback — run /memory vector download for ONNX "
+                    "model[/dim]"
                 )
         except Exception as exc:
             self.r.error(f"Failed to get vector store stats: {exc}")
@@ -438,7 +442,8 @@ class AgentCommandsMixin:
 
             self.console.print()
             self.console.print(
-                f"  [bold]Vector store ({label}):[/bold] [green]{total}[/green] total entries, showing [cyan]{min(show, len(entries))}[/cyan]"
+                f"  [bold]Vector store ({label}):[/bold] [green]{total}[/green] total entries, "
+                f"showing [cyan]{min(show, len(entries))}[/cyan]"
             )
             self.console.print()
 
@@ -490,7 +495,8 @@ class AgentCommandsMixin:
 
             self.console.print()
             self.console.print(
-                f"  [bold]Categories ({label}):[/bold] [green]{len(cats)}[/green] unique, [cyan]{total}[/cyan] total entries"
+                f"  [bold]Categories ({label}):[/bold] [green]{len(cats)}[/green] unique, "
+                f"[cyan]{total}[/cyan] total entries"
             )
             self.console.print()
 
@@ -550,7 +556,8 @@ class AgentCommandsMixin:
             label = "project" if getattr(self, "_vector_use_project", False) else "global"
             self.console.print()
             self.console.print(
-                f"  [bold]Category ({label}):[/bold] [cyan]{category}[/cyan]  [dim]({len(entries)} entries)[/dim]"
+                f"  [bold]Category ({label}):[/bold] [cyan]{category}[/cyan]  "
+                f"[dim]({len(entries)} entries)[/dim]"
             )
             self.console.print()
 
@@ -596,7 +603,8 @@ class AgentCommandsMixin:
             before = vs.count()
             if before == 0:
                 self.r.system_message(
-                    "Vector store is empty — nothing to rebuild. Run /memory vector migrate to populate from FTS5."
+                    "Vector store is empty — nothing to rebuild. Run /memory vector migrate "
+                    "to populate from FTS5."
                 )
                 return
 
@@ -628,7 +636,8 @@ class AgentCommandsMixin:
             deleted = vs.clear()
             label = "project" if getattr(self, "_vector_use_project", False) else "global"
             self.r.system_message(
-                f"Cleared {deleted} vector embeddings ({label}). FTS5 memories untouched. Run /memory vector migrate to re-populate."
+                f"Cleared {deleted} vector embeddings ({label}). FTS5 memories "
+                "untouched. Run /memory vector migrate to re-populate."
             )
         except Exception as exc:
             self.r.error(f"Clear failed: {exc}")
@@ -701,11 +710,11 @@ class AgentCommandsMixin:
 
             migrated = 0
             skipped = 0
-            PAGE_SIZE = 50
+            page_size = 50
             offset = 0
 
             while offset < total:
-                entries = mem.long_term.list_all(limit=PAGE_SIZE, offset=offset)
+                entries = mem.long_term.list_all(limit=page_size, offset=offset)
                 if not entries:
                     break
 
@@ -728,15 +737,16 @@ class AgentCommandsMixin:
                     migrated += 1
 
                     # Progress line every 10 entries
-                    if migrated % 10 == 0 or (migrated + skipped) % PAGE_SIZE == 0:
+                    if migrated % 10 == 0 or (migrated + skipped) % page_size == 0:
                         done = migrated + skipped
                         pct = int((done / total) * 100)
                         bar = "█" * (pct // 4) + "░" * (25 - pct // 4)
                         self.console.print(
-                            f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] new  [dim]skipped {skipped}[/dim]"
+                            f"    [{bar}] {done}/{total} ({pct}%)  [green]+{migrated}[/green] "
+                            f"new  [dim]skipped {skipped}[/dim]"
                         )
 
-                offset += PAGE_SIZE
+                offset += page_size
 
             after_count = vs.count()
 
@@ -824,7 +834,8 @@ class AgentCommandsMixin:
                     score_color = "dim"
 
                 self.console.print(
-                    f"  [{score_color}]{bar}[/{score_color}] [{score_color}]{pct:>2}%[/{score_color}]  [{cat}] {content}"
+                    f"  [{score_color}]{bar}[/{score_color}] "
+                    f"[{score_color}]{pct:>2}%[/{score_color}]  [{cat}] {content}"
                 )
 
             self.console.print()
