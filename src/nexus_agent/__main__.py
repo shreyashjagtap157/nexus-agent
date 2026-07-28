@@ -227,8 +227,24 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
+    import itertools
+    import os
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+
+    # ⚡ Bolt: Fast os.scandir generator to avoid greedy pathlib.rglob() overhead
+    def _fast_rglob_py(path: str):
+        try:
+            with os.scandir(path) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        if not entry.name.startswith(".") and entry.name not in {"__pycache__", "node_modules", "venv"}:
+                            yield from _fast_rglob_py(entry.path)
+                    elif entry.name.endswith(".py") and entry.is_file(follow_symlinks=False):
+                        yield entry.path
+        except OSError:
+            pass
+
+    files = list(itertools.islice(_fast_rglob_py(str(Path.cwd())), 20))
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
