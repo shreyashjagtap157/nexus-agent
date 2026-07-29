@@ -13,18 +13,42 @@ from nexus_agent import __app_name__, __version__
 @click.group(invoke_without_command=True)
 @click.version_option(__version__, prog_name=__app_name__)
 @click.option("--model", "-m", type=str, default=None, help="Path to GGUF model file or model name")
-@click.option("--model-path", type=click.Path(exists=True), default=None, help="Path to model file on disk")
-@click.option("--provider", "-p", type=str, default=None, help="LLM provider: local, openai, anthropic, etc.")
-@click.option("--offline", is_flag=True, default=False, help="Force offline mode (local model only)")
-@click.option("--gpu-layers", type=int, default=None, help="Number of layers to offload to GPU (requires CUDA)")
-@click.option("--config", "-c", type=click.Path(exists=True), default=None, help="Path to config file")
-@click.option("--data-dir", type=click.Path(), default=None, help="Data directory for sessions/memory")
+@click.option(
+    "--model-path", type=click.Path(exists=True), default=None, help="Path to model file on disk"
+)
+@click.option(
+    "--provider", "-p", type=str, default=None, help="LLM provider: local, openai, anthropic, etc."
+)
+@click.option(
+    "--offline", is_flag=True, default=False, help="Force offline mode (local model only)"
+)
+@click.option(
+    "--gpu-layers",
+    type=int,
+    default=None,
+    help="Number of layers to offload to GPU (requires CUDA)",
+)
+@click.option(
+    "--config", "-c", type=click.Path(exists=True), default=None, help="Path to config file"
+)
+@click.option(
+    "--data-dir", type=click.Path(), default=None, help="Data directory for sessions/memory"
+)
 @click.option("--verbose", is_flag=True, default=False, help="Show verbose debug output")
 @click.option("--quiet", is_flag=True, default=False, help="Suppress non-essential output")
 @click.pass_context
-def cli(ctx: click.Context, model: str | None, model_path: str | None, provider: str | None,
-        offline: bool, gpu_layers: int | None, config: str | None, data_dir: str | None,
-        verbose: bool, quiet: bool) -> None:
+def cli(
+    ctx: click.Context,
+    model: str | None,
+    model_path: str | None,
+    provider: str | None,
+    offline: bool,
+    gpu_layers: int | None,
+    config: str | None,
+    data_dir: str | None,
+    verbose: bool,
+    quiet: bool,
+) -> None:
     """NexusAgent — Offline-First LLM Coding Agent.
 
     Run local LLM models for AI-powered coding assistance with a rich
@@ -59,16 +83,34 @@ def wizard() -> None:
     wizard = SetupWizard(console=console)
     wizard.run()
 
+
 @cli.command()
-@click.option("--prompt", "-p", type=str, default=None, help="Initial prompt (non-interactive mode)")
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option(
+    "--prompt", "-p", type=str, default=None, help="Initial prompt (non-interactive mode)"
+)
+@click.option(
+    "--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory"
+)
 @click.option("--session", "-s", type=str, default=None, help="Session ID to resume")
-@click.option("--new", "-n", is_flag=True, default=False, help="Start a new session instead of resuming the last active one")
+@click.option(
+    "--new",
+    "-n",
+    is_flag=True,
+    default=False,
+    help="Start a new session instead of resuming the last active one",
+)
 @click.option("--verbose", is_flag=True, default=False, help="Show verbose output")
 @click.option("--quiet", is_flag=True, default=False, help="Minimal output")
 @click.pass_context
-def chat(ctx: click.Context, prompt: str | None, workspace: str,
-         session: str | None, new: bool, verbose: bool, quiet: bool) -> None:
+def chat(
+    ctx: click.Context,
+    prompt: str | None,
+    workspace: str,
+    session: str | None,
+    new: bool,
+    verbose: bool,
+    quiet: bool,
+) -> None:
     """Start an interactive chat session (TUI mode)."""
     from nexus_agent.cli.app import NexusApp
 
@@ -93,10 +135,13 @@ def chat(ctx: click.Context, prompt: str | None, workspace: str,
 @click.option("--host", "-h", type=str, default=None, help="Host to bind to")
 @click.option("--port", type=int, default=None, help="Port to bind to")
 @click.option("--no-browser", is_flag=True, default=False, help="Don't open browser automatically")
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option(
+    "--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory"
+)
 @click.pass_context
-def gui(ctx: click.Context, host: str | None, port: int | None,
-        no_browser: bool, workspace: str) -> None:
+def gui(
+    ctx: click.Context, host: str | None, port: int | None, no_browser: bool, workspace: str
+) -> None:
     """Launch the web-based GUI."""
     from nexus_agent.gui.server import start_gui_server
 
@@ -120,8 +165,14 @@ def model() -> None:
 
 
 @model.command("list")
-@click.option("--dir", "-d", "models_dir", type=click.Path(exists=True), default=None,
-              help="Directory to scan for models")
+@click.option(
+    "--dir",
+    "-d",
+    "models_dir",
+    type=click.Path(exists=True),
+    default=None,
+    help="Directory to scan for models",
+)
 def model_list(models_dir: str | None) -> None:
     """List available GGUF models."""
     from rich.console import Console
@@ -164,11 +215,13 @@ def model_info(model_path: str) -> None:
     info = manager.get_model_info(model_path)
 
     if info:
-        console.print(Panel.fit(
-            "\n".join(f"[cyan]{k}:[/cyan] {v}" for k, v in info.items()),
-            title=f"Model: {Path(model_path).name}",
-            border_style="magenta",
-        ))
+        console.print(
+            Panel.fit(
+                "\n".join(f"[cyan]{k}:[/cyan] {v}" for k, v in info.items()),
+                title=f"Model: {Path(model_path).name}",
+                border_style="magenta",
+            )
+        )
     else:
         console.print(f"[red]Could not read model info from {model_path}[/red]")
 
@@ -227,8 +280,11 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
+    import itertools
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+
+    # ⚡ Bolt: Lazily evaluate rglob to avoid OOM/latency on large repos
+    files = [str(f) for f in itertools.islice(Path.cwd().rglob("*.py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
@@ -321,6 +377,7 @@ def config_get(key: str | None) -> None:
             console.print(f"[red]Key not found: {key}[/red]")
     else:
         import json
+
         console.print_json(json.dumps(cfg, indent=2, default=str))
 
 
@@ -344,20 +401,26 @@ def hardware() -> None:
         f"[cyan]GPU:[/cyan] {hw.get('gpu', 'Not detected')}",
         f"[cyan]VRAM:[/cyan] {hw.get('vram', 'N/A')}",
         "",
-        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",
+        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",  # noqa: E501
     ]
 
-    console.print(Panel.fit(
-        "\n".join(lines),
-        title="Hardware Capabilities",
-        border_style="magenta",
-    ))
+    console.print(
+        Panel.fit(
+            "\n".join(lines),
+            title="Hardware Capabilities",
+            border_style="magenta",
+        )
+    )
 
 
 @cli.command()
 @click.argument("url", type=str)
-@click.option("--action", type=click.Choice(["navigate", "read", "screenshot"]), default="navigate",
-              help="Browser action to perform")
+@click.option(
+    "--action",
+    type=click.Choice(["navigate", "read", "screenshot"]),
+    default="navigate",
+    help="Browser action to perform",
+)
 @click.pass_context
 def browse(ctx: click.Context, url: str, action: str) -> None:
     """Browse a URL and return content as markdown.
@@ -384,7 +447,9 @@ def browse(ctx: click.Context, url: str, action: str) -> None:
 
 @cli.command()
 @click.argument("task", type=str)
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option(
+    "--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory"
+)
 @click.option("--model-path", type=click.Path(exists=True), help="Model to use")
 @click.pass_context
 def plan(ctx: click.Context, task: str, workspace: str, model_path: str | None) -> None:
@@ -402,12 +467,14 @@ def plan(ctx: click.Context, task: str, workspace: str, model_path: str | None) 
     ws = Path(workspace).resolve()
     cfg_path = ctx.obj.get("config_path")
     from nexus_agent.core.config import load_config
+
     config = load_config(config_path=cfg_path, workspace=ws)
     provider_name = ctx.obj.get("provider") or "local"
     engine = ProviderFactory.create_provider(provider_name, config, model_path)
     tools = []
     from nexus_agent.tools.file_ops import ListDirectoryTool, ReadFileTool, SearchFilesTool
     from nexus_agent.tools.shell import ShellTool
+
     tools.extend([ReadFileTool(ws), SearchFilesTool(ws), ListDirectoryTool(ws), ShellTool(ws)])
 
     planner = Planner(provider=engine, tools=tools, workspace=ws, max_iterations=15)
@@ -421,18 +488,24 @@ def plan(ctx: click.Context, task: str, workspace: str, model_path: str | None) 
         elif event.type == "error":
             console.print(f"\n[red]Error: {event.data}[/red]")
     console.print("\n")
-    console.print(Panel.fit("[bold green]Plan Complete (read-only mode)[/bold green]", border_style="green"))
+    console.print(
+        Panel.fit("[bold green]Plan Complete (read-only mode)[/bold green]", border_style="green")
+    )
 
 
 @cli.command()
-@click.option("--model", "-m", type=str, default=None,
-              help="Path to GGUF model for benchmarking")
-@click.option("--provider", "-p", type=str, default="local",
-              help="Provider to benchmark (local, openai, anthropic, etc.)")
-@click.option("--benchmark/--no-benchmark", default=True,
-              help="Run cold-start and first-token benchmarks")
-@click.option("--json", "json_output", is_flag=True, default=False,
-              help="Output as JSON")
+@click.option("--model", "-m", type=str, default=None, help="Path to GGUF model for benchmarking")
+@click.option(
+    "--provider",
+    "-p",
+    type=str,
+    default="local",
+    help="Provider to benchmark (local, openai, anthropic, etc.)",
+)
+@click.option(
+    "--benchmark/--no-benchmark", default=True, help="Run cold-start and first-token benchmarks"
+)
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output as JSON")
 def doctor(model: str | None, provider: str, benchmark: bool, json_output: bool) -> None:
     """Diagnose installation and benchmark cold-start + first-token latency.
 
@@ -455,6 +528,7 @@ def doctor(model: str | None, provider: str, benchmark: bool, json_output: bool)
 
     if json_output:
         import json as _json
+
         report = run_doctor(model_path=model, provider=provider, run_benchmarks=benchmark)
         data: dict[str, Any] = {
             "timestamp": report.timestamp,
@@ -485,7 +559,9 @@ def doctor(model: str | None, provider: str, benchmark: bool, json_output: bool)
 
 
 @cli.command()
-@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option(
+    "--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory"
+)
 def devops(workspace: str) -> None:
     """Run the DevOps verification pipeline (linters, secrets, tests)."""
     from rich.console import Console
@@ -515,8 +591,15 @@ def devops(workspace: str) -> None:
 @click.option("--provider", type=str, default=None, help="Provider name")
 @click.option("--verbose", is_flag=True, default=False, help="Enable verbose logging")
 @click.pass_context
-def backend(ctx: click.Context, acp: bool, dry_run: bool, workspace: str,
-            model: str | None, provider: str | None, verbose: bool) -> None:
+def backend(
+    ctx: click.Context,
+    acp: bool,
+    dry_run: bool,
+    workspace: str,
+    model: str | None,
+    provider: str | None,
+    verbose: bool,
+) -> None:
     """Run as backend process for the Rust CLI (ACP mode).
 
     Spawned automatically by the Rust `nexus chat` binary.
@@ -525,14 +608,18 @@ def backend(ctx: click.Context, acp: bool, dry_run: bool, workspace: str,
         click.echo("Usage: nexus backend --acp [options]")
         return
     from nexus_agent.backend import parse_args, run_acp_backend
-    args = parse_args([
-        "--acp",
-        "--workspace", workspace,
-        *(("--model", model) if model else []),
-        *(("--provider", provider) if provider else []),
-        *(["--verbose"] if verbose else []),
-        *(["--dry-run"] if dry_run else []),
-    ])
+
+    args = parse_args(
+        [
+            "--acp",
+            "--workspace",
+            workspace,
+            *(("--model", model) if model else []),
+            *(("--provider", provider) if provider else []),
+            *(["--verbose"] if verbose else []),
+            *(["--dry-run"] if dry_run else []),
+        ]
+    )
     run_acp_backend(args)
 
 
