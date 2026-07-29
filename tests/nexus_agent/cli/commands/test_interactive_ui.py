@@ -1,7 +1,13 @@
+import sys
+from unittest.mock import MagicMock
+
+# Mock blessed globally to prevent ImportError on Windows and CI where it might not be installed
+sys.modules["blessed"] = MagicMock()
+
 """Tests for interactive_ui.py — InteractiveUIMixin (menus, validation, model config)."""
 
-import unittest
-from unittest.mock import MagicMock, patch
+import unittest  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
 
 
 class _MockApp:
@@ -50,7 +56,7 @@ class _MockApp:
         self.console = MagicMock()
 
 
-from nexus_agent.cli.commands.interactive_ui import InteractiveUIMixin
+from nexus_agent.cli.commands.interactive_ui import InteractiveUIMixin  # noqa: E402
 
 
 class TestInteractiveMenu(unittest.TestCase):
