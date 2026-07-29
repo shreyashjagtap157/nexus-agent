@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.parse
 import webbrowser
 from collections import defaultdict
 from pathlib import Path
@@ -431,6 +432,16 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    # 🛡️ Sentinel: Prevent Cross-Site WebSocket Hijacking (CSWSH)  # noqa: E501
+    origin = websocket.headers.get("origin")
+    host_header = websocket.headers.get("host")
+    if origin and host_header:
+        parsed_origin = urllib.parse.urlparse(origin).hostname
+        expected_host = host_header[1:host_header.find(']')] if host_header.startswith('[') else host_header.split(':')[0]  # noqa: E501
+        if parsed_origin != expected_host:
+            logger.warning(f"CSWSH blocked: Origin {parsed_origin} != Host {expected_host}")
+            await websocket.close(code=1008, reason="Invalid Origin")
+            return
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
