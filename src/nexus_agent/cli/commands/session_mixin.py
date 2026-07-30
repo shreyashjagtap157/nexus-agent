@@ -84,28 +84,8 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            import itertools
-            import os
-            # ⚡ Bolt: Use os.scandir for fast checkpoint file listing,
-            # avoiding pathlib.rglob OOM and intermediate Path creation.
-            def _iter_py_files(path):
-                stack = [str(path)]
-                while stack:
-                    try:
-                        with os.scandir(stack.pop()) as it:
-                            for entry in it:
-                                if entry.is_dir(follow_symlinks=False):
-                                    skip = {"node_modules", "__pycache__", "venv", "dist", "build"}
-                                    if not entry.name.startswith(".") and entry.name not in skip:
-                                        stack.append(entry.path)
-                                elif entry.is_file(follow_symlinks=False):
-                                    if entry.name.endswith(".py"):
-                                        yield entry.path
-                    except OSError:
-                        pass
-            files = list(itertools.islice(_iter_py_files(self.workspace), 20))
-            desc = args or "Manual checkpoint"
-            cp_id = self._session_mgr.create_checkpoint(files, description=desc)
+            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
+            cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:
             self.r.system_message("Session manager unavailable.")
