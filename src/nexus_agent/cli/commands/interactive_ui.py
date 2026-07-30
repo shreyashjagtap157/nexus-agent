@@ -461,12 +461,26 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
-                        rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                import os
+                from pathlib import Path
+                # ⚡ Bolt: Fast os.scandir traversal with early exit avoids creating
+                # thousands of intermediate Path objects.
+                stack = [str(self.workspace)]
+                while stack and len(matches) < 20:
+                    try:
+                        with os.scandir(stack.pop()) as it:
+                            for entry in it:
+                                if entry.is_dir(follow_symlinks=False):
+                                    skip = {"node_modules", "__pycache__", "venv", "dist", "build"}
+                                    if not entry.name.startswith(".") and entry.name not in skip:
+                                        stack.append(entry.path)
+                                elif entry.is_file(follow_symlinks=False) and prefix in entry.name:
+                                    rel = Path(entry.path).relative_to(self.workspace)
+                                    matches.append(str(rel.as_posix()))
+                                    if len(matches) >= 20:
+                                        break
+                    except OSError:
+                        pass
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]
