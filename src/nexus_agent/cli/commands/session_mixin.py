@@ -43,7 +43,7 @@ class SessionCommandsMixin:
                     table.add_column("Messages", justify="right", style="yellow")
                     table.add_column("Model", style="dim")
                     for s in sessions:
-                        table.add_row(s["id"][:12], s["created"], str(s.get("message_count", 0)), s.get("model", ""))
+                        table.add_row(s["id"][:12], s["created"], str(s.get("message_count", 0)), s.get("model", ""))  # noqa: E501
                     self.console.print(table)
                 else:
                     self.r.system_message("No saved sessions.")
@@ -84,8 +84,24 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
-            cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
+            import os
+            from itertools import islice
+
+            def _fast_rglob_py(path):
+                stack = [str(path)]
+                while stack:
+                    cur = stack.pop()
+                    try:
+                        for entry in os.scandir(cur):
+                            if entry.is_dir(follow_symlinks=False) and entry.name not in ('.git', 'node_modules', '.venv', 'venv', '__pycache__'):  # noqa: E501
+                                stack.append(entry.path)
+                            elif entry.is_file(follow_symlinks=False) and entry.name.endswith('.py'):  # noqa: E501
+                                yield entry.path
+                    except OSError:
+                        pass
+
+            files = list(islice(_fast_rglob_py(self.workspace), 20))
+            cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")  # noqa: E501
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:
             self.r.system_message("Session manager unavailable.")
@@ -98,7 +114,7 @@ class SessionCommandsMixin:
                     self.r.system_message("No checkpoints.")
                     return
                 for cp in checkpoints[:10]:
-                    self.console.print(f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]")
+                    self.console.print(f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]")  # noqa: E501
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
         else:
@@ -211,7 +227,7 @@ class SessionCommandsMixin:
             try:
                 sessions = self._session_mgr.list_sessions()
                 if sessions:
-                    items = [(f"{s.get('id', '?')[:16]}  {s.get('name', '')}", s['id']) for s in sessions[:10]]
+                    items = [(f"{s.get('id', '?')[:16]}  {s.get('name', '')}", s['id']) for s in sessions[:10]]  # noqa: E501
                     sel = self._interactive_menu(items, "Select session to resume:")
                     if sel:
                         self._cmd_resume(sel)
@@ -235,7 +251,7 @@ class SessionCommandsMixin:
         try:
             import pyperclip
         except ImportError:
-            self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")
+            self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")  # noqa: E501
             return
         text = ""
         if not args or args == "last":

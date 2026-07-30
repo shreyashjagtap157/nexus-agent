@@ -1,4 +1,4 @@
+## 2026-07-30 - Lazy Evaluation Over pathlib.rglob
 
-## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
-**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
-**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.
+**Learning:** `pathlib.Path.rglob()` is incredibly slow in this project because it eagerly instantiates `Path` objects and recursively traverses the entire file tree, including massive ignored directories like `.git`, `node_modules`, and `.venv`.
+**Action:** When searching for files locally, replace `rglob` with a custom `os.scandir` generator (e.g., `_fast_rglob_py`) that maintains a stack, explicitly skips heavy ignored directories (`follow_symlinks=False`), and uses `itertools.islice` to terminate early once the desired number of matches (e.g., 20) is found.
