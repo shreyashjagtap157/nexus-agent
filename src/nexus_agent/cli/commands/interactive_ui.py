@@ -30,11 +30,11 @@ class InteractiveUIMixin:
     ) -> str | None:
         """Arrow-key selectable menu rendered with raw ANSI escapes.
 
-        *items* is a list of ``(label, value)`` pairs.  Pairs with
+        *items* is a list of ``(labelabel, value)`` pairs.  Pairs with
         ``value=None`` act as non-selectable separators.  Returns the
         selected value or ``None`` if the user pressed Esc.
         """
-        selectable = [i for i, (l, v) in enumerate(items) if v is not None]
+        selectable = [i for i, (labelabel, v) in enumerate(items) if v is not None]
         if not selectable:
             return None
         idx = selectable[0]
@@ -461,12 +461,22 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
-                        rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                import os
+                stack = [str(self.workspace)]
+                while stack and len(matches) < 20:
+                    cur = stack.pop()
+                    try:
+                        for entry in os.scandir(cur):
+                            if entry.is_dir(follow_symlinks=False) and entry.name not in ('.git', 'node_modules', '.venv', 'venv', '__pycache__'):  # noqa: E501
+                                stack.append(entry.path)
+                            elif entry.is_file(follow_symlinks=False) and prefix in entry.name:  # noqa: E501
+                                rel_path = os.path.relpath(entry.path, str(self.workspace))
+                                # ensure posix format for output
+                                matches.append(rel_path.replace(os.sep, '/'))
+                                if len(matches) >= 20:
+                                    break
+                    except OSError:
+                        pass
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]

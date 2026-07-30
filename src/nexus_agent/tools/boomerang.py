@@ -68,7 +68,7 @@ class BoomerangTool(Tool):
             },
             "agent_persona": {
                 "type": "string",
-                "description": "Expert persona: technical_advisor, code_reviewer, architect, debugger (for ask).",
+                "description": "Expert persona: technical_advisor, code_reviewer, architect, debugger (for ask).",  # noqa: E501
                 "required": False,
             },
             "context": {
@@ -83,7 +83,7 @@ class BoomerangTool(Tool):
             },
             "wait": {
                 "type": "boolean",
-                "description": "If true, block until task finishes (default true for spawn, false for delegate).",
+                "description": "If true, block until task finishes (default true for spawn, false for delegate).",  # noqa: E501
                 "required": False,
             },
         }
@@ -126,9 +126,9 @@ class BoomerangTool(Tool):
         status = result.get("status", "unknown")
         output = result.get("output", "")
         if status == "completed":
-            return f"[Sub-agent {result['task_id']}] completed in {result.get('duration', 0):.1f}s:\n{output}"
+            return f"[Sub-agent {result['task_id']}] completed in {result.get('duration', 0):.1f}s:\n{output}"  # noqa: E501
         if status == "failed":
-            return f"[Sub-agent {result['task_id']}] FAILED: {result.get('error', 'unknown error')}"
+            return f"[Sub-agent {result['task_id']}] FAILED: {result.get('error', 'unknown error')}"  # noqa: E501
         return f"[Sub-agent {result['task_id']}] status: {status}"
 
     def _ask(self, **kwargs: Any) -> str:
@@ -159,7 +159,7 @@ class BoomerangTool(Tool):
         status = result.get("status", "unknown")
         output = result.get("output", "")
         if status == "completed":
-            return f"[Delegated task {result['task_id']}] completed in {result.get('duration', 0):.1f}s:\n{output}"
+            return f"[Delegated task {result['task_id']}] completed in {result.get('duration', 0):.1f}s:\n{output}"  # noqa: E501
         if status in ("running", "pending"):
             return f"[Delegated task {result['task_id']}] {status}."
         return f"[Delegated task {result['task_id']}] FAILED: {result.get('error', 'unknown')}"

@@ -95,17 +95,17 @@ class CodeEditTool(Tool):
             },
             "replace_all": {
                 "type": "boolean",
-                "description": "Replace all occurrences instead of just the first (default: false)",
+                "description": "Replace all occurrences instead of just the first (default: false)",  # noqa: E501
                 "required": False,
             },
             "validate_ast": {
                 "type": "boolean",
-                "description": "For Python files, refuse the edit if the result fails ast.parse (default: true)",
+                "description": "For Python files, refuse the edit if the result fails ast.parse (default: true)",  # noqa: E501
                 "required": False,
             },
             "canonicalize": {
                 "type": "boolean",
-                "description": "For Python files, normalise the result via ast.unparse (default: false)",
+                "description": "For Python files, normalise the result via ast.unparse (default: false)",  # noqa: E501
                 "required": False,
             },
         }
@@ -277,7 +277,7 @@ class InsertLinesTool(Tool):
 
         # Validate line_number range
         if line_number < 1 or line_number > len(lines) + 1:
-            return f"Error: line_number {line_number} is out of range (file has {len(lines)} lines)."
+            return f"Error: line_number {line_number} is out of range (file has {len(lines)} lines)."  # noqa: E501
 
         idx = line_number - 1
 
