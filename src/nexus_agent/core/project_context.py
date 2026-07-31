@@ -23,6 +23,7 @@ import hashlib
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
