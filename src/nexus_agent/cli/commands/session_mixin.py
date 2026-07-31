@@ -90,7 +90,7 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            # ⚡ Bolt: Replaced pathlib.rglob with os.scandir for faster file traversal without creating Path objects
+            # ⚡ Bolt: Replaced pathlib.rglob with os.scandir for faster file traversal without creating Path objects  # noqa: E501
             stack = [str(self.workspace)]
             skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
             matches = []
@@ -135,7 +135,7 @@ class SessionCommandsMixin:
                     return
                 for cp in checkpoints[:10]:
                     self.console.print(
-                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"
+                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"  # noqa: E501
                     )
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
