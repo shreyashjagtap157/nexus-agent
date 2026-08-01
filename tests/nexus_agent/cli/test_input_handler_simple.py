@@ -1,7 +1,13 @@
+import sys
+from unittest.mock import MagicMock
+
+# Mock optional dependencies globally to avoid import errors in CI
+sys.modules['blessed'] = MagicMock()
+
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
-import unittest
-from unittest.mock import MagicMock, patch
+import unittest  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
 
 
 class _MockApp:
@@ -19,7 +25,7 @@ class _MockApp:
         self._rebuild_welcome = MagicMock()
 
 
-from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin
+from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin  # noqa: E402
 
 
 class TestReadInput(unittest.TestCase):
