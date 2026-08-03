@@ -460,13 +460,30 @@ class InteractiveUIMixin:
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             pass
         if not matches:
+            import os
+            from pathlib import Path
+            stack = [str(self.workspace)]
+            ignore_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
-                        rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                while stack and len(matches) < 20:
+                    current_dir = stack.pop()
+                    try:
+                        with os.scandir(current_dir) as it:
+                            for entry in it:
+                                if entry.is_dir(follow_symlinks=False):
+                                    if entry.name not in ignore_dirs:
+                                        stack.append(entry.path)
+                                elif entry.is_file(follow_symlinks=False):
+                                    if prefix in entry.name:
+                                        try:
+                                            rel = Path(entry.path).relative_to(self.workspace)
+                                            matches.append(str(rel.as_posix()))
+                                            if len(matches) >= 20:
+                                                break
+                                        except ValueError:
+                                            pass
+                    except OSError:
+                        pass
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]

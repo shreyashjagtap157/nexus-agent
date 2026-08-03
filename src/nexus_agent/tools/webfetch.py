@@ -489,12 +489,12 @@ class WebFetchTool(Tool):
             },
             "strip_boilerplate": {
                 "type": "boolean",
-                "description": "If true, strips common layout elements like nav, footer, and header.",
+                "description": "If true, strips common layout elements like nav, footer, and header.",  # noqa: E501  # noqa: E501
                 "required": False,
             },
             "follow_pagination": {
                 "type": "boolean",
-                "description": "If true, follows 'rel=next' links to gather content from multiple pages (up to 3).",
+                "description": "If true, follows 'rel=next' links to gather content from multiple pages (up to 3).",  # noqa: E501  # noqa: E501
                 "required": False,
             },
         }
@@ -608,7 +608,7 @@ class WebFetchTool(Tool):
                 try:
                     final_url, html = self._fetch(current_url)
                     # Convert to markdown
-                    text = html_to_markdown(html, base_url=final_url, strip_boilerplate=strip_boilerplate)
+                    text = html_to_markdown(html, base_url=final_url, strip_boilerplate=strip_boilerplate)  # noqa: E501  # noqa: E501
                     collected_texts.append(text)
 
                     # Update cache
