@@ -446,6 +446,8 @@ class InteractiveUIMixin:
                 while stack and len(matches) < 20:
                     current_path = stack.pop()
                     try:
+                        # ⚡ Bolt: Using lazy os.scandir with explicit directory pruning instead of rglob
+                        # to prevent eager evaluation of massive hidden directories (e.g. node_modules)
                         with os.scandir(current_path) as it:
                             for entry in it:
                                 if len(matches) >= 20:
