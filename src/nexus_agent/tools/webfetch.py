@@ -20,8 +20,10 @@ The tool is read-only — it never writes anywhere on disk.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
+import socket
 import time
 from collections import OrderedDict
 from html.parser import HTMLParser
@@ -34,22 +36,65 @@ logger = logging.getLogger(__name__)
 
 
 # Tags that should be removed entirely (their text content is dropped).
-_DROP_TAGS: frozenset[str] = frozenset({
-    "script", "style", "noscript", "iframe", "svg", "canvas",
-    "template", "form", "input", "button", "select", "option",
-    "object", "embed", "applet", "base", "link", "meta", "title", "head",
-})
+_DROP_TAGS: frozenset[str] = frozenset(
+    {
+        "script",
+        "style",
+        "noscript",
+        "iframe",
+        "svg",
+        "canvas",
+        "template",
+        "form",
+        "input",
+        "button",
+        "select",
+        "option",
+        "object",
+        "embed",
+        "applet",
+        "base",
+        "link",
+        "meta",
+        "title",
+        "head",
+    }
+)
 
-_BOILERPLATE_TAGS: frozenset[str] = frozenset({
-    "nav", "footer", "header", "aside",
-})
+_BOILERPLATE_TAGS: frozenset[str] = frozenset(
+    {
+        "nav",
+        "footer",
+        "header",
+        "aside",
+    }
+)
 
 # Block-level tags that should produce a newline boundary.
-_BLOCK_TAGS: frozenset[str] = frozenset({
-    "p", "div", "section", "article", "header", "footer", "main",
-    "aside", "nav", "ul", "ol", "table", "thead", "tbody", "tfoot",
-    "tr", "figure", "figcaption", "hr", "address",
-})
+_BLOCK_TAGS: frozenset[str] = frozenset(
+    {
+        "p",
+        "div",
+        "section",
+        "article",
+        "header",
+        "footer",
+        "main",
+        "aside",
+        "nav",
+        "ul",
+        "ol",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "figure",
+        "figcaption",
+        "hr",
+        "address",
+    }
+)
 
 # Headings produce `#` decorations.
 _HEADING_TAGS: frozenset[str] = frozenset({f"h{i}" for i in range(1, 7)})
@@ -72,16 +117,13 @@ def _find_next_link(html: str, base_url: str) -> str | None:
     # Look for <a rel="next" href="..."> or <a class="next" href="...">
     # A simple regex is often more robust than a partial parser for this specific task.
     import re
+
     # Match <a ... rel="next" ... href="url" ...> or vice-versa
-    pattern = re.compile(
-        r'<a\s+[^>]*?rel=["\']next["\'][^>]*?href=["\']([^"\']+)["\']', re.I
-    )
+    pattern = re.compile(r'<a\s+[^>]*?rel=["\']next["\'][^>]*?href=["\']([^"\']+)["\']', re.I)
     match = pattern.search(html)
     if not match:
         # Try the other order: href then rel
-        pattern = re.compile(
-            r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*?rel=["\']next["\']', re.I
-        )
+        pattern = re.compile(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*?rel=["\']next["\']', re.I)
         match = pattern.search(html)
 
     if match:
@@ -489,12 +531,12 @@ class WebFetchTool(Tool):
             },
             "strip_boilerplate": {
                 "type": "boolean",
-                "description": "If true, strips common layout elements like nav, footer, and header.",
+                "description": "If true, strips layout elements (nav, footer, header).",
                 "required": False,
             },
             "follow_pagination": {
                 "type": "boolean",
-                "description": "If true, follows 'rel=next' links to gather content from multiple pages (up to 3).",
+                "description": "If true, follows rel=next links up to 3 pages.",
                 "required": False,
             },
         }
@@ -518,8 +560,35 @@ class WebFetchTool(Tool):
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
             return f"Error: URL scheme must be http or https (got {parsed.scheme!r})."
-        if not parsed.netloc:
+        if not parsed.hostname:
             return "Error: URL has no host."
+
+        # Block cloud metadata IPs
+        cloud_metadata_ips = {
+            "169.254.169.254",  # AWS/GCP/Azure
+            "100.100.100.200",  # Alibaba
+            "192.0.0.192",  # Oracle
+        }
+
+        host = parsed.hostname
+        # Resolve host to IP
+        try:
+            addr_info = socket.getaddrinfo(host, None)
+        except (OSError, ValueError):
+            return f"Error: Cannot resolve hostname '{host}'."
+
+        for ai in addr_info:
+            addr = ai[4][0]
+            if addr in cloud_metadata_ips:
+                return f"Error: Access to cloud metadata IP '{addr}' is blocked."
+
+            try:
+                ip = ipaddress.ip_address(addr)
+                if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast or ip.is_link_local:
+                    return f"Error: Access to private/reserved IP '{addr}' is blocked."
+            except ValueError:
+                return f"Error: Invalid IP address '{addr}'."
+
         return None
 
     def _fetch(self, url: str) -> tuple[str, str]:
@@ -543,15 +612,11 @@ class WebFetchTool(Tool):
             raise RuntimeError(f"HTTP error: {e}") from e
 
         if resp.status_code >= 400:
-            raise RuntimeError(
-                f"Server returned HTTP {resp.status_code} for {url}"
-            )
+            raise RuntimeError(f"Server returned HTTP {resp.status_code} for {url}")
 
         ctype = resp.headers.get("content-type", "").lower()
         if "html" not in ctype and "xml" not in ctype and "text" not in ctype:
-            raise RuntimeError(
-                f"Unexpected content-type {ctype!r} for {url}; refusing to parse."
-            )
+            raise RuntimeError(f"Unexpected content-type {ctype!r} for {url}; refusing to parse.")
 
         # Decode as utf-8 with a graceful fallback to latin-1
         try:
@@ -574,8 +639,10 @@ class WebFetchTool(Tool):
         if err:
             return err
         url = url.strip()
-        cap = self._max_chars if max_chars is None else _coerce_int(
-            max_chars, self._max_chars, lo=100, hi=10_000_000
+        cap = (
+            self._max_chars
+            if max_chars is None
+            else _coerce_int(max_chars, self._max_chars, lo=100, hi=10_000_000)
         )
 
         collected_texts: list[str] = []
@@ -598,7 +665,7 @@ class WebFetchTool(Tool):
                         self._cache.pop(cache_key, None)
 
             if cached_text:
-                html = "" # We don't have the HTML in cache, only the markdown
+                html = ""  # We don't have the HTML in cache, only the markdown
                 # If we have cached markdown, we can't follow pagination unless we fetch HTML
                 # For simplicity, we treat cached results as final for that page.
                 collected_texts.append(cached_text)
@@ -608,7 +675,9 @@ class WebFetchTool(Tool):
                 try:
                     final_url, html = self._fetch(current_url)
                     # Convert to markdown
-                    text = html_to_markdown(html, base_url=final_url, strip_boilerplate=strip_boilerplate)
+                    text = html_to_markdown(
+                        html, base_url=final_url, strip_boilerplate=strip_boilerplate
+                    )
                     collected_texts.append(text)
 
                     # Update cache
