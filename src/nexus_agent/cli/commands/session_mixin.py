@@ -84,7 +84,24 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
+            import os
+            files = []
+            stack = [str(self.workspace)]
+            ignore_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
+            while stack and len(files) < 20:
+                current_dir = stack.pop()
+                try:
+                    with os.scandir(current_dir) as it:
+                        for entry in it:
+                            if entry.is_dir(follow_symlinks=False):
+                                if entry.name not in ignore_dirs:
+                                    stack.append(entry.path)
+                            elif entry.is_file(follow_symlinks=False) and entry.name.endswith(".py"):
+                                files.append(entry.path)
+                                if len(files) >= 20:
+                                    break
+                except OSError:
+                    pass
             cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:

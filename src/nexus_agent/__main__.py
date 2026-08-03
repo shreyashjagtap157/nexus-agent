@@ -227,8 +227,24 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
-    from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+    import os
+    files = []
+    stack = [os.getcwd()]
+    ignore_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
+    while stack and len(files) < 20:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        if entry.name not in ignore_dirs:
+                            stack.append(entry.path)
+                    elif entry.is_file(follow_symlinks=False) and entry.name.endswith(".py"):
+                        files.append(entry.path)
+                        if len(files) >= 20:
+                            break
+        except OSError:
+            pass
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 
