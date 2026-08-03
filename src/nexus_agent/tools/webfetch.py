@@ -584,7 +584,7 @@ class WebFetchTool(Tool):
 
             try:
                 ip = ipaddress.ip_address(addr)
-                if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast or ip.is_link_local:
+                if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast or ip.is_link_local:  # noqa: E501
                     return f"Error: Access to private/reserved IP '{addr}' is blocked."
             except ValueError:
                 return f"Error: Invalid IP address '{addr}'."
