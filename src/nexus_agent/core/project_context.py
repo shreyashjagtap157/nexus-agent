@@ -18,6 +18,8 @@ Design notes:
 """
 
 from __future__ import annotations
+import os
+
 
 import hashlib
 import logging
