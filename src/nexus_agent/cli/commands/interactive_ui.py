@@ -460,8 +460,8 @@ class InteractiveUIMixin:
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             pass
         if not matches:
-            from pathlib import Path
             import os
+            from pathlib import Path
             stack = [str(self.workspace)]
             ignore_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
             try:
