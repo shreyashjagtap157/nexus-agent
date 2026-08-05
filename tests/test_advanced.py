@@ -22,17 +22,13 @@ class TestAdvancedFeatures(unittest.TestCase):
         # Write dummy code files
         self.file1 = self.workspace / "utils.py"
         self.file1.write_text(
-            "def calculate_total(a, b):\n"
-            "    # This is a dummy sum function\n"
-            "    return a + b\n",
-            encoding="utf-8"
+            "def calculate_total(a, b):\n    # This is a dummy sum function\n    return a + b\n",
+            encoding="utf-8",
         )
 
         self.file2 = self.workspace / "main.py"
         self.file2.write_text(
-            "from utils import calculate_total\n"
-            "print(calculate_total(10, 20))\n",
-            encoding="utf-8"
+            "from utils import calculate_total\nprint(calculate_total(10, 20))\n", encoding="utf-8"
         )
 
     def tearDown(self) -> None:
@@ -42,7 +38,6 @@ class TestAdvancedFeatures(unittest.TestCase):
             except Exception:
                 pass
         self.test_dir.cleanup()
-
 
     def test_rag_search_indexing(self) -> None:
         """Verify RAG tool segments indexing, symbol extraction, and offline FTS5 searches."""
@@ -60,7 +55,6 @@ class TestAdvancedFeatures(unittest.TestCase):
         self.assertIn("FUNCTION: calculate_total", res2)
         self.assertIn("main.py", res2)
 
-
     def test_batch_edit_atomicity(self) -> None:
         """Verify BatchEditTool replaces blocks atomically and rolls back on failures."""
         editor = BatchEditTool(workspace=self.workspace)
@@ -75,7 +69,7 @@ class TestAdvancedFeatures(unittest.TestCase):
                 "path": "main.py",
                 "target_content": "print(calculate_total(10, 20))",
                 "replacement_content": "print('Result:', calculate_total(10, 20))",
-            }
+            },
         ]
 
         res = editor.execute(edits)
@@ -96,7 +90,7 @@ class TestAdvancedFeatures(unittest.TestCase):
                 "path": "main.py",
                 "target_content": "NON-EXISTENT-TARGET-BLOCK",
                 "replacement_content": "print('Fail')",
-            }
+            },
         ]
 
         with self.assertRaises(RuntimeError):
@@ -125,22 +119,24 @@ class TestAdvancedFeatures(unittest.TestCase):
         from unittest.mock import MagicMock
 
         from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
+
         mock_provider = MagicMock()
         mock_provider.name = "mock"
         mock_provider.model_name = "mock-model"
 
         from nexus_agent.llm.base import LLMResponse
-        mock_response = LLMResponse(content="I am a mock agent.", tool_calls=[], finish_reason="stop")
+
+        mock_response = LLMResponse(
+            content="I am a mock agent.", tool_calls=[], finish_reason="stop"
+        )
         mock_provider.chat_completion.return_value = mock_response
         mock_provider.count_message_tokens.return_value = 10
 
         agent = AgentLoop(
             provider=mock_provider,
             config=AgentLoopConfig(
-                workspace=self.workspace,
-                max_iterations=5,
-                effort_level="medium"
-            )
+                workspace=self.workspace, max_iterations=5, effort_level="medium"
+            ),
         )
 
         # Execute run
@@ -163,6 +159,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_lsp_client_diagnostics(self) -> None:
         """Verify LSP static diagnostics catches Python compile errors locally."""
         from nexus_agent.tools.lsp_client import LSPClientTool
+
         tool = LSPClientTool(workspace=self.workspace)
 
         # Test valid syntax file
@@ -174,7 +171,7 @@ class TestAdvancedFeatures(unittest.TestCase):
         broken_file.write_text(
             "def broken_function()\n"  # Missing colon
             "    return True\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
 
         res_err = tool.execute(action="diagnostics", file=str(broken_file))
@@ -188,6 +185,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_browser_crawler_fallback(self) -> None:
         """Verify BrowserTool falls back cleanly to HTTPX HTML parser scraping."""
         from nexus_agent.tools.browser import BrowserTool
+
         tool = BrowserTool()
         try:
             # Execute static navigate fallback on a local mock target or static html file
@@ -200,11 +198,13 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_self_healing_retry_loop(self) -> None:
         """Verify retry and diagnosis prompt generation in SelfHealingExecutor."""
         from nexus_agent.core.self_heal import SelfHealingExecutor
+
         healer = SelfHealingExecutor(max_retries=2, base_delay=0.01)
 
         # Mock a failing tool
         class BrokenTool:
             name = "broken"
+
             def execute(self, **kwargs):
                 raise ConnectionError("connection reset by peer")
 
@@ -217,6 +217,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_failure_classification(self) -> None:
         """Verify classifying error messages into transient, semantic, or fatal categories."""
         from nexus_agent.core.self_heal import FailureType, classify_failure
+
         self.assertEqual(classify_failure("connection reset"), FailureType.TRANSIENT)
         self.assertEqual(classify_failure("no such file or directory"), FailureType.SEMANTIC)
         self.assertEqual(classify_failure("permission denied"), FailureType.FATAL)
@@ -224,6 +225,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_reflection_critic_loop(self) -> None:
         """Verify reflection engine structure and critique score feedback generation."""
         from nexus_agent.core.reflection import ReflectionEngine
+
         engine = ReflectionEngine(threshold=85)
         # Without LLM provider, it uses heuristic check
         critique = engine.evaluate("Request", "TODO: implement this.")
@@ -233,6 +235,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_task_graph_decomposition(self) -> None:
         """Verify TaskGraph decomposes goal, tracks dependencies and renders DAG progress."""
         from nexus_agent.core.task_graph import TaskGraph
+
         tg = TaskGraph(session_id="test-session", workspace=self.workspace)
         root = tg.decompose("Fix authentication bug and run tests")
         self.assertEqual(len(tg.nodes), 4)  # Root + 3 stages
@@ -252,13 +255,14 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_nla_telemetry_logging(self) -> None:
         """Verify NLATelemetry captures autoencoder reasoning telemetry steps."""
         from nexus_agent.core.nla_telemetry import NLATelemetry
+
         nla = NLATelemetry(session_id="test-nla", workspace=self.workspace)
         record = nla.log_iteration(
             thought_process="Searching codebase...",
             strategy_selected="search",
             tools_considered=["file_ops"],
             confidence_score=0.95,
-            alternative_paths=[]
+            alternative_paths=[],
         )
         self.assertEqual(record.strategy_selected, "search")
         nla.flush()
@@ -272,6 +276,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_debate_consensus(self) -> None:
         """Verify multi-reviewer parallel debate consensus scores and verdicts."""
         from nexus_agent.core.debate import DebateEngine
+
         engine = DebateEngine()
         reviews = engine.review_changes("def unsafe(): eval('x')")
         # Security review should penalize eval() usage!
@@ -287,6 +292,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_verification_pipeline(self) -> None:
         """Verify VerificationPipeline auto-detects frameworks and scans security secrets."""
         from nexus_agent.core.devops import VerificationPipeline
+
         pipeline = VerificationPipeline(workspace=self.workspace)
 
         # We wrote dummy python files main.py and utils.py in setUp
@@ -303,6 +309,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_code_intel_import_graph(self) -> None:
         """Verify ImportGraphTool builds workspace module dependency lists."""
         from nexus_agent.tools.code_intel import ImportGraphTool
+
         tool = ImportGraphTool(workspace=self.workspace)
         res = tool.execute(action="build")
         self.assertIn("main", res)
@@ -326,6 +333,7 @@ class TestModelsDBExtended(unittest.TestCase):
     def test_extended_schema_full_metadata(self):
         """Verify ModelsDB stores and retrieves full metadata fields."""
         from nexus_agent.cli.models_db import ModelsDB
+
         db = ModelsDB(data_dir=self.data_dir)
         db.add(
             name="test-model",
@@ -347,6 +355,7 @@ class TestModelsDBExtended(unittest.TestCase):
     def test_usage_and_session_tracking(self):
         """Verify token usage recording and session counters."""
         from nexus_agent.cli.models_db import ModelsDB
+
         db = ModelsDB(data_dir=self.data_dir)
         db.add(name="tracked-model", path_or_id="tracked-v1")
         db.record_usage("tracked-model", tokens=1500, cost=0.03)
@@ -361,12 +370,14 @@ class TestModelsDBExtended(unittest.TestCase):
     def test_backward_compat_migration(self):
         """Verify old string-only entries migrate to dict schema on load."""
         import json
+
         legacy = {"old-model": "/legacy/path.bin", "another-old": "/alt/path.bin"}
         db_path = os.path.join(self.data_dir, "models_db.json")
         with open(db_path, "w", encoding="utf-8") as f:
             json.dump(legacy, f)
 
         from nexus_agent.cli.models_db import ModelsDB
+
         db = ModelsDB(data_dir=self.data_dir)
         entry = db.get("old-model")
         self.assertIsInstance(entry, dict)
@@ -381,6 +392,7 @@ class TestCmdMenuSlidingWindow(unittest.TestCase):
     def test_window_centering_low_bound(self):
         """When selected index is near start, window starts at 0."""
         from nexus_agent.cli.app import NexusApp
+
         app = object.__new__(NexusApp)
         app._cmd_menu_lines = 0
         app._sub_agents = []
