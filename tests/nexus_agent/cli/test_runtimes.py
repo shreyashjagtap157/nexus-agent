@@ -208,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"openvino": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -261,6 +261,7 @@ class TestScanRuntimes(unittest.TestCase):
         self.assertEqual(runtimes[0].name, "CUDA")
         self.assertEqual(runtimes[-1].name, "CPU")
 
+    @patch.dict("sys.modules", {"jax": None, "openvino": None, "llama_cpp": None})
     def test_scan_runtimes_smoke(self):
         """scan_runtimes should never crash regardless of system state."""
         runtimes = scan_runtimes()
