@@ -34,7 +34,7 @@ class InteractiveUIMixin:
         ``value=None`` act as non-selectable separators.  Returns the
         selected value or ``None`` if the user pressed Esc.
         """
-        selectable = [i for i, (l, v) in enumerate(items) if v is not None]
+        selectable = [i for i, (label, val) in enumerate(items) if val is not None]
         if not selectable:
             return None
         idx = selectable[0]
@@ -44,6 +44,7 @@ class InteractiveUIMixin:
         sys.stdout.flush()
 
         try:
+
             def build(sel_idx):
                 out = [f"\033[2m  {title}\033[0m"]
                 for i, (label, val) in enumerate(items):
@@ -101,18 +102,14 @@ class InteractiveUIMixin:
 
     def _interactive_add_model(self):
         """Walk the user through adding a new local model to the database."""
-        name = self._read_line(
-            "\033[2m  Enter model name:\033[0m \033[7m \033[0m\b"
-        )
+        name = self._read_line("\033[2m  Enter model name:\033[0m \033[7m \033[0m\b")
         if name is None:
             return
         if not name:
             self.r.error("Name cannot be empty")
             return
 
-        path = self._read_line(
-            "\033[2m  Enter model path:\033[0m \033[7m \033[0m\b"
-        )
+        path = self._read_line("\033[2m  Enter model path:\033[0m \033[7m \033[0m\b")
         if path is None:
             return
 
@@ -128,9 +125,7 @@ class InteractiveUIMixin:
 
     # ── Provider key validation ──────────────────────────────────────
 
-    def _validate_provider_key(
-        self, provider_name: str, api_key: str
-    ) -> tuple[bool, str]:
+    def _validate_provider_key(self, provider_name: str, api_key: str) -> tuple[bool, str]:
         """Validate an API key by hitting the provider's models endpoint.
 
         Returns ``(ok, message)``.
@@ -150,10 +145,7 @@ class InteractiveUIMixin:
                 },
             },
             "google": {
-                "url": (
-                    "https://generativelanguage.googleapis.com/v1/models"
-                    f"?key={api_key}"
-                ),
+                "url": (f"https://generativelanguage.googleapis.com/v1/models?key={api_key}"),
                 "headers": {},
             },
             "groq": {
@@ -219,9 +211,7 @@ class InteractiveUIMixin:
 
     # ── Interactive model picker ─────────────────────────────────────
 
-    def _interactive_pick_model(
-        self, provider_name: str, api_key: str
-    ) -> str | None:
+    def _interactive_pick_model(self, provider_name: str, api_key: str) -> str | None:
         """Let the user pick a model from the provider's available list
         or type one manually."""
         hardcoded = self._HARDCODED_MODELS.get(provider_name)
@@ -279,17 +269,13 @@ class InteractiveUIMixin:
                             "custom",
                         ):
                             model_ids = [
-                                m
-                                for m in model_ids
-                                if not any(t in m.lower() for t in skip_terms)
+                                m for m in model_ids if not any(t in m.lower() for t in skip_terms)
                             ]
                         model_ids = sorted(set(model_ids))
                         if model_ids:
                             items = [(m, m) for m in model_ids[:100]]
                             items.append(("\u2500" * 20, None))
-                            items.append(
-                                ("[✏] Type model name manually", "__manual__")
-                            )
+                            items.append(("[✏] Type model name manually", "__manual__"))
                             sel = self._interactive_menu(
                                 items,
                                 f"Select a {provider_name} model (\u2191\u2193 Enter Esc):",
@@ -316,9 +302,7 @@ class InteractiveUIMixin:
             "perplexity": "sonar-pro",
         }
         hint = default_models.get(provider_name, "model-name")
-        model_name = self._read_line(
-            f"\033[2m  Model name (e.g. {hint}):\033[0m \033[7m \033[0m\b"
-        )
+        model_name = self._read_line(f"\033[2m  Model name (e.g. {hint}):\033[0m \033[7m \033[0m\b")
         if model_name is None:
             return None
         return model_name.strip() or hint
@@ -329,9 +313,7 @@ class InteractiveUIMixin:
         """Full interactive flow: pick provider → enter/use-saved key →
         validate → pick model → connect."""
         items = [(label, key) for label, key in self._KNOWN_PROVIDERS]
-        sel = self._interactive_menu(
-            items, "Select provider (\u2191\u2193 Enter Esc):"
-        )
+        sel = self._interactive_menu(items, "Select provider (\u2191\u2193 Enter Esc):")
         if sel is None:
             return
 
@@ -339,9 +321,7 @@ class InteractiveUIMixin:
 
         saved_key = self._auth_store.get_key(provider_name)
         if saved_key:
-            self.r.system_message(
-                f"Found saved key for {provider_name} (\u2713 stored)"
-            )
+            self.r.system_message(f"Found saved key for {provider_name} (\u2713 stored)")
             items = [("Use saved key", "saved"), ("Enter new key", "new")]
             choice = self._interactive_menu(items, "API key:")
             if choice is None:
@@ -350,8 +330,7 @@ class InteractiveUIMixin:
                 key = saved_key
             else:
                 key = self._read_line(
-                    f"\033[2m  Enter API key for {provider_name}"
-                    " (input hidden):\033[0m ",
+                    f"\033[2m  Enter API key for {provider_name} (input hidden):\033[0m ",
                     hidden=True,
                 )
                 if key is None:
@@ -361,8 +340,7 @@ class InteractiveUIMixin:
                     return
         else:
             key = self._read_line(
-                f"\033[2m  Enter API key for {provider_name}"
-                " (input hidden):\033[0m ",
+                f"\033[2m  Enter API key for {provider_name} (input hidden):\033[0m ",
                 hidden=True,
             )
             if key is None:
@@ -461,12 +439,41 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
-                        rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                # ⚡ Bolt: fast os.scandir lazy traversal
+                from pathlib import Path
+
+                stack = [str(self.workspace)]
+                prefix_lower = prefix.lower()
+                while stack and len(matches) < 20:
+                    current_dir = stack.pop()
+                    try:
+                        with os.scandir(current_dir) as it:
+                            for entry in it:
+                                if entry.is_dir(follow_symlinks=False):
+                                    if entry.name.startswith(".") and entry.name not in {
+                                        ".env",
+                                        ".gitignore",
+                                    }:
+                                        continue
+                                    if entry.name in {
+                                        "node_modules",
+                                        "__pycache__",
+                                        ".git",
+                                        "venv",
+                                        ".venv",
+                                        "dist",
+                                        "build",
+                                    }:
+                                        continue
+                                    stack.append(entry.path)
+                                elif entry.is_file(follow_symlinks=False):
+                                    if prefix_lower in entry.name.lower():
+                                        rel = Path(entry.path).relative_to(self.workspace)
+                                        matches.append(str(rel.as_posix()))
+                                        if len(matches) >= 20:
+                                            break
+                    except OSError:
+                        pass
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]
@@ -492,11 +499,7 @@ class InteractiveUIMixin:
         )
 
         sys.stdout.write(
-            alternate_screen()
-            + clear_to_end()
-            + move_to(1, 1)
-            + hide_cursor()
-            + enable_mouse()
+            alternate_screen() + clear_to_end() + move_to(1, 1) + hide_cursor() + enable_mouse()
         )
         sys.stdout.flush()
 
@@ -531,9 +534,7 @@ class InteractiveUIMixin:
             {
                 "key": "temperature",
                 "label": "Temperature",
-                "val": self._config.setdefault("agent", {}).get(
-                    "temperature", 0.1
-                ),
+                "val": self._config.setdefault("agent", {}).get("temperature", 0.1),
                 "type": "float",
                 "min": 0.0,
                 "max": 2.0,
@@ -587,9 +588,7 @@ class InteractiveUIMixin:
 
         def adjust_param(p, delta):
             if p["type"] == "int":
-                p["val"] = max(
-                    p["min"], min(p["max"], p["val"] + delta * p["step"])
-                )
+                p["val"] = max(p["min"], min(p["max"], p["val"] + delta * p["step"]))
             elif p["type"] == "float":
                 p["val"] = max(
                     p["min"],
@@ -598,42 +597,25 @@ class InteractiveUIMixin:
                 p["val"] = round(p["val"], 1)
             elif p["type"] == "choice":
                 c_idx = p["choices"].index(p["val"])
-                p["val"] = p["choices"][
-                    max(0, min(len(p["choices"]) - 1, c_idx + delta))
-                ]
+                p["val"] = p["choices"][max(0, min(len(p["choices"]) - 1, c_idx + delta))]
             elif p["type"] == "bool":
                 if delta != 0:
                     p["val"] = not p["val"]
 
         def draw(sel_idx):
             lines = []
-            lines.append(
-                "\033[1;35m\u250c"
-                + "\u2500" * 72
-                + "\u2510\033[0m"
-            )
+            lines.append("\033[1;35m\u250c" + "\u2500" * 72 + "\u2510\033[0m")
             lines.append(
                 "\033[1;35m\u2502          NEXUSAGENT \u2014"
                 " VISUAL MODEL CONFIGURATION HUD"
                 "                  \u2502\033[0m"
             )
-            lines.append(
-                "\033[1;35m\u2514"
-                + "\u2500" * 72
-                + "\u2518\033[0m"
-            )
+            lines.append("\033[1;35m\u2514" + "\u2500" * 72 + "\u2518\033[0m")
             lines.append("")
-            lines.append(
-                f"  [bold]Model:[/bold]"
-                f" [cyan]{os.path.basename(model_path)}[/cyan]"
-            )
-            lines.append(
-                f"  [bold]Path:[/bold]   [dim]{model_path}[/dim]"
-            )
+            lines.append(f"  [bold]Model:[/bold] [cyan]{os.path.basename(model_path)}[/cyan]")
+            lines.append(f"  [bold]Path:[/bold]   [dim]{model_path}[/dim]")
             lines.append("")
-            lines.append(
-                "  \033[2m" + "\u2500" * 70 + "\033[0m"
-            )
+            lines.append("  \033[2m" + "\u2500" * 70 + "\033[0m")
             lines.append("")
             for i, p in enumerate(params):
                 hi = "\033[7m" if i == sel_idx else ""
@@ -642,9 +624,7 @@ class InteractiveUIMixin:
                 label_part = f"{p['label']}:".ljust(25)
                 lines.append(f"  {ptr}{hi}{label_part} {param_line(p)}{end}")
             lines.append("")
-            lines.append(
-                "  \033[2m" + "\u2500" * 70 + "\033[0m"
-            )
+            lines.append("  \033[2m" + "\u2500" * 70 + "\033[0m")
             lines.append("")
             lines.append("  \033[1;33mControls:\033[0m")
             lines.append(
@@ -668,11 +648,7 @@ class InteractiveUIMixin:
             raw = (b"\x1b[" + buf).decode("utf-8", errors="replace")
             m = re.match(r"^\x1b\[<(\d+);(\d+);(\d+)([Mm])$", raw)
             if not m:
-                m = (
-                    re.match(r"^\x1b\[M(.)(.)(.)$", raw)
-                    if raw.startswith("\x1b[M")
-                    else None
-                )
+                m = re.match(r"^\x1b\[M(.)(.)(.)$", raw) if raw.startswith("\x1b[M") else None
                 if m:
                     cb = ord(m.group(1)) - 32
                     cx = ord(m.group(2)) - 32
@@ -797,8 +773,6 @@ class InteractiveUIMixin:
         if confirmed:
             for p in params:
                 if p["key"] == "temperature":
-                    self._config.setdefault("agent", {})["temperature"] = p[
-                        "val"
-                    ]
+                    self._config.setdefault("agent", {})["temperature"] = p["val"]
                 else:
                     local_cfg[p["key"]] = p["val"]
