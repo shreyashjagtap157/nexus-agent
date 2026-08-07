@@ -280,7 +280,7 @@ def session_checkpoint(description: str) -> None:
 
     console = Console()
     mgr = SessionManager()
-    # ⚡ Bolt: Replaced slow rglob with fast os.scandir lazy traversal to avoid traversing .venv/node_modules  # noqa: E501
+    # ⚡ Bolt: fast os.scandir lazy traversal
     import os
     from pathlib import Path
 
@@ -428,7 +428,8 @@ def hardware() -> None:
         f"[cyan]GPU:[/cyan] {hw.get('gpu', 'Not detected')}",
         f"[cyan]VRAM:[/cyan] {hw.get('vram', 'N/A')}",
         "",
-        f"[bold green]Recommended max model size:[/bold green] {hw.get('recommended_model_size', 'unknown')}",
+        f"[bold green]Recommended max model size:[/bold green] "
+        f"{hw.get('recommended_model_size', 'unknown')}",
     ]
 
     console.print(

@@ -34,7 +34,7 @@ class InteractiveUIMixin:
         ``value=None`` act as non-selectable separators.  Returns the
         selected value or ``None`` if the user pressed Esc.
         """
-        selectable = [i for i, (l, v) in enumerate(items) if v is not None]
+        selectable = [i for i, (label, val) in enumerate(items) if val is not None]
         if not selectable:
             return None
         idx = selectable[0]
@@ -439,7 +439,7 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                # ⚡ Bolt: Replaced slow rglob with fast os.scandir lazy traversal to avoid traversing .venv/node_modules  # noqa: E501
+                # ⚡ Bolt: fast os.scandir lazy traversal
                 from pathlib import Path
 
                 stack = [str(self.workspace)]

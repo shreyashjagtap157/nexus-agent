@@ -90,7 +90,7 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            # ⚡ Bolt: Replaced slow rglob with fast os.scandir lazy traversal to avoid traversing .venv/node_modules  # noqa: E501
+            # ⚡ Bolt: fast os.scandir lazy traversal
             files = []
             stack = [str(self.workspace)]
             while stack and len(files) < 20:
@@ -139,7 +139,8 @@ class SessionCommandsMixin:
                     return
                 for cp in checkpoints[:10]:
                     self.console.print(
-                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"
+                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  "
+                        f"[dim]{cp.get('created', '')}[/dim]"
                     )
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
