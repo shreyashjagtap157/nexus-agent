@@ -84,7 +84,13 @@ class SessionCommandsMixin:
 
     def _cmd_checkpoint(self, args: str):
         if self._session_mgr:
-            files = [str(f) for f in self.workspace.rglob("*.py")][:20]
+            import itertools
+
+            from nexus_agent.tools.file_ops import SearchFilesTool
+            file_iter = SearchFilesTool(self.workspace)._iter_files(self.workspace)
+            # Bolt: Replaced slow rglob with fast os.scandir lazy traversal
+            py_files = (str(f) for f in file_iter if f.suffix == ".py")
+            files = list(itertools.islice(py_files, 20))
             cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:

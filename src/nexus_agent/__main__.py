@@ -221,14 +221,23 @@ def session_resume(session_id: str) -> None:
 @click.argument("description", type=str, default="Manual checkpoint")
 def session_checkpoint(description: str) -> None:
     """Create a session checkpoint (snapshot of working tree)."""
+    import itertools
+    from pathlib import Path
+
     from rich.console import Console
 
     from nexus_agent.session.manager import SessionManager
+    from nexus_agent.tools.file_ops import SearchFilesTool
 
     console = Console()
     mgr = SessionManager()
-    from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+
+    workspace = Path.cwd()
+    file_iter = SearchFilesTool(workspace)._iter_files(workspace)
+    # Bolt: Replaced slow rglob with fast os.scandir lazy traversal to avoid OOM
+    py_files = (str(f) for f in file_iter if f.suffix == ".py")
+    files = list(itertools.islice(py_files, 20))
+
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 

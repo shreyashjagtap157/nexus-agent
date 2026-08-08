@@ -178,7 +178,7 @@ class TestFindFiles(unittest.TestCase):
         import tempfile
         from pathlib import Path
         mock_run.side_effect = FileNotFoundError
-        # Create a real temp file for rglob to find
+        # Create a real temp file for _iter_files to find
         tmp_dir = Path(tempfile.mkdtemp())
         (tmp_dir / "main.py").touch()
         self.app.workspace = tmp_dir
@@ -188,7 +188,7 @@ class TestFindFiles(unittest.TestCase):
     @patch("subprocess.run")
     def test_empty_result(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="")
-        with patch("pathlib.WindowsPath.rglob", return_value=[]):
+        with patch("nexus_agent.tools.file_ops.SearchFilesTool._iter_files", return_value=[]):
             result = self.app._find_files("nonexistent")
             self.assertEqual(result, [])
 

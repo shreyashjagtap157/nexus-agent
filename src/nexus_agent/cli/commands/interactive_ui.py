@@ -445,6 +445,7 @@ class InteractiveUIMixin:
 
     def _find_files(self, prefix: str) -> list[str]:
         """Return up to 20 workspace files matching *prefix*."""
+        from nexus_agent.tools.file_ops import SearchFilesTool
         matches: list[str] = []
         prefix_lower = prefix.lower()
         try:
@@ -461,12 +462,17 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
+                # Bolt: Replaced slow rglob with fast os.scandir lazy traversal
+                file_iter = SearchFilesTool(self.workspace)._iter_files(self.workspace)
+                for p in file_iter:
+                    try:
                         rel = p.relative_to(self.workspace)
-                        matches.append(str(rel.as_posix()))
-                        if len(matches) >= 20:
-                            break
+                        if prefix in str(rel):
+                            matches.append(str(rel.as_posix()))
+                            if len(matches) >= 20:
+                                break
+                    except ValueError:
+                        continue
             except (OSError, ValueError, TypeError):
                 pass
         return sorted(matches)[:20]
