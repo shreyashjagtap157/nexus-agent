@@ -37,19 +37,13 @@ class SessionCommandsMixin:
                 sessions = self._session_mgr.list_sessions()
                 if sessions:
                     from rich.table import Table
-
                     table = Table(title="Sessions", show_header=True, header_style="bold magenta")
                     table.add_column("ID", style="cyan")
                     table.add_column("Created", style="green")
                     table.add_column("Messages", justify="right", style="yellow")
                     table.add_column("Model", style="dim")
                     for s in sessions:
-                        table.add_row(
-                            s["id"][:12],
-                            s["created"],
-                            str(s.get("message_count", 0)),
-                            s.get("model", ""),
-                        )
+                        table.add_row(s["id"][:12], s["created"], str(s.get("message_count", 0)), s.get("model", ""))
                     self.console.print(table)
                 else:
                     self.r.system_message("No saved sessions.")
@@ -93,14 +87,11 @@ class SessionCommandsMixin:
             import itertools
 
             from nexus_agent.tools.file_ops import SearchFilesTool
-
             file_iter = SearchFilesTool(self.workspace)._iter_files(self.workspace)
             # Bolt: Replaced slow rglob with fast os.scandir lazy traversal
             py_files = (str(f) for f in file_iter if f.suffix == ".py")
             files = list(itertools.islice(py_files, 20))
-            cp_id = self._session_mgr.create_checkpoint(
-                files, description=args or "Manual checkpoint"
-            )
+            cp_id = self._session_mgr.create_checkpoint(files, description=args or "Manual checkpoint")
             self.r.system_message(f"Checkpoint: {cp_id[:12]}…")
         else:
             self.r.system_message("Session manager unavailable.")
@@ -113,9 +104,7 @@ class SessionCommandsMixin:
                     self.r.system_message("No checkpoints.")
                     return
                 for cp in checkpoints[:10]:
-                    self.console.print(
-                        f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]"
-                    )
+                    self.console.print(f"  [{cp['id'][:12]}] {cp.get('description', '')}  [dim]{cp.get('created', '')}[/dim]")
             except (ValueError, OSError, RuntimeError) as e:
                 self.r.error(f"Checkpoints: {e}")
         else:
@@ -200,7 +189,6 @@ class SessionCommandsMixin:
                     if mode_str:
                         try:
                             from nexus_agent.core.agent import AgentMode
-
                             self._current_mode = AgentMode(mode_str)
                             if self._agent:
                                 self._agent.mode = self._current_mode
@@ -229,10 +217,7 @@ class SessionCommandsMixin:
             try:
                 sessions = self._session_mgr.list_sessions()
                 if sessions:
-                    items = [
-                        (f"{s.get('id', '?')[:16]}  {s.get('name', '')}", s["id"])
-                        for s in sessions[:10]
-                    ]
+                    items = [(f"{s.get('id', '?')[:16]}  {s.get('name', '')}", s['id']) for s in sessions[:10]]
                     sel = self._interactive_menu(items, "Select session to resume:")
                     if sel:
                         self._cmd_resume(sel)
@@ -256,9 +241,7 @@ class SessionCommandsMixin:
         try:
             import pyperclip
         except ImportError:
-            self.r.system_message(
-                "pyperclip not installed — cannot copy. Try `pip install pyperclip`."
-            )
+            self.r.system_message("pyperclip not installed — cannot copy. Try `pip install pyperclip`.")
             return
         text = ""
         if not args or args == "last":
@@ -301,7 +284,9 @@ class SessionCommandsMixin:
             self.r.error(f"Not a directory: {target}")
             return
         if not str(target).startswith(str(self.workspace.resolve())) and not args.startswith("~"):
-            self.r.system_message(f"Note: {target} is outside the workspace {self.workspace}")
+            self.r.system_message(
+                f"Note: {target} is outside the workspace {self.workspace}"
+            )
         self._extra_dirs = getattr(self, "_extra_dirs", []) + [target]
         self.r.system_message(f"Added dir: {target} (in-session only)")
 
@@ -335,7 +320,6 @@ class SessionCommandsMixin:
 
         def run_in_background(prompt: str) -> str:
             from nexus_agent.core.agent import AgentEventType
-
             out: list[str] = []
             for ev in self._agent.run(prompt):
                 if ev.type == AgentEventType.CONTENT_COMPLETE and isinstance(ev.data, str):
@@ -372,7 +356,6 @@ class SessionCommandsMixin:
                 self.r.system_message("No saved sessions.")
                 return
             from rich.table import Table
-
             tbl = Table(title="Sessions", show_header=True, header_style="bold magenta")
             tbl.add_column("ID", style="cyan")
             tbl.add_column("Title", style="green", max_width=40)
@@ -394,7 +377,6 @@ class SessionCommandsMixin:
                 self.r.system_message("No background sessions.")
                 return
             from rich.table import Table
-
             tbl = Table(title="Background Sessions", show_header=True, header_style="bold magenta")
             tbl.add_column("ID", style="cyan")
             tbl.add_column("State", style="yellow")
