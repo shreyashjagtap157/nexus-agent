@@ -1,3 +1,9 @@
+import sys
+from unittest.mock import patch
+
+# Mock blessed to prevent ModuleNotFoundError in CI where it might not be installed
+patch.dict('sys.modules', {'blessed': __import__('unittest.mock').mock.MagicMock()}).start()
+
 """Tests for input_handler_simple.py — MinimalInputHandlerMixin."""
 
 import unittest
