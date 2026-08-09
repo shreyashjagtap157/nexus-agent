@@ -461,7 +461,8 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
+                from nexus_agent.tools.file_ops import SearchFilesTool
+                for p in (f for f in SearchFilesTool.iter_files(self.workspace) if prefix in f.name):  # noqa: E501
                     if p.is_file():
                         rel = p.relative_to(self.workspace)
                         matches.append(str(rel.as_posix()))

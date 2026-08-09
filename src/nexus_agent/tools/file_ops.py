@@ -307,7 +307,7 @@ class SearchFilesTool(Tool):
         if search_path.is_file():
             file_iter = iter([search_path])
         else:
-            file_iter = self._iter_files(search_path)
+            file_iter = self.iter_files(search_path)
 
         for file_path in file_iter:
             if not file_path.is_file():
@@ -369,7 +369,8 @@ class SearchFilesTool(Tool):
 
         return "\n".join(results)
 
-    def _iter_files(self, search_path: Path):
+    @staticmethod
+    def iter_files(search_path: Path):
         """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
         try:
             with os.scandir(str(search_path)) as it:
@@ -382,7 +383,7 @@ class SearchFilesTool(Tool):
                             skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
                             if entry.name in skip_dirs:
                                 continue
-                            yield from self._iter_files(Path(entry.path))
+                            yield from SearchFilesTool.iter_files(Path(entry.path))
                         elif entry.is_file():
                             yield Path(entry.path)
                     except OSError:
