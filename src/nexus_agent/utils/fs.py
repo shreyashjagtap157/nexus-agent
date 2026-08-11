@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+
 def iter_files(search_path: Path):
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     try:
@@ -14,9 +15,20 @@ def iter_files(search_path: Path):
                         try:
                             if entry.is_dir(follow_symlinks=False):
                                 # Skip hidden directories (except .env, .gitignore)
-                                if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                                if entry.name.startswith(".") and entry.name not in {
+                                    ".env",
+                                    ".gitignore",
+                                }:
                                     continue
-                                skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
+                                skip_dirs = {
+                                    "node_modules",
+                                    "__pycache__",
+                                    ".git",
+                                    "venv",
+                                    ".venv",
+                                    "dist",
+                                    "build",
+                                }
                                 if entry.name in skip_dirs:
                                     continue
                                 stack.append(entry.path)
