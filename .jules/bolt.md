@@ -5,4 +5,3 @@
 
 ## 2024-08-07 - [Optimize File Traversal by Using os.scandir Instead of pathlib.rglob]
 **Learning:** `pathlib.Path.rglob()` builds a complete set of intermediate `Path` objects in memory even when slicing or early-returning with generators. Refactoring `rglob` usages into lazy, recursive iteration with `os.scandir()` vastly improves execution speed and lowers memory pressure when scanning deep directory structures.
-**Action:** Consistently replace usages of `pathlib.rglob()` in codebase file-iteration loops with custom generator implementations based on `os.scandir()`. Ensure these custom generators avoid unnecessary intermediate `Path` allocations and skip large artifact directories (like `node_modules` or `.venv`) natively to further enhance traversal efficiency.
