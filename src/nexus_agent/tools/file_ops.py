@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import fnmatch
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool, ToolError
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -307,7 +307,7 @@ class SearchFilesTool(Tool):
         if search_path.is_file():
             file_iter = iter([search_path])
         else:
-            file_iter = self._iter_files(search_path)
+            file_iter = iter_files(search_path)
 
         for file_path in file_iter:
             if not file_path.is_file():
@@ -368,29 +368,6 @@ class SearchFilesTool(Tool):
             return f"No matches found for '{pattern}' in {files_searched} files"
 
         return "\n".join(results)
-
-    def _iter_files(self, search_path: Path):
-        """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
-        try:
-            with os.scandir(str(search_path)) as it:
-                for entry in it:
-                    try:
-                        if entry.is_dir(follow_symlinks=False):
-                            # Skip hidden directories (except .env, .gitignore)
-                            if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
-                                continue
-                            skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
-                            if entry.name in skip_dirs:
-                                continue
-                            yield from self._iter_files(Path(entry.path))
-                        elif entry.is_file():
-                            yield Path(entry.path)
-                    except OSError:
-                        continue
-        except PermissionError:
-            return
-        except OSError:
-            return
 
 
 class ListDirectoryTool(Tool):

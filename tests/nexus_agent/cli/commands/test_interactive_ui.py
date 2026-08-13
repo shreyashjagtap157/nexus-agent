@@ -188,7 +188,7 @@ class TestFindFiles(unittest.TestCase):
     @patch("subprocess.run")
     def test_empty_result(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="")
-        with patch("pathlib.WindowsPath.rglob", return_value=[]):
+        with patch("nexus_agent.utils.fs.iter_files", return_value=[]):
             result = self.app._find_files("nonexistent")
             self.assertEqual(result, [])
 
