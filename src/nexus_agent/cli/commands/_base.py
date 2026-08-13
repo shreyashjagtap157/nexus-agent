@@ -5,9 +5,22 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from blessed import Terminal
 
-_term = Terminal()
+class DummyTerminal:
+    def __init__(self):
+        self.move_up = "\033[1A"
+        self.clear_eol = "\033[K"
+        self.KEY_ESCAPE = 27
+
+    def inkey(self, timeout=0):
+        # Extremely naive dummy fallback
+        return ""
+
+try:
+    from blessed import Terminal
+    _term = Terminal()
+except ImportError:
+    _term = DummyTerminal()
 
 SLASH_COMMANDS = [
     {"name": "/help", "description": "Show available commands"},
