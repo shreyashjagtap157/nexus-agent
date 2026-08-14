@@ -51,7 +51,7 @@ class _MockApp:
         self.console = MagicMock()
 
 
-from nexus_agent.cli.commands.interactive_ui import InteractiveUIMixin
+from nexus_agent.cli.commands.interactive_ui import InteractiveUIMixin  # noqa: E402
 
 
 class TestInteractiveMenu(unittest.TestCase):
