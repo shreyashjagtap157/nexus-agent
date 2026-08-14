@@ -306,7 +306,7 @@ class TaskInspector:
             lines.append("    " + "  ".join(status_parts))
 
         # Divider
-        lines.append("  " + "\u2500" * min(width - 4, 60))
+        lines.append("  " + (chr(0x2500) * min(width - 4, 60)))
 
         # 2. Task tree — show root's children recursively
         self._render_subtree(root, lines, width, root_id, depth=0)
@@ -615,7 +615,7 @@ class TokenUsage:
         pct = min(100, int(self.total / ctx * 100)) if self.total > 0 else 0
         bar_len = 10
         filled = int(pct / 100 * bar_len)
-        bar = "\u2501" * filled + "\u2500" * (bar_len - filled)
+        bar = "\u2501" * filled + chr(0x2500) * (bar_len - filled)
         color = "green" if pct < 50 else "yellow" if pct < 80 else "red"
         if self.last_request.elapsed > 0:
             time_str = self._fmt_time(self.last_request.elapsed)

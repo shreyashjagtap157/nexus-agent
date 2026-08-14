@@ -197,7 +197,7 @@ class BaseCommands:
         effort_colors.get(levels[idx], "yellow")
         marker_line = " " * (pad + centers[idx]) + "\u25b2"
 
-        bar_chars = ["\u2500"] * total_w
+        bar_chars = [chr(0x2500)] * total_w
         for i, c in enumerate(centers):
             bar_chars[c] = "\u253c" if i == idx else "\u252c"
         scale_line = " " * pad + "".join(bar_chars)

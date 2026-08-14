@@ -102,7 +102,7 @@ class ModelCommandsMixin:
         items: list[tuple[str, str | None]] = []
         if self._engine and getattr(self._engine, "is_loaded", False):
             items.append(("\033[31m[\u2715] Unload model\033[0m", "__unload__"))
-            items.append(("\u2500" * 20, None))
+            items.append((chr(0x2500) * 20, None))
         items.append(("[+] Add new model", "__add__"))
         for name in sorted_n:
             p = (self._models_db.get_path(name) or "")[:60]
@@ -110,7 +110,7 @@ class ModelCommandsMixin:
         if items and not items[-1][1]:
             pass
         elif items:
-            items.append(("\u2500" * 20, None))
+            items.append((chr(0x2500) * 20, None))
         items.append(("[\u2197] Connect provider", "__connect__"))
 
         sel = self._interactive_menu(items, "Select a model (\u2191\u2193 Enter Esc):")
