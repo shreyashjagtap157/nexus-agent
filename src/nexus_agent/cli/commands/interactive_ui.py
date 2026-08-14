@@ -218,7 +218,7 @@ class InteractiveUIMixin:
         hardcoded = self._HARDCODED_MODELS.get(provider_name)
         if hardcoded:
             items = [(m, m) for m in hardcoded]
-            items.append(("\u2500" * 20, None))
+            items.append((chr(0x2500) * 20, None))
             items.append(("[✏] Type model name manually", "__manual__"))
             sel = self._interactive_menu(
                 items,
@@ -275,7 +275,7 @@ class InteractiveUIMixin:
                         model_ids = sorted(set(model_ids))
                         if model_ids:
                             items = [(m, m) for m in model_ids[:100]]
-                            items.append(("\u2500" * 20, None))
+                            items.append((chr(0x2500) * 20, None))
                             items.append(("[✏] Type model name manually", "__manual__"))
                             sel = self._interactive_menu(
                                 items,
@@ -576,18 +576,18 @@ class InteractiveUIMixin:
 
         def draw(sel_idx):
             lines = []
-            lines.append("\033[1;35m\u250c" + "\u2500" * 72 + "\u2510\033[0m")
+            lines.append("\033[1;35m\u250c" + (chr(0x2500) * 72) + "\u2510\033[0m")
             lines.append(
                 "\033[1;35m\u2502          NEXUSAGENT \u2014"
                 " VISUAL MODEL CONFIGURATION HUD"
                 "                  \u2502\033[0m"
             )
-            lines.append("\033[1;35m\u2514" + "\u2500" * 72 + "\u2518\033[0m")
+            lines.append("\033[1;35m\u2514" + (chr(0x2500) * 72) + "\u2518\033[0m")
             lines.append("")
             lines.append(f"  [bold]Model:[/bold] [cyan]{os.path.basename(model_path)}[/cyan]")
             lines.append(f"  [bold]Path:[/bold]   [dim]{model_path}[/dim]")
             lines.append("")
-            lines.append("  \033[2m" + "\u2500" * 70 + "\033[0m")
+            lines.append("  \033[2m" + (chr(0x2500) * 70) + "\033[0m")
             lines.append("")
             for i, p in enumerate(params):
                 hi = "\033[7m" if i == sel_idx else ""
@@ -596,7 +596,7 @@ class InteractiveUIMixin:
                 label_part = f"{p['label']}:".ljust(25)
                 lines.append(f"  {ptr}{hi}{label_part} {param_line(p)}{end}")
             lines.append("")
-            lines.append("  \033[2m" + "\u2500" * 70 + "\033[0m")
+            lines.append("  \033[2m" + (chr(0x2500) * 70) + "\033[0m")
             lines.append("")
             lines.append("  \033[1;33mControls:\033[0m")
             lines.append(
