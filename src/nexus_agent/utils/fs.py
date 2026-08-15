@@ -4,7 +4,10 @@ from pathlib import Path
 
 
 def iter_files(search_path: Path) -> Iterator[Path]:
-    """Lazily iterate files under search_path using os.scandir with an explicit stack to avoid recursion limits and OOM."""
+    """Lazily iterate files under search_path using os.scandir.
+
+    Uses an explicit stack to avoid recursion limits and OOM.
+    """
     stack = [str(search_path)]
     skip_dirs = {"node_modules", "__pycache__", ".git", "venv", ".venv", "dist", "build"}
 
