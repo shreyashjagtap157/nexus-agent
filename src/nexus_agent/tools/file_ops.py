@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import fnmatch
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any
@@ -24,12 +23,43 @@ MAX_READ_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_WRITE_SIZE = 50 * 1024 * 1024  # 50MB
 
 ALLOWED_SEARCH_EXTENSIONS = {
-    ".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml",
-    ".js", ".ts", ".jsx", ".tsx", ".rs", ".go", ".java",
-    ".c", ".h", ".cpp", ".hpp", ".css", ".scss", ".less",
-    ".html", ".xml", ".sql", ".sh", ".bat", ".ps1",
-    ".cfg", ".ini", ".conf", ".env", ".gitignore",
-    ".csv", ".rst", ".tex", ".vue", ".svelte",
+    ".py",
+    ".md",
+    ".txt",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".rs",
+    ".go",
+    ".java",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".css",
+    ".scss",
+    ".less",
+    ".html",
+    ".xml",
+    ".sql",
+    ".sh",
+    ".bat",
+    ".ps1",
+    ".cfg",
+    ".ini",
+    ".conf",
+    ".env",
+    ".gitignore",
+    ".csv",
+    ".rst",
+    ".tex",
+    ".vue",
+    ".svelte",
 }
 
 
@@ -74,8 +104,9 @@ class ReadFileTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(self, path: str, start_line: int | None = None,
-                end_line: int | None = None, **kwargs: Any) -> str:
+    def execute(
+        self, path: str, start_line: int | None = None, end_line: int | None = None, **kwargs: Any
+    ) -> str:
         try:
             file_path = self._resolve_path(path)
         except (ValueError, ToolError) as e:
@@ -266,9 +297,14 @@ class SearchFilesTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(self, pattern: str, path: str | None = None,
-                include_glob: str | None = None,
-                max_results: int = 50, **kwargs: Any) -> str:
+    def execute(
+        self,
+        pattern: str,
+        path: str | None = None,
+        include_glob: str | None = None,
+        max_results: int = 50,
+        **kwargs: Any,
+    ) -> str:
         if path:
             try:
                 search_path = Tool.resolve_workspace_path(self.workspace, path)
@@ -284,11 +320,11 @@ class SearchFilesTool(Tool):
         # ReDoS protection: block patterns with catastrophic backtracking risk
         if any(bad in pattern for bad in ["*+", "++", "?+", "*?", "+?", "??", "**"]):
             return "Error: Dangerous regular expression pattern (nested/consecutive quantifiers detected)."
-        if re.search(r'\([^\)]*[\*\+\?][^\)]*\)[\*\+\?]', pattern):
+        if re.search(r"\([^\)]*[\*\+\?][^\)]*\)[\*\+\?]", pattern):
             return "Error: Dangerous regular expression pattern (potential ReDoS nesting detected)."
-        if re.search(r'\(\?:[^\)]*[\*\+\?][^\)]*\)[\*\+\?]', pattern):
+        if re.search(r"\(\?:[^\)]*[\*\+\?][^\)]*\)[\*\+\?]", pattern):
             return "Error: Dangerous regular expression pattern (nested quantifiers in group)."
-        if re.search(r'\[\^[^\]]*\][\*\+\?][\*\+\?]', pattern):
+        if re.search(r"\[\^[^\]]*\][\*\+\?][\*\+\?]", pattern):
             return "Error: Dangerous regular expression pattern (consecutive quantifiers on character class)."
         # Pattern complexity check: reject excessively long patterns or those with too many groups
         if len(pattern) > 500:
@@ -371,7 +407,6 @@ class SearchFilesTool(Tool):
         return "\n".join(results)
 
 
-
 class ListDirectoryTool(Tool):
     """List directory contents with file info."""
 
@@ -413,8 +448,9 @@ class ListDirectoryTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(self, path: str | None = None, recursive: bool = False,
-                max_depth: int = 3, **kwargs: Any) -> str:
+    def execute(
+        self, path: str | None = None, recursive: bool = False, max_depth: int = 3, **kwargs: Any
+    ) -> str:
         if path:
             try:
                 dir_path = Tool.resolve_workspace_path(self.workspace, path)
@@ -438,8 +474,9 @@ class ListDirectoryTool(Tool):
 
         return "\n".join(lines)
 
-    def _list_dir(self, path: Path, lines: list[str], prefix: str,
-                  recursive: bool, max_depth: int, depth: int) -> None:
+    def _list_dir(
+        self, path: Path, lines: list[str], prefix: str, recursive: bool, max_depth: int, depth: int
+    ) -> None:
         if depth > max_depth:
             lines.append(f"{prefix}... (max depth reached)")
             return
