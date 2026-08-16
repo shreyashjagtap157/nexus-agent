@@ -16,6 +16,7 @@ import time
 from typing import Any
 
 from nexus_agent.core.config import save_config
+from nexus_agent.utils.fs import iter_files
 
 
 class InteractiveUIMixin:
@@ -461,8 +462,8 @@ class InteractiveUIMixin:
             pass
         if not matches:
             try:
-                for p in self.workspace.rglob(f"*{prefix}*"):
-                    if p.is_file():
+                for p in iter_files(self.workspace):
+                    if prefix.lower() in p.name.lower():
                         rel = p.relative_to(self.workspace)
                         matches.append(str(rel.as_posix()))
                         if len(matches) >= 20:

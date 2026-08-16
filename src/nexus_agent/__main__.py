@@ -2,12 +2,14 @@
 
 import os
 import sys
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
 import click
 
 from nexus_agent import __app_name__, __version__
+from nexus_agent.utils.fs import iter_files
 
 
 @click.group(invoke_without_command=True)
@@ -228,7 +230,7 @@ def session_checkpoint(description: str) -> None:
     console = Console()
     mgr = SessionManager()
     from pathlib import Path
-    files = [str(f) for f in Path.cwd().rglob("*.py")][:20]
+    files = [str(f) for f in islice((p for p in iter_files(Path.cwd()) if p.suffix == ".py"), 20)]
     cp_id = mgr.create_checkpoint(files, description=description)
     console.print(f"[green]Checkpoint created:[/green] {cp_id[:12]}…")
 

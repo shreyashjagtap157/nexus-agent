@@ -124,7 +124,7 @@ class AgentCommandsMixin:
             "  Effort",
             "",
             f"{' ' * PAD}Faster{' ' * (left_w - 6)}Smarter",
-            f"{' ' * PAD}{'\u2500' * left_w}\u252c{'\u2500' * right_w}",
+            f"{' ' * PAD}" + chr(0x2500) * left_w + chr(0x252C) + chr(0x2500) * right_w,
         ]
         lines.append(marker_line)
         lines.append(label_line)
@@ -983,7 +983,10 @@ class AgentCommandsMixin:
             self.r.system_message("Fast mode: OFF (restored defaults)")
 
     def _cmd_plan(self, args: str):
-        self._run_agent(f"Plan the implementation for: {args}" if args else "Generate implementation plan for the current task.")
+        self._run_agent(
+            f"Plan the implementation for: {args}"
+            if args else "Generate implementation plan for the current task."
+        )
 
     def _cmd_build(self, args: str):
         self._run_agent("Execute the implementation plan step by step.")

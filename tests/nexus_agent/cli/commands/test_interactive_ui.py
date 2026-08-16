@@ -188,12 +188,12 @@ class TestFindFiles(unittest.TestCase):
     @patch("subprocess.run")
     def test_empty_result(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="")
-        with patch("pathlib.WindowsPath.rglob", return_value=[]):
+        with patch("nexus_agent.cli.commands.interactive_ui.iter_files", return_value=[]):
             result = self.app._find_files("nonexistent")
             self.assertEqual(result, [])
 
     @patch("subprocess.run")
-    def test_limits_to_20_results(self, mock_run):
+    def test_git_fails_fallback_to_iter_files(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout="\n".join([f"src/file{i}.py" for i in range(30)]),
