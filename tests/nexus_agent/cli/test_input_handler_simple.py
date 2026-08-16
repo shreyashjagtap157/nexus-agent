@@ -20,7 +20,7 @@ class _MockApp:
 
 
 import sys
-from unittest.mock import MagicMock
+
 sys.modules["blessed"] = MagicMock()
 
 from nexus_agent.cli.input_handler_simple import MinimalInputHandlerMixin  # noqa: E402

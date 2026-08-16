@@ -6,11 +6,10 @@ from itertools import islice
 from pathlib import Path
 from typing import Any
 
-from nexus_agent.utils.fs import iter_files
-
 import click
 
 from nexus_agent import __app_name__, __version__
+from nexus_agent.utils.fs import iter_files
 
 
 @click.group(invoke_without_command=True)

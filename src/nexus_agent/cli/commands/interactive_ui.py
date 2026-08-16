@@ -13,7 +13,6 @@ import subprocess
 import sys
 import threading
 import time
-from itertools import islice
 from typing import Any
 
 from nexus_agent.core.config import save_config
