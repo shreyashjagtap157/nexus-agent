@@ -251,9 +251,10 @@ class RepositoryRAGTool(Tool):
         # 1. Symbol Match Boost (Hybrid Retrieval)
         try:
             # Check exact or partial symbol matches
+            escaped_query = query.replace("%", r"\%").replace("_", r"\_")
             symbol_cursor = conn.execute(
-                "SELECT * FROM code_symbols WHERE symbol_name LIKE ? LIMIT ?",
-                (f"%{query}%", max_results)
+                "SELECT * FROM code_symbols WHERE symbol_name LIKE ? ESCAPE '\\' LIMIT ?",
+                (f"%{escaped_query}%", max_results)
             )
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
