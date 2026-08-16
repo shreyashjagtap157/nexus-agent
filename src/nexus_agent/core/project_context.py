@@ -1,6 +1,7 @@
 """
 Project context loader.
 
+
 Reads project-level instruction files (`AGENTS.md`, `CLAUDE.md`,
 `.nexus/AGENTS.md`, etc.) and produces a single string suitable for
 injection into the agent's system prompt. Cached per workspace.
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,26 +55,28 @@ DANGER_KEYWORDS: tuple[str, ...] = (
 )
 
 # Directories we never descend into when walking the workspace.
-SKIP_DIRS: frozenset[str] = frozenset({
-    ".git",
-    ".hg",
-    ".svn",
-    "node_modules",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "env",
-    ".tox",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "target",
-    "build",
-    "dist",
-    ".idea",
-    ".vscode",
-    ".nexus-agent",
-})
+SKIP_DIRS: frozenset[str] = frozenset(
+    {
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "env",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "target",
+        "build",
+        "dist",
+        ".idea",
+        ".vscode",
+        ".nexus-agent",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -121,14 +125,16 @@ class ProjectContextLoader:
             except (OSError, FileNotFoundError):
                 continue
             files.append((path, stat.st_mtime_ns, stat.st_size))
-        param_str = "|".join((
-            str(self.max_bytes),
-            str(self.max_total_bytes),
-            str(self.max_parent_levels),
-            str(self.walk_descendants),
-            str(self.walk_ancestors),
-            ",".join(self.rules_files),
-        ))
+        param_str = "|".join(
+            (
+                str(self.max_bytes),
+                str(self.max_total_bytes),
+                str(self.max_parent_levels),
+                str(self.walk_descendants),
+                str(self.walk_ancestors),
+                ",".join(self.rules_files),
+            )
+        )
         payload = f"{param_str}::{sorted(files)}"
         return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
 
@@ -188,9 +194,7 @@ class ProjectContextLoader:
         except (OSError, FileNotFoundError):
             return None
         if stat.st_size > self.max_bytes:
-            logger.warning(
-                f"Skipping {path}: size {stat.st_size} > max {self.max_bytes}"
-            )
+            logger.warning(f"Skipping {path}: size {stat.st_size} > max {self.max_bytes}")
             return None
         try:
             with open(path, encoding="utf-8", errors="ignore") as f:
@@ -235,16 +239,12 @@ class ProjectContextLoader:
             total += entry.size
             with open(path, encoding="utf-8", errors="ignore") as f:
                 file_content = f.read()
-            chunks.append(
-                f"## PROJECT CONTEXT (from {os.path.basename(path)})\n{file_content}"
-            )
+            chunks.append(f"## PROJECT CONTEXT (from {os.path.basename(path)})\n{file_content}")
         merged = "\n\n".join(chunks)
         self._cache = (merged, tuple(loaded))
         self._cache_signature = sig
         if loaded:
-            logger.info(
-                f"ProjectContextLoader: loaded {len(loaded)} file(s), {total} bytes"
-            )
+            logger.info(f"ProjectContextLoader: loaded {len(loaded)} file(s), {total} bytes")
         return merged
 
     def loaded_files(self) -> tuple[LoadedFile, ...]:
