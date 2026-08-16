@@ -62,7 +62,7 @@ class RepositoryRAGTool(Tool):
             "reindex": {
                 "type": "boolean",
                 "description": "Force scan and rebuild of the repository FTS5 index before querying.",
-            }
+            },
         }
 
     @property
@@ -133,14 +133,36 @@ class RepositoryRAGTool(Tool):
         """)
         conn.commit()
 
-        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
-        exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}
+        exclude_dirs = {
+            ".git",
+            "node_modules",
+            "venv",
+            ".venv",
+            "__pycache__",
+            "build",
+            "dist",
+            ".nexus-agent",
+        }
+        exclude_extensions = {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".ico",
+            ".pdf",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".exe",
+            ".dll",
+            ".pyc",
+        }
 
         # Regex symbol patterns
-        py_class_pat = re.compile(r'^\s*class\s+(\w+)')
-        py_def_pat = re.compile(r'^\s*(?:async\s+)?def\s+(\w+)')
-        js_class_pat = re.compile(r'^\s*class\s+(\w+)')
-        js_func_pat = re.compile(r'^\s*(?:async\s+)?function\s+(\w+)')
+        py_class_pat = re.compile(r"^\s*class\s+(\w+)")
+        py_def_pat = re.compile(r"^\s*(?:async\s+)?def\s+(\w+)")
+        js_class_pat = re.compile(r"^\s*class\s+(\w+)")
+        js_func_pat = re.compile(r"^\s*(?:async\s+)?function\s+(\w+)")
 
         for root, dirs, files in os.walk(self.workspace):
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
@@ -198,7 +220,9 @@ class RepositoryRAGTool(Tool):
                                     symbol_type = "function"
 
                         if symbol_name and symbol_type:
-                            symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))
+                            symbol_data.append(
+                                (str(rel_path), symbol_name, symbol_type, line_num, line_num + 5)
+                            )
 
                     chunk_lines_size = 35
                     overlap_lines_size = 5
@@ -209,22 +233,24 @@ class RepositoryRAGTool(Tool):
                         chunk_text = "\n".join(chunk_lines)
 
                         if chunk_text.strip():
-                            chunk_data.append((str(rel_path), chunk_text, i + 1, i + len(chunk_lines)))
+                            chunk_data.append(
+                                (str(rel_path), chunk_text, i + 1, i + len(chunk_lines))
+                            )
 
-                        i += (chunk_lines_size - overlap_lines_size)
+                        i += chunk_lines_size - overlap_lines_size
 
                     # Batch insert symbols and chunks
                     if symbol_data:
                         conn.executemany(
                             "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
                             "VALUES (?, ?, ?, ?, ?)",
-                            symbol_data
+                            symbol_data,
                         )
                     if chunk_data:
                         conn.executemany(
                             "INSERT INTO file_chunks (file_path, content, start_line, end_line) "
                             "VALUES (?, ?, ?, ?)",
-                            chunk_data
+                            chunk_data,
                         )
                 except (OSError, ValueError, UnicodeDecodeError) as e:
                     logger.warning(f"Failed to index file {file_path}: {e}")
@@ -254,13 +280,13 @@ class RepositoryRAGTool(Tool):
             escaped_query = query.replace("%", r"\%").replace("_", r"\_")
             symbol_cursor = conn.execute(
                 "SELECT * FROM code_symbols WHERE symbol_name LIKE ? ESCAPE '\\' LIMIT ?",
-                (f"%{escaped_query}%", max_results)
+                (f"%{escaped_query}%", max_results),
             )
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
                 chunk_cursor = conn.execute(
                     "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",
-                    (sym["file_path"], sym["start_line"], sym["start_line"])
+                    (sym["file_path"], sym["start_line"], sym["start_line"]),
                 )
                 for chunk in chunk_cursor:
                     c = dict(chunk)
@@ -318,8 +344,7 @@ class RepositoryRAGTool(Tool):
         # Format retrieved chunks (limit to max_results)
         results = []
         sorted_chunks = sorted(
-            results_map.values(),
-            key=lambda x: (not x.get("symbol_boost", False), x.get("rank", 0))
+            results_map.values(), key=lambda x: (not x.get("symbol_boost", False), x.get("rank", 0))
         )[:max_results]
 
         for r in sorted_chunks:
@@ -332,9 +357,8 @@ class RepositoryRAGTool(Tool):
         if not results:
             return f"No relevant workspace matches found for query: '{query}'."
 
-        return (
-            f"Found {len(results)} relevant file code blocks in the workspace:\n\n" +
-            "\n".join(results)
+        return f"Found {len(results)} relevant file code blocks in the workspace:\n\n" + "\n".join(
+            results
         )
 
     def __del__(self) -> None:
