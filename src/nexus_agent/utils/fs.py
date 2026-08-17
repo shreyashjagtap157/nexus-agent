@@ -4,7 +4,8 @@ from pathlib import Path
 
 
 def iter_files(search_path: Path) -> Iterator[Path]:
-    """Lazily iterate files under search_path using os.scandir with a stack to avoid recursion limits.
+    """Lazily iterate files under search_path using os.scandir with a stack
+    to avoid recursion limits.
     Provides significantly better performance than pathlib.rglob.
     """
     stack = [str(search_path)]
