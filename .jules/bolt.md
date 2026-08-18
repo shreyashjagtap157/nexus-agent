@@ -8,3 +8,6 @@
 ## 2024-08-18 - [Fix TimeoutExpired exception in subprocess call for NPU detection]
 **Learning:** When using `subprocess.run` to call an external tool for hardware detection (like a powershell command), passing a `timeout` argument means the call can raise `subprocess.TimeoutExpired`. If it's uncaught, it will crash the app or fail the tests, especially in CI environments where these commands can take unusually long to run.
 **Action:** When using `subprocess.run` with a `timeout` argument, always ensure that `subprocess.TimeoutExpired` is handled in the `except` block.
+## 2024-08-18 - [Mock hardware detection in CLI wizard tests]
+**Learning:** The CLI SetupWizard invokes `ModelManager.detect_hardware()`, which can run slow external commands like PowerShell scripts for NPU detection. If these hardware detection methods are not mocked in unit tests (like `test_wizard_cloud_provider_configuration`), they can trigger `subprocess.TimeoutExpired` exceptions on CI environments and cause flaky or slow tests.
+**Action:** Always mock hardware detection functions (e.g., `ModelManager.detect_hardware`) when testing CLI commands or wizards that display hardware info.
