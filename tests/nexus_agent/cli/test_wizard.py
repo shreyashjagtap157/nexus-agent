@@ -28,9 +28,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -62,11 +60,17 @@ class TestSetupWizard(unittest.TestCase):
 
         self.confirm_mock.side_effect = confirm_responses
 
-        with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
+        with (
+            patch("nexus_agent.cli.wizard.save_user_config") as mock_save,
+            patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect,
+        ):
+            mock_detect.return_value = {
+                "cpu": "Mock CPU",
+                "ram_total": "16GB",
+                "recommended_model_size": "7B",
+            }
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -99,7 +103,7 @@ class TestSetupWizard(unittest.TestCase):
                 wizard = SetupWizard(
                     console=self.console,
                     prompt_func=self.prompt_mock,
-                    confirm_func=self.confirm_mock
+                    confirm_func=self.confirm_mock,
                 )
                 wizard.run()
 

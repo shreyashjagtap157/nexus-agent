@@ -48,14 +48,39 @@ def _format_size(size_bytes: int) -> str:
 def _guess_quantization(filename: str) -> str:
     """Guess quantization type from filename."""
     name = filename.upper()
-    quant_types = sorted([
-        "Q2_K", "Q3_K_S", "Q3_K_M", "Q3_K_L",
-        "Q4_0", "Q4_1", "Q4_K_S", "Q4_K_M",
-        "Q5_0", "Q5_1", "Q5_K_S", "Q5_K_M",
-        "Q6_K", "Q8_0", "F16", "F32",
-        "IQ1_S", "IQ1_M", "IQ2_XXS", "IQ2_XS", "IQ2_S", "IQ2_M",
-        "IQ3_XXS", "IQ3_XS", "IQ3_S", "IQ4_XS", "IQ4_NL",
-    ], key=len, reverse=True)
+    quant_types = sorted(
+        [
+            "Q2_K",
+            "Q3_K_S",
+            "Q3_K_M",
+            "Q3_K_L",
+            "Q4_0",
+            "Q4_1",
+            "Q4_K_S",
+            "Q4_K_M",
+            "Q5_0",
+            "Q5_1",
+            "Q5_K_S",
+            "Q5_K_M",
+            "Q6_K",
+            "Q8_0",
+            "F16",
+            "F32",
+            "IQ1_S",
+            "IQ1_M",
+            "IQ2_XXS",
+            "IQ2_XS",
+            "IQ2_S",
+            "IQ2_M",
+            "IQ3_XXS",
+            "IQ3_XS",
+            "IQ3_S",
+            "IQ4_XS",
+            "IQ4_NL",
+        ],
+        key=len,
+        reverse=True,
+    )
     for qt in quant_types:
         if qt in name or qt.replace("_", "-") in name:
             return qt
@@ -66,7 +91,7 @@ def _guess_param_count(filename: str) -> str:
     """Guess parameter count from filename."""
     name = filename.lower()
     # Common patterns: 7b, 13b, 70b, 1.5b, etc.
-    match = re.search(r'(\d+\.?\d*)[_-]?b(?:illion)?', name)
+    match = re.search(r"(\d+\.?\d*)[_-]?b(?:illion)?", name)
     if match:
         return f"{match.group(1)}B"
     return "unknown"
@@ -125,18 +150,20 @@ class ModelManager:
                                 try:
                                     stat = entry.stat(follow_symlinks=True)
                                     # Use entry.name without extension for 'stem' equivalent
-                                    stem = entry.name.rsplit('.', 1)[0]
-                                    models.append({
-                                        "name": stem,
-                                        "filename": entry.name,
-                                        "path": entry.path,
-                                        "size_bytes": stat.st_size,
-                                        "size_str": _format_size(stat.st_size),
-                                        "quantization": _guess_quantization(entry.name),
-                                        "param_count": _guess_param_count(entry.name),
-                                        "modified": stat.st_mtime,
-                                        "format": "gguf",
-                                    })
+                                    stem = entry.name.rsplit(".", 1)[0]
+                                    models.append(
+                                        {
+                                            "name": stem,
+                                            "filename": entry.name,
+                                            "path": entry.path,
+                                            "size_bytes": stat.st_size,
+                                            "size_str": _format_size(stat.st_size),
+                                            "quantization": _guess_quantization(entry.name),
+                                            "param_count": _guess_param_count(entry.name),
+                                            "modified": stat.st_mtime,
+                                            "format": "gguf",
+                                        }
+                                    )
                                 except OSError as e:
                                     logger.warning(f"Could not read model file {entry.path}: {e}")
                             elif name == "genai_config.json":
@@ -153,7 +180,9 @@ class ModelManager:
                                             with os.scandir(dpath) as sub_it:
                                                 for sub_entry in sub_it:
                                                     if sub_entry.is_file(follow_symlinks=True):
-                                                        total += sub_entry.stat(follow_symlinks=True).st_size
+                                                        total += sub_entry.stat(
+                                                            follow_symlinks=True
+                                                        ).st_size
                                                     elif sub_entry.is_dir(follow_symlinks=False):
                                                         total += _dir_size(sub_entry.path)
                                         except OSError:
@@ -161,19 +190,23 @@ class ModelManager:
                                         return total
 
                                     total_size = _dir_size(parent_path)
-                                    models.append({
-                                        "name": parent_name,
-                                        "filename": parent_name,
-                                        "path": parent_path,
-                                        "size_bytes": total_size,
-                                        "size_str": _format_size(total_size),
-                                        "quantization": "ONNX",
-                                        "param_count": _guess_param_count(parent_name),
-                                        "modified": stat.st_mtime,
-                                        "format": "onnx",
-                                    })
+                                    models.append(
+                                        {
+                                            "name": parent_name,
+                                            "filename": parent_name,
+                                            "path": parent_path,
+                                            "size_bytes": total_size,
+                                            "size_str": _format_size(total_size),
+                                            "quantization": "ONNX",
+                                            "param_count": _guess_param_count(parent_name),
+                                            "modified": stat.st_mtime,
+                                            "format": "onnx",
+                                        }
+                                    )
                                 except OSError as e:
-                                    logger.warning(f"Could not read ONNX model directory {parent_path}: {e}")
+                                    logger.warning(
+                                        f"Could not read ONNX model directory {parent_path}: {e}"
+                                    )
                         elif entry.is_dir(follow_symlinks=False):
                             _scan_models(entry.path)
             except OSError:
@@ -232,6 +265,7 @@ class ModelManager:
             # Try GGUF reader from llama-cpp-python first
             try:
                 from gguf import GGUFReader
+
                 reader = GGUFReader(str(path))
                 metadata["vocab_size"] = reader.fields.get("tokenizer.ggml.vocab_size", None)
                 if metadata["vocab_size"] is None:
@@ -244,6 +278,7 @@ class ModelManager:
 
             # Fallback: read GGUF header directly with struct
             import struct
+
             GGUF_MAGIC = 0x46554747  # "GGUF" in little-endian
             with open(path, "rb") as f:
                 magic = struct.unpack("<I", f.read(4))[0]
@@ -320,6 +355,7 @@ class ModelManager:
         # RAM info
         try:
             import psutil
+
             vm = psutil.virtual_memory()
             hw["ram_total"] = _format_size(vm.total)
             hw["ram_available"] = _format_size(vm.available)
@@ -337,9 +373,12 @@ class ModelManager:
         # Try NVIDIA GPU
         try:
             import subprocess
+
             result = subprocess.run(
                 ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if result.returncode == 0 and result.stdout.strip():
                 lines = result.stdout.strip().split("\n")
@@ -354,9 +393,12 @@ class ModelManager:
         if platform.system() == "Darwin":
             try:
                 import subprocess
+
                 result = subprocess.run(
                     ["system_profiler", "SPDisplaysDataType"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if "Metal" in result.stdout:
                     hw["gpu"] = "Apple Metal (integrated)"
@@ -370,19 +412,24 @@ class ModelManager:
         if platform.system() == "Windows":
             try:
                 import subprocess
+
                 # Run PowerShell query for NPUs (Qualcomm, Intel AI Boost, AMD IPU, etc.)
                 cmd = [
-                    "powershell", "-NoProfile", "-Command",
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
                     "Get-CimInstance Win32_PnPSignedDevice | "
                     "Where-Object { $_.FriendlyName -like '*NPU*' -or $_.FriendlyName -like '*Neural*' -or $_.FriendlyName -like '*Intel AI Boost*' -or $_.FriendlyName -like '*Hexagon*' } | "
-                    "Select-Object -ExpandProperty FriendlyName"
+                    "Select-Object -ExpandProperty FriendlyName",
                 ]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                 if result.returncode == 0 and result.stdout.strip():
-                    npu_names = [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
+                    npu_names = [
+                        line.strip() for line in result.stdout.strip().split("\n") if line.strip()
+                    ]
                     if npu_names:
                         hw["npu"] = npu_names[0]
-            except (OSError, AttributeError):
+            except (OSError, AttributeError, subprocess.TimeoutExpired):
                 pass
         elif platform.system() == "Linux":
             # Check for /sys/class/accel (Linux accelerator subsystem used for NPUs)
@@ -436,10 +483,7 @@ class ModelManager:
 
         # Filter to models that fit in available memory (with 2GB headroom)
         headroom = 2 * 1024**3
-        fitting_models = [
-            m for m in models
-            if m["size_bytes"] < (usable_memory - headroom)
-        ]
+        fitting_models = [m for m in models if m["size_bytes"] < (usable_memory - headroom)]
 
         if not fitting_models:
             # Fall back to smallest model
@@ -448,11 +492,23 @@ class ModelManager:
 
         # Score models: prefer larger, higher quality
         quant_scores = {
-            "F32": 10, "F16": 9, "Q8_0": 8, "Q6_K": 7,
-            "Q5_K_M": 6, "Q5_K_S": 5, "Q5_1": 5, "Q5_0": 5,
-            "Q4_K_M": 4, "Q4_K_S": 3, "Q4_1": 3, "Q4_0": 3,
-            "Q3_K_L": 2, "Q3_K_M": 2, "Q3_K_S": 1,
-            "Q2_K": 0, "unknown": 3,
+            "F32": 10,
+            "F16": 9,
+            "Q8_0": 8,
+            "Q6_K": 7,
+            "Q5_K_M": 6,
+            "Q5_K_S": 5,
+            "Q5_1": 5,
+            "Q5_0": 5,
+            "Q4_K_M": 4,
+            "Q4_K_S": 3,
+            "Q4_1": 3,
+            "Q4_0": 3,
+            "Q3_K_L": 2,
+            "Q3_K_M": 2,
+            "Q3_K_S": 1,
+            "Q2_K": 0,
+            "unknown": 3,
         }
 
         def score_model(m: dict[str, Any]) -> float:
@@ -464,7 +520,9 @@ class ModelManager:
         fitting_models.sort(key=score_model, reverse=True)
         return fitting_models[0]["path"]
 
-    def evaluate_loading_guardrail(self, model_path: str, guardrail_level: str = "balanced") -> dict[str, Any]:
+    def evaluate_loading_guardrail(
+        self, model_path: str, guardrail_level: str = "balanced"
+    ) -> dict[str, Any]:
         """Evaluate memory requirements of a model against available system RAM/VRAM.
 
         Args:
@@ -506,7 +564,9 @@ class ModelManager:
         if vram_bytes > 0:
             max_allowed_bytes = int((vram_bytes + ram_total) * limit_pct)
 
-        logger.info(f"Guardrail check: model_size={_format_size(model_size)}, max_allowed={_format_size(max_allowed_bytes)}")
+        logger.info(
+            f"Guardrail check: model_size={_format_size(model_size)}, max_allowed={_format_size(max_allowed_bytes)}"
+        )
 
         if model_size > max_allowed_bytes:
             msg = (
@@ -520,4 +580,3 @@ class ModelManager:
                 return {"allowed": True, "warning": f"⚠️ WARNING: {msg}"}
 
         return {"allowed": True, "warning": None}
-
