@@ -208,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"openvino": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -242,14 +242,28 @@ class TestScanRuntimes(unittest.TestCase):
     @patch("nexus_agent.cli.runtimes._check_mlx")
     @patch("nexus_agent.cli.runtimes._check_external_servers")
     @patch("nexus_agent.cli.runtimes._check_tensorrt")
-    def test_all_checkers_called(self, mock_trt, mock_ext, mock_mlx, mock_sglang, mock_vllm,
-                                 mock_tpu, mock_openvino, mock_rocm, mock_vulkan, mock_cuda, mock_cpu):
-        mock_cpu.return_value = [RuntimeInfo(name="CPU", provider="local", available=True, priority=10)]
-        mock_cuda.return_value = [RuntimeInfo(name="CUDA", provider="cuda", available=True, priority=90)]
-        mock_vulkan.return_value = [RuntimeInfo(name="Vulkan", provider="vulkan", available=True, priority=70)]
-        mock_rocm.return_value = [RuntimeInfo(name="ROCm", provider="rocm", available=True, priority=65)]
-        mock_openvino.return_value = [RuntimeInfo(name="OpenVINO", provider="openvino", available=True, priority=45)]
-        mock_tpu.return_value = [RuntimeInfo(name="TPU", provider="tpu", available=True, priority=35)]
+    def test_all_checkers_called(
+        self, mock_trt, mock_ext, mock_mlx, mock_sglang, mock_vllm,
+        mock_tpu, mock_openvino, mock_rocm, mock_vulkan, mock_cuda, mock_cpu
+    ):
+        mock_cpu.return_value = [
+            RuntimeInfo(name="CPU", provider="local", available=True, priority=10)
+        ]
+        mock_cuda.return_value = [
+            RuntimeInfo(name="CUDA", provider="cuda", available=True, priority=90)
+        ]
+        mock_vulkan.return_value = [
+            RuntimeInfo(name="Vulkan", provider="vulkan", available=True, priority=70)
+        ]
+        mock_rocm.return_value = [
+            RuntimeInfo(name="ROCm", provider="rocm", available=True, priority=65)
+        ]
+        mock_openvino.return_value = [
+            RuntimeInfo(name="OpenVINO", provider="openvino", available=True, priority=45)
+        ]
+        mock_tpu.return_value = [
+            RuntimeInfo(name="TPU", provider="tpu", available=True, priority=35)
+        ]
         mock_vllm.return_value = []
         mock_sglang.return_value = []
         mock_mlx.return_value = []
@@ -279,8 +293,22 @@ class TestFormatRuntimeList(unittest.TestCase):
 
     def test_format_multiple(self):
         runtimes = [
-            RuntimeInfo(name="CUDA", provider="cuda", available=True, path="/usr/bin/nvcc", version="12.1", description="NVIDIA CUDA", priority=90),
-            RuntimeInfo(name="CPU", provider="local", available=True, description="Default CPU", priority=10),
+            RuntimeInfo(
+                name="CUDA",
+                provider="cuda",
+                available=True,
+                path="/usr/bin/nvcc",
+                version="12.1",
+                description="NVIDIA CUDA",
+                priority=90,
+            ),
+            RuntimeInfo(
+                name="CPU",
+                provider="local",
+                available=True,
+                description="Default CPU",
+                priority=10,
+            ),
         ]
         result = format_runtime_list(runtimes)
         self.assertIn("CUDA", result)
@@ -294,7 +322,9 @@ class TestFormatRuntimeList(unittest.TestCase):
 
     def test_format_single_builtin(self):
         runtimes = [
-            RuntimeInfo(name="CPU (default)", provider="local", available=True, path="builtin", priority=10),
+            RuntimeInfo(
+                name="CPU (default)", provider="local", available=True, path="builtin", priority=10
+            ),
         ]
         result = format_runtime_list(runtimes)
         self.assertIn("CPU (default)", result)
