@@ -18,6 +18,14 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        # Mock hardware detection to prevent timeout on Windows GitHub Runners
+        self.hw_patcher = patch(
+            "nexus_agent.llm.model_manager.ModelManager.detect_hardware",
+            return_value={"cpu": "Intel", "ram_total_bytes": 16 * 1024**3}
+        )
+        self.mock_detect_hardware = self.hw_patcher.start()
+        self.addCleanup(self.hw_patcher.stop)
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses
@@ -57,7 +65,7 @@ class TestSetupWizard(unittest.TestCase):
         # ... others False ...
         # 5. Make active? (True)
         confirm_responses = [False, False, True, True] + [False] * (len(CLOUD_PROVIDERS) - 1)
-        # We need to handle the "Make active" prompt which happens after the loop if any were configured
+        # We need to handle the "Make active" prompt which happens after the loop
         confirm_responses.append(True)
 
         self.confirm_mock.side_effect = confirm_responses
