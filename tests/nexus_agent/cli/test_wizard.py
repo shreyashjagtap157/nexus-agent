@@ -99,6 +99,9 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock.side_effect = ["auto", "full", "balanced"]
         self.confirm_mock.side_effect = [False, False, False]
 
+        # We need to temporarily unmock to assert it is called then mock it again with specific return value
+        patch.stopall()
+
         with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
             mock_detect.return_value = {
                 "cpu": "Intel",
