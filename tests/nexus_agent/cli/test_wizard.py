@@ -26,7 +26,13 @@ class TestSetupWizard(unittest.TestCase):
         # confirm_func: install runtime?, HF page, add cloud keys
         self.confirm_mock.side_effect = [False, False, False]
 
-        with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
+        with patch("nexus_agent.cli.wizard.save_user_config") as mock_save, \
+             patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
+            mock_detect.return_value = {
+                "cpu": "Unknown", "cpu_threads": 4, "ram_total": "8 GB", "ram_available": "4 GB",
+                "gpu": "None", "vram": "0", "npu": "None", "recommended_model_size": "1B-3B",
+                "ram_total_bytes": 8 * 1024**3, "vram_bytes": 0
+            }
             wizard = SetupWizard(
                 console=self.console,
                 prompt_func=self.prompt_mock,
@@ -62,7 +68,13 @@ class TestSetupWizard(unittest.TestCase):
 
         self.confirm_mock.side_effect = confirm_responses
 
-        with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
+        with patch("nexus_agent.cli.wizard.save_user_config") as mock_save, \
+             patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
+            mock_detect.return_value = {
+                "cpu": "Unknown", "cpu_threads": 4, "ram_total": "8 GB", "ram_available": "4 GB",
+                "gpu": "None", "vram": "0", "npu": "None", "recommended_model_size": "1B-3B",
+                "ram_total_bytes": 8 * 1024**3, "vram_bytes": 0
+            }
             wizard = SetupWizard(
                 console=self.console,
                 prompt_func=self.prompt_mock,
