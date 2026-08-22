@@ -1,4 +1,4 @@
-"""Built-in tools for the agent — file ops, shell, code editing, git, search, RAG, batch edit, browser, code intel, LSP."""
+"""Built-in tools for the agent — file ops, shell, code editing, git, search, RAG, batch edit, browser."""
 
 from nexus_agent.tools.base import Tool
 from nexus_agent.tools.batch_edit import BatchEditTool

@@ -18,6 +18,24 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        # Mock hardware detection to avoid slow system commands causing timeouts
+        self.mock_hardware = patch(
+            "nexus_agent.llm.model_manager.ModelManager.detect_hardware",
+            return_value={
+                "cpu": "Mock CPU",
+                "cpu_threads": 8,
+                "ram_total": "16GB",
+                "ram_available": "8GB",
+                "gpu": "Mock GPU",
+                "vram": "4GB",
+                "npu": "Not detected",
+                "recommended_model_size": "Mock size",
+            },
+        ).start()
+
+    def tearDown(self):
+        patch.stopall()
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses

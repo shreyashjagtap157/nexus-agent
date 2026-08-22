@@ -52,7 +52,8 @@ class BatchEditTool(Tool):
                         },
                         "target_content": {
                             "type": "string",
-                            "description": "The exact block of code to search for. Must match exactly including indentation.",
+                            "description": "The exact block of code to search for. "
+                            "Must match exactly including indentation.",
                         },
                         "replacement_content": {
                             "type": "string",
@@ -78,9 +79,15 @@ class BatchEditTool(Tool):
 
         for edit in edits:
             if not isinstance(edit, dict):
-                return "Error: Each edit must be a dictionary with path, target_content, and replacement_content."
+                return (
+                    "Error: Each edit must be a dictionary with path, "
+                    "target_content, and replacement_content."
+                )
             if "path" not in edit or "target_content" not in edit or "replacement_content" not in edit:
-                return "Error: Each edit must have path, target_content, and replacement_content fields."
+                return (
+                    "Error: Each edit must have path, target_content, "
+                    "and replacement_content fields."
+                )
 
         in_memory_files: dict[Path, str] = {}
         original_contents: dict[Path, str] = {}
@@ -109,7 +116,10 @@ class BatchEditTool(Tool):
                     error_msg = f"Cannot stat file {rel_path}: {e}"
                     raise OSError(error_msg) from e
                 if file_size > max_size:
-                    error_msg = f"File too large for batch edit: {rel_path} ({file_size / 1024 / 1024:.1f}MB > 10MB)"
+                    error_msg = (
+                        f"File too large for batch edit: {rel_path} "
+                        f"({file_size / 1024 / 1024:.1f}MB > 10MB)"
+                    )
                     raise ValueError(error_msg)
 
                 if target_file in in_memory_files:

@@ -70,7 +70,9 @@ class SkillRegistry:
                 if skill:
                     with self._lock:
                         if skill.name in self._skills:
-                            logger.warning(f"Overwriting duplicate skill name '{skill.name}' from {skill_file}")
+                            logger.warning(
+                                f"Overwriting duplicate skill '{skill.name}' from {skill_file}"
+                            )
                         self._skills[skill.name] = skill
                     logger.info(f"Successfully registered skill: {skill.name} ({skill_file.name})")
 
