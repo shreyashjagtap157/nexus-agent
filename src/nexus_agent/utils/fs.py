@@ -21,7 +21,6 @@ def iter_files(search_path: Path) -> Iterator[Path]:
                             ".venv",
                             "dist",
                             "build",
-                            ".nexus-agent",
                         }
                         if entry.name in skip_dirs:
                             continue
