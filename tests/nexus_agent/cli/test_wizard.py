@@ -18,6 +18,24 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        # Mock hardware detection to avoid slow system commands causing timeouts
+        self.mock_hardware = patch(
+            "nexus_agent.llm.model_manager.ModelManager.detect_hardware",
+            return_value={
+                "cpu": "Mock CPU",
+                "cpu_threads": 8,
+                "ram_total": "16GB",
+                "ram_available": "8GB",
+                "gpu": "Mock GPU",
+                "vram": "4GB",
+                "npu": "Not detected",
+                "recommended_model_size": "Mock size",
+            },
+        ).start()
+
+    def tearDown(self):
+        patch.stopall()
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses
@@ -80,6 +98,9 @@ class TestSetupWizard(unittest.TestCase):
         """Verify wizard uses ModelManager for hardware detection."""
         self.prompt_mock.side_effect = ["auto", "full", "balanced"]
         self.confirm_mock.side_effect = [False, False, False]
+
+        # We need to temporarily unmock to assert it is called then mock it again with specific return value
+        patch.stopall()
 
         with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
             mock_detect.return_value = {

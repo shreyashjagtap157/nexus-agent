@@ -181,8 +181,10 @@ def ask_agent(
     start = time.time()
 
     system_prompts = {
-        "technical_advisor": "You are a senior technical advisor. Answer the question concisely with technical depth.",
-        "code_reviewer": "You are an expert code reviewer. Analyze the code and provide detailed feedback.",
+        "technical_advisor": "You are a senior technical advisor. "
+        "Answer the question concisely with technical depth.",
+        "code_reviewer": "You are an expert code reviewer. "
+        "Analyze the code and provide detailed feedback.",
         "architect": "You are a software architect. Evaluate the design and suggest improvements.",
         "debugger": "You are a debugging specialist. Find the root cause and suggest fixes.",
     }
@@ -194,11 +196,14 @@ def ask_agent(
     try:
         if provider and hasattr(provider, "chat_completion"):
             from nexus_agent.llm.base import Message, Role
+            user_content = f"Context:\n{context}\n\nQuestion:\n{question}" if context else question
             messages = [
                 Message(role=Role.SYSTEM, content=system_prompt),
-                Message(role=Role.USER, content=f"Context:\n{context}\n\nQuestion:\n{question}" if context else question),
+                Message(role=Role.USER, content=user_content),
             ]
-            response = provider.chat_completion(messages=messages, temperature=0.3, max_tokens=1024)
+            response = provider.chat_completion(
+                messages=messages, temperature=0.3, max_tokens=1024
+            )
             answer = (response.content or "").strip()
         else:
             answer = _heuristic_answer(question, agent_persona)
@@ -301,8 +306,14 @@ def _fallback_execute(prompt: str, task_type: str) -> str:
     """Fallback when no agent loop is available (useful for testing)."""
     prompt_lower = prompt.lower()
     if "count" in prompt_lower or "list" in prompt_lower:
-        return f"<result>Fallback execution for '{task_type}' task completed. Prompt: {prompt[:100]}...</result>"
-    return f"<result>Fallback {task_type} agent executed: task acknowledged but no LLM provider available.</result>"
+        return (
+            f"<result>Fallback execution for '{task_type}' task completed. "
+            f"Prompt: {prompt[:100]}...</result>"
+        )
+    return (
+        f"<result>Fallback {task_type} agent executed: task acknowledged "
+        "but no LLM provider available.</result>"
+    )
 
 
 def _heuristic_answer(question: str, persona: str) -> str:
@@ -314,4 +325,7 @@ def _heuristic_answer(question: str, persona: str) -> str:
         return "Heuristic: Check for N+1 queries, caching, and synchronous I/O in hot paths."
     if "design" in q or "architect" in q:
         return "Heuristic: Consider separation of concerns, interface boundaries, and testability."
-    return f"Heuristic response for '{persona}': unable to generate a detailed answer without an LLM provider."
+    return (
+        f"Heuristic response for '{persona}': unable to generate a detailed answer "
+        "without an LLM provider."
+    )

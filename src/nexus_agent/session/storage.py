@@ -159,7 +159,8 @@ class SessionStorage(SQLiteStore):
                  json.dumps(metadata or {})),
             )
             conn.execute(
-                "UPDATE sessions SET updated_at = ?, message_count = message_count + 1 WHERE id = ?",
+                "UPDATE sessions SET updated_at = ?, message_count = message_count + 1 "
+                "WHERE id = ?",
                 (time.time(), session_id),
             )
             conn.commit()
