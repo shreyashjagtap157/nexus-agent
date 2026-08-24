@@ -225,23 +225,23 @@ class SecretScanner:
                 if file_path.suffix not in self.VALID_EXTENSIONS:
                     continue
 
-                    try:
-                        content = file_path.read_text(encoding="utf-8", errors="ignore")
-                        for line_idx, line in enumerate(content.splitlines(), 1):
-                            if line.strip().startswith("#") or line.strip().startswith("//"):
-                                continue
-                            for name, compiled_re in self._compiled_patterns.items():
-                                if compiled_re.search(line):
-                                    matches.append(
-                                        SecretMatch(
-                                            file_path=str(file_path.relative_to(self.workspace)),
-                                            line_number=line_idx,
-                                            matched_pattern=line.strip()[:100],
-                                            pattern_name=name,
-                                        )
+                try:
+                    content = file_path.read_text(encoding="utf-8", errors="ignore")
+                    for line_idx, line in enumerate(content.splitlines(), 1):
+                        if line.strip().startswith("#") or line.strip().startswith("//"):
+                            continue
+                        for name, compiled_re in self._compiled_patterns.items():
+                            if compiled_re.search(line):
+                                matches.append(
+                                    SecretMatch(
+                                        file_path=str(file_path.relative_to(self.workspace)),
+                                        line_number=line_idx,
+                                        matched_pattern=line.strip()[:100],
+                                        pattern_name=name,
                                     )
-                    except (OSError, UnicodeDecodeError, re.error) as e:
-                        logger.warning(f"Failed to scan {file_path}: {e}")
+                                )
+                except (OSError, UnicodeDecodeError, re.error) as e:
+                    logger.warning(f"Failed to scan {file_path}: {e}")
         except (OSError, ValueError) as e:
             logger.error(f"Secrets scan encountered failure: {e}")
 
