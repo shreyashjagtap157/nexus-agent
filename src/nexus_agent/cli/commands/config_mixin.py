@@ -134,10 +134,28 @@ class ConfigCommandsMixin:
             self.r.system_message("Usage: /theme [dark|light]")
 
     def _cmd_color(self, args: str):
-        self.r.system_message("Color: Set prompt bar color (not yet fully implemented)")
+        """Set prompt bar color."""
+        colors = ["purple", "blue", "green", "cyan", "yellow", "red", "white"]
+        if args in colors:
+            self._config.setdefault("tui", {})["prompt_color"] = args
+            save_config(self._config, self.config_path)
+            self.r.system_message(f"Prompt color set to {args}")
+        else:
+            self.r.system_message(f"Usage: /color <{'|'.join(colors)}>\nCurrent: {self._config.get('tui', {}).get('prompt_color', 'purple')}")
 
     def _cmd_vim(self, args: str):
-        self.r.system_message("Vim mode: Not yet implemented")
+        """Toggle vim-style keybindings."""
+        current = self._config.get("cli", {}).get("vim_mode", False)
+        if args == "on":
+            new_val = True
+        elif args == "off":
+            new_val = False
+        else:
+            new_val = not current
+        self._config.setdefault("cli", {})["vim_mode"] = new_val
+        save_config(self._config, self.config_path)
+        status = "enabled" if new_val else "disabled"
+        self.r.system_message(f"Vim mode {status}")
 
     def _cmd_statusline(self, args: str):
         if not args:
@@ -148,7 +166,29 @@ class ConfigCommandsMixin:
         self.r.system_message(f"Statusline updated to: {args}")
 
     def _cmd_permissions(self, args: str):
+        """Show or modify permission settings."""
         if not self._permissions:
             self.r.system_message("Permissions manager unavailable.")
             return
-        self.r.system_message("Permissions management: Not yet implemented.")
+        if not args:
+            mode = getattr(self._permissions, 'mode', 'ask')
+            self.console.print(f"\n  [bold]Permission Mode:[/bold] {mode}")
+            rules = getattr(self._permissions, 'rules', {})
+            if rules:
+                self.console.print("  [bold]Tool Rules:[/bold]")
+                for tool_name, level in rules.items():
+                    self.console.print(f"    {tool_name}: {level}")
+            self.console.print("\n  [dim]Usage: /permissions <allow|ask|deny> [tool_name][/dim]")
+            self.console.print()
+            return
+        parts = args.split(maxsplit=1)
+        mode = parts[0].lower()
+        if mode in ("allow", "ask", "deny") and len(parts) == 1:
+            self._permissions.mode = mode
+            self.r.system_message(f"Global permission mode set to {mode}")
+        elif mode in ("allow", "ask", "deny") and len(parts) == 2:
+            tool_name = parts[1]
+            self._permissions.set_tool_permission(tool_name, mode)
+            self.r.system_message(f"Permission for '{tool_name}' set to {mode}")
+        else:
+            self.r.system_message("Usage: /permissions <allow|ask|deny> [tool_name]")

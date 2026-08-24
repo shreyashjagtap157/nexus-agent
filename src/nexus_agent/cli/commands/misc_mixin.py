@@ -42,7 +42,27 @@ class MiscCommandsMixin:
         self._cmd_verify(args)
 
     def _cmd_init(self, args: str):
-        self.r.system_message("Project initialization: Not yet implemented (use /setup or follow the wizard)")
+        """Initialize a .nexus-agent.yaml project config in the current directory."""
+        import yaml
+        project_config = Path(".nexus-agent.yaml")
+        if project_config.exists():
+            self.r.system_message("Project config already exists. Use /config to modify.")
+            return
+        default_project = {
+            "project": {
+                "name": Path.cwd().name,
+                "description": "",
+            },
+            "agent": {
+                "effort_level": "medium",
+                "mode": "auto",
+            },
+            "permissions": {
+                "mode": "ask",
+            },
+        }
+        project_config.write_text(yaml.dump(default_project, default_flow_style=False), encoding="utf-8")
+        self.r.system_message(f"Created {project_config} — edit with /config or the file directly.")
 
     def _cmd_quit(self, args: str):
         self._is_running.clear()
@@ -66,7 +86,23 @@ class MiscCommandsMixin:
         self.r.system_message("PR comments: Not yet implemented")
 
     def _cmd_security_review(self, args: str):
-        self.r.system_message("Security review: Not yet implemented")
+        """Run a security scan of the current workspace."""
+        try:
+            from nexus_agent.core.devops import SecretScanner
+            scanner = SecretScanner(Path.cwd())
+            results = scanner.scan()
+            if not results:
+                self.r.system_message("No secrets detected in workspace.")
+                return
+            self.console.print(f"\n  [bold red]Security Review — {len(results)} potential issue(s):[/bold red]")
+            for r in results[:20]:
+                loc = f"{r.file_path}:{r.line_number}"
+                self.console.print(f"  [red]![/red] [{r.pattern_name}] {loc}")
+            if len(results) > 20:
+                self.console.print(f"  [dim](...and {len(results) - 20} more)[/dim]")
+            self.console.print()
+        except Exception as exc:
+            self.r.system_message(f"Security review failed: {exc}")
 
     def _cmd_login(self, args: str):
         self.r.system_message("Login/Logout feature coming soon.")
@@ -84,10 +120,24 @@ class MiscCommandsMixin:
         self.r.system_message("Privacy settings: Configure in ~/.nexus-agent/config.yaml under 'privacy'")
 
     def _cmd_upgrade(self, args: str):
-        self.r.system_message("Checking for updates... You are on the latest version.")
+        """Check for NexusAgent updates on PyPI."""
+        try:
+            from nexus_agent.core.updater import check_for_update, get_installed_version
+            current = get_installed_version()
+            info = check_for_update(current)
+            if info.available:
+                self.r.system_message(
+                    f"Update available: v{info.latest} (current: v{info.current}).\n"
+                    f"Run: pip install --upgrade nexus-agent"
+                )
+            else:
+                self.r.system_message("You are running the latest version.")
+        except Exception as exc:
+            self.r.system_message(f"Update check failed: {exc}")
 
     def _cmd_update(self, args: str):
-        self.r.system_message("Updating NexusAgent... Use `pip install --upgrade nexus-agent`")
+        """Alias for /upgrade — check for and display available updates."""
+        self._cmd_upgrade(args)
 
     def _cmd_feedback(self, args: str):
         if not args:
@@ -107,10 +157,32 @@ class MiscCommandsMixin:
         self.r.system_message("Chrome: Configure debugging port in config.yaml under 'browser'")
 
     def _cmd_plugin(self, args: str):
-        self.r.system_message("Plugin system: Place plugins in ~/.nexus-agent/plugins/")
+        """List or manage plugins."""
+        if not hasattr(self, '_plugin_manager') or not self._plugin_manager:
+            self.r.system_message("Plugin manager unavailable.")
+            return
+        pm = self._plugin_manager
+        plugins = getattr(pm, 'plugins', {})
+        if not plugins:
+            self.r.system_message("No plugins loaded. Place .py files in ~/.nexus-agent/plugins/")
+            return
+        self.console.print("\n  [bold]Loaded Plugins:[/bold]")
+        for name, info in plugins.items():
+            desc = getattr(info, 'description', '') or ''
+            self.console.print(f"  - [bold]{name}[/bold]: {desc}")
+        self.console.print()
 
     def _cmd_reload_plugins(self, args: str):
-        self.r.system_message("Plugins reloaded.")
+        """Reload all plugins from disk."""
+        if not hasattr(self, '_plugin_manager') or not self._plugin_manager:
+            self.r.system_message("Plugin manager unavailable.")
+            return
+        try:
+            self._plugin_manager.discover_plugins()
+            count = len(getattr(self._plugin_manager, 'plugins', {}))
+            self.r.system_message(f"Plugins reloaded — {count} plugin(s) loaded.")
+        except Exception as exc:
+            self.r.system_message(f"Plugin reload failed: {exc}")
 
     def _cmd_agents(self, args: str):
         if not hasattr(self, "_skill_registry") or not self._skill_registry:
@@ -151,4 +223,20 @@ class MiscCommandsMixin:
         self.r.system_message(f"Token usage: Read={t.total_input:,}, Write={t.total_output:,}, Cache={t.cache_creation + t.cache_read:,}")
 
     def _cmd_passes(self, args: str):
-        self.r.system_message("Passes: Not yet implemented")
+        """Show reasoning passes from the last agent run."""
+        if not hasattr(self, '_nla_telemetry') or not self._nla_telemetry:
+            self.r.system_message("No telemetry data available.")
+            return
+        try:
+            records = self._nla_telemetry.get_session_records()
+            if not records:
+                self.r.system_message("No reasoning passes recorded this session.")
+                return
+            self.console.print(f"\n  [bold]Reasoning Passes — {len(records)} record(s):[/bold]")
+            for i, rec in enumerate(records[-10:], 1):
+                thought = getattr(rec, 'thought_process', '')[:80]
+                conf = getattr(rec, 'confidence', 0)
+                self.console.print(f"  {i}. [dim]{thought}...[/dim] (confidence: {conf:.0%})")
+            self.console.print()
+        except Exception as exc:
+            self.r.system_message(f"Failed to read passes: {exc}")
