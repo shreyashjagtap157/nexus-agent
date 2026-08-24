@@ -1,9 +1,9 @@
-# NexusAgent — Exhaustive File-by-File Audit (June 2026)
+# NexusAgent — Exhaustive File-by-File Audit (August 2026)
 
-**Generated:** June 8, 2026  
-**Last Verified: June 08, 2026 — full test suite verified via CI
-**Codebase:** 86 Python source files, ~24,990 lines  
-**Tests:** 831 passing, 1 skipped, 0 failed  
+**Generated:** August 24, 2026  
+**Last Verified: August 24, 2026 — full test suite verified
+**Codebase:** 139 Python source files, ~36,130 lines  
+**Tests:** 1078 passing, 1 skipped, 0 failed  
 **Coverage:** CLI (29 files), Core (21 files), LLM (14 files), Tools (16 files), Memory (6 files), Session (5 files), MCP (4 files), Skills (4 files), Permissions (3 files), GUI (8 files), Training (3 files), Protocol (2 files)
 
 ---
@@ -27,7 +27,7 @@ NexusAgent is an offline-first AI coding agent with a high-fidelity inline REPL 
 | **TUI Rendering** | 9/10 | Full inline REPL with streaming, spinner, virtual transcript, status bar |
 | **Cost Tracking** | 9/10 | JSON-backed UsageTracker with per-model, per-session, per-day aggregation |
 | **Self-Updater** | 8/10 | PyPI version comparison with structured UpdateInfo |
-| **Testing** | 8/10 | 718 tests, good CLI/memory/permission/session/mcp/skills/core coverage, dispatcher cross-scope isolation tests |
+| **Testing** | 9/10 | 1078 tests, good CLI/memory/permission/session/mcp/skills/core/tools/import coverage, dispatcher cross-scope isolation tests |
 | **Documentation** | 7/10 | Good AGENTS.md, architecture docs — needs API reference |
 
 ---

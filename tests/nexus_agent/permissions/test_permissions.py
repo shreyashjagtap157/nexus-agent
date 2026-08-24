@@ -1,132 +1,177 @@
-"""Tests for the permissions module — PermissionManager, PermissionRule, PermissionLevel."""
+"""Tests for the permission system."""
 
-import unittest
-from unittest.mock import MagicMock
+import pytest
 
 from nexus_agent.permissions.manager import PermissionManager
-from nexus_agent.permissions.rules import DEFAULT_RULES, PermissionLevel, PermissionRule
+from nexus_agent.permissions.rules import PermissionLevel, PermissionRule, DEFAULT_RULES
 
 
-class TestPermissionLevel(unittest.TestCase):
-    def test_enum_values(self):
-        self.assertEqual(PermissionLevel.ALLOW.value, "allow")
-        self.assertEqual(PermissionLevel.ASK.value, "ask")
-        self.assertEqual(PermissionLevel.DENY.value, "deny")
+class TestPermissionLevel:
+    def test_allow(self):
+        assert PermissionLevel.ALLOW.value == "allow"
+
+    def test_ask(self):
+        assert PermissionLevel.ASK.value == "ask"
+
+    def test_deny(self):
+        assert PermissionLevel.DENY.value == "deny"
+
+    def test_all_levels(self):
+        levels = [l.value for l in PermissionLevel]
+        assert set(levels) == {"allow", "ask", "deny"}
 
 
-class TestPermissionRule(unittest.TestCase):
-    def test_match_tool_name_exact(self):
-        rule = PermissionRule(tool_name="read_file", level=PermissionLevel.ALLOW)
-        self.assertTrue(rule.matches("read_file", {}))
-        self.assertFalse(rule.matches("write_file", {}))
+class TestPermissionRule:
+    def test_rule_creation(self):
+        rule = PermissionRule(
+            tool_name="read_file",
+            level=PermissionLevel.ALLOW,
+            description="Reading files is safe",
+        )
+        assert rule.tool_name == "read_file"
+        assert rule.level == PermissionLevel.ALLOW
 
-    def test_match_wildcard(self):
-        rule = PermissionRule(tool_name="*", level=PermissionLevel.ALLOW)
-        self.assertTrue(rule.matches("any_tool", {}))
-        self.assertTrue(rule.matches("shell", {}))
+    def test_rule_matches(self):
+        rule = PermissionRule(
+            tool_name="read_file",
+            level=PermissionLevel.ALLOW,
+        )
+        assert rule.matches("read_file") is True
+        assert rule.matches("write_file") is False
 
-    def test_match_regex_args(self):
+    def test_wildcard_rule(self):
+        rule = PermissionRule(
+            tool_name="*",
+            level=PermissionLevel.ASK,
+        )
+        assert rule.matches("anything") is True
+        assert rule.matches("read_file") is True
+
+    def test_rule_with_arg_patterns(self):
         rule = PermissionRule(
             tool_name="shell",
-            level=PermissionLevel.DENY,
-            arg_patterns={"command": r"rm\s+-rf"},
+            level=PermissionLevel.ASK,
+            arg_patterns={"command": "^rm"},
         )
-        self.assertTrue(rule.matches("shell", {"command": "rm -rf /"}))
-        self.assertFalse(rule.matches("shell", {"command": "ls -la"}))
+        assert rule.matches("shell", {"command": "rm -rf /"}) is True
+        assert rule.matches("shell", {"command": "ls"}) is False
 
-    def test_to_dict_roundtrip(self):
+    def test_rule_serialization(self):
         rule = PermissionRule(
             tool_name="test",
-            level=PermissionLevel.ASK,
-            description="testing",
-            arg_patterns={"path": r"\.env"},
+            level=PermissionLevel.ALLOW,
+            description="test rule",
         )
         d = rule.to_dict()
+        assert d["tool_name"] == "test"
+        assert d["level"] == "allow"
+
         restored = PermissionRule.from_dict(d)
-        self.assertEqual(restored.tool_name, "test")
-        self.assertEqual(restored.level, PermissionLevel.ASK)
-        self.assertEqual(restored.arg_patterns["path"], r"\.env")
+        assert restored.tool_name == "test"
+        assert restored.level == PermissionLevel.ALLOW
 
-
-class TestDefaultRules(unittest.TestCase):
     def test_default_rules_exist(self):
-        self.assertGreater(len(DEFAULT_RULES), 0)
-        read_rules = [r for r in DEFAULT_RULES if r.level == PermissionLevel.ALLOW]
-        self.assertGreater(len(read_rules), 0)
+        assert len(DEFAULT_RULES) > 0
+        # Should have rules for common tools
+        tool_names = {r.tool_name for r in DEFAULT_RULES}
+        assert "read_file" in tool_names
+        assert "write_file" in tool_names
 
 
-class TestPermissionManager(unittest.TestCase):
-    def setUp(self):
-        self.mgr = PermissionManager()
+class TestPermissionManager:
+    @pytest.fixture
+    def pm(self):
+        return PermissionManager()
 
-    def test_evaluate_allow(self):
-        self.mgr.add_rule(PermissionRule(tool_name="read_file", level=PermissionLevel.ALLOW))
-        result = self.mgr.evaluate("read_file", {})
-        self.assertEqual(result, PermissionLevel.ALLOW)
+    def test_read_file_allowed(self, pm):
+        level = pm.evaluate("read_file")
+        assert level == PermissionLevel.ALLOW
 
-    def test_evaluate_deny(self):
-        self.mgr.add_rule(PermissionRule(tool_name="dangerous_op", level=PermissionLevel.DENY))
-        result = self.mgr.evaluate("dangerous_op", {})
-        self.assertEqual(result, PermissionLevel.DENY)
+    def test_write_file_ask(self, pm):
+        level = pm.evaluate("write_file")
+        assert level == PermissionLevel.ASK
 
-    def test_grant_always(self):
-        self.mgr.grant_always("shell")
-        result = self.mgr.evaluate("shell", {})
-        self.assertEqual(result, PermissionLevel.ALLOW)
+    def test_run_command_ask(self, pm):
+        level = pm.evaluate("run_command")
+        assert level == PermissionLevel.ASK
 
-    def test_revoke_always(self):
-        self.mgr.grant_always("shell")
-        self.mgr.revoke_always("shell")
-        result = self.mgr.evaluate("shell", {})
-        self.assertNotEqual(result, PermissionLevel.ALLOW)
+    def test_unknown_tool_default(self, pm):
+        level = pm.evaluate("unknown_tool")
+        assert level == PermissionLevel.ASK  # default is ASK
 
-    def test_check_and_approve_allow(self):
-        self.mgr.add_rule(PermissionRule(tool_name="safe_op", level=PermissionLevel.ALLOW))
-        self.assertTrue(self.mgr.check_and_approve("safe_op", {}, "safe operation"))
+    def test_custom_default_level(self):
+        pm = PermissionManager(default_level=PermissionLevel.DENY)
+        level = pm.evaluate("unknown_tool")
+        assert level == PermissionLevel.DENY
 
-    def test_check_and_approve_ask_approved(self):
-        callback = MagicMock(return_value=True)
-        self.mgr = PermissionManager(approval_callback=callback, default_level=PermissionLevel.ASK)
-        self.mgr.add_rule(PermissionRule(tool_name="ask_op", level=PermissionLevel.ASK))
-        self.assertTrue(self.mgr.check_and_approve("ask_op", {}, "needs approval"))
-        callback.assert_called_once()
+    def test_always_allow(self, pm):
+        pm.grant_always("shell")
+        level = pm.evaluate("shell")
+        assert level == PermissionLevel.ALLOW
 
-    def test_check_and_approve_ask_denied(self):
-        callback = MagicMock(return_value=False)
-        self.mgr = PermissionManager(approval_callback=callback, default_level=PermissionLevel.ASK)
-        self.mgr.add_rule(PermissionRule(tool_name="ask_op", level=PermissionLevel.ASK))
-        self.assertFalse(self.mgr.check_and_approve("ask_op", {}, "denied"))
+    def test_revoke_always(self, pm):
+        pm.grant_always("shell")
+        pm.revoke_always("shell")
+        level = pm.evaluate("shell")
+        assert level == PermissionLevel.ASK
 
-    def test_add_and_remove_rule(self):
-        rule = PermissionRule(tool_name="custom_tool", level=PermissionLevel.DENY)
-        self.mgr.add_rule(rule)
-        result = self.mgr.evaluate("custom_tool", {})
-        self.assertEqual(result, PermissionLevel.DENY)
-        removed = self.mgr.remove_rule("custom_tool")
-        self.assertGreaterEqual(removed, 1)
+    def test_add_rule(self, pm):
+        rule = PermissionRule(
+            tool_name="custom_tool",
+            level=PermissionLevel.ALLOW,
+        )
+        pm.add_rule(rule)
+        level = pm.evaluate("custom_tool")
+        assert level == PermissionLevel.ALLOW
 
-    def test_get_rules(self):
-        rules = self.mgr.get_rules()
-        self.assertIsInstance(rules, list)
+    def test_remove_rule(self, pm):
+        before = len(pm._rules)
+        pm.add_rule(PermissionRule(
+            tool_name="temp_tool",
+            level=PermissionLevel.DENY,
+        ))
+        removed = pm.remove_rule("temp_tool")
+        assert removed == 1
 
-    def test_load_from_config(self):
+    def test_get_rules(self, pm):
+        rules = pm.get_rules()
+        assert isinstance(rules, list)
+        assert len(rules) > 0
+
+    def test_clear_session_state(self, pm):
+        pm.grant_always("shell")
+        pm.clear_session_state()
+        level = pm.evaluate("shell")
+        assert level != PermissionLevel.ALLOW
+
+    def test_load_from_config(self, pm):
         config = {
             "permissions": {
-                "mode": "allow",
+                "mode": "auto",
                 "tools": {
-                    "read_file": {"mode": "allow"},
-                }
+                    "read_file": "allow",
+                    "write_file": "allow",
+                },
             }
         }
-        self.mgr.load_from_config(config)
-        self.assertEqual(self.mgr.evaluate("read_file", {}), PermissionLevel.ALLOW)
+        pm.load_from_config(config)
+        assert pm.evaluate("read_file") == PermissionLevel.ALLOW
+        assert pm.evaluate("write_file") == PermissionLevel.ALLOW
 
-    def test_clear_session_state(self):
-        self.mgr.grant_always("temp_tool")
-        self.mgr.clear_session_state()
-        result = self.mgr.evaluate("temp_tool", {})
-        self.assertNotEqual(result, PermissionLevel.ALLOW)
+    def test_check_and_approve_allow(self, pm):
+        assert pm.check_and_approve("read_file") is True
 
-    def test_make_call_key(self):
-        key = PermissionManager._make_call_key("test", {"a": 1})
-        self.assertTrue(key.startswith("test|"))
+    def test_check_and_approve_deny(self, pm):
+        pm.add_rule(PermissionRule(
+            tool_name="dangerous_tool",
+            level=PermissionLevel.DENY,
+        ))
+        assert pm.check_and_approve("dangerous_tool") is False
+
+    def test_call_key_generation(self, pm):
+        key1 = pm._make_call_key("tool", {"arg": "value"})
+        key2 = pm._make_call_key("tool", {"arg": "value"})
+        assert key1 == key2
+
+        key3 = pm._make_call_key("tool", {"arg": "different"})
+        assert key1 != key3

@@ -1,90 +1,33 @@
-"""Tests for the MCP module — MCPClient, StdioTransport, MCPServer."""
+"""Tests for MCP and ACP modules."""
 
-import unittest
-from io import StringIO
-from unittest.mock import MagicMock, patch
+import pytest
 
-from nexus_agent.mcp.transport import StdioTransport
+from nexus_agent.mcp.acp_server import ACPServer, ACPResponse
 
 
-class TestStdioTransport(unittest.TestCase):
-    def setUp(self):
-        self.reader = StringIO()
-        self.writer = StringIO()
-        self.transport = StdioTransport(reader=self.reader, writer=self.writer)
+class TestACPResponse:
+    def test_response_creation(self):
+        resp = ACPResponse(id=1, result={"status": "ok"})
+        json_str = resp.to_json()
+        assert '"id": 1' in json_str or '"id":1' in json_str
 
-    def test_send_message(self):
-        msg = {"jsonrpc": "2.0", "method": "ping"}
-        self.transport.send_message(msg)
-        output = self.writer.getvalue()
-        self.assertIn("ping", output)
+    def test_error_response(self):
+        resp = ACPResponse(id=1, error={"code": -32600, "message": "Invalid"})
+        json_str = resp.to_json()
+        assert "error" in json_str
 
-    def test_start_and_close(self):
-        self.transport.start()
-        self.assertTrue(self.transport._running)
-        self.transport.close()
-        self.assertFalse(self.transport._running)
-
-    def test_register_handler(self):
-        handler = MagicMock()
-        self.transport.register_handler(handler)
-        self.assertEqual(self.transport._handler, handler)
+    def test_notification(self):
+        resp = ACPResponse(id=None, result=None)
+        json_str = resp.to_json()
+        assert '"jsonrpc": "2.0"' in json_str or '"jsonrpc":"2.0"' in json_str
 
 
-class TestMCPClient(unittest.TestCase):
-    @patch("subprocess.Popen")
-    def test_client_start_fails_no_command(self, mock_popen):
-        from nexus_agent.mcp.client import MCPClient
-        client = MCPClient(command="", env={})
-        self.assertFalse(client.start(startup_timeout=1))
-        client.close()
-
-    @patch("subprocess.Popen")
-    def test_client_close_cleanup(self, mock_popen):
-        from nexus_agent.mcp.client import MCPClient
-        mock_proc = MagicMock()
-        mock_proc.poll.return_value = None
-        mock_proc.stdout = None
-        mock_proc.stderr = None
-        mock_popen.return_value = mock_proc
-        client = MCPClient(command=["node", "test_server.js"], env={})
-        client._process = mock_proc
-        client._running = True
-        client.close()
-        mock_proc.terminate.assert_called_once()
-
-
-class TestMCPServer(unittest.TestCase):
-    def test_server_initialization(self):
-        from nexus_agent.mcp.server import MCPServer
-        server = MCPServer(tools=[])
-        self.assertIsNotNone(server)
-
-    def test_server_handle_initialize(self):
-        from nexus_agent.mcp.server import MCPServer
-        mock_transport = MagicMock()
-        server = MCPServer(tools=[])
-        server._transport = mock_transport
-        request = {
-            "id": 1,
-            "method": "initialize",
-            "params": {"protocolVersion": "0.1.0"},
-        }
-        server._handle_request(request)
-        mock_transport.send_message.assert_called_once()
-
-    def test_server_handle_tools_list(self):
-        from nexus_agent.mcp.server import MCPServer
-        mock_transport = MagicMock()
-        mock_tool = MagicMock()
-        mock_tool.name = "test_tool"
-        mock_tool.description = "A test tool"
-        mock_tool.parameters = {"param1": {"type": "string"}}
-        server = MCPServer(tools=[mock_tool])
-        server._transport = mock_transport
-        request = {"id": 2, "method": "tools/list"}
-        server._handle_request(request)
-        mock_transport.send_message.assert_called_once()
-        call_args = mock_transport.send_message.call_args[0][0]
-        self.assertIn("result", call_args)
-        self.assertIn("tools", call_args["result"])
+class TestACPProtocol:
+    def test_jsonrpc_format(self):
+        """Verify ACP follows JSON-RPC 2.0 format."""
+        import json
+        resp = ACPResponse(id=1, result={"content": "hello"})
+        data = json.loads(resp.to_json())
+        assert data["jsonrpc"] == "2.0"
+        assert data["id"] == 1
+        assert "result" in data

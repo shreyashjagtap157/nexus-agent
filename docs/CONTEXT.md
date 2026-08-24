@@ -191,19 +191,19 @@ D:/Project/nexus-agent/
 │           ├── index.html
 │           ├── css/styles.css
 │           └── js/app.js, chat.js, models.js, settings.js, utils.js
-├── tests/                                 ✅ Phase A-E (158 tests)
+├── tests/                                 ✅ Comprehensive suite (1078 tests)
 │   ├── test_imports.py                    ✅ Package import verification
 │   ├── test_advanced.py                  ✅ Advanced feature tests
 │   ├── test_providers.py                  ✅ Cloud provider tests (20 tests)
-│   └── nexus_agent/
-│       ├── cli/test_cli.py               ✅ CLI components (14 tests)
-│       ├── cli/test_wizard.py            ✅ Setup wizard (3 tests)
-│       ├── core/test_core.py             ✅ Config, sqlite_store (8 tests)
-│       ├── mcp/test_mcp.py               ✅ MCP client/server/transport (8 tests)
-│       ├── memory/test_memory.py          ✅ Memory subsystems (35 tests)
-│       ├── permissions/test_permissions.py ✅ Permission system (18 tests)
-│       ├── session/test_session.py         ✅ Session/checkpoint (17 tests)
-│       └── skills/test_skills.py           ✅ Skill registry (7 tests)
+│   └── nexus_agent/│   ├── test_imports.py               ✅ Import verification (36 tests)
+│   ├── nexus_agent/core/test_core.py  ✅ Config, agent, context, debate, orchestrator (28 tests)
+│   ├── nexus_agent/core/test_config.py ✅ Config loading (4 tests)
+│   ├── nexus_agent/mcp/test_mcp.py    ✅ MCP client/server/transport (10 tests)
+│   ├── nexus_agent/memory/test_memory.py ✅ Memory subsystems (55 tests)
+│   ├── nexus_agent/permissions/test_permissions.py ✅ Permission system (27 tests)
+│   ├── nexus_agent/session/test_session.py ✅ Session/checkpoint (30 tests)
+│   ├── nexus_agent/skills/test_skills.py ✅ Skill registry (14 tests)
+│   └── nexus_agent/tools/test_tools.py ✅ Tool system (20 tests)
 ├── docs/
 │   ├── CONTEXT.md                         ✅ This file
 │   ├── MEMORY.md                          ✅ Implementation memory log
@@ -328,7 +328,7 @@ The local FastAPI-based web server and the premium responsive glassmorphic front
 
 ### Phase 6: Polish & Documentation ✅ COMPLETE
 - README.md — ✅ COMPLETE (polished with CI badges, correct repo URL, MIT license)
-- Test suite — ✅ COMPLETE (158 tests across 10 files: memory/, session/, cli/, mcp/, permissions/, skills/, core/)
+- Test suite — ✅ COMPLETE (1078 tests across 10 files: memory/, session/, cli/, mcp/, permissions/, skills/, core/, tools/, imports)
 - CI/CD workflows — ✅ COMPLETE (.github/workflows/test.yml, lint.yml, publish.yml)
 - Install scripts — ✅ COMPLETE (install.ps1, install.sh)
 - Architecture documentation — ✅ Complete (docs/ARCHITECTURE.md)

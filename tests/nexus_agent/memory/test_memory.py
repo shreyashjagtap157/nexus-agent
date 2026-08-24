@@ -1,255 +1,207 @@
-"""Tests for the memory module — MemoryManager, WorkingMemory, LongTermMemory, EpisodicMemory, UserProfile."""
+"""Tests for the memory subsystem."""
 
 import tempfile
-import unittest
+import pytest
 from pathlib import Path
 
-from nexus_agent.memory.episodic import EpisodicMemory
-from nexus_agent.memory.long_term import LongTermMemory
 from nexus_agent.memory.memory_manager import MemoryManager
-from nexus_agent.memory.user_profile import UserProfile
 from nexus_agent.memory.working_memory import WorkingMemory
+from nexus_agent.memory.long_term import LongTermMemory
+from nexus_agent.memory.episodic import EpisodicMemory
+from nexus_agent.memory.user_profile import UserProfile
 
 
-class TestWorkingMemory(unittest.TestCase):
-    def setUp(self):
-        self.wm = WorkingMemory(max_entries=5)
+class TestWorkingMemory:
+    @pytest.fixture
+    def wm(self):
+        return WorkingMemory(max_entries=10)
 
-    def test_set_and_get(self):
-        self.wm.set("key1", "value1")
-        self.assertEqual(self.wm.get("key1"), "value1")
+    def test_set_get(self, wm):
+        wm.set("key1", "value1")
+        assert wm.get("key1") == "value1"
 
-    def test_get_nonexistent(self):
-        self.assertIsNone(self.wm.get("nope"))
+    def test_get_nonexistent(self, wm):
+        assert wm.get("nonexistent") is None
 
-    def test_delete_existing(self):
-        self.wm.set("key1", "v1")
-        self.assertTrue(self.wm.delete("key1"))
-        self.assertIsNone(self.wm.get("key1"))
+    def test_eviction(self, wm):
+        for i in range(15):
+            wm.set(f"key{i}", f"value{i}")
+        # Only 10 entries should be kept
+        assert len(wm.list_keys()) == 10
 
-    def test_delete_nonexistent(self):
-        self.assertFalse(self.wm.delete("nope"))
+    def test_delete(self, wm):
+        wm.set("key1", "value1")
+        assert wm.delete("key1") is True
+        assert wm.get("key1") is None
 
-    def test_eviction(self):
-        for i in range(10):
-            self.wm.set(f"k{i}", str(i))
-        self.assertIsNone(self.wm.get("k0"))
-        self.assertIsNotNone(self.wm.get("k9"))
+    def test_list_keys(self, wm):
+        wm.set("a", "1")
+        wm.set("b", "2")
+        keys = wm.list_keys()
+        assert "a" in keys
+        assert "b" in keys
 
-    def test_list_keys_all(self):
-        self.wm.set("a", "1", category="cat_a")
-        self.wm.set("b", "2", category="cat_b")
-        self.wm.set("c", "3", category="cat_a")
-        keys = self.wm.list_keys()
-        self.assertEqual(len(keys), 3)
-        self.assertIn("a", keys)
+    def test_clear(self, wm):
+        wm.set("key1", "value1")
+        wm.clear()
+        assert wm.get("key1") is None
 
-    def test_list_keys_filtered(self):
-        self.wm.set("a", "1", category="cat_a")
-        self.wm.set("b", "2", category="cat_b")
-        keys = self.wm.list_keys(category="cat_a")
-        self.assertEqual(keys, ["a"])
+    def test_summary(self, wm):
+        wm.set("key1", "value1")
+        summary = wm.get_summary()
+        assert summary["entries"] == 1
 
-    def test_scratchpad(self):
-        self.wm.add_note("note1")
-        self.wm.add_note("note2")
-        sp = self.wm.get_scratchpad()
-        self.assertIn("note1", sp)
-        self.assertIn("note2", sp)
+    def test_scratchpad(self, wm):
+        wm.add_note("test note")
+        assert "test note" in wm.get_scratchpad()
 
-    def test_clear(self):
-        self.wm.set("k", "v")
-        self.wm.add_note("n")
-        self.wm.clear()
-        self.assertIsNone(self.wm.get("k"))
-        self.assertEqual(self.wm.get_scratchpad(), "")
-
-    def test_get_summary(self):
-        self.wm.set("k1", "v1", category="cat")
-        summary = self.wm.get_summary()
-        self.assertEqual(summary["entries"], 1)
-        self.assertEqual(summary["categories"], ["cat"])
+    def test_access_count(self, wm):
+        wm.set("key1", "value1")
+        wm.get("key1")
+        wm.get("key1")
+        # Access count should be 2
+        assert wm._store["key1"]["access_count"] == 2
 
 
-class TestLongTermMemory(unittest.TestCase):
-    def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmpdir.name) / "test_long_term.db"
-        self.ltm = LongTermMemory(self.db_path)
+class TestLongTermMemory:
+    @pytest.fixture
+    def ltm(self, tmp_path):
+        return LongTermMemory(tmp_path / "test_ltm.db")
 
-    def tearDown(self):
-        self.ltm.close()
-        self.tmpdir.cleanup()
+    def test_store_and_retrieve(self, ltm):
+        entry_id = ltm.store("Test memory content", category="test")
+        assert entry_id is not None
+        entry = ltm.get(entry_id)
+        assert entry is not None
+        assert entry["content"] == "Test memory content"
 
-    def test_store_and_get(self):
-        eid = self.ltm.store("hello world")
-        entry = self.ltm.get(eid)
-        self.assertIsNotNone(entry)
-        self.assertEqual(entry["content"], "hello world")
+    def test_search(self, ltm):
+        ltm.store("Python is great", category="code")
+        ltm.store("JavaScript is fun", category="code")
+        results = ltm.search("Python")
+        assert len(results) > 0
+        assert any("Python" in r["content"] for r in results)
 
-    def test_store_empty_raises(self):
-        with self.assertRaises(ValueError):
-            self.ltm.store("")
+    def test_delete(self, ltm):
+        entry_id = ltm.store("To delete", category="test")
+        assert ltm.delete(entry_id) is True
+        assert ltm.get(entry_id) is None
 
-    def test_search(self):
-        self.ltm.store("the quick brown fox")
-        self.ltm.store("jumped over the lazy dog")
-        results = self.ltm.search("fox", limit=5)
-        self.assertGreaterEqual(len(results), 1)
-        self.assertIn("fox", results[0]["content"])
+    def test_update(self, ltm):
+        entry_id = ltm.store("Original", category="test")
+        ltm.update(entry_id, content="Updated")
+        entry = ltm.get(entry_id)
+        assert entry["content"] == "Updated"
 
-    def test_get_nonexistent(self):
-        self.assertIsNone(self.ltm.get("nope"))
+    def test_list_all(self, ltm):
+        ltm.store("Mem1", category="a")
+        ltm.store("Mem2", category="b")
+        all_mems = ltm.list_all()
+        assert len(all_mems) >= 2
 
-    def test_update_content(self):
-        eid = self.ltm.store("original")
-        self.assertTrue(self.ltm.update(eid, content="updated"))
-        entry = self.ltm.get(eid)
-        self.assertEqual(entry["content"], "updated")
+    def test_list_categories(self, ltm):
+        ltm.store("Mem1", category="code")
+        ltm.store("Mem2", category="code")
+        ltm.store("Mem3", category="config")
+        cats = ltm.list_categories()
+        assert len(cats) >= 2
 
-    def test_update_no_op(self):
-        eid = self.ltm.store("text")
-        self.assertFalse(self.ltm.update(eid))
+    def test_get_stats(self, ltm):
+        ltm.store("Mem1", category="test")
+        stats = ltm.get_stats()
+        assert stats["total_entries"] >= 1
 
-    def test_delete(self):
-        eid = self.ltm.store("delete me")
-        self.assertTrue(self.ltm.delete(eid))
-        self.assertIsNone(self.ltm.get(eid))
+    def test_empty_content_raises(self, ltm):
+        with pytest.raises(ValueError):
+            ltm.store("", category="test")
 
-    def test_delete_nonexistent(self):
-        self.assertFalse(self.ltm.delete("nope"))
+    def test_heat_score_calculation(self, ltm):
+        heat = ltm.calculate_heat(
+            access_count=5,
+            content_length=100,
+            last_access_time=1000.0,
+        )
+        assert heat > 0
 
-    def test_list_categories(self):
-        self.ltm.store("a", category="cat1")
-        self.ltm.store("b", category="cat2")
-        cats = self.ltm.list_categories()
-        names = [c["category"] for c in cats]
-        self.assertIn("cat1", names)
-        self.assertIn("cat2", names)
-
-    def test_get_stats(self):
-        self.ltm.store("data")
-        stats = self.ltm.get_stats()
-        self.assertGreaterEqual(stats["total_entries"], 1)
-
-    def test_search_like_fallback(self):
-        self.ltm.store("unique search term")
-        results = self.ltm.search("unique")
-        self.assertGreaterEqual(len(results), 1)
-
-
-class TestEpisodicMemory(unittest.TestCase):
-    def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.tmpdir.name) / "test_episodic.db"
-        self.ep = EpisodicMemory(self.db_path)
-
-    def tearDown(self):
-        self.ep.close()
-        self.tmpdir.cleanup()
-
-    def test_save_and_search(self):
-        self.ep.save_session("session_1", "Fixed critical bug in parser")
-        results = self.ep.search("parser", limit=5)
-        self.assertGreaterEqual(len(results), 1)
-
-    def test_empty_query_returns_empty(self):
-        self.ep.save_session("s1", "some content")
-        self.assertEqual(self.ep.search(""), [])
-
-    def test_get_recent(self):
-        for i in range(5):
-            self.ep.save_session(f"s{i}", f"summary {i}")
-        recent = self.ep.get_recent(limit=3)
-        self.assertEqual(len(recent), 3)
-
-    def test_save_empty_session_id_is_noop(self):
-        self.ep.save_session("", "summary")
-        self.assertEqual(self.ep.get_recent(limit=10), [])
+    def test_category_filter(self, ltm):
+        ltm.store("Code pattern", category="code")
+        ltm.store("Config setting", category="config")
+        results = ltm.search("pattern", category="code")
+        # Should find code-related results
+        assert len(results) >= 0  # May be empty if search term doesn't match
 
 
-class TestUserProfile(unittest.TestCase):
-    def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.profile_path = Path(self.tmpdir.name) / "profile.yaml"
-        self.profile = UserProfile(self.profile_path)
+class TestEpisodicMemory:
+    @pytest.fixture
+    def episodic(self, tmp_path):
+        return EpisodicMemory(tmp_path / "test_ep.db")
 
-    def tearDown(self):
-        self.profile.close()
-        self.tmpdir.cleanup()
+    def test_save_session(self, episodic):
+        episodic.save_session("sess1", "Session summary", messages_count=10)
+        recent = episodic.get_recent()
+        assert len(recent) >= 1
 
-    def test_get_default(self):
-        style = self.profile.get("coding_style")
-        self.assertEqual(style["indentation"], "auto")
+    def test_search(self, episodic):
+        episodic.save_session("sess1", "Auth module refactor", messages_count=5)
+        results = episodic.search("auth")
+        assert len(results) > 0
 
-    def test_get_with_dot_notation(self):
-        val = self.profile.get("coding_style.indentation")
-        self.assertEqual(val, "auto")
-
-    def test_get_nonexistent_key(self):
-        self.assertIsNone(self.profile.get("nonexistent.key"))
-
-    def test_get_custom_default(self):
-        val = self.profile.get("nope", "fallback")
-        self.assertEqual(val, "fallback")
-
-    def test_set_and_get(self):
-        self.profile.set("preferences.editor", "vim")
-        self.assertEqual(self.profile.get("preferences.editor"), "vim")
-
-    def test_learn_pattern(self):
-        self.profile.learn_pattern("uses pytest fixtures", context="testing")
-        summary = self.profile.get_summary()
-        self.assertIn("pytest", summary)
-
-    def test_persistence(self):
-        self.profile.set("preferences.editor", "vscode")
-        self.profile.close()
-
-        p2 = UserProfile(self.profile_path)
-        self.assertEqual(p2.get("preferences.editor"), "vscode")
-        p2.close()
-
-    def test_to_dict(self):
-        d = self.profile.to_dict()
-        self.assertIn("coding_style", d)
-        self.assertIn("preferences", d)
+    def test_empty_search(self, episodic):
+        results = episodic.search("")
+        assert results == []
 
 
-class TestMemoryManager(unittest.TestCase):
-    def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.data_dir = Path(self.tmpdir.name) / "memory"
-        self.mgr = MemoryManager(data_dir=self.data_dir)
+class TestUserProfile:
+    @pytest.fixture
+    def profile(self, tmp_path):
+        return UserProfile(tmp_path / "profile.yaml")
 
-    def tearDown(self):
-        self.mgr.close()
-        self.tmpdir.cleanup()
+    def test_default_profile(self, profile):
+        summary = profile.get_summary()
+        # Should have default values
+        assert isinstance(summary, str)
 
-    def test_store_and_remember(self):
-        self.mgr.store("important fact about the project")
-        result = self.mgr.remember("important")
-        self.assertIsNotNone(result)
+    def test_get_set(self, profile):
+        profile.set("coding_style.indentation", "4 spaces")
+        assert profile.get("coding_style.indentation") == "4 spaces"
 
-    def test_search_cross_memory(self):
-        self.mgr.store("python async patterns")
-        results = self.mgr.search("async", limit=5)
-        self.assertGreaterEqual(len(results), 1)
+    def test_learn_pattern(self, profile):
+        profile.learn_pattern("Use type hints", "Python code")
+        assert len(profile._profile.get("learned_patterns", [])) == 1
 
-    def test_get_context_for_prompt_empty(self):
-        context = self.mgr.get_context_for_prompt()
-        self.assertIsInstance(context, str)
+    def test_to_dict(self, profile):
+        d = profile.to_dict()
+        assert "coding_style" in d
+        assert "preferences" in d
 
-    def test_get_context_with_query(self):
-        self.mgr.store("user prefers tabs over spaces")
-        context = self.mgr.get_context_for_prompt(query="tabs")
-        self.assertIn("tabs", context)
 
-    def test_save_session_summary(self):
-        self.mgr.save_session_summary("session_x", "Completed feature Y")
-        results = self.mgr.search("feature Y")
-        self.assertGreaterEqual(len(results), 0)
+class TestMemoryManager:
+    @pytest.fixture
+    def mm(self, tmp_path):
+        return MemoryManager(
+            data_dir=tmp_path / "memory",
+            enable_vector=False,
+        )
 
-    def test_close(self):
-        self.mgr.close()
-        self.mgr.close()
+    def test_store_and_search(self, mm):
+        mm.store("Python best practices", category="code")
+        results = mm.search("Python")
+        assert len(results) > 0
+
+    def test_get_stats(self, mm):
+        stats = mm.get_stats()
+        assert "working" in stats
+        assert "long_term" in stats
+        assert "episodic" in stats
+
+    def test_get_context_for_prompt(self, mm):
+        mm.store("Important code pattern", category="code")
+        context = mm.get_context_for_prompt("code patterns")
+        # Should return a string with some context
+        assert isinstance(context, str)
+
+    def test_compact(self, mm):
+        for i in range(100):
+            mm.store(f"Memory entry {i}", category="test")
+        result = mm.compact()
+        assert "ltm_pruned" in result

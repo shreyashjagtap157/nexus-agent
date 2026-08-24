@@ -92,7 +92,7 @@ Detection: `cli/runtimes.py` — scans for nvcc, CUDA_PATH, llama-cli, vulkaninf
 ```bash
 python -m pytest tests/ -v
 ```
-726 tests across: memory, permissions, session, cli, mcp, skills, core, providers, usage, plugins.
+1078 tests across: memory, permissions, session, cli, mcp, skills, core, providers, usage, plugins, tools, imports.
 
 ## Git Convention
 - Branch: feature/description
