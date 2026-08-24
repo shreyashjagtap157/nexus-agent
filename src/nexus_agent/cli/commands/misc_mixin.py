@@ -68,10 +68,44 @@ class MiscCommandsMixin:
         self._is_running.clear()
 
     def _cmd_desktop(self, args: str):
-        self.r.system_message("Desktop handoff: Not yet implemented")
+        """Open workspace in default IDE/editor."""
+        import subprocess, sys, os
+        editor = os.environ.get("EDITOR") or os.environ.get("VISUAL")
+        if editor:
+            try:
+                subprocess.Popen([editor, "."], cwd=str(Path.cwd()))
+                self.r.system_message(f"Opened workspace in {editor}")
+                return
+            except OSError:
+                pass
+        # Try common editors
+        for cmd in [["code", "."], ["cursor", "."], ["subl", "."], ["open", "."]]:
+            if sys.platform == "win32" and cmd[0] == "open":
+                continue  # 'open' is macOS
+            try:
+                subprocess.Popen(cmd, cwd=str(Path.cwd()))
+                self.r.system_message(f"Opened workspace in {cmd[0]}")
+                return
+            except (OSError, FileNotFoundError):
+                continue
+        self.r.system_message("No IDE detected. Set $EDITOR or install VS Code/Cursor.")
 
     def _cmd_mobile(self, args: str):
-        self.r.system_message("Mobile: Not yet implemented")
+        """Show mobile connection info."""
+        host = self._config.get("gui", {}).get("host", "127.0.0.1")
+        port = self._config.get("gui", {}).get("port", 7860)
+        if host == "127.0.0.1":
+            self.r.system_message(
+                "To connect from mobile, first set the GUI host to 0.0.0.0:\n"
+                "  /config gui.host 0.0.0.0\n"
+                "  /gui\n"
+                f"Then open http://<your-ip>:{port} on your mobile device."
+            )
+        else:
+            self.r.system_message(
+                f"GUI is running on {host}:{port}\n"
+                "Open this URL on your mobile device's browser."
+            )
 
     def _cmd_release_notes(self, args: str):
         self.r.system_message(f"Release notes for v{__version__}: See CHANGELOG.md")
@@ -83,7 +117,30 @@ class MiscCommandsMixin:
         self.r.system_message(f"Task Inspector is now {status}")
 
     def _cmd_pr_comments(self, args: str):
-        self.r.system_message("PR comments: Not yet implemented")
+        """Show recent PR comments from the current repository."""
+        import subprocess as sp
+        try:
+            result = sp.run(
+                ["gh", "pr", "list", "--state", "open", "--limit", "10", "--json", "number,title,author,updatedAt"],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode != 0:
+                self.r.system_message("gh CLI not available or not authenticated.")
+                return
+            import json
+            prs = json.loads(result.stdout)
+            if not prs:
+                self.r.system_message("No open PRs found.")
+                return
+            self.console.print("\n  [bold]Open Pull Requests:[/bold]")
+            for pr in prs:
+                author = pr.get("author", {}).get("login", "unknown")
+                self.console.print(f"  [cyan]#{pr['number']}[/cyan] {pr['title']} [dim]by {author}[/dim]")
+            self.console.print()
+        except FileNotFoundError:
+            self.r.system_message("gh CLI not installed. Install from: https://cli.github.com/")
+        except Exception as exc:
+            self.r.system_message(f"Failed to fetch PR comments: {exc}")
 
     def _cmd_security_review(self, args: str):
         """Run a security scan of the current workspace."""
@@ -213,7 +270,23 @@ class MiscCommandsMixin:
         self.r.system_message("Remote env: Configure in config.yaml under 'remote'")
 
     def _cmd_voice(self, args: str):
-        self.r.system_message("Voice input: Not yet implemented")
+        """Voice input via speech recognition (requires optional dependency)."""
+        try:
+            import speech_recognition as sr
+            r = sr.Recognizer()
+            with sr.Microphone() as source:
+                self.r.system_message("Listening... (speak now)")
+                audio = r.listen(source, timeout=5)
+            text = r.recognize_google(audio)
+            self.r.system_message(f"Recognized: {text}")
+            return text
+        except ImportError:
+            self.r.system_message(
+                "Voice input requires 'speech_recognition' package:\n"
+                "  pip install SpeechRecognition pyaudio"
+            )
+        except Exception as exc:
+            self.r.system_message(f"Voice recognition failed: {exc}")
 
     def _cmd_insights(self, args: str):
         if not hasattr(self, "_tokens"):
