@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
-from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +133,16 @@ class RepositoryRAGTool(Tool):
         """)
         conn.commit()
 
+        exclude_dirs = {
+            ".git",
+            "node_modules",
+            "venv",
+            ".venv",
+            "__pycache__",
+            "build",
+            "dist",
+            ".nexus-agent",
+        }
         exclude_extensions = {
             ".png",
             ".jpg",
@@ -154,91 +164,96 @@ class RepositoryRAGTool(Tool):
         js_class_pat = re.compile(r"^\s*class\s+(\w+)")
         js_func_pat = re.compile(r"^\s*(?:async\s+)?function\s+(\w+)")
 
-        for file_path in iter_files(self.workspace):
-            if file_path.suffix.lower() in exclude_extensions:
-                continue
-
-            try:
-                # Size protection threshold: skip files larger than 5MB
-                if file_path.stat().st_size > 5 * 1024 * 1024:
+        for root, dirs, files in os.walk(self.workspace):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for file in files:
+                file_path = Path(root) / file
+                if file_path.suffix.lower() in exclude_extensions:
                     continue
 
-                rel_path = file_path.relative_to(self.workspace)
-                content = file_path.read_text(encoding="utf-8", errors="ignore")
+                try:
+                    # Size protection threshold: skip files larger than 5MB
+                    if file_path.stat().st_size > 5 * 1024 * 1024:
+                        continue
 
-                # Split files into chunks of ~1000 chars with 100 overlap
-                lines = content.splitlines()
-                # Minified code detection: skip if any line exceeds 2000 characters
-                if any(len(line) > 2000 for line in lines):
-                    continue
+                    rel_path = file_path.relative_to(self.workspace)
+                    content = file_path.read_text(encoding="utf-8", errors="ignore")
 
-                # Extract code symbols
-                # Batch collect symbols and chunks for executemany
-                symbol_data = []
-                chunk_data = []
+                    # Split files into chunks of ~1000 chars with 100 overlap
+                    lines = content.splitlines()
+                    # Minified code detection: skip if any line exceeds 2000 characters
+                    if any(len(line) > 2000 for line in lines):
+                        continue
 
-                for idx, line in enumerate(lines):
-                    line_num = idx + 1
-                    symbol_name = None
-                    symbol_type = None
+                    # Extract code symbols
+                    # Batch collect symbols and chunks for executemany
+                    symbol_data = []
+                    chunk_data = []
 
-                    # Python rules
-                    if file_path.suffix.lower() == ".py":
-                        class_match = py_class_pat.match(line)
-                        if class_match:
-                            symbol_name = class_match.group(1)
-                            symbol_type = "class"
-                        else:
-                            def_match = py_def_pat.match(line)
-                            if def_match:
-                                symbol_name = def_match.group(1)
-                                symbol_type = "function"
+                    for idx, line in enumerate(lines):
+                        line_num = idx + 1
+                        symbol_name = None
+                        symbol_type = None
 
-                    # JS/TS rules
-                    elif file_path.suffix.lower() in (".js", ".ts", ".jsx", ".tsx"):
-                        class_match = js_class_pat.match(line)
-                        if class_match:
-                            symbol_name = class_match.group(1)
-                            symbol_type = "class"
-                        else:
-                            func_match = js_func_pat.match(line)
-                            if func_match:
-                                symbol_name = func_match.group(1)
-                                symbol_type = "function"
+                        # Python rules
+                        if file_path.suffix.lower() == ".py":
+                            class_match = py_class_pat.match(line)
+                            if class_match:
+                                symbol_name = class_match.group(1)
+                                symbol_type = "class"
+                            else:
+                                def_match = py_def_pat.match(line)
+                                if def_match:
+                                    symbol_name = def_match.group(1)
+                                    symbol_type = "function"
 
-                    if symbol_name and symbol_type:
-                        symbol_data.append(
-                            (str(rel_path), symbol_name, symbol_type, line_num, line_num + 5)
+                        # JS/TS rules
+                        elif file_path.suffix.lower() in (".js", ".ts", ".jsx", ".tsx"):
+                            class_match = js_class_pat.match(line)
+                            if class_match:
+                                symbol_name = class_match.group(1)
+                                symbol_type = "class"
+                            else:
+                                func_match = js_func_pat.match(line)
+                                if func_match:
+                                    symbol_name = func_match.group(1)
+                                    symbol_type = "function"
+
+                        if symbol_name and symbol_type:
+                            symbol_data.append(
+                                (str(rel_path), symbol_name, symbol_type, line_num, line_num + 5)
+                            )
+
+                    chunk_lines_size = 35
+                    overlap_lines_size = 5
+
+                    i = 0
+                    while i < len(lines):
+                        chunk_lines = lines[i : i + chunk_lines_size]
+                        chunk_text = "\n".join(chunk_lines)
+
+                        if chunk_text.strip():
+                            chunk_data.append(
+                                (str(rel_path), chunk_text, i + 1, i + len(chunk_lines))
+                            )
+
+                        i += chunk_lines_size - overlap_lines_size
+
+                    # Batch insert symbols and chunks
+                    if symbol_data:
+                        conn.executemany(
+                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
+                            "VALUES (?, ?, ?, ?, ?)",
+                            symbol_data,
                         )
-
-                chunk_lines_size = 35
-                overlap_lines_size = 5
-
-                i = 0
-                while i < len(lines):
-                    chunk_lines = lines[i : i + chunk_lines_size]
-                    chunk_text = "\n".join(chunk_lines)
-
-                    if chunk_text.strip():
-                        chunk_data.append((str(rel_path), chunk_text, i + 1, i + len(chunk_lines)))
-
-                    i += chunk_lines_size - overlap_lines_size
-
-                # Batch insert symbols and chunks
-                if symbol_data:
-                    conn.executemany(
-                        "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        symbol_data,
-                    )
-                if chunk_data:
-                    conn.executemany(
-                        "INSERT INTO file_chunks (file_path, content, start_line, end_line) "
-                        "VALUES (?, ?, ?, ?)",
-                        chunk_data,
-                    )
-            except (OSError, ValueError, UnicodeDecodeError) as e:
-                logger.warning(f"Failed to index file {file_path}: {e}")
+                    if chunk_data:
+                        conn.executemany(
+                            "INSERT INTO file_chunks (file_path, content, start_line, end_line) "
+                            "VALUES (?, ?, ?, ?)",
+                            chunk_data,
+                        )
+                except (OSError, ValueError, UnicodeDecodeError) as e:
+                    logger.warning(f"Failed to index file {file_path}: {e}")
 
         conn.commit()
         logger.info("RAG Index generated successfully!")
