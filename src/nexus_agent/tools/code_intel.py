@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class ImportGraphTool(Tool):
         exclude_dirs = {".git", ".venv", "node_modules", "__pycache__", ".nexus-agent"}
 
         try:
-            for root, dirs, files in os.walk(str(self.workspace)):
+            for root, dirs, files in iter_files(str(self.workspace)):
                 dirs[:] = [d for d in dirs if d not in exclude_dirs]
 
                 for file in files:

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ class RepositoryRAGTool(Tool):
         js_class_pat = re.compile(r'^\s*class\s+(\w+)')
         js_func_pat = re.compile(r'^\s*(?:async\s+)?function\s+(\w+)')
 
-        for root, dirs, files in os.walk(self.workspace):
+        for root, dirs, files in iter_files(self.workspace):
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
             for file in files:
                 file_path = Path(root) / file
