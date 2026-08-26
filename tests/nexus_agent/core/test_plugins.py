@@ -172,7 +172,9 @@ class SimplePlugin(NexusPlugin):
 
         with patch("sys.version_info", (3, 9)):
             with patch("importlib.metadata.entry_points") as mock_entry_points:
-                mock_entry_points.return_value = mock_eps
+                # Mock entry_points returning a tuple directly for newer Python versions,
+                # or a SelectableGroups/dict for older ones
+                mock_entry_points.return_value = (mock_ep,)
                 res = self.pm.discover_and_load()
 
         assert "legacy_ep" in res
