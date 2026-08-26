@@ -43,8 +43,11 @@ class TestSetupWizard(unittest.TestCase):
             # Verify save was called
             mock_save.assert_called_once_with(updates)
 
-    def test_wizard_cloud_provider_configuration(self):
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_wizard_cloud_provider_configuration(self, mock_detect):
         """Verify wizard collects cloud API keys and sets active provider."""
+        mock_detect.return_value = {"npu": False, "gpu": False, "memory_gb": 16}
+
         # prompt_func: Permission, Memory, Guardrail, OpenAI Key
         self.prompt_mock.side_effect = ["ask", "full", "balanced", "sk-test-openai"]
 
