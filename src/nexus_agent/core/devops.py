@@ -12,6 +12,8 @@ import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from nexus_agent.utils.fs import iter_files
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -70,12 +72,14 @@ class TestRunner:
             for f in files:
                 if (self.workspace / f).exists():
                     if fw == "pytest-fallback":
-                        if (self.workspace / "pyproject.toml").exists() or list((self.workspace / "tests").glob("**/*.py")):
+                        # ⚡ Bolt: Fast glob lazy eval to check if any test files exist without memory bloat
+                        if (self.workspace / "pyproject.toml").exists() or next((self.workspace / "tests").glob("**/*.py"), None) is not None:
                             return "pytest"
                     else:
                         return fw.replace("-fallback", "")
 
-        if list(self.workspace.glob("*.py")) or list((self.workspace / "src").glob("**/*.py") if (self.workspace / "src").exists() else []):
+        # ⚡ Bolt: Fast glob lazy eval without materializing entire file lists
+        if next(self.workspace.glob("*.py"), None) is not None or (next((self.workspace / "src").glob("**/*.py"), None) is not None if (self.workspace / "src").exists() else False):
             return "unittest"
 
         return None
@@ -153,7 +157,8 @@ class LinterRunner:
     def run_all(self) -> tuple[bool, str]:
         """Run all available linters sequentially."""
         linter_cmds = []
-        if (self.workspace / "pyproject.toml").exists() or list(self.workspace.glob("*.py")):
+        # ⚡ Bolt: Fast glob lazy eval for linter checks
+        if (self.workspace / "pyproject.toml").exists() or next(self.workspace.glob("*.py"), None) is not None:
             linter_cmds.append(["ruff", "check", "."])
             linter_cmds.append(["mypy", "."])
         if (self.workspace / "package.json").exists():
@@ -201,29 +206,25 @@ class SecretScanner:
         matches: list[SecretMatch] = []
 
         try:
-            for root, dirs, files in os.walk(str(self.workspace)):
-                dirs[:] = [d for d in dirs if d not in self.EXCLUDE_DIRS]
+            for file_path in iter_files(self.workspace):
+                if file_path.suffix not in self.VALID_EXTENSIONS:
+                    continue
 
-                for file in files:
-                    file_path = Path(root) / file
-                    if file_path.suffix not in self.VALID_EXTENSIONS:
-                        continue
-
-                    try:
-                        content = file_path.read_text(encoding="utf-8", errors="ignore")
-                        for line_idx, line in enumerate(content.splitlines(), 1):
-                            if line.strip().startswith("#") or line.strip().startswith("//"):
-                                continue
-                            for name, compiled_re in self._compiled_patterns.items():
-                                if compiled_re.search(line):
-                                    matches.append(SecretMatch(
-                                        file_path=str(file_path.relative_to(self.workspace)),
-                                        line_number=line_idx,
-                                        matched_pattern=line.strip()[:100],
-                                        pattern_name=name
-                                    ))
-                    except (OSError, UnicodeDecodeError, re.error) as e:
-                        logger.warning(f"Failed to scan {file_path}: {e}")
+                try:
+                    content = file_path.read_text(encoding="utf-8", errors="ignore")
+                    for line_idx, line in enumerate(content.splitlines(), 1):
+                        if line.strip().startswith("#") or line.strip().startswith("//"):
+                            continue
+                        for name, compiled_re in self._compiled_patterns.items():
+                            if compiled_re.search(line):
+                                matches.append(SecretMatch(
+                                    file_path=str(file_path.relative_to(self.workspace)),
+                                    line_number=line_idx,
+                                    matched_pattern=line.strip()[:100],
+                                    pattern_name=name
+                                ))
+                except (OSError, UnicodeDecodeError, re.error) as e:
+                    logger.warning(f"Failed to scan {file_path}: {e}")
         except (OSError, ValueError) as e:
             logger.error(f"Secrets scan encountered failure: {e}")
 

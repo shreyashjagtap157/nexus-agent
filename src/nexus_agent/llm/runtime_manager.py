@@ -460,11 +460,13 @@ class RuntimeManager:
         if backend in ("cpu", "cuda", "vulkan", "metal", "rocm"):
             if not target_dir.exists():
                 return False
-            return (target_dir / "llama_cpp").exists() or list(target_dir.glob("llama_cpp*")) != []
+            # ⚡ Bolt: Fast lazy evaluation instead of list(glob) for quick matching
+            return (target_dir / "llama_cpp").exists() or next(target_dir.glob("llama_cpp*"), None) is not None
         if backend == "onnx":
             if not target_dir.exists():
                 return False
-            return (target_dir / "onnxruntime_genai").exists() or list(target_dir.glob("onnxruntime_genai*")) != []
+            # ⚡ Bolt: Fast lazy evaluation instead of list(glob) for quick matching
+            return (target_dir / "onnxruntime_genai").exists() or next(target_dir.glob("onnxruntime_genai*"), None) is not None
 
         # Python package runtimes (vLLM, SGLang, MLX, ExLlamaV2, TensorRT-LLM)
         pkg_map = {"vllm": "vllm", "sglang": "sglang", "mlx": "mlx", "exllamav2": "exllamav2", "tensorrt_llm": "tensorrt_llm"}
@@ -475,7 +477,8 @@ class RuntimeManager:
                 return True
             except ImportError:
                 pass
-            if target_dir.exists() and list(target_dir.glob(f"{pkg}*")):
+            # ⚡ Bolt: Fast lazy evaluation instead of list(glob) for pkg matching
+            if target_dir.exists() and next(target_dir.glob(f"{pkg}*"), None) is not None:
                 return True
 
         return False
