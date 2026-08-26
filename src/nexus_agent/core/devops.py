@@ -2,7 +2,7 @@
 Autonomous DevOps Pipeline — Local CI/CD static scanning, vulnerability audits, and test suites.
 
 Enables the agent to create git checkpoints, auto-detect local test frameworks, run linters,
-parse stack traces, scan for secrets, run dependency vulnerability audits, and self-heal test failures.
+parse stack traces, scan for secrets, run dependency audits, and self-heal test failures.
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ class TestRunner:
             for f in files:
                 if (self.workspace / f).exists():
                     if fw == "pytest-fallback":
-                        # ⚡ Bolt: Fast glob lazy eval to check if any test files exist without memory bloat
+                        # ⚡ Bolt: Fast glob lazy eval to check test files without memory bloat
                         if (self.workspace / "pyproject.toml").exists() or next(
                             (self.workspace / "tests").glob("**/*.py"), None
                         ) is not None:
@@ -193,12 +193,12 @@ class SecretScanner:
     """Scans workspace files for potential secrets and credentials."""
 
     PATTERNS = {
-        "Generic Password/Secret": r'(?:password|passwd|secret|passphrase|private_key|app_secret|client_secret)\s*[:=]\s*[\'"][a-zA-Z0-9_\-\.\/\+\=\~\!\@\#\$\%\^\&\*\(\)]+[\'"]',
+        "Generic Password/Secret": r'(?:password|passwd|secret|passphrase|private_key|app_secret|client_secret)\s*[:=]\s*[\'"][a-zA-Z0-9_\-\.\/\+\=\~\!\@\#\$\%\^\&\*\(\)]+[\'"]',  # noqa: E501
         "Slack Token": r"xox[bapr]-[0-9]{12}-[a-zA-Z0-9]{24}",
         "GitHub Personal Access Token": r"ghp_[a-zA-Z0-9]{36}",
         "AWS API Key/Secret": r"(?:AKIA[0-9A-Z]{16}|[a-zA-Z0-9+/]{40})",
         "Google API Key": r"AIzaSy[a-zA-Z0-9\-_]{33}",
-        "Database Connection URL": r"(?:mongodb|postgres|postgresql|mysql|redis|sqlite):\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_\-\~\!\@\#]+@[a-zA-Z0-9_\-\.]+:[0-9]+",
+        "Database Connection URL": r"(?:mongodb|postgres|postgresql|mysql|redis|sqlite):\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_\-\~\!\@\#]+@[a-zA-Z0-9_\-\.]+:[0-9]+",  # noqa: E501
     }
 
     EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__", "build", "dist", ".nexus-agent"}
