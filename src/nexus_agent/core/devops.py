@@ -15,8 +15,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from nexus_agent.utils.fs import iter_files
-
 logger = logging.getLogger(__name__)
 
 
@@ -221,28 +219,31 @@ class SecretScanner:
         matches: list[SecretMatch] = []
 
         try:
-            # Use optimized iter_files instead of os.walk
-            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS):
-                if file_path.suffix not in self.VALID_EXTENSIONS:
-                    continue
+            for root, dirs, files in os.walk(str(self.workspace)):
+                dirs[:] = [d for d in dirs if d not in self.EXCLUDE_DIRS]
 
-                try:
-                    content = file_path.read_text(encoding="utf-8", errors="ignore")
-                    for line_idx, line in enumerate(content.splitlines(), 1):
-                        if line.strip().startswith("#") or line.strip().startswith("//"):
-                            continue
-                        for name, compiled_re in self._compiled_patterns.items():
-                            if compiled_re.search(line):
-                                matches.append(
-                                    SecretMatch(
-                                        file_path=str(file_path.relative_to(self.workspace)),
-                                        line_number=line_idx,
-                                        matched_pattern=line.strip()[:100],
-                                        pattern_name=name,
+                for file in files:
+                    file_path = Path(root) / file
+                    if file_path.suffix not in self.VALID_EXTENSIONS:
+                        continue
+
+                    try:
+                        content = file_path.read_text(encoding="utf-8", errors="ignore")
+                        for line_idx, line in enumerate(content.splitlines(), 1):
+                            if line.strip().startswith("#") or line.strip().startswith("//"):
+                                continue
+                            for name, compiled_re in self._compiled_patterns.items():
+                                if compiled_re.search(line):
+                                    matches.append(
+                                        SecretMatch(
+                                            file_path=str(file_path.relative_to(self.workspace)),
+                                            line_number=line_idx,
+                                            matched_pattern=line.strip()[:100],
+                                            pattern_name=name,
+                                        )
                                     )
-                                )
-                except (OSError, UnicodeDecodeError, re.error) as e:
-                    logger.warning(f"Failed to scan {file_path}: {e}")
+                    except (OSError, UnicodeDecodeError, re.error) as e:
+                        logger.warning(f"Failed to scan {file_path}: {e}")
         except (OSError, ValueError) as e:
             logger.error(f"Secrets scan encountered failure: {e}")
 
