@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
-def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False) -> Iterator[Path]:
+def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False) -> Iterator[Path]:  # noqa: E501
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
 
     skip_dirs = {
@@ -24,7 +24,7 @@ def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_
                 try:
                     if entry.is_dir(follow_symlinks=False):
                         # Skip hidden directories (except .env, .gitignore)
-                        if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                        if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa: E501
                             continue
                         if entry.name in skip_dirs:
                             continue

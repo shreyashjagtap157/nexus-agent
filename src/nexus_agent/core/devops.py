@@ -203,7 +203,7 @@ class SecretScanner:
         matches: list[SecretMatch] = []
 
         try:
-            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS, include_hidden=True):
+            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS, include_hidden=True):  # noqa: E501
                 if file_path.suffix not in self.VALID_EXTENSIONS:
                     continue
 

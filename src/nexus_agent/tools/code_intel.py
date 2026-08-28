@@ -137,7 +137,7 @@ class CallGraphTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Generates a call-graph for Python functions inside a file or traces where a function is called."
+        return "Generates a call-graph for Python functions inside a file or traces where a function is called."  # noqa: E501
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -185,14 +185,14 @@ class CallGraphTool(Tool):
 
             if not callers:
                 return f"No function calls targeting '{trace_function}' detected inside `{file_path}`."
-            return f"### Function '{trace_function}' is called by:\n" + "\n".join(f"- `{c}`" for c in callers)
+            return f"### Function '{trace_function}' is called by:\n" + "\n".join(f"- `{c}`" for c in callers)  # noqa: E501
 
         else:
             # Return call map
             lines = [f"### Static Call Graph for `{file_path}`"]
             for caller, callees in call_map.items():
                 if callees:
-                    lines.append(f"- `{caller}` calls: {', '.join(f'`{c}`' for c in sorted(callees))}")
+                    lines.append(f"- `{caller}` calls: {', '.join(f'`{c}`' for c in sorted(callees))}")  # noqa: E501
             return "\n".join(lines)
 
     def _build_call_graph(self, tree: ast.AST) -> dict[str, set[str]]:
@@ -246,7 +246,7 @@ class RenameTool(Tool):
 
     @property
     def description(self) -> str:
-        return "AST-based find-and-replace to safely rename symbols/variables across scope in a file."
+        return "AST-based find-and-replace to safely rename symbols/variables across scope in a file."  # noqa: E501
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -286,7 +286,7 @@ class RenameTool(Tool):
         # Max file size check
         try:
             if target.stat().st_size > self._MAX_FILE_SIZE:
-                return f"Error: File too large for rename ({target.stat().st_size / 1024 / 1024:.1f}MB > 10MB)."
+                return f"Error: File too large for rename ({target.stat().st_size / 1024 / 1024:.1f}MB > 10MB)."  # noqa: E501
         except OSError as e:
             return f"Error: Cannot stat file: {e}"
 
@@ -352,7 +352,7 @@ class RenameTool(Tool):
 
             # Atomic rename
             os.replace(tmp_path, str(target))
-            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."
+            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."  # noqa: E501
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
             # fallback to simple regex rename if ast unparse has quirks or is python version specific
             try:
@@ -378,6 +378,6 @@ class RenameTool(Tool):
                     shutil.copy2(target, bak_path)
 
                 os.replace(tmp_path, str(target))
-                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."
+                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."  # noqa: E501
             except (OSError, ValueError, UnicodeEncodeError) as re_err:
                 return f"Failed to rewrite file content: {re_err} (AST error: {e})"
