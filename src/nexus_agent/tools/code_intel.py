@@ -44,11 +44,11 @@ class ImportGraphTool(Tool):
         return {
             "action": {
                 "type": "string",
-                "description": "The action to take: 'build' (generate full graph) or 'find_dependents' (find files depending on target)",
+                "description": "The action to take: 'build' (generate full graph) or 'find_dependents' (find files depending on target)",  # noqa: E501
             },
             "target": {
                 "type": "string",
-                "description": "Module name or file path to check dependents of (required if action='find_dependents')",
+                "description": "Module name or file path to check dependents of (required if action='find_dependents')",  # noqa: E501
                 "required": False,
             }
         }
@@ -87,7 +87,7 @@ class ImportGraphTool(Tool):
 
             if not dependents:
                 return f"No modules found that import '{target}'."
-            return f"### Modules importing '{target}':\n" + "\n".join(f"- `{d}`" for d in dependents)
+            return f"### Modules importing '{target}':\n" + "\n".join(f"- `{d}`" for d in dependents)  # noqa: E501
 
         return f"Unknown action: '{action}'."
 
@@ -184,7 +184,7 @@ class CallGraphTool(Tool):
                     callers.append(caller)
 
             if not callers:
-                return f"No function calls targeting '{trace_function}' detected inside `{file_path}`."
+                return f"No function calls targeting '{trace_function}' detected inside `{file_path}`."  # noqa: E501
             return f"### Function '{trace_function}' is called by:\n" + "\n".join(f"- `{c}`" for c in callers)  # noqa: E501
 
         else:
@@ -354,7 +354,7 @@ class RenameTool(Tool):
             os.replace(tmp_path, str(target))
             return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."  # noqa: E501
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
-            # fallback to simple regex rename if ast unparse has quirks or is python version specific
+            # fallback to simple regex rename if ast unparse has quirks or is python version specific  # noqa: E501
             try:
                 pattern = r'\b' + re.escape(old_symbol) + r'\b'
                 count = 0
