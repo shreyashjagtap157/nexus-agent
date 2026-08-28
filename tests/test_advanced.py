@@ -105,7 +105,9 @@ class TestAdvancedFeatures(unittest.TestCase):
         # utils.py must be rolled back to "a * b" rather than "a / b"
         self.assertIn("a * b", self.file1.read_text(encoding="utf-8"))
 
-    def test_loading_guardrails(self) -> None:
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_loading_guardrails(self, mock_detect) -> None:
+        mock_detect.return_value = {"cpu": "Mock CPU", "ram": "32GB"}
         """Verify model loading guardrails safety validations under simulated memory."""
         mgr = ModelManager()
 
