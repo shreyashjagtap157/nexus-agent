@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
-def iter_files(search_path: Path) -> Iterator[Path]:
+def iter_files(search_path: Path, exclude_dirs: set[str] | None = None) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     try:
         with os.scandir(str(search_path)) as it:
@@ -22,9 +22,11 @@ def iter_files(search_path: Path) -> Iterator[Path]:
                             "dist",
                             "build",
                         }
+                        if exclude_dirs:
+                            skip_dirs.update(exclude_dirs)
                         if entry.name in skip_dirs:
                             continue
-                        yield from iter_files(Path(entry.path))
+                        yield from iter_files(Path(entry.path), exclude_dirs)
                     elif entry.is_file():
                         yield Path(entry.path)
                 except OSError:
