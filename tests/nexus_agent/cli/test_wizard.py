@@ -18,8 +18,13 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
-    def test_wizard_collects_basic_settings(self):
+    @patch("nexus_agent.cli.wizard.ModelManager")
+    def test_wizard_collects_basic_settings(self, mock_manager):
         """Verify wizard collects permission, memory, and guardrail modes."""
+        mock_manager.return_value.detect_hardware.return_value = {
+            "cpu": "Mock CPU",
+            "ram": "Mock RAM",
+        }
         # Setup mock responses
         # prompt_func: Permission mode, Memory mode, Guardrail level
         self.prompt_mock.side_effect = ["suggest", "session", "strict"]
@@ -28,9 +33,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -43,8 +46,13 @@ class TestSetupWizard(unittest.TestCase):
             # Verify save was called
             mock_save.assert_called_once_with(updates)
 
-    def test_wizard_cloud_provider_configuration(self):
+    @patch("nexus_agent.cli.wizard.ModelManager")
+    def test_wizard_cloud_provider_configuration(self, mock_manager):
         """Verify wizard collects cloud API keys and sets active provider."""
+        mock_manager.return_value.detect_hardware.return_value = {
+            "cpu": "Mock CPU",
+            "ram": "Mock RAM",
+        }
         # prompt_func: Permission, Memory, Guardrail, OpenAI Key
         self.prompt_mock.side_effect = ["ask", "full", "balanced", "sk-test-openai"]
 
@@ -64,9 +72,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -99,7 +105,7 @@ class TestSetupWizard(unittest.TestCase):
                 wizard = SetupWizard(
                     console=self.console,
                     prompt_func=self.prompt_mock,
-                    confirm_func=self.confirm_mock
+                    confirm_func=self.confirm_mock,
                 )
                 wizard.run()
 
