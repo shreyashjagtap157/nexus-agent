@@ -1,4 +1,3 @@
-
-## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
-**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
-**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.
+## 2025-02-26 - [Avoid os.walk for large repository traversals]
+**Learning:** `os.walk` builds directory lists in memory and requires manual path joining inside loops. In large repositories (like those containing `.git` or `node_modules` before exclusions are applied), this creates significant memory overhead and garbage collection pauses. Custom exclusions applied after `os.walk` still incur the initial directory read cost.
+**Action:** Use `os.scandir`-based lazy iterators (like the centralized `iter_files` in `nexus_agent.utils.fs`) that yield paths directly and prune excluded directories eagerly. This avoids materializing full directory contents into memory and speeds up file discovery across the codebase.
