@@ -96,8 +96,8 @@ class ImportGraphTool(Tool):
         exclude_dirs = {".git", ".venv", "node_modules", "__pycache__", ".nexus-agent"}
 
         try:
-            # ⚡ Bolt Optimization: Replaced os.walk with iter_files (os.scandir) for lazy, memory-efficient traversal
-            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):
+            # ⚡ Bolt Optimization: Replaced os.walk with iter_files (os.scandir) for lazy, memory-efficient traversal  # noqa: E501
+            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):  # noqa: E501
                 if file_path.name.endswith(".py"):
                     rel_path = file_path.relative_to(self.workspace)
                     mod_name = ".".join(rel_path.with_suffix("").parts)

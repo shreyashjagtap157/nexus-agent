@@ -142,7 +142,7 @@ class RepositoryRAGTool(Tool):
         js_class_pat = re.compile(r'^\s*class\s+(\w+)')
         js_func_pat = re.compile(r'^\s*(?:async\s+)?function\s+(\w+)')
 
-        # ⚡ Bolt Optimization: Replaced os.walk with iter_files (os.scandir) for lazy, memory-efficient traversal
+        # ⚡ Bolt Optimization: Replaced os.walk with iter_files (os.scandir) for lazy, memory-efficient traversal  # noqa: E501
         for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):
             if file_path.suffix.lower() in exclude_extensions:
                 continue
