@@ -69,11 +69,13 @@ class MiscCommandsMixin:
 
     def _cmd_desktop(self, args: str):
         """Open workspace in default IDE/editor."""
-        import subprocess, sys, os
+        import os
+        import subprocess
+        import sys
         editor = os.environ.get("EDITOR") or os.environ.get("VISUAL")
         if editor:
             try:
-                subprocess.Popen([editor, "."], cwd=str(Path.cwd()))
+                subprocess.Popen([editor, "."], cwd=str(Path.cwd()), shell=False)
                 self.r.system_message(f"Opened workspace in {editor}")
                 return
             except OSError:
@@ -83,7 +85,7 @@ class MiscCommandsMixin:
             if sys.platform == "win32" and cmd[0] == "open":
                 continue  # 'open' is macOS
             try:
-                subprocess.Popen(cmd, cwd=str(Path.cwd()))
+                subprocess.Popen(cmd, cwd=str(Path.cwd()), shell=False)
                 self.r.system_message(f"Opened workspace in {cmd[0]}")
                 return
             except (OSError, FileNotFoundError):

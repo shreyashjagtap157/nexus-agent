@@ -130,6 +130,7 @@ class MCPClient:
                 env=self.env,
                 text=True,
                 bufsize=1,
+                shell=False,
             )
 
             # Quick check that process started
