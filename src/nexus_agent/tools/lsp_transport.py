@@ -154,6 +154,7 @@ class LSPClient:
                 cwd=str(self.workspace),
                 env=env,
                 bufsize=0,
+                shell=False,
             )
         except (OSError, ValueError) as e:
             raise LSPError(f"Failed to spawn language server {cmd!r}: {e}") from e

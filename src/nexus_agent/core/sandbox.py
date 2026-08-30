@@ -343,6 +343,7 @@ class Sandbox:
                     cwd=str(work_dir),
                     env=exec_env,
                     timeout=effective_timeout,
+                    shell=False,
                 )
             else:
                 proc = subprocess.run(
@@ -352,6 +353,7 @@ class Sandbox:
                     cwd=str(work_dir),
                     env=exec_env,
                     timeout=effective_timeout,
+                    shell=False,
                 )
 
             duration = time.time() - start_time
