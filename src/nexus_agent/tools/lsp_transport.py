@@ -218,7 +218,7 @@ class LSPClient:
                 "textDocument": {
                     "synchronization": {"dynamicRegistration": False, "didSave": True},
                     "completion": {"dynamicRegistration": False},
-                    "hover": {"dynamicRegistration": False, "contentFormat": ["markdown", "plaintext"]},
+                    "hover": {"dynamicRegistration": False, "contentFormat": ["markdown", "plaintext"]},  # noqa: E501
                     "definition": {"dynamicRegistration": False, "linkSupport": True},
                     "references": {"dynamicRegistration": False},
                     "documentSymbol": {"dynamicRegistration": False},
