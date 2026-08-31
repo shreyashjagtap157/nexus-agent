@@ -1,4 +1,3 @@
-
-## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
-**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
-**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.
+## 2026-08-31 - [Iter_Files Utility Regression]
+**Learning:** [Replacing `os.walk` (which utilized in-place pruning via `dirs[:] = `) with a generic `iter_files` generator and applying post-traversal file-level filtering causes massive performance regressions, as it forces the program to scan all files inside ignored directories like `.venv` or `node_modules`.]
+**Action:** [When refactoring directory traversal, ensure the underlying utility natively supports skipping excluded directories during traversal via an `exclude_dirs` argument, rather than filtering files after the fact.]
