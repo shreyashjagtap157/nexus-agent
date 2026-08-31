@@ -58,7 +58,7 @@ class CouncilTool(Tool):
             },
             "rebuttals": {
                 "type": "boolean",
-                "description": "If true, run a second round where members see each other's votes (default: false).",
+                "description": "If true, run a second round where members see each other's votes (default: false).",  # noqa: E501
                 "required": False,
             },
         }
