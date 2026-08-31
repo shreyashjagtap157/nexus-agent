@@ -191,21 +191,21 @@ class FernetFileBackend:
             for path in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
                 if os.path.exists(path):
                     try:
-                        with open(path, "r") as f:
+                        with open(path) as f:
                             return f.read().strip()
                     except OSError:
                         pass
         elif sys.platform == "win32":
             try:
                 import winreg
-                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography") as key:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography") as key:  # noqa: E501
                     return str(winreg.QueryValueEx(key, "MachineGuid")[0])
             except (ImportError, OSError):
                 pass
         elif sys.platform == "darwin":
             try:
                 import subprocess
-                res = subprocess.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], capture_output=True, text=True, check=False, shell=False)
+                res = subprocess.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], capture_output=True, text=True, check=False, shell=False)  # noqa: E501
                 for line in res.stdout.split("\n"):
                     if "IOPlatformUUID" in line:
                         return line.split("=")[-1].strip().strip('"')
