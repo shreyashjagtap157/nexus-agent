@@ -185,12 +185,43 @@ class FernetFileBackend:
     # ── Fernet key management ──────────────────────────────────────
 
     @staticmethod
+    def _get_machine_id() -> str:
+        import sys
+        if sys.platform == "linux":
+            for path in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
+                if os.path.exists(path):
+                    try:
+                        with open(path, "r") as f:
+                            return f.read().strip()
+                    except OSError:
+                        pass
+        elif sys.platform == "win32":
+            try:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography") as key:
+                    return str(winreg.QueryValueEx(key, "MachineGuid")[0])
+            except (ImportError, OSError):
+                pass
+        elif sys.platform == "darwin":
+            try:
+                import subprocess
+                res = subprocess.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], capture_output=True, text=True, check=False, shell=False)
+                for line in res.stdout.split("\n"):
+                    if "IOPlatformUUID" in line:
+                        return line.split("=")[-1].strip().strip('"')
+            except (OSError, subprocess.SubprocessError):
+                pass
+
+        import platform
+        return f"{uuid.getnode()}-{platform.node()}"
+
+    @staticmethod
     def _init_fernet():
         """Initialize Fernet cipher from machine-specific key."""
         if not HAS_FERNET:
             return None
         try:
-            machine_id = str(uuid.getnode())
+            machine_id = FernetFileBackend._get_machine_id()
             key = hashlib.sha256(machine_id.encode()).digest()
             return _Fernet(base64.urlsafe_b64encode(key))
         except (ValueError, TypeError, OSError) as e:
