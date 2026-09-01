@@ -3,6 +3,28 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+
+class ImportBlocker:
+    def __init__(self, module_name):
+        self.module_name = module_name
+    def find_spec(self, fullname, path, target=None):
+        if fullname == self.module_name or fullname.startswith(self.module_name + '.'):
+            raise ImportError(f"No module named '{fullname}'")
+        return None
+    def __enter__(self):
+        import sys
+        sys.meta_path.insert(0, self)
+        if self.module_name in sys.modules:
+            self._old_module = sys.modules.pop(self.module_name)
+        else:
+            self._old_module = None
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        import sys
+        sys.meta_path.remove(self)
+        if self._old_module is not None:
+            sys.modules[self.module_name] = self._old_module
+
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
     _check_cpu,
@@ -208,7 +230,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"openvino": None}), ImportBlocker("openvino"):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -223,7 +245,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"jax": None}), ImportBlocker("jax"):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
