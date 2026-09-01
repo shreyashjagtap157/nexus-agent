@@ -18,7 +18,9 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
-    def test_wizard_collects_basic_settings(self):
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_wizard_collects_basic_settings(self, mock_detect):
+        mock_detect.return_value = {"cpu": "Mock CPU", "ram_total": "16 GB", "gpu": "Mock GPU"}
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses
         # prompt_func: Permission mode, Memory mode, Guardrail level
@@ -43,7 +45,9 @@ class TestSetupWizard(unittest.TestCase):
             # Verify save was called
             mock_save.assert_called_once_with(updates)
 
-    def test_wizard_cloud_provider_configuration(self):
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_wizard_cloud_provider_configuration(self, mock_detect):
+        mock_detect.return_value = {"cpu": "Mock CPU", "ram_total": "16 GB", "gpu": "Mock GPU"}
         """Verify wizard collects cloud API keys and sets active provider."""
         # prompt_func: Permission, Memory, Guardrail, OpenAI Key
         self.prompt_mock.side_effect = ["ask", "full", "balanced", "sk-test-openai"]
