@@ -64,11 +64,11 @@ class MemoryTool(Tool):
                 "type": "string",
                 "description": "One of: list, get, store, update, forget, stats.",
             },
-            "entry_id": {"type": "string", "description": "Memory ID (for get/update/forget).", "required": False},
-            "content": {"type": "string", "description": "Memory content (for store/update).", "required": False},
-            "category": {"type": "string", "description": "Category label (for store/update/list filter).", "required": False},
-            "limit": {"type": "integer", "description": "Max entries to return (list). Default 10, max 1000.", "required": False},
-            "offset": {"type": "integer", "description": "Skip this many entries (list). Default 0.", "required": False},
+            "entry_id": {"type": "string", "description": "Memory ID (for get/update/forget).", "required": False},  # noqa: E501
+            "content": {"type": "string", "description": "Memory content (for store/update).", "required": False},  # noqa: E501
+            "category": {"type": "string", "description": "Category label (for store/update/list filter).", "required": False},  # noqa: E501
+            "limit": {"type": "integer", "description": "Max entries to return (list). Default 10, max 1000.", "required": False},  # noqa: E501
+            "offset": {"type": "integer", "description": "Skip this many entries (list). Default 0.", "required": False},  # noqa: E501
         }
 
     @property

@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
-from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +60,7 @@ class RepositoryRAGTool(Tool):
             },
             "reindex": {
                 "type": "boolean",
-                "description": "Force scan and rebuild of the repository FTS5 index before querying.",
+                "description": "Force scan and rebuild of the repository FTS5 index before querying.",  # noqa: E501
             }
         }
 
@@ -142,7 +141,9 @@ class RepositoryRAGTool(Tool):
         js_class_pat = re.compile(r'^\s*class\s+(\w+)')
         js_func_pat = re.compile(r'^\s*(?:async\s+)?function\s+(\w+)')
 
-        for file_path in iter_files(Path(self.workspace), exclude_dirs=exclude_dirs, include_hidden=True):  # noqa: E501
+        from nexus_agent.utils.fs import iter_files
+
+        for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):
             if file_path.suffix.lower() in exclude_extensions:
                 continue
 
@@ -195,7 +196,7 @@ class RepositoryRAGTool(Tool):
                                 symbol_type = "function"
 
                     if symbol_name and symbol_type:
-                        symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))
+                        symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))  # noqa: E501
 
                 chunk_lines_size = 35
                 overlap_lines_size = 5
@@ -213,7 +214,7 @@ class RepositoryRAGTool(Tool):
                 # Batch insert symbols and chunks
                 if symbol_data:
                     conn.executemany(
-                        "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
+                        "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "  # noqa: E501
                         "VALUES (?, ?, ?, ?, ?)",
                         symbol_data
                     )
@@ -255,7 +256,7 @@ class RepositoryRAGTool(Tool):
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
                 chunk_cursor = conn.execute(
-                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",
+                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",  # noqa: E501
                     (sym["file_path"], sym["start_line"], sym["start_line"])
                 )
                 for chunk in chunk_cursor:
@@ -321,7 +322,7 @@ class RepositoryRAGTool(Tool):
         for r in sorted_chunks:
             boost_header = f" {r['symbol_info']}" if r.get("symbol_info") else ""
             results.append(
-                f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"
+                f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"  # noqa: E501
                 f"```\n{r['content']}\n```\n"
             )
 
