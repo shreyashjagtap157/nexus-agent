@@ -1,4 +1,4 @@
-"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""
+"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""  # noqa: E501
 
 from __future__ import annotations
 
