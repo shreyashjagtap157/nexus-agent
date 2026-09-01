@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 import sqlite3
-
-from nexus_agent.utils.fs import iter_files
 from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -135,8 +133,8 @@ class RepositoryRAGTool(Tool):
         """)
         conn.commit()
 
-        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
-        exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}
+        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}  # noqa: E501
+        exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}  # noqa: E501
 
         # Regex symbol patterns
         py_class_pat = re.compile(r'^\s*class\s+(\w+)')
@@ -144,7 +142,7 @@ class RepositoryRAGTool(Tool):
         js_class_pat = re.compile(r'^\s*class\s+(\w+)')
         js_func_pat = re.compile(r'^\s*(?:async\s+)?function\s+(\w+)')
 
-        for file_path in iter_files(Path(self.workspace), exclude_dirs=exclude_dirs, include_hidden=True):
+        for file_path in iter_files(Path(self.workspace), exclude_dirs=exclude_dirs, include_hidden=True):  # noqa: E501
             if file_path.suffix.lower() in exclude_extensions:
                 continue
 
