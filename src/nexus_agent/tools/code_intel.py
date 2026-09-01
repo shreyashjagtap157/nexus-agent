@@ -11,6 +11,8 @@ import ast
 import logging
 import os
 import re
+
+from nexus_agent.utils.fs import iter_files
 import shutil
 import tempfile
 from pathlib import Path
@@ -95,33 +97,29 @@ class ImportGraphTool(Tool):
         exclude_dirs = {".git", ".venv", "node_modules", "__pycache__", ".nexus-agent"}
 
         try:
-            for root, dirs, files in os.walk(str(self.workspace)):
-                dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for file_path in iter_files(Path(self.workspace), exclude_dirs=exclude_dirs, include_hidden=True):
+                if file_path.name.endswith(".py"):
+                    rel_path = file_path.relative_to(self.workspace)
+                    mod_name = ".".join(rel_path.with_suffix("").parts)
 
-                for file in files:
-                    if file.endswith(".py"):
-                        file_path = Path(root) / file
-                        rel_path = file_path.relative_to(self.workspace)
-                        mod_name = ".".join(rel_path.with_suffix("").parts)
-
-                        imports = set()
+                    imports = set()
+                    try:
+                        content = file_path.read_text(encoding="utf-8", errors="ignore")
                         try:
-                            content = file_path.read_text(encoding="utf-8", errors="ignore")
-                            try:
-                                tree = ast.parse(content)
-                                for node in ast.walk(tree):
-                                    if isinstance(node, ast.Import):
-                                        for alias in node.names:
-                                            imports.add(alias.name.split(".")[0].split(" as ")[0])
-                                    elif isinstance(node, ast.ImportFrom):
-                                        if node.module:
-                                            imports.add(node.module.split(".")[0])
-                            except SyntaxError:
-                                pass
-                        except (OSError, UnicodeDecodeError, ValueError):
-                            logger.debug("Failed to parse imports in %s", file_path)
+                            tree = ast.parse(content)
+                            for node in ast.walk(tree):
+                                if isinstance(node, ast.Import):
+                                    for alias in node.names:
+                                        imports.add(alias.name.split(".")[0].split(" as ")[0])
+                                elif isinstance(node, ast.ImportFrom):
+                                    if node.module:
+                                        imports.add(node.module.split(".")[0])
+                        except SyntaxError:
+                            pass
+                    except (OSError, UnicodeDecodeError, ValueError):
+                        logger.debug("Failed to parse imports in %s", file_path)
 
-                        graph[mod_name] = imports
+                    graph[mod_name] = imports
         except (OSError, ValueError) as e:
             logger.error(f"Error building import graph: {e}")
 
