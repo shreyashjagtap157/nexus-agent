@@ -2,8 +2,7 @@
 Autonomous DevOps Pipeline — Local CI/CD static scanning, vulnerability audits, and test suites.
 
 Enables the agent to create git checkpoints, auto-detect local test frameworks, run linters,
-parse stack traces, scan for secrets, run dependency vulnerability audits,
-and self-heal test failures.
+parse stack traces, scan for secrets, run dependency vulnerability audits, and self-heal test failures.
 """
 
 from __future__ import annotations
@@ -15,8 +14,6 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-
-from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +70,12 @@ class TestRunner:
             for f in files:
                 if (self.workspace / f).exists():
                     if fw == "pytest-fallback":
-                        if (self.workspace / "pyproject.toml").exists() or list((self.workspace / "tests").glob("**/*.py")):  # noqa: E501
+                        if (self.workspace / "pyproject.toml").exists() or list((self.workspace / "tests").glob("**/*.py")):
                             return "pytest"
                     else:
                         return fw.replace("-fallback", "")
 
-        if list(self.workspace.glob("*.py")) or list((self.workspace / "src").glob("**/*.py") if (self.workspace / "src").exists() else []):  # noqa: E501
+        if list(self.workspace.glob("*.py")) or list((self.workspace / "src").glob("**/*.py") if (self.workspace / "src").exists() else []):
             return "unittest"
 
         return None
@@ -181,16 +178,16 @@ class SecretScanner:
     """Scans workspace files for potential secrets and credentials."""
 
     PATTERNS = {
-        "Generic Password/Secret": r'(?:password|passwd|secret|passphrase|private_key|app_secret|client_secret)\s*[:=]\s*[\'"][a-zA-Z0-9_\-\.\/\+\=\~\!\@\#\$\%\^\&\*\(\)]+[\'"]',  # noqa: E501
+        "Generic Password/Secret": r'(?:password|passwd|secret|passphrase|private_key|app_secret|client_secret)\s*[:=]\s*[\'"][a-zA-Z0-9_\-\.\/\+\=\~\!\@\#\$\%\^\&\*\(\)]+[\'"]',
         "Slack Token": r'xox[bapr]-[0-9]{12}-[a-zA-Z0-9]{24}',
         "GitHub Personal Access Token": r'ghp_[a-zA-Z0-9]{36}',
         "AWS API Key/Secret": r'(?:AKIA[0-9A-Z]{16}|[a-zA-Z0-9+/]{40})',
         "Google API Key": r'AIzaSy[a-zA-Z0-9\-_]{33}',
-        "Database Connection URL": r'(?:mongodb|postgres|postgresql|mysql|redis|sqlite):\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_\-\~\!\@\#]+@[a-zA-Z0-9_\-\.]+:[0-9]+',  # noqa: E501
+        "Database Connection URL": r'(?:mongodb|postgres|postgresql|mysql|redis|sqlite):\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_\-\~\!\@\#]+@[a-zA-Z0-9_\-\.]+:[0-9]+',
     }
 
     EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__", "build", "dist", ".nexus-agent"}
-    VALID_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".yaml", ".yml", ".json", ".ini", ".conf", ".go", ".rs"}  # noqa: E501
+    VALID_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".yaml", ".yml", ".json", ".ini", ".conf", ".go", ".rs"}
 
     def __init__(self, workspace: Path):
         self.workspace = workspace
@@ -204,7 +201,11 @@ class SecretScanner:
         matches: list[SecretMatch] = []
 
         try:
-            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS, include_hidden=True):  # noqa: E501
+            for root, dirs, files in os.walk(str(self.workspace)):
+                dirs[:] = [d for d in dirs if d not in self.EXCLUDE_DIRS]
+
+                for file in files:
+                    file_path = Path(root) / file
                     if file_path.suffix not in self.VALID_EXTENSIONS:
                         continue
 
@@ -270,7 +271,7 @@ class GitCheckpointer:
             )
 
             import uuid
-            branch_name = f"nexus-safety-{int(os.path.getmtime(str(self.workspace)))}-{uuid.uuid4().hex[:6]}"  # noqa: E501
+            branch_name = f"nexus-safety-{int(os.path.getmtime(str(self.workspace)))}-{uuid.uuid4().hex[:6]}"
             subprocess.run(
                 ["git", "checkout", "-b", branch_name],
                 cwd=str(self.workspace),
@@ -278,7 +279,7 @@ class GitCheckpointer:
                 stderr=subprocess.DEVNULL,
             )
             return branch_name
-        except (OSError, ValueError, subprocess.CalledProcessError, subprocess.SubprocessError) as e:  # noqa: E501
+        except (OSError, ValueError, subprocess.CalledProcessError, subprocess.SubprocessError) as e:
             logger.warning(f"Failed to create safety branch: {e}")
             return None
 
@@ -311,7 +312,7 @@ class VulnerabilityScanner:
     def scan_python(self) -> list[str]:
         """Run pip-audit for Python vulnerabilities."""
         vulns: list[str] = []
-        if not ((self.workspace / "requirements.txt").exists() or (self.workspace / "pyproject.toml").exists()):  # noqa: E501
+        if not ((self.workspace / "requirements.txt").exists() or (self.workspace / "pyproject.toml").exists()):
             return vulns
 
         try:
@@ -325,7 +326,7 @@ class VulnerabilityScanner:
                 return vulns
 
             audit = subprocess.run(
-                ["pip-audit", "-r", "requirements.txt"] if (self.workspace / "requirements.txt").exists() else ["pip-audit"],  # noqa: E501
+                ["pip-audit", "-r", "requirements.txt"] if (self.workspace / "requirements.txt").exists() else ["pip-audit"],
                 cwd=str(self.workspace),
                 capture_output=True,
                 text=True,

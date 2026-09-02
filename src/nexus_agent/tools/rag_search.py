@@ -1,15 +1,15 @@
-"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""  # noqa: E501
+"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""
 
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
-from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class RepositoryRAGTool(Tool):
             },
             "reindex": {
                 "type": "boolean",
-                "description": "Force scan and rebuild of the repository FTS5 index before querying.",  # noqa: E501
+                "description": "Force scan and rebuild of the repository FTS5 index before querying.",
             }
         }
 
@@ -133,8 +133,8 @@ class RepositoryRAGTool(Tool):
         """)
         conn.commit()
 
-        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}  # noqa: E501
-        exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}  # noqa: E501
+        exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}
+        exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}
 
         # Regex symbol patterns
         py_class_pat = re.compile(r'^\s*class\s+(\w+)')
@@ -142,7 +142,10 @@ class RepositoryRAGTool(Tool):
         js_class_pat = re.compile(r'^\s*class\s+(\w+)')
         js_func_pat = re.compile(r'^\s*(?:async\s+)?function\s+(\w+)')
 
-        for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):
+        for root, dirs, files in os.walk(self.workspace):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for file in files:
+                file_path = Path(root) / file
                 if file_path.suffix.lower() in exclude_extensions:
                     continue
 
@@ -195,7 +198,7 @@ class RepositoryRAGTool(Tool):
                                     symbol_type = "function"
 
                         if symbol_name and symbol_type:
-                            symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))  # noqa: E501
+                            symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))
 
                     chunk_lines_size = 35
                     overlap_lines_size = 5
@@ -206,14 +209,14 @@ class RepositoryRAGTool(Tool):
                         chunk_text = "\n".join(chunk_lines)
 
                         if chunk_text.strip():
-                            chunk_data.append((str(rel_path), chunk_text, i + 1, i + len(chunk_lines)))  # noqa: E501
+                            chunk_data.append((str(rel_path), chunk_text, i + 1, i + len(chunk_lines)))
 
                         i += (chunk_lines_size - overlap_lines_size)
 
                     # Batch insert symbols and chunks
                     if symbol_data:
                         conn.executemany(
-                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "  # noqa: E501
+                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
                             "VALUES (?, ?, ?, ?, ?)",
                             symbol_data
                         )
@@ -255,7 +258,7 @@ class RepositoryRAGTool(Tool):
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
                 chunk_cursor = conn.execute(
-                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",  # noqa: E501
+                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",
                     (sym["file_path"], sym["start_line"], sym["start_line"])
                 )
                 for chunk in chunk_cursor:
@@ -321,7 +324,7 @@ class RepositoryRAGTool(Tool):
         for r in sorted_chunks:
             boost_header = f" {r['symbol_info']}" if r.get("symbol_info") else ""
             results.append(
-                f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"  # noqa: E501
+                f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"
                 f"```\n{r['content']}\n```\n"
             )
 

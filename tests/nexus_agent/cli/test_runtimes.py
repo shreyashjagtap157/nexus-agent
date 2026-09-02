@@ -3,35 +3,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-import sys
-from importlib.abc import MetaPathFinder
-
-class ImportBlocker(MetaPathFinder):
-    def __init__(self, target_modules: set[str]):
-        self.target_modules = target_modules
-
-    def find_spec(self, fullname, path, target=None):
-        if fullname in self.target_modules:
-            raise ImportError(f"No module named '{fullname}'")
-        return None
-
-class block_imports:
-    def __init__(self, *modules: str):
-        self.modules = set(modules)
-        self.blocker = ImportBlocker(self.modules)
-
-    def __enter__(self):
-        sys.meta_path.insert(0, self.blocker)
-        # Also clean up sys.modules if already loaded
-        for mod in self.modules:
-            if mod in sys.modules:
-                del sys.modules[mod]
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.blocker in sys.meta_path:
-            sys.meta_path.remove(self.blocker)
-
-
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
     _check_cpu,
@@ -237,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with block_imports("openvino"):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -252,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with block_imports("jax"):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
