@@ -15,6 +15,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from nexus_agent.utils.fs import iter_files
+
 logger = logging.getLogger(__name__)
 
 
@@ -201,11 +203,7 @@ class SecretScanner:
         matches: list[SecretMatch] = []
 
         try:
-            for root, dirs, files in os.walk(str(self.workspace)):
-                dirs[:] = [d for d in dirs if d not in self.EXCLUDE_DIRS]
-
-                for file in files:
-                    file_path = Path(root) / file
+            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS, include_hidden=True):
                     if file_path.suffix not in self.VALID_EXTENSIONS:
                         continue
 
