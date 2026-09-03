@@ -10,7 +10,6 @@ from __future__ import annotations
 import ast
 import logging
 import os
-from nexus_agent.utils.fs import iter_files
 import re
 import shutil
 import tempfile
@@ -18,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 

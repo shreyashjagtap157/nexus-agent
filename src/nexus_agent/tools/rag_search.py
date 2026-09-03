@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
-from nexus_agent.utils.fs import iter_files
 import re
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
