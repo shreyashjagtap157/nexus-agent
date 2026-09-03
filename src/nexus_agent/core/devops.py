@@ -8,13 +8,14 @@ parse stack traces, scan for secrets, run dependency vulnerability audits, and s
 from __future__ import annotations
 
 import logging
-from nexus_agent.utils.fs import iter_files
 import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +203,7 @@ class SecretScanner:
         matches: list[SecretMatch] = []
 
         try:
-            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS, include_hidden=True):
+            for file_path in iter_files(self.workspace, exclude_dirs=self.EXCLUDE_DIRS, include_hidden=True):  # noqa: E501
                 if file_path.suffix not in self.VALID_EXTENSIONS:
                     continue
 
