@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from nexus_agent.llm.model_manager import ModelManager
@@ -105,8 +106,17 @@ class TestAdvancedFeatures(unittest.TestCase):
         # utils.py must be rolled back to "a * b" rather than "a / b"
         self.assertIn("a * b", self.file1.read_text(encoding="utf-8"))
 
-    def test_loading_guardrails(self) -> None:
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_loading_guardrails(self, mock_detect) -> None:
         """Verify model loading guardrails safety validations under simulated memory."""
+        mock_detect.return_value = {
+            "cpu": "Mock CPU",
+            "ram_total": "16GB",
+            "ram_total_bytes": 16 * 1024**3,
+            "gpu": "Mock GPU",
+            "vram": "8GB",
+            "vram_bytes": 8 * 1024**3,
+        }
         mgr = ModelManager()
 
         # Evaluate simulated existing dummy model
