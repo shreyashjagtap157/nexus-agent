@@ -1,4 +1,4 @@
-## 2023-09-04 - iter_files Optimization
 
-**Learning:** `os.walk` with in-place list modification (`dirs[:] = [...]`) is significantly slower than using `os.scandir` directly, especially in large repositories with many nested directories like virtual environments or `node_modules`. Building and pruning the list of directories in memory creates a bottleneck.
-**Action:** Always prefer `iter_files(workspace, exclude_dirs=...)` over `os.walk(workspace)` for recursive directory traversal when exclusions are needed. Ensure `iter_files` is imported from `nexus_agent.utils.fs`.
+## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
+**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
+**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.

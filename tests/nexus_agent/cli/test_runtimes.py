@@ -1,6 +1,7 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
 import unittest
+import sys
 from unittest.mock import MagicMock, patch
 
 from nexus_agent.cli.runtimes import (
@@ -198,6 +199,16 @@ class TestCheckRocm(unittest.TestCase):
             self.assertEqual(len(runtimes), 0)
 
 
+
+class ImportBlocker:
+    def __init__(self, *module_names):
+        self.module_names = module_names
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.module_names:
+            raise ImportError(f"No module named '{fullname}'")
+        return None
+
 class TestCheckOpenvino(unittest.TestCase):
     """Test OpenVINO runtime detection."""
 
@@ -208,7 +219,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch("sys.meta_path", [ImportBlocker("openvino")] + sys.meta_path):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 

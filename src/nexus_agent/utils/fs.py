@@ -24,7 +24,7 @@ def iter_files(
             for entry in it:
                 try:
                     if entry.is_dir(follow_symlinks=False):
-                        if not include_hidden and entry.name.startswith(".") and entry.name not in ALLOWED_HIDDEN:
+                        if not include_hidden and entry.name.startswith(".") and entry.name not in ALLOWED_HIDDEN:  # noqa: E501
                             continue
                         if entry.name in DEFAULT_SKIP_DIRS or (exclude_dirs and entry.name in exclude_dirs):
                             continue
