@@ -12,7 +12,7 @@ DEFAULT_SKIP_DIRS = frozenset({
     "build",
 })
 
-def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False) -> Iterator[Path]:  # noqa: E501
+def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False) -> Iterator[Path]:  # noqa: E501  # noqa: E501
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     skip_set = DEFAULT_SKIP_DIRS | exclude_dirs if exclude_dirs else DEFAULT_SKIP_DIRS
     try:
@@ -22,7 +22,7 @@ def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_
                     if entry.is_dir(follow_symlinks=False):
                         if not include_hidden:
                             # Skip hidden directories (except .env, .gitignore)
-                            if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa: E501
+                            if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa: E501  # noqa: E501
                                 continue
                         if entry.name in skip_set:
                             continue
