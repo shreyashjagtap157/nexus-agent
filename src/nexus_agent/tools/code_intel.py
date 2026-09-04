@@ -96,7 +96,7 @@ class ImportGraphTool(Tool):
         exclude_dirs = {".git", ".venv", "node_modules", "__pycache__", ".nexus-agent"}
 
         try:
-            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):  # noqa: E501  # noqa: E501
+            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):  # noqa: E501
                 if file_path.suffix == ".py":
                     rel_path = file_path.relative_to(self.workspace)
                     mod_name = ".".join(rel_path.with_suffix("").parts)
