@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import ast
 import logging
-
-from nexus_agent.utils.fs import iter_files
 import os
 import re
 import shutil
@@ -19,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
