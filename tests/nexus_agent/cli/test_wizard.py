@@ -27,21 +27,22 @@ class TestSetupWizard(unittest.TestCase):
         self.confirm_mock.side_effect = [False, False, False]
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
-            wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
-            )
-            updates = wizard.run()
+            with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware", return_value={"cpu": "Intel"}):
+                wizard = SetupWizard(
+                    console=self.console,
+                    prompt_func=self.prompt_mock,
+                    confirm_func=self.confirm_mock
+                )
+                updates = wizard.run()
 
-            # Check captured settings
-            self.assertEqual(updates["permissions"]["mode"], "suggest")
-            self.assertEqual(updates["memory"]["mode"], "session")
-            self.assertEqual(updates["memory"]["enabled"], False)
-            self.assertEqual(updates["local_model"]["guardrails"], "strict")
+                # Check captured settings
+                self.assertEqual(updates["permissions"]["mode"], "suggest")
+                self.assertEqual(updates["memory"]["mode"], "session")
+                self.assertEqual(updates["memory"]["enabled"], False)
+                self.assertEqual(updates["local_model"]["guardrails"], "strict")
 
-            # Verify save was called
-            mock_save.assert_called_once_with(updates)
+                # Verify save was called
+                mock_save.assert_called_once_with(updates)
 
     def test_wizard_cloud_provider_configuration(self):
         """Verify wizard collects cloud API keys and sets active provider."""
