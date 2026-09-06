@@ -208,9 +208,19 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"openvino": None}):
-            runtimes = _check_openvino()
-            self.assertEqual(len(runtimes), 0)
+        import builtins
+        real_import = builtins.__import__
+
+        def mock_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == 'openvino':
+                raise ImportError("Mock missing module: openvino")
+            return real_import(name, globals, locals, fromlist, level)
+
+        with patch('builtins.__import__', side_effect=mock_import):
+            # Also hide it from sys.modules in case it was already imported
+            with patch.dict("sys.modules", {"openvino": None}):
+                runtimes = _check_openvino()
+                self.assertEqual(len(runtimes), 0)
 
 
 class TestCheckTpu(unittest.TestCase):
@@ -223,9 +233,19 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_tpu()
-            self.assertEqual(len(runtimes), 0)
+        import builtins
+        real_import = builtins.__import__
+
+        def mock_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if name == 'jax':
+                raise ImportError("Mock missing module: jax")
+            return real_import(name, globals, locals, fromlist, level)
+
+        with patch('builtins.__import__', side_effect=mock_import):
+            # Also hide it from sys.modules in case it was already imported
+            with patch.dict("sys.modules", {"jax": None}):
+                runtimes = _check_tpu()
+                self.assertEqual(len(runtimes), 0)
 
 
 class TestScanRuntimes(unittest.TestCase):
