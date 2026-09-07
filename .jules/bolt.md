@@ -9,3 +9,6 @@
 ## 2024-05-18 - [Simulating Missing Dependencies in CI Tests]
 **Learning:** Using patch.dict('sys.modules', {'openvino': None}) to simulate missing optional dependencies in tests failed consistently on GitHub Actions CI for macos/windows runners, resulting in AssertionError: 1 != 0 because the mocked module wasn't reliably triggering ImportError in the module under test.
 **Action:** When testing optional dependencies, implement a context manager using a custom ImportBlocker inside sys.meta_path to intercept find_spec and reliably raise ImportError across all environments.
+## 2024-05-18 - [Preventing subprocess timeouts during CLI wizard testing]
+**Learning:** Testing CLI wizards (like SetupWizard) that rely on hardware detection functions (e.g., ModelManager.detect_hardware) can cause subprocess.TimeoutExpired exceptions in CI environments if the detection invokes real shell commands (like powershell Get-CimInstance).
+**Action:** Always mock hardware detection functions when testing CLI commands or wizards to prevent subprocess hangs. Ensure the mock returns a dictionary with expected hardware keys to prevent UI rendering errors.
