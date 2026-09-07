@@ -1,6 +1,8 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
+import sys
 import unittest
+from importlib.abc import MetaPathFinder
 from unittest.mock import MagicMock, patch
 
 from nexus_agent.cli.runtimes import (
@@ -198,6 +200,37 @@ class TestCheckRocm(unittest.TestCase):
             self.assertEqual(len(runtimes), 0)
 
 
+class ImportBlocker(MetaPathFinder):
+    """Blocks importing a specific module for testing purposes."""
+    def __init__(self, module_name):
+        self.module_name = module_name
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname == self.module_name or fullname.startswith(self.module_name + "."):
+            raise ImportError(f"No module named '{fullname}'")
+        return None
+
+
+class block_import:
+    """Context manager to block importing a specific module."""
+    def __init__(self, module_name):
+        self.blocker = ImportBlocker(module_name)
+
+    def __enter__(self):
+        sys.meta_path.insert(0, self.blocker)
+        if self.blocker.module_name in sys.modules:
+            self._old_module = sys.modules.pop(self.blocker.module_name)
+        else:
+            self._old_module = None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.meta_path.remove(self.blocker)
+        if self._old_module is not None:
+            sys.modules[self.blocker.module_name] = self._old_module
+        elif self.blocker.module_name in sys.modules:
+            del sys.modules[self.blocker.module_name]
+
+
 class TestCheckOpenvino(unittest.TestCase):
     """Test OpenVINO runtime detection."""
 
@@ -208,7 +241,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with block_import("openvino"):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -223,7 +256,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with block_import("jax"):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
