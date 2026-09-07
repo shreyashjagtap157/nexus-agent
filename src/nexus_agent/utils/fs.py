@@ -27,7 +27,8 @@ def iter_files(
                     try:
                         if entry.is_dir(follow_symlinks=False):
                             # Skip hidden directories (except .env, .gitignore)
-                            if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                            if (not include_hidden and entry.name.startswith(".")
+                                and entry.name not in {".env", ".gitignore"}):
                                 continue
                             if entry.name in skip_set:
                                 continue
