@@ -198,6 +198,16 @@ class TestCheckRocm(unittest.TestCase):
             self.assertEqual(len(runtimes), 0)
 
 
+class ImportBlocker:
+    """Blocks importing of specific modules to test missing dependency handling."""
+    def __init__(self, *module_names):
+        self.module_names = module_names
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.module_names:
+            raise ImportError(f"Mocked missing dependency: {fullname}")
+        return None
+
 class TestCheckOpenvino(unittest.TestCase):
     """Test OpenVINO runtime detection."""
 
@@ -208,9 +218,18 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"openvino": None}):
+        # We must pop openvino if it exists because the sys.modules patch might not be enough
+        import sys
+        old_module = sys.modules.pop('openvino', None)
+        blocker = ImportBlocker('openvino')
+        sys.meta_path.insert(0, blocker)
+        try:
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
+        finally:
+            sys.meta_path.remove(blocker)
+            if old_module is not None:
+                sys.modules['openvino'] = old_module
 
 
 class TestCheckTpu(unittest.TestCase):
