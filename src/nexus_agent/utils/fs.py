@@ -13,7 +13,9 @@ DEFAULT_SKIP_DIRS = frozenset({
 })
 
 
-def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False) -> Iterator[Path]:
+def iter_files(
+    search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False
+) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     skip_dirs = DEFAULT_SKIP_DIRS
     if exclude_dirs:
@@ -25,11 +27,18 @@ def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_
                 try:
                     if entry.is_dir(follow_symlinks=False):
                         # Skip hidden directories (except .env, .gitignore)
-                        if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                        if not include_hidden and entry.name.startswith(".") and entry.name not in {
+                            ".env",
+                            ".gitignore",
+                        }:
                             continue
                         if entry.name in skip_dirs:
                             continue
-                        yield from iter_files(Path(entry.path), exclude_dirs=exclude_dirs, include_hidden=include_hidden)
+                        yield from iter_files(
+                            Path(entry.path),
+                            exclude_dirs=exclude_dirs,
+                            include_hidden=include_hidden,
+                        )
                     elif entry.is_file():
                         yield Path(entry.path)
                 except OSError:
