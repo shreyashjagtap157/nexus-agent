@@ -2,7 +2,6 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-
 DEFAULT_SKIP_DIRS = frozenset(
     {
         "node_modules",
