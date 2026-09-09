@@ -2,29 +2,41 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
+DEFAULT_SKIP_DIRS = frozenset(
+    {
+        "node_modules",
+        "__pycache__",
+        ".git",
+        "venv",
+        ".venv",
+        "dist",
+        "build",
+    }
+)
 
-def iter_files(search_path: Path) -> Iterator[Path]:
+
+def iter_files(
+    search_path: Path,
+    exclude_dirs: set[str] | frozenset[str] | None = None,
+    include_hidden: bool = False,
+) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
+    _exclude = exclude_dirs if exclude_dirs is not None else frozenset()
     try:
         with os.scandir(str(search_path)) as it:
             for entry in it:
                 try:
                     if entry.is_dir(follow_symlinks=False):
                         # Skip hidden directories (except .env, .gitignore)
-                        if entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                        if (
+                            not include_hidden
+                            and entry.name.startswith(".")
+                            and entry.name not in {".env", ".gitignore"}
+                        ):
                             continue
-                        skip_dirs = {
-                            "node_modules",
-                            "__pycache__",
-                            ".git",
-                            "venv",
-                            ".venv",
-                            "dist",
-                            "build",
-                        }
-                        if entry.name in skip_dirs:
+                        if entry.name in DEFAULT_SKIP_DIRS or entry.name in _exclude:
                             continue
-                        yield from iter_files(Path(entry.path))
+                        yield from iter_files(Path(entry.path), _exclude, include_hidden)
                     elif entry.is_file():
                         yield Path(entry.path)
                 except OSError:
