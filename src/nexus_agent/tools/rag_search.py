@@ -1,4 +1,4 @@
-"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""
+"""RAG Search Tool — Offline repository semantic keyword search via SQLite FTS5 & code symbol matching."""  # noqa: E501
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class RepositoryRAGTool(Tool):
             },
             "reindex": {
                 "type": "boolean",
-                "description": "Force scan and rebuild of the repository FTS5 index before querying.",
+                "description": "Force scan and rebuild of the repository FTS5 index before querying.",  # noqa: E501
             },
         }
 
@@ -237,7 +237,7 @@ class RepositoryRAGTool(Tool):
                 # Batch insert symbols and chunks
                 if symbol_data:
                     conn.executemany(
-                        "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
+                        "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "  # noqa: E501
                         "VALUES (?, ?, ?, ?, ?)",
                         symbol_data,
                     )
@@ -279,7 +279,7 @@ class RepositoryRAGTool(Tool):
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
                 chunk_cursor = conn.execute(
-                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",
+                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",  # noqa: E501
                     (sym["file_path"], sym["start_line"], sym["start_line"]),
                 )
                 for chunk in chunk_cursor:
@@ -344,7 +344,7 @@ class RepositoryRAGTool(Tool):
         for r in sorted_chunks:
             boost_header = f" {r['symbol_info']}" if r.get("symbol_info") else ""
             results.append(
-                f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"
+                f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"  # noqa: E501
                 f"```\n{r['content']}\n```\n"
             )
 
