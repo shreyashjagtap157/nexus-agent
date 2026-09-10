@@ -1,18 +1,13 @@
 """Tests for the tool system."""
 
-
 import pytest
+from pathlib import Path
 
-from nexus_agent.tools.base import ToolError, format_aci_output, summarize_search_results
-from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
-from nexus_agent.tools.file_ops import (
-    ListDirectoryTool,
-    ReadFileTool,
-    SearchFilesTool,
-    WriteFileTool,
-)
-from nexus_agent.tools.memory import MemoryTool
+from nexus_agent.tools.base import Tool, ToolError, format_aci_output, summarize_search_results
+from nexus_agent.tools.file_ops import ReadFileTool, WriteFileTool, SearchFilesTool, ListDirectoryTool
 from nexus_agent.tools.shell import ShellTool
+from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
+from nexus_agent.tools.memory import MemoryTool
 from nexus_agent.tools.todowrite import TodoWriteTool
 
 

@@ -1,9 +1,8 @@
 """Tests for the core agent module."""
 
-from pathlib import Path
-from unittest.mock import MagicMock
-
 import pytest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from nexus_agent.core.agent import (
     AgentEvent,
@@ -14,7 +13,7 @@ from nexus_agent.core.agent import (
     AgentState,
     ToolResult,
 )
-from nexus_agent.llm.base import LLMResponse, Message, Role
+from nexus_agent.llm.base import LLMResponse, Message, Role, ToolCall, ToolDefinition
 
 
 class TestAgentMode:

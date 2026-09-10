@@ -19,7 +19,6 @@ from nexus_agent.cli.renderer import (
 )
 from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
 from nexus_agent.core.config import load_config
-from nexus_agent.core.plugins import PluginManager
 from nexus_agent.core.usage import UsageTracker
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.runtime_manager import RuntimeManager
@@ -28,6 +27,7 @@ from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.permissions.rules import PermissionLevel
 from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.manager import SessionManager
+from nexus_agent.core.plugins import PluginManager
 
 logger = logging.getLogger(__name__)
 
@@ -173,11 +173,11 @@ class SessionOrchestratorMixin:
         if not self._engine:
             return
 
-        from nexus_agent.tools.batch_edit import BatchEditTool
         from nexus_agent.tools.boomerang import BoomerangTool
+        from nexus_agent.tools.council import CouncilTool
+        from nexus_agent.tools.batch_edit import BatchEditTool
         from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
         from nexus_agent.tools.code_intel import ImportGraphTool
-        from nexus_agent.tools.council import CouncilTool
         from nexus_agent.tools.file_ops import (
             ListDirectoryTool,
             ReadFileTool,

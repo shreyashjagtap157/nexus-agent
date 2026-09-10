@@ -18,13 +18,13 @@ from nexus_agent.llm.providers.openrouter_provider import OpenRouterProvider
 
 ALL_PROVIDERS = [
     ("openai", OpenAIProvider, {"api_key": "test-openai-key", "model": "gpt-4o"}),
-    ("anthropic", AnthropicProvider, {"api_key": "test-anthropic-key", "model": "claude-3-5-sonnet-latest", "api_url": "https://api.anthropic.com/v1/messages"}),
+    ("anthropic", AnthropicProvider, {"api_key": "test-anthropic-key", "model": "claude-3-5-sonnet-latest", "api_url": "https://api.anthropic.com/v1/messages"}),  # noqa: E501
     ("google", GoogleProvider, {"api_key": "test-google-key", "model": "gemini-pro"}),
     ("groq", GroqProvider, {"api_key": "test-groq-key", "model": "mixtral-8x7b"}),
     ("deepseek", DeepSeekProvider, {"api_key": "test-deepseek-key", "model": "deepseek-chat"}),
     ("openrouter", OpenRouterProvider, {"api_key": "test-or-key", "model": "openai/gpt-4o"}),
     ("ollama", OllamaProvider, {"model": "llama3"}),
-    ("custom", CustomOpenAIProvider, {"api_key": "test-custom-key", "model": "custom-model", "api_url": "http://localhost:8000/v1"}),
+    ("custom", CustomOpenAIProvider, {"api_key": "test-custom-key", "model": "custom-model", "api_url": "http://localhost:8000/v1"}),  # noqa: E501
     ("bedrock", AWSBedrockProvider, {"model": "claude-sonnet-4"}),
 ]
 
@@ -69,7 +69,7 @@ class TestOpenAICompatibleChatCompletions(unittest.TestCase):
     def test_openai_formats_request_correctly(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "Hi"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": "Hi"}, "finish_reason": "stop"}],  # noqa: E501
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
         }
         mock_post.return_value = mock_response
@@ -85,12 +85,12 @@ class TestOpenAICompatibleChatCompletions(unittest.TestCase):
     def test_openai_with_tools(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": ""}, "finish_reason": "tool_calls"}],
+            "choices": [{"message": {"role": "assistant", "content": ""}, "finish_reason": "tool_calls"}],  # noqa: E501
             "usage": {"total_tokens": 20}
         }
         mock_post.return_value = mock_response
         provider = OpenAIProvider({"api_key": "key", "model": "gpt-4o"})
-        tool = ToolDefinition(name="test_tool", description="A test", parameters={"type": "object", "properties": {}})
+        tool = ToolDefinition(name="test_tool", description="A test", parameters={"type": "object", "properties": {}})  # noqa: E501
         response = provider.chat_completion(self.messages, tools=[tool])
         self.assertEqual(response.finish_reason, "tool_calls")
 
@@ -98,7 +98,7 @@ class TestOpenAICompatibleChatCompletions(unittest.TestCase):
     def test_groq_formats_request_correctly(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "Groq reply"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": "Groq reply"}, "finish_reason": "stop"}],  # noqa: E501
             "usage": {"total_tokens": 10}
         }
         mock_post.return_value = mock_response
@@ -110,7 +110,7 @@ class TestOpenAICompatibleChatCompletions(unittest.TestCase):
     def test_deepseek_formats_request_correctly(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "DS reply"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": "DS reply"}, "finish_reason": "stop"}],  # noqa: E501
             "usage": {"total_tokens": 10}
         }
         mock_post.return_value = mock_response
@@ -122,7 +122,7 @@ class TestOpenAICompatibleChatCompletions(unittest.TestCase):
     def test_openrouter_formats_request_correctly(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "OR reply"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": "OR reply"}, "finish_reason": "stop"}],  # noqa: E501
             "usage": {"total_tokens": 10}
         }
         mock_post.return_value = mock_response
@@ -140,7 +140,7 @@ class TestOllamaProvider(unittest.TestCase):
         mock_headers.return_value = {}
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "Ollama reply"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": "Ollama reply"}, "finish_reason": "stop"}],  # noqa: E501
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
         }
         mock_post.return_value = mock_response
@@ -185,7 +185,7 @@ class TestAnthropicProvider(unittest.TestCase):
             "api_key": "key", "model": "claude-3",
             "api_url": "https://api.anthropic.com/v1/messages"
         })
-        tool = ToolDefinition(name="test", description="test", parameters={"type": "object", "properties": {}})
+        tool = ToolDefinition(name="test", description="test", parameters={"type": "object", "properties": {}})  # noqa: E501
         response = provider.chat_completion([Message(role=Role.USER, content="Hi")], tools=[tool])
         self.assertEqual(response.finish_reason, "tool_use")
 
@@ -197,7 +197,7 @@ class TestGoogleProvider(unittest.TestCase):
     def test_google_chat_completion(self, mock_post):
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "Google reply"}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": "Google reply"}, "finish_reason": "stop"}],  # noqa: E501
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
         }
         mock_post.return_value = mock_response
@@ -258,7 +258,7 @@ class TestProviderErrorHandling(unittest.TestCase):
         mock_post.side_effect = httpx.HTTPStatusError(
             "429 Rate Limited", request=MagicMock(), response=MagicMock(status_code=429)
         )
-        provider = AnthropicProvider({"api_key": "key", "model": "claude-3", "api_url": "https://api.anthropic.com/v1/messages"})
+        provider = AnthropicProvider({"api_key": "key", "model": "claude-3", "api_url": "https://api.anthropic.com/v1/messages"})  # noqa: E501
         with self.assertRaises(httpx.HTTPStatusError):
             provider.chat_completion([Message(role=Role.USER, content="Hi")])
 
@@ -276,7 +276,7 @@ class TestProviderEdgeCases(unittest.TestCase):
 
     def test_missing_api_key_still_instantiates(self):
         OpenAIProvider({"model": "gpt-4o", "api_key": ""})
-        AnthropicProvider({"model": "claude-3", "api_key": None, "api_url": "https://api.anthropic.com/v1/messages"})
+        AnthropicProvider({"model": "claude-3", "api_key": None, "api_url": "https://api.anthropic.com/v1/messages"})  # noqa: E501
 
     def test_ollama_no_api_key(self):
         OllamaProvider({"model": "llama3"})
