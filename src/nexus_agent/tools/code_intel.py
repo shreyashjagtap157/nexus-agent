@@ -44,11 +44,11 @@ class ImportGraphTool(Tool):
         return {
             "action": {
                 "type": "string",
-                "description": "The action to take: 'build' (generate full graph) or 'find_dependents' (find files depending on target)",
+                "description": "The action to take: 'build' (generate full graph) or 'find_dependents' (find files depending on target)",  # noqa: E501
             },
             "target": {
                 "type": "string",
-                "description": "Module name or file path to check dependents of (required if action='find_dependents')",
+                "description": "Module name or file path to check dependents of (required if action='find_dependents')",  # noqa: E501
                 "required": False,
             },
         }
@@ -141,7 +141,7 @@ class CallGraphTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Generates a call-graph for Python functions inside a file or traces where a function is called."
+        return "Generates a call-graph for Python functions inside a file or traces where a function is called."  # noqa: E501
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -298,7 +298,7 @@ class RenameTool(Tool):
         # Max file size check
         try:
             if target.stat().st_size > self._MAX_FILE_SIZE:
-                return f"Error: File too large for rename ({target.stat().st_size / 1024 / 1024:.1f}MB > 10MB)."
+                return f"Error: File too large for rename ({target.stat().st_size / 1024 / 1024:.1f}MB > 10MB)."  # noqa: E501
         except OSError as e:
             return f"Error: Cannot stat file: {e}"
 
@@ -364,9 +364,9 @@ class RenameTool(Tool):
 
             # Atomic rename
             os.replace(tmp_path, str(target))
-            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."
+            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."  # noqa: E501
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
-            # fallback to simple regex rename if ast unparse has quirks or is python version specific
+            # fallback to simple regex rename if ast unparse has quirks or is python version specific  # noqa: E501
             try:
                 pattern = r"\b" + re.escape(old_symbol) + r"\b"
                 count = 0
@@ -390,6 +390,6 @@ class RenameTool(Tool):
                     shutil.copy2(target, bak_path)
 
                 os.replace(tmp_path, str(target))
-                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."
+                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."  # noqa: E501
             except (OSError, ValueError, UnicodeEncodeError) as re_err:
                 return f"Failed to rewrite file content: {re_err} (AST error: {e})"

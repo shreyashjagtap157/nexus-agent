@@ -27,7 +27,7 @@ def iter_files(
                 for entry in it:
                     try:
                         if entry.is_dir(follow_symlinks=False):
-                            # Skip hidden directories (except .env, .gitignore) if include_hidden is False
+                            # Skip hidden directories (except .env, .gitignore) if include_hidden is False  # noqa: E501
                             if (
                                 not include_hidden
                                 and entry.name.startswith(".")
