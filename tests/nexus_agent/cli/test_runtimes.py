@@ -1,7 +1,36 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
+import sys
 import unittest
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
+
+@contextmanager
+def block_imports(module_names):
+    """Context manager to block imports of specified modules."""
+    class ImportBlocker:
+        def __init__(self, blocked_modules):
+            self.blocked_modules = blocked_modules
+        def find_spec(self, fullname, path, target=None):
+            if fullname in self.blocked_modules:
+                raise ImportError(f"No module named '{fullname}'")
+            return None
+
+    blocker = ImportBlocker(module_names)
+    sys.meta_path.insert(0, blocker)
+    try:
+        # Also remove them from sys.modules if they are already loaded
+        saved_modules = {}
+        for mod_name in module_names:
+            if mod_name in sys.modules:
+                saved_modules[mod_name] = sys.modules.pop(mod_name)
+        yield
+    finally:
+        sys.meta_path.remove(blocker)
+        # Restore saved modules
+        for mod_name, mod in saved_modules.items():
+            sys.modules[mod_name] = mod
+
 
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
@@ -208,7 +237,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with block_imports(["openvino"]):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
