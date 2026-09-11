@@ -1,9 +1,13 @@
 """Tests for the skill system."""
 
-import pytest
-from pathlib import Path
 
-from nexus_agent.skills.skill_loader import Skill, load_skill_from_markdown, render_template, TemplateError
+import pytest
+
+from nexus_agent.skills.skill_loader import (
+    TemplateError,
+    load_skill_from_markdown,
+    render_template,
+)
 from nexus_agent.skills.skill_registry import SkillRegistry
 
 
