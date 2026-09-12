@@ -373,7 +373,7 @@ class LongTermMemory(SQLiteStore):
                     )
             except sqlite3.OperationalError:
                 # FTS query syntax error — fall back to LIKE
-                escaped = query.replace('%', '\\%').replace('_', '\\_')
+                escaped = query.replace('\\', r'\\').replace('%', r'\%').replace('_', r'\_')
                 like_query = f"%{escaped}%"
                 if category:
                     cursor = conn.execute(
