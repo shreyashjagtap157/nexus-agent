@@ -382,7 +382,7 @@ class ModelManager:
                     npu_names = [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
                     if npu_names:
                         hw["npu"] = npu_names[0]
-            except (OSError, AttributeError):
+            except (OSError, AttributeError, subprocess.TimeoutExpired):
                 pass
         elif platform.system() == "Linux":
             # Check for /sys/class/accel (Linux accelerator subsystem used for NPUs)
