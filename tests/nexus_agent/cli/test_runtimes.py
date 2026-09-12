@@ -1,5 +1,6 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -198,6 +199,14 @@ class TestCheckRocm(unittest.TestCase):
             self.assertEqual(len(runtimes), 0)
 
 
+class ImportBlocker:
+    def __init__(self, *module_names):
+        self.module_names = set(module_names)
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.module_names:
+            raise ImportError(f"No module named {fullname}")
+        return None
+
 class TestCheckOpenvino(unittest.TestCase):
     """Test OpenVINO runtime detection."""
 
@@ -208,9 +217,15 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_openvino()
-            self.assertEqual(len(runtimes), 0)
+        blocker = ImportBlocker("openvino")
+        sys.meta_path.insert(0, blocker)
+        try:
+            # Also clear from sys.modules in case it's already loaded
+            with patch.dict("sys.modules", {"openvino": None}):
+                runtimes = _check_openvino()
+                self.assertEqual(len(runtimes), 0)
+        finally:
+            sys.meta_path.remove(blocker)
 
 
 class TestCheckTpu(unittest.TestCase):
@@ -223,9 +238,14 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_tpu()
-            self.assertEqual(len(runtimes), 0)
+        blocker = ImportBlocker("jax")
+        sys.meta_path.insert(0, blocker)
+        try:
+            with patch.dict("sys.modules", {"jax": None}):
+                runtimes = _check_tpu()
+                self.assertEqual(len(runtimes), 0)
+        finally:
+            sys.meta_path.remove(blocker)
 
 
 class TestScanRuntimes(unittest.TestCase):

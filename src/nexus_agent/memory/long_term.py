@@ -373,16 +373,16 @@ class LongTermMemory(SQLiteStore):
                     )
             except sqlite3.OperationalError:
                 # FTS query syntax error — fall back to LIKE
-                escaped = query.replace('%', '\\%').replace('_', '\\_')
+                escaped = query.replace('\\', r'\\').replace('%', r'\%').replace('_', r'\_')
                 like_query = f"%{escaped}%"
                 if category:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",  # noqa: E501
                         (like_query, category, limit),
                     )
                 else:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                         (like_query, limit),
                     )
 
