@@ -44,11 +44,11 @@ class ImportGraphTool(Tool):
         return {
             "action": {
                 "type": "string",
-                "description": "The action to take: 'build' (generate full graph) or 'find_dependents' (find files depending on target)",  # noqa: E501
+                "description": "The action to take: 'build' (generate full graph) or 'find_dependents' (find files depending on target)",
             },
             "target": {
                 "type": "string",
-                "description": "Module name or file path to check dependents of (required if action='find_dependents')",  # noqa: E501
+                "description": "Module name or file path to check dependents of (required if action='find_dependents')",
                 "required": False,
             },
         }
@@ -98,9 +98,7 @@ class ImportGraphTool(Tool):
         exclude_dirs = {".git", ".venv", "node_modules", "__pycache__", ".nexus-agent"}
 
         try:
-            for file_path in iter_files(
-                self.workspace, exclude_dirs=exclude_dirs, include_hidden=True
-            ):
+            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs):
                 if file_path.name.endswith(".py"):
                     rel_path = file_path.relative_to(self.workspace)
                     mod_name = ".".join(rel_path.with_suffix("").parts)
@@ -141,7 +139,7 @@ class CallGraphTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Generates a call-graph for Python functions inside a file or traces where a function is called."  # noqa: E501
+        return "Generates a call-graph for Python functions inside a file or traces where a function is called."
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -298,7 +296,7 @@ class RenameTool(Tool):
         # Max file size check
         try:
             if target.stat().st_size > self._MAX_FILE_SIZE:
-                return f"Error: File too large for rename ({target.stat().st_size / 1024 / 1024:.1f}MB > 10MB)."  # noqa: E501
+                return f"Error: File too large for rename ({target.stat().st_size / 1024 / 1024:.1f}MB > 10MB)."
         except OSError as e:
             return f"Error: Cannot stat file: {e}"
 
@@ -364,9 +362,9 @@ class RenameTool(Tool):
 
             # Atomic rename
             os.replace(tmp_path, str(target))
-            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."  # noqa: E501
+            return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
-            # fallback to simple regex rename if ast unparse has quirks or is python version specific  # noqa: E501
+            # fallback to simple regex rename if ast unparse has quirks or is python version specific
             try:
                 pattern = r"\b" + re.escape(old_symbol) + r"\b"
                 count = 0
@@ -390,6 +388,6 @@ class RenameTool(Tool):
                     shutil.copy2(target, bak_path)
 
                 os.replace(tmp_path, str(target))
-                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."  # noqa: E501
+                return f"Successfully updated symbol '{old_symbol}' to '{new_symbol}' ({count} regex replacements) in `{file_path}`."
             except (OSError, ValueError, UnicodeEncodeError) as re_err:
                 return f"Failed to rewrite file content: {re_err} (AST error: {e})"
