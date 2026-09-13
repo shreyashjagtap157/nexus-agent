@@ -1,5 +1,6 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +16,33 @@ from nexus_agent.cli.runtimes import (
     format_runtime_list,
     scan_runtimes,
 )
+
+
+class BlockImport:
+    """Context manager to block imports of specific modules."""
+    def __init__(self, *module_names):
+        self.module_names = module_names
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.module_names:
+            raise ImportError(f"No module named '{fullname}'")
+        return None
+
+    def __enter__(self):
+        sys.meta_path.insert(0, self)
+        self.old_modules = {}
+        for mod in self.module_names:
+            if mod in sys.modules:
+                self.old_modules[mod] = sys.modules.pop(mod)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.meta_path.remove(self)
+        for mod, val in self.old_modules.items():
+            sys.modules[mod] = val
+        for mod in self.module_names:
+            if mod not in self.old_modules and mod in sys.modules:
+                del sys.modules[mod]
 
 
 class TestRuntimeInfo(unittest.TestCase):
@@ -208,7 +236,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"openvino": None}):
+        with BlockImport("openvino"):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -223,7 +251,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with BlockImport("jax"):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
