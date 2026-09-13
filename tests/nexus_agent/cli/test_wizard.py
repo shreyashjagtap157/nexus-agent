@@ -18,8 +18,10 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
-    def test_wizard_collects_basic_settings(self):
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_wizard_collects_basic_settings(self, mock_detect_hardware):
         """Verify wizard collects permission, memory, and guardrail modes."""
+        mock_detect_hardware.return_value = {"cpu": "Mock CPU", "ram_total": "16 GB"}
         # Setup mock responses
         # prompt_func: Permission mode, Memory mode, Guardrail level
         self.prompt_mock.side_effect = ["suggest", "session", "strict"]
