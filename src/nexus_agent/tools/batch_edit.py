@@ -149,7 +149,7 @@ class BatchEditTool(Tool):
             for path in completed_paths:
                 summary.append(f"  - Clean replacement completed: {path.relative_to(self.workspace)}")
             return (
-                f"✅ Atomic batch transaction succeeded! Successfully modified {len(completed_paths)} files:\n" +
+                f"✅ Atomic batch transaction succeeded! Successfully modified {len(completed_paths)} files:\n" +  # noqa: E501
                 "\n".join(summary)
             )
 
