@@ -216,7 +216,7 @@ class RepositoryRAGTool(Tool):
                     # Batch insert symbols and chunks
                     if symbol_data:
                         conn.executemany(
-                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
+                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "  # noqa: E501
                             "VALUES (?, ?, ?, ?, ?)",
                             symbol_data
                         )
@@ -300,7 +300,7 @@ class RepositoryRAGTool(Tool):
                     results_map[key] = r
         except sqlite3.OperationalError:
             # Fallback to standard LIKE (escape wildcards to prevent injection)
-            escaped = query.replace("%", r"\%").replace("_", r"\_")
+            escaped = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             like_query = f"%{escaped}%"
             cursor = conn.execute(
                 "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
