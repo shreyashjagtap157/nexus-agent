@@ -300,7 +300,7 @@ class RepositoryRAGTool(Tool):
                     results_map[key] = r
         except sqlite3.OperationalError:
             # Fallback to standard LIKE (escape wildcards to prevent injection)
-            escaped = query.replace("%", r"\%").replace("_", r"\_")
+            escaped = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             like_query = f"%{escaped}%"
             cursor = conn.execute(
                 "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
