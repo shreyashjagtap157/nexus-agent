@@ -216,7 +216,7 @@ class RepositoryRAGTool(Tool):
                     # Batch insert symbols and chunks
                     if symbol_data:
                         conn.executemany(
-                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "
+                            "INSERT INTO code_symbols (file_path, symbol_name, symbol_type, start_line, end_line) "  # noqa: E501
                             "VALUES (?, ?, ?, ?, ?)",
                             symbol_data
                         )
