@@ -185,7 +185,7 @@ def _check_openvino() -> list[RuntimeInfo]:
             available=True, path=openvino.__file__,
             description="Intel OpenVINO toolkit", priority=45,
         ))
-    except ImportError:
+    except (ImportError, ModuleNotFoundError):
         pass
     return runtimes
 
@@ -199,7 +199,7 @@ def _check_tpu() -> list[RuntimeInfo]:
             available=True, path=jax.__file__,
             description="Google JAX runtime", priority=35,
         ))
-    except ImportError:
+    except (ImportError, ModuleNotFoundError):
         pass
     return runtimes
 
