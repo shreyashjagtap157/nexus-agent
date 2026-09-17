@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
@@ -123,7 +124,7 @@ async def security_middleware(request: Request, call_next):
             hits = _rate_limit_store[client_ip]
             _rate_limit_store[client_ip] = [t for t in hits if t > window_start]
             if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX:
-                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})  # noqa: E501
             _rate_limit_store[client_ip].append(now)
 
         # Request body size limit
@@ -245,7 +246,7 @@ async def load_model(req: ModelLoadRequest):
     """Load a model using local engine fine-tuning settings & guardrails."""
     try:
         # Check guardrails first
-        guardrail_level = state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")
+        guardrail_level = state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")  # noqa: E501
         mgr = ModelManager()
         chk = mgr.evaluate_loading_guardrail(req.model_path, guardrail_level)
         if not chk["allowed"]:
@@ -253,12 +254,18 @@ async def load_model(req: ModelLoadRequest):
 
         # Construct loading parameters with dynamic settings
         load_kwargs: dict[str, Any] = {}
-        if req.gpu_layers is not None: load_kwargs["gpu_layers"] = req.gpu_layers
-        if req.context_size is not None: load_kwargs["context_size"] = req.context_size
-        if req.threads is not None: load_kwargs["threads"] = req.threads
-        if req.flash_attention is not None: load_kwargs["flash_attention"] = req.flash_attention
-        if req.unified_kv_cache is not None: load_kwargs["unified_kv_cache"] = req.unified_kv_cache
-        if req.kv_quant_type is not None: load_kwargs["kv_quant_type"] = req.kv_quant_type
+        if req.gpu_layers is not None:
+            load_kwargs["gpu_layers"] = req.gpu_layers
+        if req.context_size is not None:
+            load_kwargs["context_size"] = req.context_size
+        if req.threads is not None:
+            load_kwargs["threads"] = req.threads
+        if req.flash_attention is not None:
+            load_kwargs["flash_attention"] = req.flash_attention
+        if req.unified_kv_cache is not None:
+            load_kwargs["unified_kv_cache"] = req.unified_kv_cache
+        if req.kv_quant_type is not None:
+            load_kwargs["kv_quant_type"] = req.kv_quant_type
 
         # Select and swap active LocalEngine — close previous engine first
         old_engine = state_manager.get("engine")
@@ -381,7 +388,7 @@ async def get_nla(session_id: str):
 async def trigger_debate():
     """Convening parallel code debate reviews."""
     try:
-        diff_res = subprocess.run(["git", "diff", "HEAD"], cwd=str(state_manager.get("workspace")), capture_output=True, text=True, timeout=10)
+        diff_res = subprocess.run(["git", "diff", "HEAD"], cwd=str(state_manager.get("workspace")), capture_output=True, text=True, timeout=10)  # noqa: E501
         changes = diff_res.stdout or "Simulated: refactoring core pipeline structures"
     except (subprocess.TimeoutExpired, OSError, ValueError) as e:
         logger.debug(f"Git diff failed, using simulated changes: {e}")
@@ -421,7 +428,7 @@ async def trigger_verify():
 @app.post("/api/commit")
 async def trigger_commit():
     """Auto-generate conventional commits from staged modifications."""
-    tool = SmartCommitTool(workspace=state_manager.get("workspace"), provider=state_manager.get("engine"))
+    tool = SmartCommitTool(workspace=state_manager.get("workspace"), provider=state_manager.get("engine"))  # noqa: E501
     msg = tool.execute()
     return {"message": msg}
 
@@ -475,7 +482,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 GitTool(state_manager.get("workspace")),
                 WebSearchTool(),
                 WebFetchTool(),
-                TodoWriteTool(persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"),
+                TodoWriteTool(persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"),  # noqa: E501
             ]
             memory_tool = MemoryTool()
             if state_manager.get("memory_manager"):
@@ -491,10 +498,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             agent_cfg = AgentLoopConfig(
                 mode=AgentMode(mode_str),
                 workspace=state_manager.get("workspace"),
-                max_iterations=state_manager.get("config").get("agent", {}).get("max_iterations", 50),
+                max_iterations=state_manager.get("config").get("agent", {}).get("max_iterations", 50),  # noqa: E501
                 temperature=state_manager.get("config").get("agent", {}).get("temperature", 0.1),
                 max_tokens=state_manager.get("config").get("agent", {}).get("max_tokens", 4096),
-                permission_callback=lambda tc: state_manager.get("permission_manager").check_and_approve(
+                permission_callback=lambda tc: state_manager.get("permission_manager").check_and_approve(  # noqa: E501
                     tool_name=tc.name,
                     arguments=tc.arguments,
                 ),
@@ -633,20 +640,20 @@ def start_gui_server(
     state_manager.set("session_manager", SessionManager(data_dir=f"{data_dir_path}/sessions"))
     state_manager.set("permission_manager", PermissionManager())
     state_manager.get("permission_manager").load_from_config(state_manager.get("config"))
-    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))
+    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))  # noqa: E501
 
     # Initialize RuntimeManager
     rm = RuntimeManager(state_manager.get("config"))
     state_manager.set("runtime_manager", rm)
 
     # Preload engine using ProviderFactory
-    active_provider = provider or state_manager.get("config").get("providers", {}).get("active", "local")
+    active_provider = provider or state_manager.get("config").get("providers", {}).get("active", "local")  # noqa: E501
     target_model = model_path
     if active_provider == "local" and not target_model:
         target_model = state_manager.get("config").get("local_model", {}).get("default_model", "")
 
     try:
-        state_manager.set("engine", ProviderFactory.create_provider(active_provider, state_manager.get("config"), target_model))
+        state_manager.set("engine", ProviderFactory.create_provider(active_provider, state_manager.get("config"), target_model))  # noqa: E501
     except (ImportError, ValueError, OSError, RuntimeError) as e:
         logger.warning(f"Failed to preload LLM provider '{active_provider}': {e}")
 

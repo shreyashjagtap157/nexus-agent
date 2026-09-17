@@ -43,7 +43,7 @@ class CustomOpenAIProvider(OpenAIProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": self._model_name, "name": f"{self._model_name} (Custom Endpoint)", "provider": "custom"},
+            {"id": self._model_name, "name": f"{self._model_name} (Custom Endpoint)", "provider": "custom"},  # noqa: E501
         ]
 
     def validate_config(self) -> list[str]:

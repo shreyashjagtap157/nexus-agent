@@ -203,7 +203,7 @@ class NLATelemetry:
 
         for idx, r in enumerate(records, 1):
             lines.extend([
-                f"\n#### Iteration {idx} — Strategy: `{r.strategy_selected}` (Confidence: {r.confidence_score*100:.0f}%)",
+                f"\n#### Iteration {idx} — Strategy: `{r.strategy_selected}` (Confidence: {r.confidence_score*100:.0f}%)",  # noqa: E501
                 f"**Thought Process:** {r.thought_process[:250]}...",
                 f"**Tools Considered:** {', '.join(f'`{t}`' for t in r.tools_considered)}",
             ])
@@ -220,9 +220,9 @@ class NLATelemetry:
         pairs = []
 
         # Redaction patterns for sensitive data
-        _REDACT_PATTERNS = [
-            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+'), r'\1=[REDACTED]'),
-            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*["\']?\s*:\s*["\']?\S+'), r'\1: [REDACTED]'),
+        _redact_patterns = [
+            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+'), r'\1=[REDACTED]'),  # noqa: E501
+            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*["\']?\s*:\s*["\']?\S+'), r'\1: [REDACTED]'),  # noqa: E501
         ]
 
         for idx, r in enumerate(records):
@@ -230,17 +230,17 @@ class NLATelemetry:
             if r.confidence_score > 0.7:
                 # Redact thought process and alternative paths
                 redacted_thought = r.thought_process
-                for pattern, replacement in _REDACT_PATTERNS:
+                for pattern, replacement in _redact_patterns:
                     redacted_thought = pattern.sub(replacement, redacted_thought)
 
                 redacted_alternatives = [
                     pattern.sub(replacement, alt)
                     for alt in r.alternative_paths
-                    for pattern, replacement in _REDACT_PATTERNS
+                    for pattern, replacement in _redact_patterns
                 ]
 
                 pairs.append({
-                    "instruction": f"Formulate alternative strategy paths for solving tasks requiring tools: {', '.join(r.tools_considered)}",
+                    "instruction": f"Formulate alternative strategy paths for solving tasks requiring tools: {', '.join(r.tools_considered)}",  # noqa: E501
                     "thought": redacted_thought,
                     "ideal_strategy": r.strategy_selected,
                     "alternatives": redacted_alternatives,
