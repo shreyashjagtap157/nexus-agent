@@ -2,3 +2,7 @@
 **Vulnerability:** The command isolation sandbox (`Sandbox.execute`) fell back to executing commands via `sh -c` or `powershell` with unparsed string commands when `shlex.split()` failed to parse due to unmatched quotes or syntax errors. This bypasses array-based shell escaping and presents a command injection vulnerability.
 **Learning:** Fallbacks intended to improve developer experience (e.g., executing malformed strings in a subshell) can completely undermine the primary security isolation mechanism if they revert to inherently unsafe functions like `sh -c`.
 **Prevention:** If the safe parsing mechanism (`shlex.split()`) fails to interpret input securely, the operation must be rejected entirely rather than passed on to a less secure evaluation layer.
+## 2025-02-21 - Fix Escape Character Bypass in SQL Wildcard Sanitization
+**Vulnerability:** SQL Wildcard Injection via escape character bypass in parameterized SQLite queries using `LIKE` with user input.
+**Learning:** In parameterized `LIKE` queries, it is common to escape wildcard characters (`%`, `_`) to prevent injection. However, if the backslash escape character `\` itself is not escaped first, an attacker can input `\%` or `\_`, which bypasses the sanitization logic and allows the wildcard to be evaluated. The code was using `query.replace("%", "\\%").replace("_", "\\_")` but omitted `replace("\\", "\\\\")`.
+**Prevention:** Always escape the escape character `\` *before* escaping the SQL wildcard characters (`%` and `_`) to safely construct parameterized `LIKE` queries.
