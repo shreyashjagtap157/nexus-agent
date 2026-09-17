@@ -153,7 +153,7 @@ class ModelManager:
                                             with os.scandir(dpath) as sub_it:
                                                 for sub_entry in sub_it:
                                                     if sub_entry.is_file(follow_symlinks=True):
-                                                        total += sub_entry.stat(follow_symlinks=True).st_size
+                                                        total += sub_entry.stat(follow_symlinks=True).st_size  # noqa: E501
                                                     elif sub_entry.is_dir(follow_symlinks=False):
                                                         total += _dir_size(sub_entry.path)
                                         except OSError:
@@ -173,7 +173,7 @@ class ModelManager:
                                         "format": "onnx",
                                     })
                                 except OSError as e:
-                                    logger.warning(f"Could not read ONNX model directory {parent_path}: {e}")
+                                    logger.warning(f"Could not read ONNX model directory {parent_path}: {e}")  # noqa: E501
                         elif entry.is_dir(follow_symlinks=False):
                             _scan_models(entry.path)
             except OSError:
@@ -244,10 +244,10 @@ class ModelManager:
 
             # Fallback: read GGUF header directly with struct
             import struct
-            GGUF_MAGIC = 0x46554747  # "GGUF" in little-endian
+            gguf_magic = 0x46554747  # "GGUF" in little-endian
             with open(path, "rb") as f:
                 magic = struct.unpack("<I", f.read(4))[0]
-                if magic != GGUF_MAGIC:
+                if magic != gguf_magic:
                     logger.debug(f"Not a valid GGUF file: {path}")
                     return metadata
 
@@ -261,7 +261,7 @@ class ModelManager:
                         key_len = struct.unpack("<Q", f.read(8))[0]
                         key = f.read(key_len).decode("utf-8", errors="replace")
                         val_type = struct.unpack("<I", f.read(4))[0]
-                        # GGUF value types: 0=uint8, 1=int8, 2=uint16, 3=int16, 4=uint32, 5=int32, 6=float32, 7=bool, 8=string, 9-11=arrays
+                        # GGUF value types: 0=uint8, 1=int8, 2=uint16, 3=int16, 4=uint32, 5=int32, 6=float32, 7=bool, 8=string, 9-11=arrays  # noqa: E501
                         if val_type == 8:  # string
                             val_len = struct.unpack("<Q", f.read(8))[0]
                             val = f.read(val_len).decode("utf-8", errors="replace")
@@ -374,12 +374,12 @@ class ModelManager:
                 cmd = [
                     "powershell", "-NoProfile", "-Command",
                     "Get-CimInstance Win32_PnPSignedDevice | "
-                    "Where-Object { $_.FriendlyName -like '*NPU*' -or $_.FriendlyName -like '*Neural*' -or $_.FriendlyName -like '*Intel AI Boost*' -or $_.FriendlyName -like '*Hexagon*' } | "
+                    "Where-Object { $_.FriendlyName -like '*NPU*' -or $_.FriendlyName -like '*Neural*' -or $_.FriendlyName -like '*Intel AI Boost*' -or $_.FriendlyName -like '*Hexagon*' } | "  # noqa: E501
                     "Select-Object -ExpandProperty FriendlyName"
                 ]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                 if result.returncode == 0 and result.stdout.strip():
-                    npu_names = [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
+                    npu_names = [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]  # noqa: E501
                     if npu_names:
                         hw["npu"] = npu_names[0]
             except (OSError, AttributeError):
@@ -464,7 +464,7 @@ class ModelManager:
         fitting_models.sort(key=score_model, reverse=True)
         return fitting_models[0]["path"]
 
-    def evaluate_loading_guardrail(self, model_path: str, guardrail_level: str = "balanced") -> dict[str, Any]:
+    def evaluate_loading_guardrail(self, model_path: str, guardrail_level: str = "balanced") -> dict[str, Any]:  # noqa: E501
         """Evaluate memory requirements of a model against available system RAM/VRAM.
 
         Args:
@@ -506,7 +506,7 @@ class ModelManager:
         if vram_bytes > 0:
             max_allowed_bytes = int((vram_bytes + ram_total) * limit_pct)
 
-        logger.info(f"Guardrail check: model_size={_format_size(model_size)}, max_allowed={_format_size(max_allowed_bytes)}")
+        logger.info(f"Guardrail check: model_size={_format_size(model_size)}, max_allowed={_format_size(max_allowed_bytes)}")  # noqa: E501
 
         if model_size > max_allowed_bytes:
             msg = (

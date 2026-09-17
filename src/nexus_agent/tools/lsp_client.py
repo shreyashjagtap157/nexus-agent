@@ -138,7 +138,7 @@ class LSPClientTool(Tool):
             return self._find_definition(resolved_path, content, line, character)
         if action == "hover":
             return self._get_hover_info(resolved_path, content, line, character)
-        return f"Action '{action}' is not supported by the local fallback (no LSP server installed)."
+        return f"Action '{action}' is not supported by the local fallback (no LSP server installed)."  # noqa: E501
 
     def _dispatch_lsp(
         self,
@@ -191,7 +191,7 @@ class LSPClientTool(Tool):
         if action == "references":
             result = client.request(
                 "textDocument/references",
-                {"textDocument": text_doc, "position": position, "context": {"includeDeclaration": True}},
+                {"textDocument": text_doc, "position": position, "context": {"includeDeclaration": True}},  # noqa: E501
             )
             return self._render_locations(path, result, kind="Reference")
 
@@ -216,7 +216,7 @@ class LSPClientTool(Tool):
             )
             if not result:
                 return "No formatting changes reported by the language server."
-            return "Formatting edits available from the server. Apply via edit_file with the returned WorkspaceEdit."
+            return "Formatting edits available from the server. Apply via edit_file with the returned WorkspaceEdit."  # noqa: E501
 
         if action == "rename":
             if not new_name:
@@ -247,7 +247,7 @@ class LSPClientTool(Tool):
             source = d.get("source", "")
             code = d.get("code", "")
             tag = f" [{source}/{code}]" if source or code else ""
-            lines.append(f"  [{sev_label}] line {line_no}, col {col_no}{tag}: {d.get('message', '').strip()}")
+            lines.append(f"  [{sev_label}] line {line_no}, col {col_no}{tag}: {d.get('message', '').strip()}")  # noqa: E501
         return "\n".join(lines)
 
     @staticmethod
@@ -297,7 +297,7 @@ class LSPClientTool(Tool):
                     continue
                 name = item.get("name", "?")
                 kind = item.get("kind", 0)
-                r = item.get("location", {}).get("range", {}) if "location" in item else item.get("range", {})
+                r = item.get("location", {}).get("range", {}) if "location" in item else item.get("range", {})  # noqa: E501
                 start = (r or {}).get("start", {}) or {}
                 line_no = int(start.get("line", 0)) + 1
                 lines.append(f"  {'  ' * depth}{name}  (kind {kind})  line {line_no}")
@@ -307,7 +307,7 @@ class LSPClientTool(Tool):
             return lines
 
         body = flatten(symbols)
-        return "### Document symbols:\n" + "\n".join(body) if body else "No symbols reported by the language server."
+        return "### Document symbols:\n" + "\n".join(body) if body else "No symbols reported by the language server."  # noqa: E501
 
     @staticmethod
     def _render_completions(result: Any) -> str:
@@ -350,7 +350,7 @@ class LSPClientTool(Tool):
             try:
                 # Compile to check syntax error
                 compile(content, str(path), "exec")
-                return f"✅ Diagnostics OK! No syntax compile errors found in Python file: {path.name}"
+                return f"✅ Diagnostics OK! No syntax compile errors found in Python file: {path.name}"  # noqa: E501
             except SyntaxError as se:
                 return (
                     f"❌ SYNTAX DIAGNOSTICS FAILURE in {path.name}:\n"
@@ -418,14 +418,14 @@ class LSPClientTool(Tool):
                         stack.append((char, idx + 1, char_idx))
                     elif char in bracket_map.keys():
                         if not stack:
-                            return f"❌ SYNTAX ERROR: Unexpected closing bracket '{char}' at line {idx + 1}, column {char_idx + 1}"
+                            return f"❌ SYNTAX ERROR: Unexpected closing bracket '{char}' at line {idx + 1}, column {char_idx + 1}"  # noqa: E501
                         last_char, last_line, last_col = stack.pop()
                         if last_char != bracket_map[char]:
-                            return f"❌ SYNTAX ERROR: Unmatched brackets: '{last_char}' opened at line {last_line} but closed with '{char}' at line {idx + 1}"
+                            return f"❌ SYNTAX ERROR: Unmatched brackets: '{last_char}' opened at line {last_line} but closed with '{char}' at line {idx + 1}"  # noqa: E501
                     prev_char = char
             if stack:
                 last_char, last_line, last_col = stack.pop()
-                return f"❌ SYNTAX ERROR: Unclosed bracket '{last_char}' opened at line {last_line}, column {last_col + 1}"
+                return f"❌ SYNTAX ERROR: Unclosed bracket '{last_char}' opened at line {last_line}, column {last_col + 1}"  # noqa: E501
             return f"✅ Diagnostics OK! Basic structural linter checks passed in file: {path.name}"
 
         return f"Diagnostics ignored for format: {path.suffix}"

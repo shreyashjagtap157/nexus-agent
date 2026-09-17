@@ -196,13 +196,13 @@ class AgentLoop:
     }
 
     # System prompt that defines the agent's behavior
-    SYSTEM_PROMPT = """You are NexusAgent, an expert AI coding assistant running locally on the user's machine.
+    SYSTEM_PROMPT = """You are NexusAgent, an expert AI coding assistant running locally on the user's machine.  # noqa: E501
 
 You have access to the user's filesystem and can read, write, and execute code directly.
-You operate in an agentic loop: you can use tools to gather information, make changes, and verify results.
+You operate in an agentic loop: you can use tools to gather information, make changes, and verify results.  # noqa: E501
 
 ## Core Principles
-1. **Gather Context First**: Before making changes, understand the codebase structure and relevant files.
+1. **Gather Context First**: Before making changes, understand the codebase structure and relevant files.  # noqa: E501
 2. **Plan Before Acting**: For complex tasks, create a plan and explain your approach.
 3. **Make Precise Changes**: Use targeted edits rather than rewriting entire files.
 4. **Verify Results**: After making changes, verify they work (run tests, check syntax, etc.).
@@ -264,10 +264,10 @@ Current workspace: {workspace}
 
         effort_map = self.EFFORT_CONFIG.get(self.effort_level, self.EFFORT_CONFIG["medium"])
         # Cap the requested effort by the detected tier's max_iterations
-        tier_limit = self.EFFORT_CONFIG.get(detected_tier, self.EFFORT_CONFIG["medium"])["max_iterations"]
+        tier_limit = self.EFFORT_CONFIG.get(detected_tier, self.EFFORT_CONFIG["medium"])["max_iterations"]  # noqa: E501
         self.max_iterations = min(effort_map["max_iterations"], tier_limit)
         self.temperature = effort_map["temperature"]
-        self.max_tokens = min(effort_map["max_tokens"], cfg.max_tokens) if cfg.max_tokens != self.max_tokens else effort_map["max_tokens"]
+        self.max_tokens = min(effort_map["max_tokens"], cfg.max_tokens) if cfg.max_tokens != self.max_tokens else effort_map["max_tokens"]  # noqa: E501
         self._reflection_enabled = effort_map["reflection"]
         self._multi_pass_enabled = effort_map.get("multi_pass", False)
 
@@ -336,14 +336,14 @@ Current workspace: {workspace}
             logger.debug(f"ProjectContextLoader unavailable: {e}")
 
         if self.goal:
-            prompt += f"\n\n## ACTIVE OBJECTIVE\nYour current Hermes goal is: **{self.goal}**\nConcentrate strictly on achieving this objective. Avoid out-of-scope edits."
+            prompt += f"\n\n## ACTIVE OBJECTIVE\nYour current Hermes goal is: **{self.goal}**\nConcentrate strictly on achieving this objective. Avoid out-of-scope edits."  # noqa: E501
 
         if self.mode == AgentMode.PLAN:
-            prompt += "\n\n## Mode: PLAN\nYou are in read-only planning mode. Analyze and plan but DO NOT make any file changes."
+            prompt += "\n\n## Mode: PLAN\nYou are in read-only planning mode. Analyze and plan but DO NOT make any file changes."  # noqa: E501
         elif self.mode == AgentMode.BUILD:
-            prompt += "\n\n## Mode: BUILD\nYou have full read/write access. Execute the plan and make necessary changes."
+            prompt += "\n\n## Mode: BUILD\nYou have full read/write access. Execute the plan and make necessary changes."  # noqa: E501
         elif self.mode == AgentMode.REVIEW:
-            prompt += "\n\n## Mode: REVIEW\nYou are reviewing code. Provide analysis, suggestions, and identify issues."
+            prompt += "\n\n## Mode: REVIEW\nYou are reviewing code. Provide analysis, suggestions, and identify issues."  # noqa: E501
 
         if self.system_prompt_extra:
             prompt += f"\n\n{self.system_prompt_extra}"
@@ -515,7 +515,7 @@ Current workspace: {workspace}
 
         truncated_input = user_input[:self.max_input_chars]
         if self._multi_pass_enabled:
-            planning_prompt = f"[Task]\n{truncated_input}\n\n[Plan-First]\nBefore starting, create a clear step-by-step plan for how you will approach this task. Break it down into phases: context gathering, implementation, verification. Then execute each phase."
+            planning_prompt = f"[Task]\n{truncated_input}\n\n[Plan-First]\nBefore starting, create a clear step-by-step plan for how you will approach this task. Break it down into phases: context gathering, implementation, verification. Then execute each phase."  # noqa: E501
             self.messages.append(Message(role=Role.USER, content=planning_prompt))
         else:
             self.messages.append(Message(role=Role.USER, content=truncated_input))
@@ -531,8 +531,8 @@ Current workspace: {workspace}
             self.nla_telemetry.log_iteration(
                 thought_process=response.content or "No thought content",
                 strategy_selected="tool_calling" if response.has_tool_calls else "finish",
-                tools_considered=[tc.name for tc in response.tool_calls] if response.has_tool_calls else [],
-                confidence_score=self.DEFAULT_TOOL_CONFIDENCE if response.has_tool_calls else self.DEFAULT_FINISH_CONFIDENCE,
+                tools_considered=[tc.name for tc in response.tool_calls] if response.has_tool_calls else [],  # noqa: E501
+                confidence_score=self.DEFAULT_TOOL_CONFIDENCE if response.has_tool_calls else self.DEFAULT_FINISH_CONFIDENCE,  # noqa: E501
                 alternative_paths=[]
             )
         except (OSError, ValueError) as telemetry_err:
@@ -573,9 +573,9 @@ Current workspace: {workspace}
 
         with self._lock:
             if len(self.messages) > self.WARN_MESSAGE_THRESHOLD:
-                logger.warning(f"Conversation has {len(self.messages)} messages — consider /compact")
+                logger.warning(f"Conversation has {len(self.messages)} messages — consider /compact")  # noqa: E501
 
-    def _handle_reflection(self, user_input: str, response: LLMResponse) -> tuple[bool, list[AgentEvent]]:
+    def _handle_reflection(self, user_input: str, response: LLMResponse) -> tuple[bool, list[AgentEvent]]:  # noqa: E501
         if not self._reflection_enabled or not response.content:
             return False, []
         events = [self._emit_event("thinking", "Performing high-effort reflection pass...")]
@@ -584,7 +584,7 @@ Current workspace: {workspace}
             agent_output=response.content
         )
         if not critique.approved:
-            events.append(self._emit_event("thinking", f"Reflection failed (Score: {critique.score}). Injecting self-correction prompt..."))
+            events.append(self._emit_event("thinking", f"Reflection failed (Score: {critique.score}). Injecting self-correction prompt..."))  # noqa: E501
             with self._lock:
                 self.messages.append(Message(
                     role=Role.USER,
@@ -787,7 +787,7 @@ Current workspace: {workspace}
                 yield from self._process_tool_calls(self._stream_tool_calls)
                 continue
 
-            rework_needed, reflection_events = self._handle_reflection(truncated_input, type('LLMResponse', (), {
+            rework_needed, reflection_events = self._handle_reflection(truncated_input, type('LLMResponse', (), {  # noqa: E501
                 'content': self._stream_content,
                 'has_tool_calls': False,
                 'tool_calls': [],
