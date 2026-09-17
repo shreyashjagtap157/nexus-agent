@@ -96,7 +96,7 @@ class ImportGraphTool(Tool):
 
         try:
             from nexus_agent.utils.fs import iter_files
-            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):
+            for file_path in iter_files(self.workspace, exclude_dirs=exclude_dirs, include_hidden=True):  # noqa: E501
                 if file_path.suffix == ".py":
                     rel_path = file_path.relative_to(self.workspace)
                     mod_name = ".".join(rel_path.with_suffix("").parts)
