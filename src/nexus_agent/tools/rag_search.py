@@ -251,9 +251,10 @@ class RepositoryRAGTool(Tool):
         # 1. Symbol Match Boost (Hybrid Retrieval)
         try:
             # Check exact or partial symbol matches
+            escaped_sym_query = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             symbol_cursor = conn.execute(
-                "SELECT * FROM code_symbols WHERE symbol_name LIKE ? LIMIT ?",
-                (f"%{query}%", max_results)
+                "SELECT * FROM code_symbols WHERE symbol_name LIKE ? ESCAPE '\\' LIMIT ?",
+                (f"%{escaped_sym_query}%", max_results)
             )
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
@@ -300,7 +301,7 @@ class RepositoryRAGTool(Tool):
                     results_map[key] = r
         except sqlite3.OperationalError:
             # Fallback to standard LIKE (escape wildcards to prevent injection)
-            escaped = query.replace("%", r"\%").replace("_", r"\_")
+            escaped = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             like_query = f"%{escaped}%"
             cursor = conn.execute(
                 "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",

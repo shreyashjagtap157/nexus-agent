@@ -94,7 +94,7 @@ class EpisodicMemory(SQLiteStore):
                     (safe_query, limit),
                 )
             except sqlite3.OperationalError:
-                escaped = query.replace('%', '\\%').replace('_', '\\_')
+                escaped = query.replace("\\", r"\\").replace('%', '\\%').replace('_', '\\_')
                 cursor = conn.execute(
                     "SELECT *, 0 as rank FROM episodes WHERE summary LIKE ? ESCAPE '\\' LIMIT ?",
                     (f"%{escaped}%", limit),
@@ -118,5 +118,3 @@ class EpisodicMemory(SQLiteStore):
                 (limit,),
             )
             return [dict(row) for row in cursor]
-
-
