@@ -2,7 +2,8 @@
 Autonomous DevOps Pipeline — Local CI/CD static scanning, vulnerability audits, and test suites.
 
 Enables the agent to create git checkpoints, auto-detect local test frameworks, run linters,
-parse stack traces, scan for secrets, run dependency vulnerability audits, and self-heal test failures.  # noqa: E501
+parse stack traces, scan for secrets, run dependency vulnerability audits,
+and self-heal test failures.
 """
 
 from __future__ import annotations

@@ -354,7 +354,7 @@ class RenameTool(Tool):
             os.replace(tmp_path, str(target))
             return f"Successfully renamed '{old_symbol}' to '{new_symbol}' ({replacements} replacements) in `{file_path}`."  # noqa: E501
         except (SyntaxError, OSError, ValueError, UnicodeDecodeError) as e:
-            # fallback to simple regex rename if ast unparse has quirks or is python version specific
+            # fallback to simple regex rename if ast unparse has quirks or is python version specific  # noqa: E501
             try:
                 pattern = r'\b' + re.escape(old_symbol) + r'\b'
                 count = 0
