@@ -22,7 +22,7 @@ def iter_files(search_path: Path, exclude_dirs: set[str] | None = None, include_
                     if entry.is_dir(follow_symlinks=False):
                         # Skip hidden directories (except .env, .gitignore)
                         if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:  # noqa: E501
-                            continue
+                            continue  # noqa: E501
                         if entry.name in DEFAULT_SKIP_DIRS:
                             continue
                         if exclude_dirs and entry.name in exclude_dirs:
