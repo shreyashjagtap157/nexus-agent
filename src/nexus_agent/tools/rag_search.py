@@ -62,7 +62,7 @@ class RepositoryRAGTool(Tool):
             "reindex": {
                 "type": "boolean",
                 "description": "Force scan and rebuild of the repository FTS5 index before querying.",  # noqa: E501
-            }  # noqa: E501
+            }
         }
 
     @property
@@ -135,7 +135,7 @@ class RepositoryRAGTool(Tool):
 
         exclude_dirs = {".git", "node_modules", "venv", ".venv", "__pycache__", "build", "dist", ".nexus-agent"}  # noqa: E501
         exclude_extensions = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".exe", ".dll", ".pyc"}  # noqa: E501
-  # noqa: E501
+
         # Regex symbol patterns
         py_class_pat = re.compile(r'^\s*class\s+(\w+)')
         py_def_pat = re.compile(r'^\s*(?:async\s+)?def\s+(\w+)')
@@ -196,7 +196,7 @@ class RepositoryRAGTool(Tool):
 
                     if symbol_name and symbol_type:
                         symbol_data.append((str(rel_path), symbol_name, symbol_type, line_num, line_num + 5))  # noqa: E501
-  # noqa: E501
+
                 chunk_lines_size = 35
                 overlap_lines_size = 5
 
@@ -322,7 +322,7 @@ class RepositoryRAGTool(Tool):
             boost_header = f" {r['symbol_info']}" if r.get("symbol_info") else ""
             results.append(
                 f"### File: {r['file_path']} (Lines {r['start_line']}-{r['end_line']}){boost_header}\n"  # noqa: E501
-                f"```\n{r['content']}\n```\n"  # noqa: E501
+                f"```\n{r['content']}\n```\n"
             )
 
         if not results:
