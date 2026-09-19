@@ -12,10 +12,10 @@ import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-from nexus_agent.utils.fs import iter_files
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
 
