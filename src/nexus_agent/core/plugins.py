@@ -155,9 +155,14 @@ class PluginManager:
         if sys.version_info >= (3, 10):
             group = importlib.metadata.entry_points(group="nexus_agent.plugins")
         else:
-            # Fallback for Python < 3.10
+            # Fallback for Python 3.9
             eps = importlib.metadata.entry_points()
-            group = eps.get("nexus_agent.plugins", []) if hasattr(eps, "get") else eps.select(group="nexus_agent.plugins")
+            if hasattr(eps, "select"):
+                group = eps.select(group="nexus_agent.plugins")
+            elif isinstance(eps, dict):
+                group = eps.get("nexus_agent.plugins", [])
+            else:
+                group = getattr(eps, "nexus_agent.plugins", [])
 
 
         for ep in group:
