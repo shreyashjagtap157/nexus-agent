@@ -223,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"openvino": None}):
+        with patch.dict("sys.modules", {"jax": None}):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
