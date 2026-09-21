@@ -2,20 +2,24 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-
 # Define the skip_dirs globally as a frozenset to avoid recreating it on every recursive call.
 # This yields ~30% faster traversal times in deep directory trees by avoiding memory allocations.
-SKIP_DIRS = frozenset({
-    "node_modules",
-    "__pycache__",
-    ".git",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-})
+SKIP_DIRS = frozenset(
+    {
+        "node_modules",
+        "__pycache__",
+        ".git",
+        "venv",
+        ".venv",
+        "dist",
+        "build",
+    }
+)
 
-def iter_files(search_path: Path, exclude_dirs: set[str] = None, include_hidden: bool = False) -> Iterator[Path]:
+
+def iter_files(
+    search_path: Path, exclude_dirs: set[str] | None = None, include_hidden: bool = False
+) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
 
     # Pre-compute combined skip list to avoid recalculating in inner loop
@@ -30,7 +34,11 @@ def iter_files(search_path: Path, exclude_dirs: set[str] = None, include_hidden:
                     try:
                         if entry.is_dir(follow_symlinks=False):
                             # Skip hidden directories if not included
-                            if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                            if (
+                                not include_hidden
+                                and entry.name.startswith(".")
+                                and entry.name not in {".env", ".gitignore"}
+                            ):
                                 continue
                             if entry.name in all_skip:
                                 continue
