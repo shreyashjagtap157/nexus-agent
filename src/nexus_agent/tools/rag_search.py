@@ -303,7 +303,7 @@ class RepositoryRAGTool(Tool):
             escaped = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             like_query = f"%{escaped}%"
             cursor = conn.execute(
-                "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
+                "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                 (like_query, max_results),
             )
             for row in cursor:
