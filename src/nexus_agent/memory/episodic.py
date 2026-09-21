@@ -118,5 +118,3 @@ class EpisodicMemory(SQLiteStore):
                 (limit,),
             )
             return [dict(row) for row in cursor]
-
-

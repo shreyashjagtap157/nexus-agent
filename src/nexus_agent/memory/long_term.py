@@ -517,5 +517,3 @@ class LongTermMemory(SQLiteStore):
                 "categories": categories,
                 "db_path": str(self.db_path),
             }
-
-
