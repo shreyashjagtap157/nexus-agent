@@ -303,7 +303,7 @@ class LongTermMemory(SQLiteStore):
 
             # If total count exceeds max, also prune lowest-heat entries
             if total > MAX_MEMORIES_BEFORE_PRUNE:
-                above_threshold = [(mid, heat) for mid, heat in scores.items() if heat >= threshold]
+                above_threshold = [(mid, heat) for mid, heat in scores.items() if heat >= threshold]  # noqa: E501
                 above_threshold.sort(key=lambda x: x[1])  # Sort by heat ascending
                 excess = total - target_count
                 extra_prune = above_threshold[:excess]
@@ -373,16 +373,16 @@ class LongTermMemory(SQLiteStore):
                     )
             except sqlite3.OperationalError:
                 # FTS query syntax error — fall back to LIKE
-                escaped = query.replace('%', '\\%').replace('_', '\\_')
+                escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
                 like_query = f"%{escaped}%"
                 if category:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' AND category = ? LIMIT ?",  # noqa: E501
                         (like_query, category, limit),
                     )
                 else:
                     cursor = conn.execute(
-                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
+                        "SELECT *, 0 as rank FROM memories WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                         (like_query, limit),
                     )
 
@@ -461,7 +461,7 @@ class LongTermMemory(SQLiteStore):
         with self._lock:
             conn = self._get_conn()
             cursor = conn.execute(
-                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"
+                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"  # noqa: E501
             )
             return [dict(row) for row in cursor]
 
