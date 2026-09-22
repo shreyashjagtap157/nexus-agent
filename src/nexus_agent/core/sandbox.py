@@ -253,7 +253,8 @@ class Sandbox:
                 return self.workspace
             # Enforce workspace boundary on all platforms
             workspace_resolved = self.workspace.resolve()
-            if not str(resolved).startswith(str(workspace_resolved) + os.sep) and resolved != workspace_resolved:
+            if not str(resolved).startswith(str(workspace_resolved) + os.sep) and \
+               resolved != workspace_resolved:
                 logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")
                 return self.workspace
             return resolved
@@ -301,7 +302,7 @@ class Sandbox:
         # Build environment
         exec_env = os.environ.copy()
         if env:
-            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors
+            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors  # noqa: E501
             for k, v in dict(env).items():
                 k_clean = str(k).strip()
                 v_clean = str(v).strip()
