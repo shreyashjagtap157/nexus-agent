@@ -69,7 +69,9 @@ class MiscCommandsMixin:
 
     def _cmd_desktop(self, args: str):
         """Open workspace in default IDE/editor."""
-        import subprocess, sys, os
+        import os
+        import subprocess
+        import sys
         editor = os.environ.get("EDITOR") or os.environ.get("VISUAL")
         if editor:
             try:
