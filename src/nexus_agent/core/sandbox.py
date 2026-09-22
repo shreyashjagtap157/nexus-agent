@@ -332,27 +332,15 @@ class Sandbox:
                     risk_level=risk,
                 )
 
-            # Use direct execution on both Unix and Windows when parsing succeeds
-            if sys.platform == "win32":
-                # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
-                cmd_args = ["cmd.exe", "/c"] + parsed_args
-                proc = subprocess.run(
-                    cmd_args,
-                    capture_output=True,
-                    text=True,
-                    cwd=str(work_dir),
-                    env=exec_env,
-                    timeout=effective_timeout,
-                )
-            else:
-                proc = subprocess.run(
-                    parsed_args,
-                    capture_output=True,
-                    text=True,
-                    cwd=str(work_dir),
-                    env=exec_env,
-                    timeout=effective_timeout,
-                )
+            # Use direct execution when parsing succeeds
+            proc = subprocess.run(
+                parsed_args,
+                capture_output=True,
+                text=True,
+                cwd=str(work_dir),
+                env=exec_env,
+                timeout=effective_timeout,
+            )
 
             duration = time.time() - start_time
 
