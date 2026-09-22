@@ -255,7 +255,7 @@ class Sandbox:
             workspace_resolved = self.workspace.resolve()
             if not str(resolved).startswith(str(workspace_resolved) + os.sep) and \
                resolved != workspace_resolved:
-                logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")
+                logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")  # noqa: E501
                 return self.workspace
             return resolved
         except (OSError, ValueError) as e:
@@ -327,7 +327,7 @@ class Sandbox:
                     command=command,
                     returncode=-1,
                     stdout="",
-                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",
+                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",  # noqa: E501
                     duration=time.time() - start_time,
                     was_approved=False,
                     risk_level=risk,
