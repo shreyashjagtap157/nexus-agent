@@ -208,9 +208,31 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        # We modify sys.modules directly without patch to handle cases where openvino
+        # is already loaded by another test or by the full test suite.
+        import sys
+
+        # Save original state
+        original_openvino = sys.modules.get('openvino')
+        original_openvino_telemetry = sys.modules.get('openvino_telemetry')
+
+        # Override to trigger ImportError or mock missing module
+        sys.modules['openvino'] = None
+
+        try:
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
+        finally:
+            # Restore state
+            if original_openvino is not None:
+                sys.modules['openvino'] = original_openvino
+            else:
+                sys.modules.pop('openvino', None)
+
+            if original_openvino_telemetry is not None:
+                sys.modules['openvino_telemetry'] = original_openvino_telemetry
+            else:
+                sys.modules.pop('openvino_telemetry', None)
 
 
 class TestCheckTpu(unittest.TestCase):

@@ -253,8 +253,9 @@ class Sandbox:
                 return self.workspace
             # Enforce workspace boundary on all platforms
             workspace_resolved = self.workspace.resolve()
-            if not str(resolved).startswith(str(workspace_resolved) + os.sep) and resolved != workspace_resolved:
-                logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")
+            if not str(resolved).startswith(str(workspace_resolved) + os.sep) and \
+               resolved != workspace_resolved:
+                logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")  # noqa: E501
                 return self.workspace
             return resolved
         except (OSError, ValueError) as e:
@@ -301,7 +302,7 @@ class Sandbox:
         # Build environment
         exec_env = os.environ.copy()
         if env:
-            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors
+            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors  # noqa: E501
             for k, v in dict(env).items():
                 k_clean = str(k).strip()
                 v_clean = str(v).strip()
@@ -326,33 +327,21 @@ class Sandbox:
                     command=command,
                     returncode=-1,
                     stdout="",
-                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",
+                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",  # noqa: E501
                     duration=time.time() - start_time,
                     was_approved=False,
                     risk_level=risk,
                 )
 
-            # Use direct execution on both Unix and Windows when parsing succeeds
-            if sys.platform == "win32":
-                # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
-                cmd_args = ["cmd.exe", "/c"] + parsed_args
-                proc = subprocess.run(
-                    cmd_args,
-                    capture_output=True,
-                    text=True,
-                    cwd=str(work_dir),
-                    env=exec_env,
-                    timeout=effective_timeout,
-                )
-            else:
-                proc = subprocess.run(
-                    parsed_args,
-                    capture_output=True,
-                    text=True,
-                    cwd=str(work_dir),
-                    env=exec_env,
-                    timeout=effective_timeout,
-                )
+            # Use direct execution when parsing succeeds
+            proc = subprocess.run(
+                parsed_args,
+                capture_output=True,
+                text=True,
+                cwd=str(work_dir),
+                env=exec_env,
+                timeout=effective_timeout,
+            )
 
             duration = time.time() - start_time
 
