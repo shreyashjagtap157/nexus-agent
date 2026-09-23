@@ -115,7 +115,7 @@ class SessionStorage(SQLiteStore):
             now = time.time()
             conn = self._get_conn()
             conn.execute(
-                "INSERT OR IGNORE INTO sessions (id, title, model, provider, workspace, mode, created_at, updated_at, metadata) "  # noqa: E501
+                "INSERT OR IGNORE INTO sessions (id, title, model, provider, workspace, mode, created_at, updated_at, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (session_id, title, model, provider, workspace, mode, now, now,
                  json.dumps(metadata or {})),
@@ -151,7 +151,7 @@ class SessionStorage(SQLiteStore):
         with self._lock:
             conn = self._get_conn()
             cursor = conn.execute(
-                "INSERT INTO messages (session_id, role, type, content, tool_calls, tool_call_id, name, created_at, metadata) "  # noqa: E501
+                "INSERT INTO messages (session_id, role, type, content, tool_calls, tool_call_id, name, created_at, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (session_id, role, type, content,
                  json.dumps(tool_calls) if tool_calls is not None else None,
@@ -159,7 +159,7 @@ class SessionStorage(SQLiteStore):
                  json.dumps(metadata or {})),
             )
             conn.execute(
-                "UPDATE sessions SET updated_at = ?, message_count = message_count + 1 WHERE id = ?",  # noqa: E501
+                "UPDATE sessions SET updated_at = ?, message_count = message_count + 1 WHERE id = ?",
                 (time.time(), session_id),
             )
             conn.commit()

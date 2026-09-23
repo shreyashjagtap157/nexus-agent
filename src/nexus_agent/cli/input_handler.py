@@ -195,7 +195,7 @@ class InputHandlerMixin:
                 if not ch:
                     continue
 
-                # Translate ANSI VT escape sequence arrow keys (on Windows/etc.) into standard scan codes  # noqa: E501
+                # Translate ANSI VT escape sequence arrow keys (on Windows/etc.) into standard scan codes
                 if ch == b"\x1b" and self._kbhit():
                     next_ch = self._read_byte()
                     if next_ch == b"[":
@@ -420,7 +420,7 @@ class InputHandlerMixin:
                     elif ext == b"P":
                         if self._drawer_active:
                             if self._sub_agents:
-                                self._drawer_idx = min(len(self._sub_agents) - 1, self._drawer_idx + 1)  # noqa: E501
+                                self._drawer_idx = min(len(self._sub_agents) - 1, self._drawer_idx + 1)
                                 self._render_footer()
                         elif cmd_menu_visible and cmd_menu_filtered:
                             cmd_menu_idx = min(len(cmd_menu_filtered) - 1, cmd_menu_idx + 1)
@@ -488,7 +488,7 @@ class InputHandlerMixin:
                                 ext2 = self._read_byte()
                                 if ext2 == b"2":
                                     if self._kbhit():
-                                        extra = self._read_byte() + self._read_byte() + self._read_byte()  # noqa: E501
+                                        extra = self._read_byte() + self._read_byte() + self._read_byte()
                                         if extra == b"00~":
                                             paste_buffer = b""
                                             while True:
@@ -499,11 +499,11 @@ class InputHandlerMixin:
                                                             p_ext1 = self._read_byte()
                                                             if p_ext1 == b"[":
                                                                 if self._kbhit():
-                                                                    p_ext2 = self._read_byte() + self._read_byte() + self._read_byte() + self._read_byte()  # noqa: E501
+                                                                    p_ext2 = self._read_byte() + self._read_byte() + self._read_byte() + self._read_byte()
                                                                     if p_ext2 == b"201~":
                                                                         break
                                                                     else:
-                                                                        paste_buffer += b"\x1b[" + p_ext2  # noqa: E501
+                                                                        paste_buffer += b"\x1b[" + p_ext2
                                                             else:
                                                                 paste_buffer += b"\x1b" + p_ext1
                                                     else:
@@ -513,7 +513,7 @@ class InputHandlerMixin:
                                             try:
                                                 paste = paste_buffer.decode("utf-8")
                                             except UnicodeDecodeError:
-                                                paste = paste_buffer.decode("latin-1", errors="replace")  # noqa: E501
+                                                paste = paste_buffer.decode("latin-1", errors="replace")
                                             paste = paste.replace('\r\n', '\n').replace('\r', '\n')
                                             value = value[:pos] + paste + value[pos:]
                                             pos += len(paste)
@@ -652,9 +652,9 @@ class InputHandlerMixin:
                         line = f"\033[7m{line}\033[0m"
                     sys.stdout.write(f"\033[{d_start + 2 + i};1H\033[2K{line[:W]}")
                 nav_row = d_start + 2 + d_count
-                sys.stdout.write(f"\033[{nav_row};1H\033[2K  \033[2m↑↓ navigate · Enter use · Esc close\033[0m")  # noqa: E501
+                sys.stdout.write(f"\033[{nav_row};1H\033[2K  \033[2m↑↓ navigate · Enter use · Esc close\033[0m")
             else:
-                sys.stdout.write(f"\033[{d_start + 2};1H\033[2K  \033[2mNo sub-agents configured.\033[0m")  # noqa: E501
+                sys.stdout.write(f"\033[{d_start + 2};1H\033[2K  \033[2mNo sub-agents configured.\033[0m")
 
         sys.stdout.write(f"\033[{H - drawer_h};1H\033[2K{footer}")
         sys.stdout.write("\033[u")

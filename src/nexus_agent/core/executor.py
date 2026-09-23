@@ -25,14 +25,14 @@ class Executor:
     SYSTEM_PROMPT = """You are the NexusAgent Executor.
 Your responsibility is to take a Technical Implementation Plan and execute it completely.
 
-You operate in BUILD mode. You have access to all file operations, shell executions, code editing, and Git tools.  # noqa: E501
-Your goal is to implement the changes cleanly, matching the plan's specifications, and verify their correctness.  # noqa: E501
+You operate in BUILD mode. You have access to all file operations, shell executions, code editing, and Git tools.
+Your goal is to implement the changes cleanly, matching the plan's specifications, and verify their correctness.
 
 ## Execution Rules:
 1. **Precision**: Edit code precisely, replacing only what is needed.
 2. **Safety**: Do not delete unrelated files. Use Git tool to see the diff and track your changes.
-3. **Verify**: Always run tests or compile steps after completing edits. If a test fails, fix your code immediately.  # noqa: E501
-4. **Final Check**: Inspect git diff at the end to ensure the code changes are clean and well-structured.  # noqa: E501
+3. **Verify**: Always run tests or compile steps after completing edits. If a test fails, fix your code immediately.
+4. **Final Check**: Inspect git diff at the end to ensure the code changes are clean and well-structured.
 """
 
     def __init__(self, provider: LLMProvider, tools: list[Any], **agent_kwargs: Any):
@@ -47,7 +47,7 @@ Your goal is to implement the changes cleanly, matching the plan's specification
         # Filter out keys that conflict with AgentLoopConfig constructor
         conflicting_keys = {"mode", "system_prompt_extra"}
         filtered_kwargs = {k: v for k, v in agent_kwargs.items() if k not in conflicting_keys}
-        cfg = AgentLoopConfig(mode=AgentMode.BUILD, system_prompt_extra=self.SYSTEM_PROMPT, **filtered_kwargs)  # noqa: E501
+        cfg = AgentLoopConfig(mode=AgentMode.BUILD, system_prompt_extra=self.SYSTEM_PROMPT, **filtered_kwargs)
         self.agent = AgentLoop(
             provider=provider,
             tools=tools,

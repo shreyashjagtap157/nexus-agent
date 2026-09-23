@@ -95,7 +95,7 @@ def _create_mock_provider():
             max_tokens: int = 4096,
             **kwargs: Any,
         ) -> Iterator[Any]:
-            chunk = type("Chunk", (), {"content": "Mock", "tool_calls": None, "usage": None, "is_final": False})  # noqa: E501
+            chunk = type("Chunk", (), {"content": "Mock", "tool_calls": None, "usage": None, "is_final": False})
             yield chunk()
             yield chunk()
         def close(self) -> None:

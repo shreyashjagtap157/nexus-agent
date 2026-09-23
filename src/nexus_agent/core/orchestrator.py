@@ -296,7 +296,7 @@ class Orchestrator:
         yield AgentEvent(
             type="content",
             data=(
-                f"\n[bold]🎯 Boomerang Complete:[/bold] {completed}/{len(subtasks)} sub-tasks succeeded"  # noqa: E501
+                f"\n[bold]🎯 Boomerang Complete:[/bold] {completed}/{len(subtasks)} sub-tasks succeeded"
                 + (f", {failed} failed" if failed else "")
                 + "\n"
             ),
@@ -347,7 +347,7 @@ class Orchestrator:
                         ))
                 current_desc = [numbered_match.group(1)]
                 current_context = []
-            elif line.strip().lower().startswith("context:") or line.strip().lower().startswith("tools:"):  # noqa: E501
+            elif line.strip().lower().startswith("context:") or line.strip().lower().startswith("tools:"):
                 current_context.append(line.strip())
             elif current_desc:
                 # Continuation of current sub-task description
@@ -379,7 +379,7 @@ class Orchestrator:
             AgentEvent stream of the orchestration progress.
         """
         yield AgentEvent(type="state_change", data="planning")
-        yield AgentEvent(type="content", data="[bold magenta]◆ Orchestrator spawned Planner Sub-Agent...[/bold magenta]\n")  # noqa: E501
+        yield AgentEvent(type="content", data="[bold magenta]◆ Orchestrator spawned Planner Sub-Agent...[/bold magenta]\n")
 
         # 1. Spawn Planner
         plan_content = ""
@@ -391,10 +391,10 @@ class Orchestrator:
                 plan_content = event.data
 
         if not plan_content:
-            yield AgentEvent(type="error", data="Planner failed to generate an implementation plan.")  # noqa: E501
+            yield AgentEvent(type="error", data="Planner failed to generate an implementation plan.")
             return
 
-        yield AgentEvent(type="content", data="\n[bold green]✅ Technical Implementation Plan Generated![/bold green]\n")  # noqa: E501
+        yield AgentEvent(type="content", data="\n[bold green]✅ Technical Implementation Plan Generated![/bold green]\n")
 
         if plan_only:
             yield AgentEvent(type="done", data={"plan": plan_content, "executed": False})
@@ -404,22 +404,22 @@ class Orchestrator:
         approved = True
         if self.approval_callback:
             yield AgentEvent(type="state_change", data=AgentState.WAITING_APPROVAL)
-            yield AgentEvent(type="content", data="[yellow]⌛ Waiting for plan approval...[/yellow]\n")  # noqa: E501
+            yield AgentEvent(type="content", data="[yellow]⌛ Waiting for plan approval...[/yellow]\n")
             approved = self.approval_callback(plan_content)
 
         if not approved:
-            yield AgentEvent(type="content", data="[red]❌ Implementation plan was rejected by the user. Aborting task.[/red]\n")  # noqa: E501
-            yield AgentEvent(type="done", data={"plan": plan_content, "executed": False, "approved": False})  # noqa: E501
+            yield AgentEvent(type="content", data="[red]❌ Implementation plan was rejected by the user. Aborting task.[/red]\n")
+            yield AgentEvent(type="done", data={"plan": plan_content, "executed": False, "approved": False})
             return
 
-        yield AgentEvent(type="content", data="\n[bold magenta]◆ Orchestrator approved! Spawning Executor Sub-Agent...[/bold magenta]\n")  # noqa: E501
+        yield AgentEvent(type="content", data="\n[bold magenta]◆ Orchestrator approved! Spawning Executor Sub-Agent...[/bold magenta]\n")
         yield AgentEvent(type="state_change", data="executing")
 
         # 3. Spawn Executor to perform edits and verify
         for event in self.executor.execute_plan(task, plan_content):
             yield event
 
-        yield AgentEvent(type="content", data="\n[bold green]🎉 Task successfully completed by Executor Sub-Agent![/bold green]\n")  # noqa: E501
+        yield AgentEvent(type="content", data="\n[bold green]🎉 Task successfully completed by Executor Sub-Agent![/bold green]\n")
         yield AgentEvent(type="state_change", data=AgentState.DONE)
 
     def run_autonomous(self, goal: str) -> Iterator[AgentEvent]:
@@ -434,10 +434,10 @@ class Orchestrator:
         """
         session_id = uuid.uuid4().hex[:12]
         yield AgentEvent(type="state_change", data="planning")
-        yield AgentEvent(type="content", data=f"[bold magenta]◆ Initializing Autonomous Goal Graph (Session: {session_id})...[/bold magenta]\n")  # noqa: E501
+        yield AgentEvent(type="content", data=f"[bold magenta]◆ Initializing Autonomous Goal Graph (Session: {session_id})...[/bold magenta]\n")
 
         # 1. Initialize and Decompose goal
-        task_graph = TaskGraph(session_id=session_id, workspace=self.workspace, provider=self.provider)  # noqa: E501
+        task_graph = TaskGraph(session_id=session_id, workspace=self.workspace, provider=self.provider)
         yield AgentEvent(type="content", data="[cyan]Decomposing objective recursively...[/cyan]\n")
 
         task_graph.decompose(goal)
@@ -453,14 +453,14 @@ class Orchestrator:
                 # If there are still pending/failed tasks, we are blocked
                 progress = task_graph.get_progress()
                 if progress["pending"] > 0 or progress["failed"] > 0 or progress["blocked"] > 0:
-                    yield AgentEvent(type="content", data="[red]⚠️ Autonomous execution loop blocked or some sub-tasks failed.[/red]\n")  # noqa: E501
+                    yield AgentEvent(type="content", data="[red]⚠️ Autonomous execution loop blocked or some sub-tasks failed.[/red]\n")
                     break
                 else:
                     # All tasks complete
                     break
 
             for task in ready_tasks:
-                yield AgentEvent(type="content", data=f"\n[bold yellow]▶ Executing Sub-Task: {task.title} ({task.id})[/bold yellow]\n")  # noqa: E501
+                yield AgentEvent(type="content", data=f"\n[bold yellow]▶ Executing Sub-Task: {task.title} ({task.id})[/bold yellow]\n")
 
                 subtask_attempts = 0
                 max_subtask_retries = 2
@@ -473,7 +473,7 @@ class Orchestrator:
 
                     subtask_attempts += 1
                     if subtask_attempts > 1:
-                        yield AgentEvent(type="content", data=f"[bold purple]🧠 NLA Telemetry Self-Healing Attempt {subtask_attempts-1}/{max_subtask_retries}...[/bold purple]\n")  # noqa: E501
+                        yield AgentEvent(type="content", data=f"[bold purple]🧠 NLA Telemetry Self-Healing Attempt {subtask_attempts-1}/{max_subtask_retries}...[/bold purple]\n")
 
                     # Execute single subtask
                     plan_content = f"Technical sub-goal: {task.description}"
@@ -494,16 +494,16 @@ class Orchestrator:
                         failure_reason = f"Execution Error: {execution_err}"
                     else:
                         # 3. Post-execution DevOps local test suite & static scan validation
-                        yield AgentEvent(type="content", data="[cyan]🔍 Running local DevOps static validation & test verification...[/cyan]\n")  # noqa: E501
+                        yield AgentEvent(type="content", data="[cyan]🔍 Running local DevOps static validation & test verification...[/cyan]\n")
                         report = pipeline.run_full_pipeline()
 
                         if not report.tests_passed:
-                            failure_reason = f"DevOps verification failed! Tests did not pass. Stacktrace: {report.traceback_analysis or 'No trace parsed'}"  # noqa: E501
+                            failure_reason = f"DevOps verification failed! Tests did not pass. Stacktrace: {report.traceback_analysis or 'No trace parsed'}"
                         elif report.secrets_found:
-                            failure_reason = f"Security Alert: Hardcoded credentials/secrets found: {', '.join(s.pattern_name for s in report.secrets_found)}"  # noqa: E501
+                            failure_reason = f"Security Alert: Hardcoded credentials/secrets found: {', '.join(s.pattern_name for s in report.secrets_found)}"
                         else:
                             # 4. Multi-Agent Debate review
-                            yield AgentEvent(type="content", data="[cyan]⚖️ Convening parallel multi-agent expert review panel...[/cyan]\n")  # noqa: E501
+                            yield AgentEvent(type="content", data="[cyan]⚖️ Convening parallel multi-agent expert review panel...[/cyan]\n")
                             # Gather recent diff context safely
                             changes_text = f"Subtask applied changes: {task.description}"
                             if (self.workspace / ".git").exists():
@@ -529,18 +529,18 @@ class Orchestrator:
                                     if diff_res.returncode == 0:
                                         changes_text = diff_res.stdout or changes_text
                                 except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-                                    logger.warning(f"Failed to get git diff for debate context: {e}")  # noqa: E501
+                                    logger.warning(f"Failed to get git diff for debate context: {e}")
 
-                            verdict = debate_engine.run_debate(code_changes=changes_text, context=task.description)  # noqa: E501
+                            verdict = debate_engine.run_debate(code_changes=changes_text, context=task.description)
                             if not verdict.final_approved:
-                                failure_reason = f"Code review debate consensus failed: {verdict.consensus_summary}. Score: {verdict.consensus_score}/100"  # noqa: E501
+                                failure_reason = f"Code review debate consensus failed: {verdict.consensus_summary}. Score: {verdict.consensus_score}/100"
                             elif verdict.reworked_code:
                                 # Safe and robust parser to write reworked file changes back to disk
                                 try:
                                     import re
-                                    # Try parsing delineations like: ### File: src/main.py followed by a code block  # noqa: E501
+                                    # Try parsing delineations like: ### File: src/main.py followed by a code block
                                     matches = list(re.finditer(
-                                        r'(?:###\s*File:\s*|#\s*File:\s*|File:\s*)([^\n`]+)\n+```[a-zA-Z]*\n(.*?)\n```',  # noqa: E501
+                                        r'(?:###\s*File:\s*|#\s*File:\s*|File:\s*)([^\n`]+)\n+```[a-zA-Z]*\n(.*?)\n```',
                                         verdict.reworked_code,
                                         re.DOTALL | re.IGNORECASE
                                     ))
@@ -551,20 +551,20 @@ class Orchestrator:
                                             target_file = self.workspace / file_rel_path
                                             try:
                                                 resolved = target_file.resolve()
-                                                if not str(resolved).startswith(str(self.workspace.resolve()) + os.sep):  # noqa: E501
-                                                    logger.warning(f"Path traversal blocked in debate reworked code: {file_rel_path}")  # noqa: E501
+                                                if not str(resolved).startswith(str(self.workspace.resolve()) + os.sep):
+                                                    logger.warning(f"Path traversal blocked in debate reworked code: {file_rel_path}")
                                                     continue
                                             except (OSError, ValueError):
                                                 continue
                                             if target_file.exists():
-                                                target_file.write_text(match.group(2), encoding="utf-8")  # noqa: E501
-                                                yield AgentEvent(type="content", data=f"[green]✍️ Applied debate consensus refactoring to: {file_rel_path}[/green]\n")  # noqa: E501
+                                                target_file.write_text(match.group(2), encoding="utf-8")
+                                                yield AgentEvent(type="content", data=f"[green]✍️ Applied debate consensus refactoring to: {file_rel_path}[/green]\n")
                                     else:
-                                        # Fallback: if a single code block is returned and only one file was modified in the diff, overwrite that file  # noqa: E501
+                                        # Fallback: if a single code block is returned and only one file was modified in the diff, overwrite that file
                                         modified_files = []
                                         if (self.workspace / ".git").exists():
                                             import subprocess
-                                            # Try HEAD~1 first, fall back to HEAD for repos with < 2 commits  # noqa: E501
+                                            # Try HEAD~1 first, fall back to HEAD for repos with < 2 commits
                                             status_res = subprocess.run(
                                                 ["git", "diff", "--name-only", "HEAD~1", "HEAD"],
                                                 cwd=str(self.workspace),
@@ -579,38 +579,38 @@ class Orchestrator:
                                                     text=True
                                                 )
                                             if status_res.returncode == 0:
-                                                modified_files = [f.strip() for f in status_res.stdout.splitlines() if f.strip()]  # noqa: E501
+                                                modified_files = [f.strip() for f in status_res.stdout.splitlines() if f.strip()]
 
-                                        code_block_match = re.search(r'```[a-zA-Z]*\n(.*?)\n```', verdict.reworked_code, re.DOTALL)  # noqa: E501
-                                        code_to_write = code_block_match.group(1) if code_block_match else verdict.reworked_code.strip()  # noqa: E501
+                                        code_block_match = re.search(r'```[a-zA-Z]*\n(.*?)\n```', verdict.reworked_code, re.DOTALL)
+                                        code_to_write = code_block_match.group(1) if code_block_match else verdict.reworked_code.strip()
 
                                         if len(modified_files) == 1 and code_to_write:
                                             mf = modified_files[0].strip()
                                             target_file = self.workspace / mf
                                             try:
                                                 resolved = target_file.resolve()
-                                                if not str(resolved).startswith(str(self.workspace.resolve()) + os.sep):  # noqa: E501
-                                                    logger.warning(f"Path traversal blocked in debate modified file: {mf}")  # noqa: E501
+                                                if not str(resolved).startswith(str(self.workspace.resolve()) + os.sep):
+                                                    logger.warning(f"Path traversal blocked in debate modified file: {mf}")
                                                 else:
-                                                    target_file.write_text(code_to_write, encoding="utf-8")  # noqa: E501
-                                                    yield AgentEvent(type="content", data=f"[green]✍️ Applied debate consensus refactoring to: {mf}[/green]\n")  # noqa: E501
+                                                    target_file.write_text(code_to_write, encoding="utf-8")
+                                                    yield AgentEvent(type="content", data=f"[green]✍️ Applied debate consensus refactoring to: {mf}[/green]\n")
                                             except (OSError, ValueError):
                                                 pass
                                 except (OSError, ValueError) as write_ex:
-                                    logger.warning(f"Failed to write reworked debate code to disk: {write_ex}")  # noqa: E501
+                                    logger.warning(f"Failed to write reworked debate code to disk: {write_ex}")
 
                     if not failure_reason:
                         # Mark as completed
                         task.status = "completed"
-                        task.result = "Passed execution, DevOps pipelines, and multi-agent code debates successfully."  # noqa: E501
+                        task.result = "Passed execution, DevOps pipelines, and multi-agent code debates successfully."
                         task_graph.save()
 
-                        yield AgentEvent(type="content", data=f"[bold green]✅ Sub-Task '{task.title}' completed successfully![/bold green]\n")  # noqa: E501
+                        yield AgentEvent(type="content", data=f"[bold green]✅ Sub-Task '{task.title}' completed successfully![/bold green]\n")
                         yield AgentEvent(type="content", data=f"{task_graph.to_markdown()}\n")
                         break
                     else:
                         # Sub-Task failed this attempt
-                        yield AgentEvent(type="content", data=f"[red]❌ Attempt {subtask_attempts} failed: {failure_reason}[/red]\n")  # noqa: E501
+                        yield AgentEvent(type="content", data=f"[red]❌ Attempt {subtask_attempts} failed: {failure_reason}[/red]\n")
 
                         if subtask_attempts <= max_subtask_retries:
                             # Leverage NLA Telemetry to self-heal
@@ -631,7 +631,7 @@ The previous attempt failed. Here is the NLA reasoning telemetry analysis of the
 - **Previous Strategy:** {last_strategy}
 - **NLA Activation Thought Trace:** {last_thought[:400]}...
 
-**Correction Directive:** Adjust the strategy to bypass this failure. Refrain from repeating the previous error. Ensure all modifications are verified and error handling is robust.  # noqa: E501
+**Correction Directive:** Adjust the strategy to bypass this failure. Refrain from repeating the previous error. Ensure all modifications are verified and error handling is robust.
 """
                             except (OSError, ValueError, RuntimeError):
                                 nla_correction_block = f"""
@@ -649,6 +649,6 @@ The previous attempt failed due to: {failure_reason}.
         progress = task_graph.get_progress()
         final_success = progress["completed"] == progress["total"]
 
-        yield AgentEvent(type="content", data=f"\n[bold green]🎉 Fully Autonomous Goal Graph Finished (Success: {final_success})[/bold green]\n")  # noqa: E501
+        yield AgentEvent(type="content", data=f"\n[bold green]🎉 Fully Autonomous Goal Graph Finished (Success: {final_success})[/bold green]\n")
         yield AgentEvent(type="state_change", data=AgentState.DONE)
         yield AgentEvent(type="done", data={"session_id": session_id, "success": final_success})

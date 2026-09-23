@@ -185,11 +185,11 @@ class DiagnosisBuilder:
         elif failure_type == FailureType.FATAL:
             lines.append(
                 "This is a fatal error that cannot be resolved by retrying. "
-                "Report the issue to the user and suggest manual intervention or an alternative approach."  # noqa: E501
+                "Report the issue to the user and suggest manual intervention or an alternative approach."
             )
         else:
             lines.append(
-                "The error type is unclear. Try an alternative approach or tool to accomplish the same goal."  # noqa: E501
+                "The error type is unclear. Try an alternative approach or tool to accomplish the same goal."
             )
 
         return "\n".join(lines)

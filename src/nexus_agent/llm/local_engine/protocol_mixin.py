@@ -73,7 +73,7 @@ class ProtocolMixin:
             self.enable_agent_protocol(f"Execute task: {description}")
         return self._protocol.add_task(task_type, description, depends_on)
 
-    def set_tool_result(self, tool_call_id: str, result: Any, success: bool = True, error: str | None = None):  # noqa: E501
+    def set_tool_result(self, tool_call_id: str, result: Any, success: bool = True, error: str | None = None):
         self._tool_results[tool_call_id] = {"result": result, "success": success, "error": error}
 
     def get_xml_prompt(self) -> str:
@@ -154,11 +154,11 @@ class ProtocolMixin:
                     "new_content": file_op.new_content,
                     "reason": file_op.reason,
                 })
-                executed.append({"type": "file_operation", "operation": file_op.operation_type, "path": file_op.path, "result": result})  # noqa: E501
+                executed.append({"type": "file_operation", "operation": file_op.operation_type, "path": file_op.path, "result": result})
                 if self._protocol:
                     self._protocol.log_file_operation(file_op, True)
-            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:  # noqa: E501
-                failed.append({"type": "file_operation", "operation": file_op.operation_type, "path": file_op.path, "error": str(e)})  # noqa: E501
+            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:
+                failed.append({"type": "file_operation", "operation": file_op.operation_type, "path": file_op.path, "error": str(e)})
                 if self._protocol:
                     self._protocol.log_file_operation(file_op, False)
                     logger.error(f"File operation failed: {op_desc} — {e}")
@@ -173,13 +173,13 @@ class ProtocolMixin:
                     "reason": cmd.reason,
                     "timeout_seconds": cmd.timeout_seconds,
                 })
-                executed.append({"type": "command", "command": cmd.command_string, "result": result})  # noqa: E501
+                executed.append({"type": "command", "command": cmd.command_string, "result": result})
                 if self._protocol:
-                    self._protocol.event_logger.log("command_executed", command=cmd.command_string, success=True)  # noqa: E501
-            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:  # noqa: E501
+                    self._protocol.event_logger.log("command_executed", command=cmd.command_string, success=True)
+            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:
                 failed.append({"type": "command", "command": cmd.command_string, "error": str(e)})
                 if self._protocol:
-                    self._protocol.event_logger.log("command_executed", command=cmd.command_string, success=False, error=str(e))  # noqa: E501
+                    self._protocol.event_logger.log("command_executed", command=cmd.command_string, success=False, error=str(e))
                     logger.error(f"Command failed: {cmd_desc} — {e}")
 
         tool_calls = parser.get_tool_calls()
@@ -197,7 +197,7 @@ class ProtocolMixin:
                 if self._protocol:
                     self._protocol.log_tool_result(tc)
                 executed.append({"type": "tool_call", "tool_name": tc_call, "result": result})
-            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:  # noqa: E501
+            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:
                 tc.status = ToolCallStatus.FAILED
                 tc.error = str(e)
                 if self._protocol:
@@ -223,7 +223,7 @@ class ProtocolMixin:
                         success=True,
                     )
                 executed.append({"type": "delegation", "to": delegation.to_agent, "result": result})
-            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:  # noqa: E501
+            except (RuntimeError, ValueError, OSError, TypeError, AttributeError, KeyError, LookupError) as e:
                 if self._protocol:
                     self._protocol.event_logger.log(
                         "delegation_sent",
@@ -313,7 +313,7 @@ class ProtocolMixin:
             "iterations": iterations,
             "executed_ops": all_executed,
             "failed_ops": all_failed,
-            "thinking": [{"step": t.step, "observation": t.observation, "confidence": t.confidence} for t in all_thinking],  # noqa: E501
+            "thinking": [{"step": t.step, "observation": t.observation, "confidence": t.confidence} for t in all_thinking],
             "events": self._protocol.event_logger.to_jsonl() if self._protocol else "",
             "status": status if iterations < max_iterations else "max_iterations_reached",
         }

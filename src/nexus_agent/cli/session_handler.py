@@ -57,7 +57,7 @@ class SessionOrchestratorMixin:
                 logger.info(f"Dynamically prepended custom runtime path: {path_dir}")
 
         if getattr(self, "_model_path_passed", False):
-            self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")  # noqa: E501
+            self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")
         else:
             self._model_path = None
 
@@ -66,7 +66,7 @@ class SessionOrchestratorMixin:
         project_mem_dir = self.workspace / ".nexus" / "memory"
         self._project_memory = MemoryManager(data_dir=str(project_mem_dir))
         self._session_mgr = SessionManager(data_dir=f"{data_dir_path}/sessions")
-        self._checkpoint_mgr = CheckpointManager(os.path.join(data_dir_path, "checkpoints")) if self._session_mgr else None  # noqa: E501
+        self._checkpoint_mgr = CheckpointManager(os.path.join(data_dir_path, "checkpoints")) if self._session_mgr else None
         self._usage_tracker = UsageTracker(
             path=Path(data_dir_path) / "usage.json"
         )
@@ -292,7 +292,7 @@ class SessionOrchestratorMixin:
                 )
 
         mcp_count = len(self._mcp_tools) if self._mcp_tools else 0
-        skills_count = len(self._skill_registry.list_skills()) if self._skill_registry and hasattr(self._skill_registry, 'list_skills') else 0  # noqa: E501
+        skills_count = len(self._skill_registry.list_skills()) if self._skill_registry and hasattr(self._skill_registry, 'list_skills') else 0
         self._context.update_from_agent(
             agent=self._agent,
             engine=self._engine,
@@ -345,7 +345,7 @@ class SessionOrchestratorMixin:
         tokens_short = self._tokens.display_short()
         ctx_display = self._tokens.display_context()
 
-        items = [f"[bold]{model[:40]}[/bold]", f"Mode: [bold]{mode}[/bold]", f"/{effort}", tokens_short, ctx_display]  # noqa: E501
+        items = [f"[bold]{model[:40]}[/bold]", f"Mode: [bold]{mode}[/bold]", f"/{effort}", tokens_short, ctx_display]
 
         cost = self._tokens.estimated_cost
         if cost > 0:

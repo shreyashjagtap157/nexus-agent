@@ -60,7 +60,7 @@ class OpenAIProvider(LLMProvider):
 
     def _get_headers(self) -> dict[str, str]:
         if not self._api_key:
-            raise ValueError("OpenAI API key is missing. Set it in config or via OPENAI_API_KEY env var.")  # noqa: E501
+            raise ValueError("OpenAI API key is missing. Set it in config or via OPENAI_API_KEY env var.")
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",

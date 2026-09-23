@@ -39,7 +39,7 @@ class AWSBedrockProvider(LLMProvider):
         """
         self._config = config
         self._model_name = config.get("model") or "anthropic.claude-3-5-sonnet-20241022-v2:0"
-        self._region = config.get("region") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"  # noqa: E501
+        self._region = config.get("region") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
 
         self._client = None
         if BEDROCK_AVAILABLE:
@@ -164,7 +164,7 @@ class AWSBedrockProvider(LLMProvider):
         **kwargs: Any,
     ) -> LLMResponse:
         if not BEDROCK_AVAILABLE:
-            raise RuntimeError("boto3 package not installed. Run pip install boto3 to use AWS Bedrock.")  # noqa: E501
+            raise RuntimeError("boto3 package not installed. Run pip install boto3 to use AWS Bedrock.")
         if not self._client:
             raise ValueError("AWS Bedrock client is not initialized. Check AWS credentials.")
 
@@ -215,7 +215,7 @@ class AWSBedrockProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
         if not BEDROCK_AVAILABLE:
-            raise RuntimeError("boto3 package not installed. Run pip install boto3 to use AWS Bedrock.")  # noqa: E501
+            raise RuntimeError("boto3 package not installed. Run pip install boto3 to use AWS Bedrock.")
         if not self._client:
             raise ValueError("AWS Bedrock client is not initialized. Check AWS credentials.")
 
@@ -270,7 +270,7 @@ class AWSBedrockProvider(LLMProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": "anthropic.claude-3-5-sonnet-20241022-v2:0", "name": "Claude 3.5 Sonnet (AWS Bedrock)", "provider": "bedrock"},  # noqa: E501
+            {"id": "anthropic.claude-3-5-sonnet-20241022-v2:0", "name": "Claude 3.5 Sonnet (AWS Bedrock)", "provider": "bedrock"},
             {"id": "amazon.nova-pro-v1:0", "name": "Amazon Nova Pro", "provider": "bedrock"},
             {"id": "amazon.nova-lite-v1:0", "name": "Amazon Nova Lite", "provider": "bedrock"},
         ]

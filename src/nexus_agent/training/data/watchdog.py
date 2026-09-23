@@ -124,7 +124,7 @@ class DiskWatchdog:
             )
             self._db.commit()
 
-            logger.info(f"Deleted {len(uids_to_delete)} records, freed ~{bytes_freed / 1024 / 1024:.1f}MB")  # noqa: E501
+            logger.info(f"Deleted {len(uids_to_delete)} records, freed ~{bytes_freed / 1024 / 1024:.1f}MB")
 
         return total_deleted
 

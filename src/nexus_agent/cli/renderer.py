@@ -647,7 +647,7 @@ class TokenUsage:
         if self.last_request.elapsed > 0:
             lines.append(f"  Last request:     {self._fmt_time(self.last_request.elapsed)}")
         if self.last_request.input_tokens or self.last_request.output_tokens:
-            lines.append(f"  Last I/O:         \u2193{self.last_request.input_tokens:,} \u2191{self.last_request.output_tokens:,}")  # noqa: E501
+            lines.append(f"  Last I/O:         \u2193{self.last_request.input_tokens:,} \u2191{self.last_request.output_tokens:,}")
         lines.append(f"  Estimated cost:   ${cost:.4f}")
         lines.append(f"  [{bar}] {pct}%")
         return "\n".join(lines)
@@ -1157,7 +1157,7 @@ class CommandMenu:
         visible_items = self.filtered[start_idx:end_idx]
         if not visible_items:
             return []
-        max_name = min(max(visual_len(strip_markup(c["name"])) for c in visible_items), max(width - 15, 10))  # noqa: E501
+        max_name = min(max(visual_len(strip_markup(c["name"])) for c in visible_items), max(width - 15, 10))
 
         scroll_up = start_idx > 0
         scroll_down = end_idx < len(self.filtered)
@@ -1211,7 +1211,7 @@ class PermissionDialog:
         console.print(f"  [bold cyan]{tool_name}[/bold cyan]")
         if args_preview:
             console.print(f"  [dim]{args_preview}[/dim]")
-        console.print("  [bold]Allow?[/bold] [green](Y)es[/green] / [red](N)o[/red] / [yellow](A)lways allow[/yellow] ", end="")  # noqa: E501
+        console.print("  [bold]Allow?[/bold] [green](Y)es[/green] / [red](N)o[/red] / [yellow](A)lways allow[/yellow] ", end="")
 
         # Wait for keypress
         if HAS_MSVCRT:
@@ -1399,7 +1399,7 @@ class VirtualTranscript:
             status_text = "OK" if block.success else "FAIL"
             status_style = "bold green" if block.success else "bold red"
             elapsed_str = f" [{block.elapsed:.1f}s]" if block.elapsed else ""
-            lines.append(f"[{status_style}]{status_text}[/{status_style}]{elapsed_str} [dim]{block.name}[/dim]")  # noqa: E501
+            lines.append(f"[{status_style}]{status_text}[/{status_style}]{elapsed_str} [dim]{block.name}[/dim]")
             if block.content and not block.collapsed:
                 content_lines = block.content.split("\n")
                 for line in content_lines[:8]:
@@ -1562,7 +1562,7 @@ class NexusTerminalRenderer:
 
     def enter_fullscreen(self):
         if not self._is_fullscreen:
-            sys.stdout.write(alternate_screen() + hide_cursor() + enable_mouse() + enable_bracketed_paste())  # noqa: E501
+            sys.stdout.write(alternate_screen() + hide_cursor() + enable_mouse() + enable_bracketed_paste())
             sys.stdout.flush()
             self._is_fullscreen = True
             self._update_size()
@@ -1573,7 +1573,7 @@ class NexusTerminalRenderer:
 
     def exit_fullscreen(self):
         if self._is_fullscreen:
-            sys.stdout.write(disable_bracketed_paste() + disable_mouse() + show_cursor() + main_screen())  # noqa: E501
+            sys.stdout.write(disable_bracketed_paste() + disable_mouse() + show_cursor() + main_screen())
             sys.stdout.flush()
             self._is_fullscreen = False
             self.frame_diff.reset()
@@ -1593,7 +1593,7 @@ class NexusTerminalRenderer:
         self.viewport.height = viewport_height
         total_lines = self.transcript.count_lines(self.width)
         self.viewport.set_total(total_lines)
-        frame = self.transcript.render_lines(self.width, self.viewport.scroll_offset, viewport_height)  # noqa: E501
+        frame = self.transcript.render_lines(self.width, self.viewport.scroll_offset, viewport_height)
         patch = self.frame_diff.compute_patch(frame)
         sys.stdout.write(patch)
         sys.stdout.flush()
@@ -1647,7 +1647,7 @@ class NexusTerminalRenderer:
             except (OSError, ValueError):
                 term_h = 24
             sys.stdout.write(f"\033[1;{term_h}r")
-            # Move cursor to the very bottom line of the terminal screen, and add a newline to scroll up once  # noqa: E501
+            # Move cursor to the very bottom line of the terminal screen, and add a newline to scroll up once
             sys.stdout.write(f"\033[{term_h};1H\n")
             sys.stdout.flush()
             self._scroll_region_set = False
@@ -1945,7 +1945,7 @@ class NexusTerminalRenderer:
         actual_metrics = metrics if metrics is not None else p.get("metrics")
         actual_active = active_agents if active_agents is not None else p.get("active_agents", 0)
         actual_added = session_added if session_added is not None else p.get("session_added", 0)
-        actual_removed = session_removed if session_removed is not None else p.get("session_removed", 0)  # noqa: E501
+        actual_removed = session_removed if session_removed is not None else p.get("session_removed", 0)
         self.welcome(
             p["model_name"], p["workspace"], p["version"],
             p.get("provider", "local"), p.get("context_size", 200000),
@@ -1995,7 +1995,7 @@ class NexusTerminalRenderer:
                 self.console.print(f"{line}")
 
     def tool_call(self, name: str, args: dict[str, Any], is_start: bool = True):
-        block_id = self.transcript.add_block("tool_call", name=name, args=args, is_streaming=is_start)  # noqa: E501
+        block_id = self.transcript.add_block("tool_call", name=name, args=args, is_streaming=is_start)
         self._block_id_map[len(self._block_id_map)] = block_id
         self.console.print(f"\n[bold cyan]▶ {name}[/bold cyan]")
         if args:
@@ -2356,7 +2356,7 @@ class NexusTerminalRenderer:
 
         # Clean up streaming state safely (guard against double-call)
         result = full_response
-        for attr in ('_streaming_buffer', '_streaming_line_count', '_streaming_block_id', '_streaming_last_render'):  # noqa: E501
+        for attr in ('_streaming_buffer', '_streaming_line_count', '_streaming_block_id', '_streaming_last_render'):
             if hasattr(self, attr):
                 delattr(self, attr)
         return result

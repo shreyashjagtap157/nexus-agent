@@ -286,7 +286,7 @@ def _check_external_servers() -> list[RuntimeInfo]:
         ("Ollama", "ollama", "http://localhost:11434/api/tags", "Local LLM server"),
         ("LM Studio", "lm_studio", "http://localhost:1234/v1/models", "Desktop LLM app with API"),
         ("KoboldCpp", "koboldcpp", "http://localhost:5001/v1/models", "GGUF inference server"),
-        ("TabbyAPI (ExLlamaV2)", "exllamav2", "http://localhost:5000/v1/models", "ExLlamaV2 inference API"),  # noqa: E501
+        ("TabbyAPI (ExLlamaV2)", "exllamav2", "http://localhost:5000/v1/models", "ExLlamaV2 inference API"),
     ]
     for name, provider, url, desc in probes:
         try:
