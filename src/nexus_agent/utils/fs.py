@@ -2,7 +2,6 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-
 _DEFAULT_SKIP_DIRS = frozenset({
     "node_modules",
     "__pycache__",
@@ -28,7 +27,11 @@ def iter_files(
                 for entry in it:
                     try:
                         if entry.is_dir(follow_symlinks=False):
-                            if not include_hidden and entry.name.startswith(".") and entry.name not in {".env", ".gitignore"}:
+                            if (
+                                not include_hidden
+                                and entry.name.startswith(".")
+                                and entry.name not in {".env", ".gitignore"}
+                            ):
                                 continue
                             if entry.name in skips:
                                 continue
