@@ -101,7 +101,7 @@ class ConfigCommandsMixin:
                 self._config.setdefault("display", {})["ui_density"] = dn_sel
                 self.r.system_message(f"UI density set to {dn_sel}")
         elif sel == "scrollback":
-            self.r.system_message("Scrollback: 10000 lines (configurable in ~/.nexus-agent/config.yaml)")
+            self.r.system_message("Scrollback: 10000 lines (configurable in ~/.nexus-agent/config.yaml)")  # noqa: E501
         elif sel == "cursor_style":
             styles = ["block", "underline", "beam"]
             cs_sel = self._interactive_menu(
@@ -141,7 +141,7 @@ class ConfigCommandsMixin:
             save_config(self._config, self.config_path)
             self.r.system_message(f"Prompt color set to {args}")
         else:
-            self.r.system_message(f"Usage: /color <{'|'.join(colors)}>\nCurrent: {self._config.get('tui', {}).get('prompt_color', 'purple')}")
+            self.r.system_message(f"Usage: /color <{'|'.join(colors)}>\nCurrent: {self._config.get('tui', {}).get('prompt_color', 'purple')}")  # noqa: E501
 
     def _cmd_vim(self, args: str):
         """Toggle vim-style keybindings."""
@@ -161,7 +161,7 @@ class ConfigCommandsMixin:
         if not args:
             self.r.system_message("Usage: /statusline <comma_separated_items>")
             return
-        self._config.setdefault("tui", {})["statusline_items"] = [i.strip() for i in args.split(",")]
+        self._config.setdefault("tui", {})["statusline_items"] = [i.strip() for i in args.split(",")]  # noqa: E501
         save_config(self._config, self.config_path)
         self.r.system_message(f"Statusline updated to: {args}")
 

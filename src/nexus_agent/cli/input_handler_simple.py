@@ -36,7 +36,7 @@ class MinimalInputHandlerMixin:
             self._rebuild_welcome()
         elif cmd == "/status":
             effort = self._config.get("agent", {}).get("effort_level", "medium").lower()
-            self.r.system_message(f"Mode: {self._current_mode.value.upper()} | Effort: {effort.upper()}")
+            self.r.system_message(f"Mode: {self._current_mode.value.upper()} | Effort: {effort.upper()}")  # noqa: E501
         else:
             # For other commands, try to delegate to BaseCommands handler
             try:
@@ -59,7 +59,7 @@ class MinimalInputHandlerMixin:
             c1 = cmds[i] if i < len(cmds) else ""
             c2 = cmds[i+1] if i+1 < len(cmds) else None
             if c2:
-                self.console.print(f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]    [bold]{c2['name']:<15}[/bold] [dim]{c2['description']}[/dim]")
+                self.console.print(f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]    [bold]{c2['name']:<15}[/bold] [dim]{c2['description']}[/dim]")  # noqa: E501
             else:
-                self.console.print(f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]")
+                self.console.print(f"  [bold]{c1['name']:<15}[/bold] [dim]{c1['description']}[/dim]")  # noqa: E501
         self.r.divider()

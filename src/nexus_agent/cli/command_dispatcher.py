@@ -41,10 +41,10 @@ SLASH_COMMANDS = [
     {"name": "/session new", "description": "Start a new session"},
     {"name": "/stats", "description": "Conversation statistics"},
     {"name": "/memory", "description": "Search/edit CLAUDE.md memory files"},
-    {"name": "/memory vector stats", "description": "Vector store statistics (count, engine mode, dimensions)"},
-    {"name": "/memory vector query", "description": "Semantic similarity search via vector embeddings"},
-    {"name": "/memory vector migrate", "description": "Re-embed all existing FTS5 memories into the vector store"},
-    {"name": "/memory vector download", "description": "Download ONNX embedding model for higher-quality vectors"},
+    {"name": "/memory vector stats", "description": "Vector store statistics (count, engine mode, dimensions)"},  # noqa: E501
+    {"name": "/memory vector query", "description": "Semantic similarity search via vector embeddings"},  # noqa: E501
+    {"name": "/memory vector migrate", "description": "Re-embed all existing FTS5 memories into the vector store"},  # noqa: E501
+    {"name": "/memory vector download", "description": "Download ONNX embedding model for higher-quality vectors"},  # noqa: E501
     {"name": "/reflect", "description": "Critique last assistant response"},
     {"name": "/plugin", "description": "Manage and list loaded plugins"},
     {"name": "/reload-plugins", "description": "Reload plugins from disk"},
@@ -98,7 +98,7 @@ SLASH_COMMANDS = [
     {"name": "/statusline", "description": "Configure status line display"},
     {"name": "/privacy-settings", "description": "View and update privacy settings"},
     {"name": "/upgrade", "description": "Open upgrade page for higher plan tier"},
-    {"name": "/update", "description": "Update NexusAgent to the latest version (pip install --upgrade)"},
+    {"name": "/update", "description": "Update NexusAgent to the latest version (pip install --upgrade)"},  # noqa: E501
     {"name": "/feedback", "description": "Submit feedback about NexusAgent"},
     {"name": "/bug", "description": "Alias for /feedback"},
     {"name": "/ide", "description": "Manage IDE integrations"},
@@ -138,13 +138,13 @@ SLASH_COMMANDS = [
     {"name": "/tui", "description": "Toggle fullscreen/inline mode"},
     {"name": "/quit", "description": "Exit NexusAgent"},
     {"name": "/connect", "description": "Connect to an LLM provider interactively"},
-    {"name": "/disconnect", "description": "Disconnect from current provider, return to local mode"},
-    {"name": "/nla", "description": "Natural Language Autoencoder reasoning telemetry & offline learning"},
-    {"name": "/explain", "description": "Verbalize underlying concepts and strategies of the last step"},
+    {"name": "/disconnect", "description": "Disconnect from current provider, return to local mode"},  # noqa: E501
+    {"name": "/nla", "description": "Natural Language Autoencoder reasoning telemetry & offline learning"},  # noqa: E501
+    {"name": "/explain", "description": "Verbalize underlying concepts and strategies of the last step"},  # noqa: E501
 ]
 
 
-class CommandDispatcherMixin(ProviderCommandsMixin, SessionCommandsMixin, DebugCommandsMixin, ToolCommandsMixin, MiscCommandsMixin, AgentCommandsMixin, ConfigCommandsMixin, InteractiveCommandsMixin, RuntimeCommandsMixin, ModelCommandsMixin):
+class CommandDispatcherMixin(ProviderCommandsMixin, SessionCommandsMixin, DebugCommandsMixin, ToolCommandsMixin, MiscCommandsMixin, AgentCommandsMixin, ConfigCommandsMixin, InteractiveCommandsMixin, RuntimeCommandsMixin, ModelCommandsMixin):  # noqa: E501
     """Mixin that provides slash command routing and all /cmd_* handlers."""
 
     SLASH_COMMANDS = SLASH_COMMANDS
