@@ -26,31 +26,43 @@ logger = logging.getLogger(__name__)
 
 
 dangerous_indicators: tuple[str, ...] = (
-    r"\brm\s+-rf\b", r"\bsudo\b", r"\bformat\b",
-    r"\bmkfs\b", r"\bdd\s+if=", r"\bchmod\s+777\b",
-    r"\bshutdown\b", r"\breboot\b", r"\bpoweroff\b",
-    r"\binit\s+0\b", r"(:\(\)\s*\{)", r"\bmv\s+/", r"\bcp\s+/",
+    r"\brm\s+-rf\b",
+    r"\bsudo\b",
+    r"\bformat\b",
+    r"\bmkfs\b",
+    r"\bdd\s+if=",
+    r"\bchmod\s+777\b",
+    r"\bshutdown\b",
+    r"\breboot\b",
+    r"\bpoweroff\b",
+    r"\binit\s+0\b",
+    r"(:\(\)\s*\{)",
+    r"\bmv\s+/",
+    r"\bcp\s+/",
 )
 
 
 class SandboxMode(str, Enum):
     """Sandbox execution modes."""
+
     SUGGEST = "suggest"  # Show command, don't execute
-    ASK = "ask"          # Ask user before executing
-    AUTO = "auto"        # Execute with rule-based permissions
+    ASK = "ask"  # Ask user before executing
+    AUTO = "auto"  # Execute with rule-based permissions
 
 
 class CommandRisk(str, Enum):
     """Risk level of a command."""
-    SAFE = "safe"           # Read-only commands (ls, cat, git status)
-    MODERATE = "moderate"   # Write commands (git commit, pip install)
-    DANGEROUS = "dangerous" # Destructive commands (rm -rf, format)
-    BLOCKED = "blocked"     # Never allow (sudo rm -rf /)
+
+    SAFE = "safe"  # Read-only commands (ls, cat, git status)
+    MODERATE = "moderate"  # Write commands (git commit, pip install)
+    DANGEROUS = "dangerous"  # Destructive commands (rm -rf, format)
+    BLOCKED = "blocked"  # Never allow (sudo rm -rf /)
 
 
 @dataclass
 class CommandResult:
     """Result of a command execution."""
+
     command: str
     returncode: int
     stdout: str
@@ -64,33 +76,66 @@ class CommandResult:
 @dataclass
 class SandboxConfig:
     """Configuration for the execution sandbox."""
+
     mode: SandboxMode = SandboxMode.ASK
     timeout: int = 60  # seconds
     max_output_size: int = 100_000  # characters
 
     # Regex patterns for command classification
-    allowed_patterns: list[str] = field(default_factory=lambda: [
-        r"^ls\b", r"^dir\b", r"^cat\b", r"^head\b", r"^tail\b",
-        r"^grep\b", r"^find\b", r"^wc\b", r"^echo\b",
-        r"^git\s+(status|log|diff|branch|show|remote|tag|describe)\b",
-        r"^node\s+--version\b",
-        r"^type\b", r"^more\b", r"^where\b", r"^which\b",
-        r"^pwd\b",
-        r"^stat\b", r"^md5sum\b", r"^sha256sum\b",
-        r"^sort\b", r"^uniq\b", r"^cut\b", r"^awk\b",
-    ])
+    allowed_patterns: list[str] = field(
+        default_factory=lambda: [
+            r"^ls\b",
+            r"^dir\b",
+            r"^cat\b",
+            r"^head\b",
+            r"^tail\b",
+            r"^grep\b",
+            r"^find\b",
+            r"^wc\b",
+            r"^echo\b",
+            r"^git\s+(status|log|diff|branch|show|remote|tag|describe)\b",
+            r"^node\s+--version\b",
+            r"^type\b",
+            r"^more\b",
+            r"^where\b",
+            r"^which\b",
+            r"^pwd\b",
+            r"^stat\b",
+            r"^md5sum\b",
+            r"^sha256sum\b",
+            r"^sort\b",
+            r"^uniq\b",
+            r"^cut\b",
+            r"^awk\b",
+        ]
+    )
 
-    denied_patterns: list[str] = field(default_factory=lambda: [
-        r"^rm\s+-rf\s+/", r"^sudo\b", r"^format\b",
-        r"^mkfs\b", r"^dd\s+if=", r"^chmod\s+777\b",
-        r">\s*/dev/sd", r"^shutdown\b", r"^reboot\b",
-        r"^:(){ :\|:& };:",  # Fork bomb
-        r"^python\s+-c\b", r"^python\s+-m\b",  # Arbitrary code execution via -c/-m
-        r"^node\s+-e\b", r"^node\s+-p\b", r"^node\s+-r\b",  # Node arbitrary code
-        r"^bash\s+-c\b", r"^sh\s+-c\b", r"^zsh\s+-c\b",  # Shell arbitrary code
-        r"^eval\b", r"^exec\b",  # Shell builtin code execution
-        r"^curl\s+.*\|", r"^wget\s+.*\|",  # Pipe download to shell
-    ])
+    denied_patterns: list[str] = field(
+        default_factory=lambda: [
+            r"^rm\s+-rf\s+/",
+            r"^sudo\b",
+            r"^format\b",
+            r"^mkfs\b",
+            r"^dd\s+if=",
+            r"^chmod\s+777\b",
+            r">\s*/dev/sd",
+            r"^shutdown\b",
+            r"^reboot\b",
+            r"^:(){ :\|:& };:",  # Fork bomb
+            r"^python\s+-c\b",
+            r"^python\s+-m\b",  # Arbitrary code execution via -c/-m
+            r"^node\s+-e\b",
+            r"^node\s+-p\b",
+            r"^node\s+-r\b",  # Node arbitrary code
+            r"^bash\s+-c\b",
+            r"^sh\s+-c\b",
+            r"^zsh\s+-c\b",  # Shell arbitrary code
+            r"^eval\b",
+            r"^exec\b",  # Shell builtin code execution
+            r"^curl\s+.*\|",
+            r"^wget\s+.*\|",  # Pipe download to shell
+        ]
+    )
 
     # Workspace boundary is always enforced in _resolve_safe_path
 
@@ -126,7 +171,7 @@ class Sandbox:
         Handles shell operators: &&, ||, ;, |, \n
         Each subcommand is trimmed and checked independently.
         """
-        segments = re.split(r'\s*(?:&&|\|\||;|\||\n)\s*', command)
+        segments = re.split(r"\s*(?:&&|\|\||;|\||\n)\s*", command)
         return [s.strip() for s in segments if s.strip()]
 
     def classify_risk(self, command: str) -> CommandRisk:
@@ -183,10 +228,19 @@ class Sandbox:
                     logger.warning(f"Invalid regex in dangerous_indicators: {indicator!r} ({exc})")
 
         write_indicators = [
-            "mv ", "cp ", "mkdir", "touch", "echo >",
-            "git commit", "git push", "git merge",
-            "pip install", "npm install", "npm run",
-            "python ", "node ",
+            "mv ",
+            "cp ",
+            "mkdir",
+            "touch",
+            "echo >",
+            "git commit",
+            "git push",
+            "git merge",
+            "pip install",
+            "npm install",
+            "npm run",
+            "python ",
+            "node ",
         ]
         for seg in segments:
             seg_lower = seg.lower()
@@ -253,8 +307,13 @@ class Sandbox:
                 return self.workspace
             # Enforce workspace boundary on all platforms
             workspace_resolved = self.workspace.resolve()
-            if not str(resolved).startswith(str(workspace_resolved) + os.sep) and resolved != workspace_resolved:
-                logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")
+            if (
+                not str(resolved).startswith(str(workspace_resolved) + os.sep)
+                and resolved != workspace_resolved
+            ):
+                logger.warning(
+                    f"Path {resolved} is outside workspace boundary {workspace_resolved}"
+                )
                 return self.workspace
             return resolved
         except (OSError, ValueError) as e:
@@ -301,7 +360,7 @@ class Sandbox:
         # Build environment
         exec_env = os.environ.copy()
         if env:
-            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors
+            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors  # noqa: E501
             for k, v in dict(env).items():
                 k_clean = str(k).strip()
                 v_clean = str(v).strip()
@@ -326,21 +385,33 @@ class Sandbox:
                     command=command,
                     returncode=-1,
                     stdout="",
-                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",
+                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",  # noqa: E501
                     duration=time.time() - start_time,
                     was_approved=False,
                     risk_level=risk,
                 )
 
             # Use direct execution on both Unix and Windows when parsing succeeds
-            proc = subprocess.run(
-                parsed_args,
-                capture_output=True,
-                text=True,
-                cwd=str(work_dir),
-                env=exec_env,
-                timeout=effective_timeout,
-            )
+            if sys.platform == "win32":
+                # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
+                cmd_args = ["cmd.exe", "/c"] + parsed_args
+                proc = subprocess.run(
+                    cmd_args,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(work_dir),
+                    env=exec_env,
+                    timeout=effective_timeout,
+                )
+            else:
+                proc = subprocess.run(
+                    parsed_args,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(work_dir),
+                    env=exec_env,
+                    timeout=effective_timeout,
+                )
 
             duration = time.time() - start_time
 
@@ -349,10 +420,10 @@ class Sandbox:
             stderr = proc.stderr
 
             if len(stdout) > self.config.max_output_size:
-                stdout = stdout[:self.config.max_output_size] + "\n[... output truncated ...]"
+                stdout = stdout[: self.config.max_output_size] + "\n[... output truncated ...]"
 
             if len(stderr) > self.config.max_output_size:
-                stderr = stderr[:self.config.max_output_size] + "\n[... output truncated ...]"
+                stderr = stderr[: self.config.max_output_size] + "\n[... output truncated ...]"
 
             result = CommandResult(
                 command=command,
