@@ -10,6 +10,8 @@ from nexus_agent.tools.batch_edit import BatchEditTool
 from nexus_agent.tools.rag_search import RepositoryRAGTool
 
 
+from unittest.mock import patch
+
 class TestAdvancedFeatures(unittest.TestCase):
     """Test suite for Phase 7 advanced options."""
 
@@ -105,8 +107,10 @@ class TestAdvancedFeatures(unittest.TestCase):
         # utils.py must be rolled back to "a * b" rather than "a / b"
         self.assertIn("a * b", self.file1.read_text(encoding="utf-8"))
 
-    def test_loading_guardrails(self) -> None:
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_loading_guardrails(self, mock_detect) -> None:
         """Verify model loading guardrails safety validations under simulated memory."""
+        mock_detect.return_value = {"cpu": "Mock CPU", "ram_total": "16GB", "gpu": "Mock GPU", "ram_total_bytes": 16 * 1024**3}
         mgr = ModelManager()
 
         # Evaluate simulated existing dummy model
