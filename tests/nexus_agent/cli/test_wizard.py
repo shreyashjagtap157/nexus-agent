@@ -17,6 +17,11 @@ class TestSetupWizard(unittest.TestCase):
         self.console = Console(force_terminal=False)
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
+        self.patcher = patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware", return_value={"cpu": "Mock CPU", "ram_total": "16GB", "gpu": "Mock GPU"})
+        self.mock_detect = self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
 
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
