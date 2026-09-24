@@ -18,6 +18,26 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        # Mock hardware detection globally for these tests to prevent subprocess timeouts in CI
+        self.mock_detect = patch(
+            "nexus_agent.llm.model_manager.ModelManager.detect_hardware"
+        ).start()
+        self.mock_detect.return_value = {
+            "cpu": "Mock CPU",
+            "cpu_threads": 8,
+            "ram_total": "16 GB",
+            "ram_available": "8 GB",
+            "gpu": "Mock GPU",
+            "vram": "8 GB",
+            "npu": "Not detected",
+            "recommended_model_size": "7B",
+            "ram_total_bytes": 16 * 1024**3,
+            "vram_bytes": 8 * 1024**3,
+        }
+
+    def tearDown(self):
+        patch.stopall()
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses
@@ -57,7 +77,8 @@ class TestSetupWizard(unittest.TestCase):
         # ... others False ...
         # 5. Make active? (True)
         confirm_responses = [False, False, True, True] + [False] * (len(CLOUD_PROVIDERS) - 1)
-        # We need to handle the "Make active" prompt which happens after the loop if any were configured
+        # We need to handle the "Make active" prompt which happens after the loop
+        # if any were configured
         confirm_responses.append(True)
 
         self.confirm_mock.side_effect = confirm_responses
@@ -81,6 +102,7 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock.side_effect = ["auto", "full", "balanced"]
         self.confirm_mock.side_effect = [False, False, False]
 
+        # Explicitly patch for this test to override the setUp behavior
         with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
             mock_detect.return_value = {
                 "cpu": "Intel",
