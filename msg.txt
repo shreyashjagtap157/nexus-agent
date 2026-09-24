@@ -1,0 +1,9 @@
+⚡ Bolt: [performance improvement] Optimize file iteration overhead in fs.py
+
+Refactor `iter_files` to prevent redundant object allocation.
+
+Extracted the `skip_dirs` and hidden files configurations to module-level `frozenset` constants to avoid instantiating them on every recursive directory step. Separated the traversal logic into a private string-based `_iter_files_raw` generator to eliminate massive `pathlib.Path` instantiation overhead within the recursion. Reduces overhead substantially while preserving the original public API.
+
+Also fixed a test logic error in `tests/nexus_agent/cli/test_runtimes.py` where `jax` was mocked out instead of `openvino` to test the case where OpenVINO is missing, which was causing tests to fail in CI environments where OpenVINO was installed.
+
+In addition, fixed another CI failure in `tests/nexus_agent/cli/test_wizard.py` by applying the `ModelManager.detect_hardware` mock to the setup function. This ensures that the command line tests don't timeout running real hardware detection via `subprocess` on GitHub Action Runners.
