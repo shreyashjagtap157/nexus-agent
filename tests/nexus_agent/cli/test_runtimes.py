@@ -208,8 +208,12 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_openvino()
+        # We need to block the import by setting sys.modules["openvino"] to None
+        # but also ensure the import machinery doesn't bypass it.
+        # However, due to how patch.dict works with modules, we'll patch the actual check
+        with patch.dict("sys.modules", {"openvino": None}):
+            with patch("builtins.__import__", side_effect=ImportError):
+                runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
 
@@ -224,7 +228,8 @@ class TestCheckTpu(unittest.TestCase):
 
     def test_no_jax(self):
         with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_tpu()
+            with patch("builtins.__import__", side_effect=ImportError):
+                runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
 

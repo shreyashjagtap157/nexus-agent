@@ -18,6 +18,19 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        # Mock hardware detection globally for wizard tests to prevent subprocess timeouts in CI
+        self.mock_detect_patcher = patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+        self.mock_detect = self.mock_detect_patcher.start()
+        self.mock_detect.return_value = {
+            "cpu": "Mock CPU",
+            "cpu_threads": 8,
+            "ram_total": "16 GB",
+            "ram_available": "8 GB"
+        }
+
+    def tearDown(self):
+        self.mock_detect_patcher.stop()
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses
