@@ -2,16 +2,17 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-
-_SKIP_DIRS = frozenset({
-    "node_modules",
-    "__pycache__",
-    ".git",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-})
+_SKIP_DIRS = frozenset(
+    {
+        "node_modules",
+        "__pycache__",
+        ".git",
+        "venv",
+        ".venv",
+        "dist",
+        "build",
+    }
+)
 
 
 def _iter_files_raw(search_path: str) -> Iterator[str]:
