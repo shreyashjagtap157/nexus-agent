@@ -107,17 +107,28 @@ class TestAdvancedFeatures(unittest.TestCase):
 
     def test_loading_guardrails(self) -> None:
         """Verify model loading guardrails safety validations under simulated memory."""
-        mgr = ModelManager()
+        # Mock hardware detection globally for this test to prevent subprocess timeouts in CI
+        from unittest.mock import patch
+        with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
+            mock_detect.return_value = {
+                "cpu": "Mock CPU",
+                "cpu_threads": 8,
+                "ram_total": "16 GB",
+                "ram_available": "8 GB",
+                "ram_total_bytes": 16 * 1024**3,
+                "ram_available_bytes": 8 * 1024**3,
+            }
+            mgr = ModelManager()
 
-        # Evaluate simulated existing dummy model
-        dummy_model = self.workspace / "model.gguf"
-        # Create a large 10MB dummy model file
-        with open(dummy_model, "wb") as f:
-            f.write(b"\0" * 10 * 1024 * 1024)
+            # Evaluate simulated existing dummy model
+            dummy_model = self.workspace / "model.gguf"
+            # Create a large 10MB dummy model file
+            with open(dummy_model, "wb") as f:
+                f.write(b"\0" * 10 * 1024 * 1024)
 
-        chk_balanced = mgr.evaluate_loading_guardrail(str(dummy_model), "balanced")
-        self.assertTrue(chk_balanced["allowed"])
-        self.assertIsNone(chk_balanced["warning"])
+            chk_balanced = mgr.evaluate_loading_guardrail(str(dummy_model), "balanced")
+            self.assertTrue(chk_balanced["allowed"])
+            self.assertIsNone(chk_balanced["warning"])
 
     def test_agent_telemetry_tracing(self) -> None:
         """Verify AgentLoop writes JSONL execution trace files to the workspace."""
