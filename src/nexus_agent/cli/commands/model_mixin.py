@@ -93,7 +93,7 @@ class ModelCommandsMixin:
             return
 
         else:
-            self.r.system_message("Usage: /model [info|list|switch <name>|add <name> <path>|remove <name>|unload]")
+            self.r.system_message("Usage: /model [info|list|switch <name>|add <name> <path>|remove <name>|unload]")  # noqa: E501
 
     def _cmd_model_interactive(self):
         models = self._models_db.list()
@@ -169,8 +169,8 @@ class ModelCommandsMixin:
             tbl.add_column("Status", width=10)
             for name, path_or_id, entry in items:
                 marker = "\u25b8" if (active_name and name in str(active_name)) else " "
-                prov = entry.get("provider", provider_label) if isinstance(entry, dict) else provider_label
-                status = "[green]\u25cf active[/green]" if (active_name and name in str(active_name)) else "[dim]\u25cb[/dim]"
+                prov = entry.get("provider", provider_label) if isinstance(entry, dict) else provider_label  # noqa: E501
+                status = "[green]\u25cf active[/green]" if (active_name and name in str(active_name)) else "[dim]\u25cb[/dim]"  # noqa: E501
                 display_path = path_or_id[:45] if path_or_id else ""
                 tbl.add_row(marker, name[:35], display_path, prov, status)
             return tbl
@@ -185,13 +185,13 @@ class ModelCommandsMixin:
             if not local_models and not cloud_models:
                 self.r.system_message("No stored models.")
             elif not cloud_models:
-                self.console.print("  [dim]No cloud providers connected. Use /connect to add one.[/dim]")
+                self.console.print("  [dim]No cloud providers connected. Use /connect to add one.[/dim]")  # noqa: E501
         else:
             all_items = local_models + cloud_models
             self.console.print(make_table("All Models", all_items))
 
         total = len(local_models) + len(cloud_models)
-        self.console.print(f"  [dim]{total} model(s) total ({len(local_models)} local, {len(cloud_models)} cloud)[/dim]")
+        self.console.print(f"  [dim]{total} model(s) total ({len(local_models)} local, {len(cloud_models)} cloud)[/dim]")  # noqa: E501
 
     def _cmd_unload(self, args: str):
         self._cmd_model("unload")
