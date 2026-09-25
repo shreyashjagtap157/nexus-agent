@@ -461,7 +461,7 @@ class LongTermMemory(SQLiteStore):
         with self._lock:
             conn = self._get_conn()
             cursor = conn.execute(
-                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"
+                "SELECT category, COUNT(*) as count FROM memories GROUP BY category ORDER BY count DESC"  # noqa: E501
             )
             return [dict(row) for row in cursor]
 
