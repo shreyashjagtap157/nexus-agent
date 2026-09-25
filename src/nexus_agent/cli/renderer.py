@@ -39,12 +39,14 @@ logger = logging.getLogger(__name__)
 
 try:
     import msvcrt
+
     HAS_MSVCRT = True
 except ImportError:
     HAS_MSVCRT = False
 
 try:
     import ctypes
+
     HAS_CTYPES = True
 except ImportError:
     HAS_CTYPES = False
@@ -54,11 +56,11 @@ def enable_vt_processing():
     """Enable ENABLE_VIRTUAL_TERMINAL_PROCESSING on Windows Console."""
     if sys.platform == "win32":
         try:
-            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         except (OSError, AttributeError, ValueError):
             pass
         try:
-            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
         except (OSError, AttributeError, ValueError):
             pass
     if sys.platform == "win32" and HAS_CTYPES:
@@ -78,15 +80,16 @@ OSC = "\033]"
 BEL = "\x07"
 ST = "\033\\"
 
-_RICH_TAG = re.compile(r'\[/?\w+(?:=[^\]]*?)?\]')
-_ANSI_RE = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)')
+_RICH_TAG = re.compile(r"\[/?\w+(?:=[^\]]*?)?\]")
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+
 
 def visual_len(text: str) -> int:
     no_markup = _RICH_TAG.sub("", text)
-    plain = _ANSI_RE.sub('', no_markup)
+    plain = _ANSI_RE.sub("", no_markup)
     width = 0
     for ch in plain:
-        if unicodedata.east_asian_width(ch) in ('W', 'F'):
+        if unicodedata.east_asian_width(ch) in ("W", "F"):
             width += 2
         else:
             width += 1
@@ -122,13 +125,13 @@ class AgentStateIndicator:
     """
 
     _ICONS = {
-        "idle": "\u23f8",           # ⏸
-        "thinking": "\U0001f914",   # 🤔
+        "idle": "\u23f8",  # ⏸
+        "thinking": "\U0001f914",  # 🤔
         "tool_calling": "\U0001f6e0",  # 🛠
-        "executing": "\u26a1",       # ⚡
+        "executing": "\u26a1",  # ⚡
         "waiting_approval": "\U0001f512",  # 🔒
-        "error": "\u274c",           # ❌
-        "done": "\u2705",            # ✅
+        "error": "\u274c",  # ❌
+        "done": "\u2705",  # ✅
     }
 
     _STYLES = {
@@ -168,8 +171,9 @@ class AgentStateIndicator:
 @dataclass
 class ToastNotification:
     """A transient toast notification — auto-expires after *duration* seconds."""
+
     text: str
-    style: str = "info"   # info | success | warning | error
+    style: str = "info"  # info | success | warning | error
     timestamp: float = field(default_factory=time.time)
     duration: float = 4.0
 
@@ -194,7 +198,7 @@ class NotificationManager:
         with self._lock:
             active = [n for n in self._notifications if now - n.timestamp < n.duration]
             self._notifications = active
-            return active[:self._max_visible]
+            return active[: self._max_visible]
 
     def render(self, width: int) -> list[str]:
         """Render active notifications as dimmed lines."""
@@ -204,10 +208,10 @@ class NotificationManager:
         lines = []
         for n in notes:
             icon = {
-                "info": "\u2139",     # ℹ
-                "success": "\u2714",   # ✔
-                "warning": "\u26a0",   # ⚠
-                "error": "\u2716",      # ✖
+                "info": "\u2139",  # ℹ
+                "success": "\u2714",  # ✔
+                "warning": "\u26a0",  # ⚠
+                "error": "\u2716",  # ✖
             }.get(n.style, "\u2139")
             style_code = {
                 "info": "\033[2m",
@@ -217,7 +221,7 @@ class NotificationManager:
             }.get(n.style, "\033[2m")
             text = n.text
             if len(text) > width - 10:
-                text = text[:width - 13] + "..."
+                text = text[: width - 13] + "..."
             lines.append(f"  {style_code}{icon} {text}\033[0m")
         return lines
 
@@ -295,13 +299,13 @@ class TaskInspector:
         # Compact status line
         status_parts = []
         if completed:
-            status_parts.append(f"\033[32m\u2714 {completed}\033[0m")    # green check
+            status_parts.append(f"\033[32m\u2714 {completed}\033[0m")  # green check
         if running:
-            status_parts.append(f"\033[36m\u26a1 {running}\033[0m")      # cyan zap
+            status_parts.append(f"\033[36m\u26a1 {running}\033[0m")  # cyan zap
         if pending := total - completed - failed - running:
-            status_parts.append(f"\033[2m\u23f3 {pending}\033[0m")       # dim hourglass
+            status_parts.append(f"\033[2m\u23f3 {pending}\033[0m")  # dim hourglass
         if failed:
-            status_parts.append(f"\033[31m\u2716 {failed}\033[0m")       # red x
+            status_parts.append(f"\033[31m\u2716 {failed}\033[0m")  # red x
         if status_parts:
             lines.append("    " + "  ".join(status_parts))
 
@@ -330,11 +334,11 @@ class TaskInspector:
 
         # Icons
         icon_map = {
-            "completed": "\u2705",     # ✅
-            "running": "\u26a1",       # ⚡
-            "failed": "\u274c",         # ❌
-            "blocked": "\U0001f6ab",    # 🚫
-            "pending": "\u23f3",        # ⏳
+            "completed": "\u2705",  # ✅
+            "running": "\u26a1",  # ⚡
+            "failed": "\u274c",  # ❌
+            "blocked": "\U0001f6ab",  # 🚫
+            "pending": "\u23f3",  # ⏳
         }
         icon = icon_map.get(status, "\u23f3")
 
@@ -343,17 +347,17 @@ class TaskInspector:
             prefix = f"\033[1;36m{icon}\033[0m"  # bold cyan
             title_style = "\033[1;37m"  # bold white
         elif status == "completed":
-            prefix = f"\033[32m{icon}\033[0m"     # green
-            title_style = "\033[2m"     # dim
+            prefix = f"\033[32m{icon}\033[0m"  # green
+            title_style = "\033[2m"  # dim
         elif status == "failed":
-            prefix = f"\033[31m{icon}\033[0m"     # red
-            title_style = "\033[31m"    # red
+            prefix = f"\033[31m{icon}\033[0m"  # red
+            title_style = "\033[31m"  # red
         elif status == "blocked":
-            prefix = f"\033[90m{icon}\033[0m"     # bright black
+            prefix = f"\033[90m{icon}\033[0m"  # bright black
             title_style = "\033[2;90m"
         else:
             prefix = f"\033[2m{icon}\033[0m"
-            title_style = "\033[2m"     # dim
+            title_style = "\033[2m"  # dim
 
         # Truncate title
         max_title_w = width - len(indent) - 10
@@ -370,7 +374,7 @@ class TaskInspector:
             line = f"{indent}{prefix} \033[1m{title}\033[0m{dep_str}"
             lines.append(line)
             if desc and depth == 0:
-                short_desc = desc[:width - len(indent) - 6]
+                short_desc = desc[: width - len(indent) - 6]
                 lines.append(f"{indent}  \033[3;2m{short_desc}\033[0m")
         else:
             line = f"{indent}{prefix} {title_style}{title}\033[0m{dep_str}"
@@ -380,7 +384,7 @@ class TaskInspector:
         if status == "completed":
             result = getattr(node, "result", None)
             if result and depth > 0 and len(result) < 80:
-                lines.append(f"{indent}  \033[2m\u21b3 {result[:width - len(indent) - 8]}\033[0m")
+                lines.append(f"{indent}  \033[2m\u21b3 {result[: width - len(indent) - 8]}\033[0m")
 
         # Recurse into children
         for child_id in children:
@@ -407,73 +411,95 @@ def strip_markup(text: str) -> str:
 def save_cursor() -> str:
     return CSI + "s"
 
+
 def restore_cursor() -> str:
     return CSI + "u"
+
 
 def hide_cursor() -> str:
     return CSI + "?25l"
 
+
 def show_cursor() -> str:
     return CSI + "?25h"
+
 
 def move_up(n: int = 1) -> str:
     return CSI + f"{n}A"
 
+
 def move_down(n: int = 1) -> str:
     return CSI + f"{n}B"
+
 
 def move_right(n: int = 1) -> str:
     return CSI + f"{n}C"
 
+
 def move_left(n: int = 1) -> str:
     return CSI + f"{n}D"
+
 
 def move_to(col: int = 0, row: int = 0) -> str:
     return CSI + f"{row};{col}H"
 
+
 def clear_line() -> str:
     return CSI + "2K"
+
 
 def clear_to_end() -> str:
     return CSI + "0J"
 
+
 def clear_screen() -> str:
     return CSI + "2J"
+
 
 def erase_line() -> str:
     return f"\r{clear_line()}"
 
+
 def alternate_screen() -> str:
     return CSI + "?1049h"
+
 
 def main_screen() -> str:
     return CSI + "?1049l"
 
+
 def enable_synchronized() -> str:
     return CSI + "?2026h"
 
+
 def disable_synchronized() -> str:
     return CSI + "?2026l"
+
 
 def enable_mouse() -> str:
     """Enable X10 + any-event mouse tracking."""
     return CSI + "?1000h" + CSI + "?1003h" + CSI + "?1006h"
 
+
 def disable_mouse() -> str:
     """Disable mouse tracking."""
     return CSI + "?1006l" + CSI + "?1003l" + CSI + "?1000l"
+
 
 def enable_bracketed_paste() -> str:
     """Enable bracketed paste mode — wraps pasted text in escape sequences."""
     return CSI + "?2004h"
 
+
 def disable_bracketed_paste() -> str:
     """Disable bracketed paste mode."""
     return CSI + "?2004l"
 
+
 def set_title(title: str) -> str:
     sanitized = title.replace("\x07", "").replace("\x1b", "")
     return f"{OSC}0;{sanitized}{ST}"
+
 
 def set_scroll_region(top: int, bottom: int) -> str:
     return CSI + f"{top};{bottom}r"
@@ -508,6 +534,7 @@ class PerRequest:
     `↓` is incoming (input) tokens, `↑` is outgoing (output) tokens.
     `+`/`-` are lines added/removed during the request.
     """
+
     def __init__(self):
         self.input_tokens: int = 0
         self.output_tokens: int = 0
@@ -542,9 +569,7 @@ class PerRequest:
         if self.output_tokens > 0:
             parts.append(f"\033[35m↑\033[0m{self.output_tokens:,}")
         if self.lines_added or self.lines_removed:
-            parts.append(
-                f"\033[32m+{self.lines_added}\033[0m\033[31m-{self.lines_removed}\033[0m"
-            )
+            parts.append(f"\033[32m+{self.lines_added}\033[0m\033[31m-{self.lines_removed}\033[0m")
         if self.elapsed > 0:
             if self.elapsed >= 60:
                 m, s = divmod(int(self.elapsed), 60)
@@ -556,6 +581,7 @@ class PerRequest:
 
 class TokenUsage:
     """Token usage tracking — matches Claude Code's display."""
+
     def __init__(self):
         self.input_tokens: int = 0
         self.output_tokens: int = 0
@@ -647,7 +673,9 @@ class TokenUsage:
         if self.last_request.elapsed > 0:
             lines.append(f"  Last request:     {self._fmt_time(self.last_request.elapsed)}")
         if self.last_request.input_tokens or self.last_request.output_tokens:
-            lines.append(f"  Last I/O:         \u2193{self.last_request.input_tokens:,} \u2191{self.last_request.output_tokens:,}")
+            lines.append(
+                f"  Last I/O:         \u2193{self.last_request.input_tokens:,} \u2191{self.last_request.output_tokens:,}"  # noqa: E501
+            )  # noqa: E501
         lines.append(f"  Estimated cost:   ${cost:.4f}")
         lines.append(f"  [{bar}] {pct}%")
         return "\n".join(lines)
@@ -667,6 +695,7 @@ class ContextBreakdown:
     Supports both hardcoded defaults (for when no agent is loaded) and
     dynamic updates from actual system prompt, tools, and provider data.
     """
+
     def __init__(self, max_context: int = 200000):
         self.system_prompt = 2600
         self.system_tools = 17600
@@ -679,8 +708,9 @@ class ContextBreakdown:
         self.auto_compact_buffer = 33000
         self.max_context = max_context
 
-    def update_from_agent(self, agent: Any = None, engine: Any = None,
-                          mcp_tools_count: int = 0, skills_count: int = 0):
+    def update_from_agent(
+        self, agent: Any = None, engine: Any = None, mcp_tools_count: int = 0, skills_count: int = 0
+    ):
         """Recalculate context breakdown from actual agent/engine data.
 
         Args:
@@ -690,26 +720,27 @@ class ContextBreakdown:
             skills_count: Number of loaded skills.
         """
         if engine:
-            caps = getattr(engine, 'get_capabilities', lambda: None)()
-            if caps and hasattr(caps, 'max_context_length'):
+            caps = getattr(engine, "get_capabilities", lambda: None)()
+            if caps and hasattr(caps, "max_context_length"):
                 self.max_context = caps.max_context_length
             # Try to get actual token count for system prompt
-            if agent and hasattr(agent, '_build_system_prompt'):
+            if agent and hasattr(agent, "_build_system_prompt"):
                 try:
                     sys_prompt = agent._build_system_prompt()
                     self.system_prompt = engine.count_tokens(sys_prompt)
                 except (AttributeError, TypeError, ValueError):
                     pass
             # Calculate tools schema tokens
-            if agent and hasattr(agent, '_tool_definitions'):
+            if agent and hasattr(agent, "_tool_definitions"):
                 try:
                     import json as _json
+
                     tools_text = _json.dumps([td.to_dict() for td in agent._tool_definitions])
                     self.system_tools = engine.count_tokens(tools_text)
                 except (TypeError, AttributeError, ValueError):
                     pass
             # Calculate message tokens
-            if agent and hasattr(agent, 'messages') and agent.messages:
+            if agent and hasattr(agent, "messages") and agent.messages:
                 try:
                     self.messages = engine.count_message_tokens(agent.messages)
                 except (AttributeError, TypeError, ValueError):
@@ -724,9 +755,17 @@ class ContextBreakdown:
 
     @property
     def free_space(self) -> int:
-        used = (self.system_prompt + self.system_tools + self.mcp_tools +
-                self.mcp_deferred + self.tools_deferred + self.memory_files +
-                self.skills + self.messages + self.auto_compact_buffer)
+        used = (
+            self.system_prompt
+            + self.system_tools
+            + self.mcp_tools
+            + self.mcp_deferred
+            + self.tools_deferred
+            + self.memory_files
+            + self.skills
+            + self.messages
+            + self.auto_compact_buffer
+        )
         return max(0, self.max_context - used)
 
     def render(self, token_usage: TokenUsage | None = None) -> str:
@@ -767,59 +806,209 @@ class ContextBreakdown:
 # ── Spinner Verbs ──
 # Claude Code's exact spinner verb sets
 SPINNER_VERBS_PRESENT = [
-    "Warping", "Discombobulating", "Reticulating", "Bamboozling",
-    "Thinking", "Processing", "Analyzing", "Reasoning",
-    "Examining", "Computing", "Crunching", "Deciphering",
-    "Deliberating", "Determining", "Elucidating", "Evaluating",
-    "Formulating", "Generating", "Germinating", "Hatching",
-    "Ideating", "Inferring", "Mulling", "Musing",
-    "Noodling", "Percolating", "Perusing", "Pondering",
-    "Ruminating", "Scheming", "Simmering", "Synthesizing",
-    "Tinkering", "Unfurling", "Unravelling", "Whirring",
-    "Wrangling", "Baking", "Brewing", "Cooking",
-    "Crafting", "Creating", "Forging", "Shaping",
-    "Weaving", "Assembling", "Compiling", "Concocting",
-    "Conjuring", "Constructing", "Engineering", "Fabricating",
-    "Building", "Implementing", "Coding", "Architecting",
-    "Designing", "Hacking", "Cobbling", "Patching",
-    "Fixing", "Resolving", "Investigating", "Exploring",
-    "Probing", "Scanning", "Surveying", "Inspecting",
-    "Reading", "Parsing", "Indexing", "Searching",
-    "Hunting", "Tracking", "Digging", "Spelunking",
-    "Tracing", "Aligning", "Calibrating", "Fine-tuning",
-    "Polishing", "Refining", "Coordinating", "Harmonizing",
-    "Integrating", "Merging", "Unifying", "Envisioning",
-    "Imagining", "Conceiving", "Blueprinting", "Strategizing",
-    "Validating", "Verifying", "Debugging", "Testing",
-    "Reviewing", "Distilling", "Refracting", "Iterating",
+    "Warping",
+    "Discombobulating",
+    "Reticulating",
+    "Bamboozling",
+    "Thinking",
+    "Processing",
+    "Analyzing",
+    "Reasoning",
+    "Examining",
+    "Computing",
+    "Crunching",
+    "Deciphering",
+    "Deliberating",
+    "Determining",
+    "Elucidating",
+    "Evaluating",
+    "Formulating",
+    "Generating",
+    "Germinating",
+    "Hatching",
+    "Ideating",
+    "Inferring",
+    "Mulling",
+    "Musing",
+    "Noodling",
+    "Percolating",
+    "Perusing",
+    "Pondering",
+    "Ruminating",
+    "Scheming",
+    "Simmering",
+    "Synthesizing",
+    "Tinkering",
+    "Unfurling",
+    "Unravelling",
+    "Whirring",
+    "Wrangling",
+    "Baking",
+    "Brewing",
+    "Cooking",
+    "Crafting",
+    "Creating",
+    "Forging",
+    "Shaping",
+    "Weaving",
+    "Assembling",
+    "Compiling",
+    "Concocting",
+    "Conjuring",
+    "Constructing",
+    "Engineering",
+    "Fabricating",
+    "Building",
+    "Implementing",
+    "Coding",
+    "Architecting",
+    "Designing",
+    "Hacking",
+    "Cobbling",
+    "Patching",
+    "Fixing",
+    "Resolving",
+    "Investigating",
+    "Exploring",
+    "Probing",
+    "Scanning",
+    "Surveying",
+    "Inspecting",
+    "Reading",
+    "Parsing",
+    "Indexing",
+    "Searching",
+    "Hunting",
+    "Tracking",
+    "Digging",
+    "Spelunking",
+    "Tracing",
+    "Aligning",
+    "Calibrating",
+    "Fine-tuning",
+    "Polishing",
+    "Refining",
+    "Coordinating",
+    "Harmonizing",
+    "Integrating",
+    "Merging",
+    "Unifying",
+    "Envisioning",
+    "Imagining",
+    "Conceiving",
+    "Blueprinting",
+    "Strategizing",
+    "Validating",
+    "Verifying",
+    "Debugging",
+    "Testing",
+    "Reviewing",
+    "Distilling",
+    "Refracting",
+    "Iterating",
 ]
 
 SPINNER_VERBS_PAST = [
-    "Warped", "Discombobulated", "Reticulated", "Bamboozled",
-    "Thought", "Processed", "Analyzed", "Reasoned",
-    "Examined", "Computed", "Crunched", "Deciphered",
-    "Deliberated", "Determined", "Elucidated", "Evaluated",
-    "Formulated", "Generated", "Germinated", "Hatched",
-    "Ideated", "Inferred", "Mulled", "Mused",
-    "Noodled", "Percolated", "Perused", "Pondered",
-    "Ruminated", "Schemed", "Simmered", "Synthesized",
-    "Tinkered", "Unfurled", "Unravelled", "Whirred",
-    "Wrangled", "Baked", "Brewed", "Cooked",
-    "Crafted", "Created", "Forged", "Shaped",
-    "Wove", "Assembled", "Compiled", "Concocted",
-    "Conjured", "Constructed", "Engineered", "Fabricated",
-    "Built", "Implemented", "Coded", "Architected",
-    "Designed", "Hacked", "Cobbled", "Patched",
-    "Fixed", "Resolved", "Investigated", "Explored",
-    "Probed", "Scanned", "Surveyed", "Inspected",
-    "Read", "Parsed", "Indexed", "Searched",
-    "Hunted", "Tracked", "Dug", "Spelunked",
-    "Traced", "Aligned", "Calibrated", "Fine-tuned",
-    "Polished", "Refined", "Coordinated", "Harmonized",
-    "Integrated", "Merged", "Unified", "Envisioned",
-    "Imagined", "Conceived", "Blueprinted", "Strategized",
-    "Validated", "Verified", "Debugged", "Tested",
-    "Reviewed", "Distilled", "Refracted", "Iterated",
+    "Warped",
+    "Discombobulated",
+    "Reticulated",
+    "Bamboozled",
+    "Thought",
+    "Processed",
+    "Analyzed",
+    "Reasoned",
+    "Examined",
+    "Computed",
+    "Crunched",
+    "Deciphered",
+    "Deliberated",
+    "Determined",
+    "Elucidated",
+    "Evaluated",
+    "Formulated",
+    "Generated",
+    "Germinated",
+    "Hatched",
+    "Ideated",
+    "Inferred",
+    "Mulled",
+    "Mused",
+    "Noodled",
+    "Percolated",
+    "Perused",
+    "Pondered",
+    "Ruminated",
+    "Schemed",
+    "Simmered",
+    "Synthesized",
+    "Tinkered",
+    "Unfurled",
+    "Unravelled",
+    "Whirred",
+    "Wrangled",
+    "Baked",
+    "Brewed",
+    "Cooked",
+    "Crafted",
+    "Created",
+    "Forged",
+    "Shaped",
+    "Wove",
+    "Assembled",
+    "Compiled",
+    "Concocted",
+    "Conjured",
+    "Constructed",
+    "Engineered",
+    "Fabricated",
+    "Built",
+    "Implemented",
+    "Coded",
+    "Architected",
+    "Designed",
+    "Hacked",
+    "Cobbled",
+    "Patched",
+    "Fixed",
+    "Resolved",
+    "Investigated",
+    "Explored",
+    "Probed",
+    "Scanned",
+    "Surveyed",
+    "Inspected",
+    "Read",
+    "Parsed",
+    "Indexed",
+    "Searched",
+    "Hunted",
+    "Tracked",
+    "Dug",
+    "Spelunked",
+    "Traced",
+    "Aligned",
+    "Calibrated",
+    "Fine-tuned",
+    "Polished",
+    "Refined",
+    "Coordinated",
+    "Harmonized",
+    "Integrated",
+    "Merged",
+    "Unified",
+    "Envisioned",
+    "Imagined",
+    "Conceived",
+    "Blueprinted",
+    "Strategized",
+    "Validated",
+    "Verified",
+    "Debugged",
+    "Tested",
+    "Reviewed",
+    "Distilled",
+    "Refracted",
+    "Iterated",
 ]
 
 # Rotating infinity symbol frames + gradient color stops
@@ -843,7 +1032,7 @@ INFINITY_COLORS_PURPLE = [
     "\033[38;2;160;100;230m",
 ]
 INFINITY_COLORS_GOLD = [
-    "\033[38;2;255;215;0m",    # gold
+    "\033[38;2;255;215;0m",  # gold
     "\033[38;2;255;200;50m",
     "\033[38;2;255;185;100m",
     "\033[38;2;255;170;150m",
@@ -877,15 +1066,33 @@ INFINITY_COLORS_SILVER = [
 _RESET = "\033[0m"
 
 TOOL_VERBS_PRESENT = [
-    "Reading", "Writing", "Searching", "Executing",
-    "Fetching", "Parsing", "Scanning", "Grepping",
-    "Editing", "Patching", "Applying", "Running",
+    "Reading",
+    "Writing",
+    "Searching",
+    "Executing",
+    "Fetching",
+    "Parsing",
+    "Scanning",
+    "Grepping",
+    "Editing",
+    "Patching",
+    "Applying",
+    "Running",
 ]
 
 TOOL_VERBS_PAST = [
-    "Read", "Wrote", "Searched", "Executed",
-    "Fetched", "Parsed", "Scanned", "Grep'd",
-    "Edited", "Patched", "Applied", "Ran",
+    "Read",
+    "Wrote",
+    "Searched",
+    "Executed",
+    "Fetched",
+    "Parsed",
+    "Scanned",
+    "Grep'd",
+    "Edited",
+    "Patched",
+    "Applied",
+    "Ran",
 ]
 
 
@@ -1035,7 +1242,7 @@ class StatusBar:
 
         all_parts = []
         for item in items:
-            stripped = re.sub(r'\[/?\w+(?:=.*?)?\]', '', item)
+            stripped = re.sub(r"\[/?\w+(?:=.*?)?\]", "", item)
             all_parts.append((item, stripped))
 
         lines: list[str] = []
@@ -1136,8 +1343,8 @@ class CommandMenu:
         """Highlight matching characters in cyan accent color."""
         if not prefix or not text.lower().startswith(prefix.lower()):
             return text
-        matched = text[:len(prefix)]
-        rest = text[len(prefix):]
+        matched = text[: len(prefix)]
+        rest = text[len(prefix) :]
         return f"\033[36m{matched}\033[0m{rest}"
 
     def render_lines(self, width: int) -> list[str]:
@@ -1157,7 +1364,9 @@ class CommandMenu:
         visible_items = self.filtered[start_idx:end_idx]
         if not visible_items:
             return []
-        max_name = min(max(visual_len(strip_markup(c["name"])) for c in visible_items), max(width - 15, 10))
+        max_name = min(
+            max(visual_len(strip_markup(c["name"])) for c in visible_items), max(width - 15, 10)
+        )  # noqa: E501
 
         scroll_up = start_idx > 0
         scroll_down = end_idx < len(self.filtered)
@@ -1211,7 +1420,10 @@ class PermissionDialog:
         console.print(f"  [bold cyan]{tool_name}[/bold cyan]")
         if args_preview:
             console.print(f"  [dim]{args_preview}[/dim]")
-        console.print("  [bold]Allow?[/bold] [green](Y)es[/green] / [red](N)o[/red] / [yellow](A)lways allow[/yellow] ", end="")
+        console.print(
+            "  [bold]Allow?[/bold] [green](Y)es[/green] / [red](N)o[/red] / [yellow](A)lways allow[/yellow] ",  # noqa: E501
+            end="",
+        )  # noqa: E501
 
         # Wait for keypress
         if HAS_MSVCRT:
@@ -1244,9 +1456,11 @@ class PermissionDialog:
 
 # ── Virtual Transcript Architecture ─────────────────────────────────────
 
+
 @dataclass
 class TranscriptBlock:
     """A single message block in the virtual transcript."""
+
     block_id: int
     block_type: str  # user | assistant | tool_call | tool_result | system | divider
     content: str = ""
@@ -1399,18 +1613,20 @@ class VirtualTranscript:
             status_text = "OK" if block.success else "FAIL"
             status_style = "bold green" if block.success else "bold red"
             elapsed_str = f" [{block.elapsed:.1f}s]" if block.elapsed else ""
-            lines.append(f"[{status_style}]{status_text}[/{status_style}]{elapsed_str} [dim]{block.name}[/dim]")
+            lines.append(
+                f"[{status_style}]{status_text}[/{status_style}]{elapsed_str} [dim]{block.name}[/dim]"  # noqa: E501
+            )  # noqa: E501
             if block.content and not block.collapsed:
                 content_lines = block.content.split("\n")
                 for line in content_lines[:8]:
-                    lines.append(f"[dim]  {line[:width - 4]}[/dim]")
+                    lines.append(f"[dim]  {line[: width - 4]}[/dim]")
                 if len(content_lines) > 8:
                     lines.append(f"[dim]  … ({len(content_lines) - 8} more lines)[/dim]")
             elif block.content and block.collapsed:
                 content_lines = block.content.split("\n")
                 if len(content_lines) > 3:
                     for line in content_lines[:2]:
-                        lines.append(f"[dim]  {line[:width - 4]}[/dim]")
+                        lines.append(f"[dim]  {line[: width - 4]}[/dim]")
                     lines.append(f"[dim]  … ({len(content_lines)} lines)[/dim]")
         elif block.block_type == "assistant":
             if block.content.strip():
@@ -1562,7 +1778,9 @@ class NexusTerminalRenderer:
 
     def enter_fullscreen(self):
         if not self._is_fullscreen:
-            sys.stdout.write(alternate_screen() + hide_cursor() + enable_mouse() + enable_bracketed_paste())
+            sys.stdout.write(
+                alternate_screen() + hide_cursor() + enable_mouse() + enable_bracketed_paste()
+            )  # noqa: E501
             sys.stdout.flush()
             self._is_fullscreen = True
             self._update_size()
@@ -1573,7 +1791,9 @@ class NexusTerminalRenderer:
 
     def exit_fullscreen(self):
         if self._is_fullscreen:
-            sys.stdout.write(disable_bracketed_paste() + disable_mouse() + show_cursor() + main_screen())
+            sys.stdout.write(
+                disable_bracketed_paste() + disable_mouse() + show_cursor() + main_screen()
+            )  # noqa: E501
             sys.stdout.flush()
             self._is_fullscreen = False
             self.frame_diff.reset()
@@ -1593,7 +1813,9 @@ class NexusTerminalRenderer:
         self.viewport.height = viewport_height
         total_lines = self.transcript.count_lines(self.width)
         self.viewport.set_total(total_lines)
-        frame = self.transcript.render_lines(self.width, self.viewport.scroll_offset, viewport_height)
+        frame = self.transcript.render_lines(
+            self.width, self.viewport.scroll_offset, viewport_height
+        )  # noqa: E501
         patch = self.frame_diff.compute_patch(frame)
         sys.stdout.write(patch)
         sys.stdout.flush()
@@ -1647,7 +1869,7 @@ class NexusTerminalRenderer:
             except (OSError, ValueError):
                 term_h = 24
             sys.stdout.write(f"\033[1;{term_h}r")
-            # Move cursor to the very bottom line of the terminal screen, and add a newline to scroll up once
+            # Move cursor to the very bottom line of the terminal screen, and add a newline to scroll up once  # noqa: E501
             sys.stdout.write(f"\033[{term_h};1H\n")
             sys.stdout.flush()
             self._scroll_region_set = False
@@ -1660,12 +1882,21 @@ class NexusTerminalRenderer:
             sys.stdout.write("".join(batch))
             sys.stdout.flush()
 
-    def welcome(self, model_name: str, workspace: str, version: str,
-                provider: str = "local", context_size: int = 200000,
-                tokens: object = None, metrics: dict = None,
-                model_status: str = "idle", resource_info: str = "",
-                active_agents: int = 0,
-                session_added: int = 0, session_removed: int = 0):
+    def welcome(
+        self,
+        model_name: str,
+        workspace: str,
+        version: str,
+        provider: str = "local",
+        context_size: int = 200000,
+        tokens: object = None,
+        metrics: dict = None,
+        model_status: str = "idle",
+        resource_info: str = "",
+        active_agents: int = 0,
+        session_added: int = 0,
+        session_removed: int = 0,
+    ):
         try:
             W = shutil.get_terminal_size().columns
         except (OSError, ValueError):
@@ -1680,7 +1911,7 @@ class NexusTerminalRenderer:
                 "│ Welcome to Nexus!   │",
                 f"│ Model: {model_d:<20} │",
                 f"│ Workspace: {ws:<20} │",
-                "╰─────────────────────╯"
+                "╰─────────────────────╯",
             ]
             panel_h = len(lines)
             batch = []
@@ -1710,6 +1941,7 @@ class NexusTerminalRenderer:
             # Subscribe to live resource monitor (cheap when off-screen)
             try:
                 from nexus_agent.cli.resource_monitor import ResourceMonitor
+
                 self._resource_monitor = ResourceMonitor.get()
                 self._resource_monitor.subscribe()
             except (ImportError, RuntimeError, OSError):
@@ -1725,6 +1957,7 @@ class NexusTerminalRenderer:
         vram_str = ""
         try:
             from nexus_agent.cli.resource_monitor import ResourceMonitor
+
             mon = ResourceMonitor.get()
             self._resource_monitor = mon
             mon.subscribe()  # panel is visible — sample every second
@@ -1738,6 +1971,7 @@ class NexusTerminalRenderer:
             self._resource_monitor = None
             try:
                 import psutil  # type: ignore
+
                 cpu_percent = psutil.cpu_percent(interval=None) or 0.0
                 if cpu_percent == 0.0:
                     cpu_percent = 5.0
@@ -1775,9 +2009,9 @@ class NexusTerminalRenderer:
         delta_lines = f"+{added}/-{deleted}"
 
         # 3. Setup tokens
-        tokens_in = tokens.total_input if tokens and hasattr(tokens, 'total_input') else 0
-        tokens_out = tokens.total_output if tokens and hasattr(tokens, 'total_output') else 0
-        context_used = tokens.total if tokens and hasattr(tokens, 'total') else 0
+        tokens_in = tokens.total_input if tokens and hasattr(tokens, "total_input") else 0
+        tokens_out = tokens.total_output if tokens and hasattr(tokens, "total_output") else 0
+        context_used = tokens.total if tokens and hasattr(tokens, "total") else 0
         context_limit = context_size
 
         # 4. Formatter layout
@@ -1791,8 +2025,8 @@ class NexusTerminalRenderer:
             right_col_w = 21
 
         def format_dashboard_line(left: str, right: str = "") -> str:
-            left_plain = strip_markup(_ANSI_RE.sub('', left))
-            right_plain = strip_markup(_ANSI_RE.sub('', right))
+            left_plain = strip_markup(_ANSI_RE.sub("", left))
+            right_plain = strip_markup(_ANSI_RE.sub("", right))
 
             if not right:
                 pad = box_width - visual_len(left_plain)
@@ -1833,7 +2067,7 @@ class NexusTerminalRenderer:
             format_dashboard_line(left_2, right_2),
             format_dashboard_line(left_3, right_3),
             format_dashboard_line(left_4, right_4),
-            "└" + "─" * box_width + "┘"
+            "└" + "─" * box_width + "┘",
         ]
 
         panel_h = len(lines)
@@ -1929,10 +2163,17 @@ class NexusTerminalRenderer:
         sys.stdout.write(line)
         sys.stdout.flush()
 
-    def rebuild_welcome(self, tokens: object = None, metrics: dict = None,
-                      model_status: str | None = None, resource_info: str = "",
-                      active_agents: int | None = None, model_name: str | None = None,
-                      session_added: int | None = None, session_removed: int | None = None):
+    def rebuild_welcome(
+        self,
+        tokens: object = None,
+        metrics: dict = None,
+        model_status: str | None = None,
+        resource_info: str = "",
+        active_agents: int | None = None,
+        model_name: str | None = None,
+        session_added: int | None = None,
+        session_removed: int | None = None,
+    ):
         """Rebuild the welcome panel after terminal resize or clear screen."""
         p = self._welcome_params
         if not p:
@@ -1945,11 +2186,19 @@ class NexusTerminalRenderer:
         actual_metrics = metrics if metrics is not None else p.get("metrics")
         actual_active = active_agents if active_agents is not None else p.get("active_agents", 0)
         actual_added = session_added if session_added is not None else p.get("session_added", 0)
-        actual_removed = session_removed if session_removed is not None else p.get("session_removed", 0)
+        actual_removed = (
+            session_removed if session_removed is not None else p.get("session_removed", 0)
+        )  # noqa: E501
         self.welcome(
-            p["model_name"], p["workspace"], p["version"],
-            p.get("provider", "local"), p.get("context_size", 200000),
-            actual_tokens, actual_metrics, actual_status, actual_resource,
+            p["model_name"],
+            p["workspace"],
+            p["version"],
+            p.get("provider", "local"),
+            p.get("context_size", 200000),
+            actual_tokens,
+            actual_metrics,
+            actual_status,
+            actual_resource,
             active_agents=actual_active,
             session_added=actual_added,
             session_removed=actual_removed,
@@ -1964,7 +2213,7 @@ class NexusTerminalRenderer:
         self.transcript.add_block("user", content=text)
 
     def _get_token_string(self) -> str:
-        if hasattr(self, 'tokens') and self.tokens:
+        if hasattr(self, "tokens") and self.tokens:
             req = self.tokens.current_request
             if req.input_tokens == 0 and req.output_tokens == 0:
                 req = self.tokens.last_request
@@ -1995,7 +2244,9 @@ class NexusTerminalRenderer:
                 self.console.print(f"{line}")
 
     def tool_call(self, name: str, args: dict[str, Any], is_start: bool = True):
-        block_id = self.transcript.add_block("tool_call", name=name, args=args, is_streaming=is_start)
+        block_id = self.transcript.add_block(
+            "tool_call", name=name, args=args, is_streaming=is_start
+        )  # noqa: E501
         self._block_id_map[len(self._block_id_map)] = block_id
         self.console.print(f"\n[bold cyan]▶ {name}[/bold cyan]")
         if args:
@@ -2011,7 +2262,7 @@ class NexusTerminalRenderer:
     def tool_result(self, name: str, output: str, success: bool, elapsed: float = 0):
         status_text = "[bold green]OK[/bold green]" if success else "[bold red]FAIL[/bold red]"
         elapsed_str = f" [dim][{elapsed:.1f}s][/dim]" if elapsed else ""
-        if hasattr(self, '_last_tool_call_id'):
+        if hasattr(self, "_last_tool_call_id"):
             self.transcript.update_block(
                 self._last_tool_call_id,
                 is_streaming=False,
@@ -2027,7 +2278,7 @@ class NexusTerminalRenderer:
             max_preview = 20 if self._view_mode == "verbose" else 3
             if self._view_mode != "verbose":
                 for line in lines[:max_preview]:
-                    self.console.print(f"[dim]  {line[:self.width - 4]}[/dim]")
+                    self.console.print(f"[dim]  {line[: self.width - 4]}[/dim]")
                 if len(lines) > max_preview:
                     self.console.print(f"[dim]  … ({len(lines) - max_preview} more lines)[/dim]")
 
@@ -2103,7 +2354,7 @@ class NexusTerminalRenderer:
     def expand_tool_output(self, block_id: int | None = None):
         if block_id is not None:
             self.transcript.update_block(block_id, collapsed=False)
-        elif hasattr(self, '_last_tool_call_id'):
+        elif hasattr(self, "_last_tool_call_id"):
             self.transcript.update_block(self._last_tool_call_id, collapsed=False)
         if self._is_fullscreen:
             self._render_fullscreen()
@@ -2111,7 +2362,7 @@ class NexusTerminalRenderer:
     def collapse_tool_output(self, block_id: int | None = None):
         if block_id is not None:
             self.transcript.update_block(block_id, collapsed=True)
-        elif hasattr(self, '_last_tool_call_id'):
+        elif hasattr(self, "_last_tool_call_id"):
             self.transcript.update_block(self._last_tool_call_id, collapsed=True)
         if self._is_fullscreen:
             self._render_fullscreen()
@@ -2119,7 +2370,7 @@ class NexusTerminalRenderer:
     def toggle_tool_output(self, block_id: int | None = None):
         if block_id is not None:
             self.transcript.toggle_collapsed(block_id)
-        elif hasattr(self, '_last_tool_call_id'):
+        elif hasattr(self, "_last_tool_call_id"):
             self.transcript.toggle_collapsed(self._last_tool_call_id)
         if self._is_fullscreen:
             self._render_fullscreen()
@@ -2264,17 +2515,19 @@ class NexusTerminalRenderer:
         - Render throttling at ~30fps (33ms min between redraws)
         - DEC mode 2026 synchronized output to eliminate flicker
         """
-        if not hasattr(self, '_streaming_buffer'):
+        if not hasattr(self, "_streaming_buffer"):
             self._streaming_buffer = ""
             self._streaming_line_count = 0
             self._streaming_block_id = self.transcript.add_block(
-                "assistant", content="", is_streaming=True,
+                "assistant",
+                content="",
+                is_streaming=True,
             )
             self._streaming_last_render = 0.0
             self._streaming_active = True
             # Print the ● marker once at start with incoming tokens if available
             token_str = ""
-            if hasattr(self, 'tokens') and self.tokens:
+            if hasattr(self, "tokens") and self.tokens:
                 req = self.tokens.current_request
                 if req.input_tokens > 0:
                     token_str = f"  [dim](↓ {req.input_tokens:,})[/dim]"
@@ -2326,7 +2579,7 @@ class NexusTerminalRenderer:
 
         Returns the full accumulated response text.
         """
-        if not hasattr(self, '_streaming_buffer'):
+        if not hasattr(self, "_streaming_buffer"):
             return ""
 
         full_response = self._streaming_buffer
@@ -2356,7 +2609,12 @@ class NexusTerminalRenderer:
 
         # Clean up streaming state safely (guard against double-call)
         result = full_response
-        for attr in ('_streaming_buffer', '_streaming_line_count', '_streaming_block_id', '_streaming_last_render'):
+        for attr in (
+            "_streaming_buffer",
+            "_streaming_line_count",
+            "_streaming_block_id",
+            "_streaming_last_render",
+        ):  # noqa: E501
             if hasattr(self, attr):
                 delattr(self, attr)
         return result

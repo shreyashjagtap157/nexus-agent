@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import boto3
+
     BEDROCK_AVAILABLE = True
 except ImportError:
     BEDROCK_AVAILABLE = False
@@ -39,7 +40,12 @@ class AWSBedrockProvider(LLMProvider):
         """
         self._config = config
         self._model_name = config.get("model") or "anthropic.claude-3-5-sonnet-20241022-v2:0"
-        self._region = config.get("region") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
+        self._region = (
+            config.get("region")
+            or os.environ.get("AWS_REGION")
+            or os.environ.get("AWS_DEFAULT_REGION")
+            or "us-east-1"
+        )  # noqa: E501
 
         self._client = None
         if BEDROCK_AVAILABLE:
@@ -94,34 +100,37 @@ class AWSBedrockProvider(LLMProvider):
 
             if msg.tool_calls:
                 for tc in msg.tool_calls:
-                    content_blocks.append({
-                        "toolUse": {
-                            "toolUseId": tc.id,
-                            "name": tc.name,
-                            "input": tc.arguments,
+                    content_blocks.append(
+                        {
+                            "toolUse": {
+                                "toolUseId": tc.id,
+                                "name": tc.name,
+                                "input": tc.arguments,
+                            }
                         }
-                    })
+                    )
 
             if msg.role == Role.TOOL:
                 # Tool responses go to a user block with toolResult in Bedrock Converse API
-                bedrock_messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "toolResult": {
-                                "toolUseId": msg.tool_call_id or "",
-                                "content": [{"text": msg.content or ""}],
-                                "status": "success",
+                bedrock_messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "toolResult": {
+                                    "toolUseId": msg.tool_call_id or "",
+                                    "content": [{"text": msg.content or ""}],
+                                    "status": "success",
+                                }
                             }
-                        }
-                    ]
-                })
+                        ],
+                    }
+                )
             else:
                 role_map = {Role.USER: "user", Role.ASSISTANT: "assistant"}
-                bedrock_messages.append({
-                    "role": role_map.get(msg.role, "user"),
-                    "content": content_blocks
-                })
+                bedrock_messages.append(
+                    {"role": role_map.get(msg.role, "user"), "content": content_blocks}
+                )
 
         converse_args: dict[str, Any] = {
             "modelId": self._model_name,
@@ -129,7 +138,7 @@ class AWSBedrockProvider(LLMProvider):
             "inferenceConfig": {
                 "temperature": temperature,
                 "maxTokens": max_tokens,
-            }
+            },
         }
 
         if system_prompts:
@@ -138,19 +147,21 @@ class AWSBedrockProvider(LLMProvider):
         if tools:
             bedrock_tools = []
             for t in tools:
-                bedrock_tools.append({
-                    "toolSpec": {
-                        "name": t.name,
-                        "description": t.description,
-                        "inputSchema": {
-                            "json": {
-                                "type": "object",
-                                "properties": t.parameters,
-                                "required": t.required_params,
-                            }
+                bedrock_tools.append(
+                    {
+                        "toolSpec": {
+                            "name": t.name,
+                            "description": t.description,
+                            "inputSchema": {
+                                "json": {
+                                    "type": "object",
+                                    "properties": t.parameters,
+                                    "required": t.required_params,
+                                }
+                            },
                         }
                     }
-                })
+                )
             converse_args["toolConfig"] = {"tools": bedrock_tools}
 
         return converse_args
@@ -164,7 +175,9 @@ class AWSBedrockProvider(LLMProvider):
         **kwargs: Any,
     ) -> LLMResponse:
         if not BEDROCK_AVAILABLE:
-            raise RuntimeError("boto3 package not installed. Run pip install boto3 to use AWS Bedrock.")
+            raise RuntimeError(
+                "boto3 package not installed. Run pip install boto3 to use AWS Bedrock."
+            )  # noqa: E501
         if not self._client:
             raise ValueError("AWS Bedrock client is not initialized. Check AWS credentials.")
 
@@ -185,11 +198,13 @@ class AWSBedrockProvider(LLMProvider):
                 if tool_calls is None:
                     tool_calls = []
                 tu = block["toolUse"]
-                tool_calls.append(ToolCall(
-                    id=tu["toolUseId"],
-                    name=tu["name"],
-                    arguments=tu["input"],
-                ))
+                tool_calls.append(
+                    ToolCall(
+                        id=tu["toolUseId"],
+                        name=tu["name"],
+                        arguments=tu["input"],
+                    )
+                )
 
         stop_reason = response.get("stopReason")
         finish_reason = "stop" if stop_reason == "end_turn" else stop_reason
@@ -215,7 +230,9 @@ class AWSBedrockProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
         if not BEDROCK_AVAILABLE:
-            raise RuntimeError("boto3 package not installed. Run pip install boto3 to use AWS Bedrock.")
+            raise RuntimeError(
+                "boto3 package not installed. Run pip install boto3 to use AWS Bedrock."
+            )  # noqa: E501
         if not self._client:
             raise ValueError("AWS Bedrock client is not initialized. Check AWS credentials.")
 
@@ -254,11 +271,13 @@ class AWSBedrockProvider(LLMProvider):
                         args = json.loads(tc["input_str"])
                     except json.JSONDecodeError:
                         args = {"raw": tc["input_str"]}
-                    chunk_tool_calls.append(ToolCall(
-                        id=tc["id"],
-                        name=tc["name"],
-                        arguments=args,
-                    ))
+                    chunk_tool_calls.append(
+                        ToolCall(
+                            id=tc["id"],
+                            name=tc["name"],
+                            arguments=args,
+                        )
+                    )
 
                 accumulated_tool_calls.clear()
 
@@ -270,7 +289,11 @@ class AWSBedrockProvider(LLMProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": "anthropic.claude-3-5-sonnet-20241022-v2:0", "name": "Claude 3.5 Sonnet (AWS Bedrock)", "provider": "bedrock"},
+            {
+                "id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+                "name": "Claude 3.5 Sonnet (AWS Bedrock)",
+                "provider": "bedrock",
+            },  # noqa: E501
             {"id": "amazon.nova-pro-v1:0", "name": "Amazon Nova Pro", "provider": "bedrock"},
             {"id": "amazon.nova-lite-v1:0", "name": "Amazon Nova Lite", "provider": "bedrock"},
         ]

@@ -29,6 +29,7 @@ RETRYABLE_STATUS_CODES: frozenset[int] = frozenset({408, 425, 429, 500, 502, 503
 @dataclass
 class RetryPolicy:
     """Configuration for provider retry behavior."""
+
     max_attempts: int = 3
     initial_backoff_s: float = 1.0
     max_backoff_s: float = 30.0
@@ -46,7 +47,7 @@ class RetryPolicy:
         """
         if attempt_index < 0:
             attempt_index = 0
-        delay = self.initial_backoff_s * (self.backoff_multiplier ** attempt_index)
+        delay = self.initial_backoff_s * (self.backoff_multiplier**attempt_index)
         delay = min(delay, self.max_backoff_s)
         if self.jitter:
             # ±25% jitter
@@ -57,6 +58,7 @@ class RetryPolicy:
 @dataclass
 class RetryStats:
     """Statistics collected during a retry loop."""
+
     attempts: int
     total_sleep_s: float
     last_error: BaseException | None = None
@@ -88,12 +90,15 @@ def _is_retryable(exc: BaseException, policy: RetryPolicy) -> bool:
         return exc.response.status_code in policy.retry_on_status
 
     # Network / timeout errors from httpx
-    if isinstance(exc, (
-        httpx.TimeoutException,
-        httpx.ConnectError,
-        httpx.NetworkError,
-        httpx.RemoteProtocolError,
-    )):
+    if isinstance(
+        exc,
+        (
+            httpx.TimeoutException,
+            httpx.ConnectError,
+            httpx.NetworkError,
+            httpx.RemoteProtocolError,
+        ),
+    ):
         return True
 
     # Standard Python exceptions
@@ -110,7 +115,9 @@ def _is_retryable(exc: BaseException, policy: RetryPolicy) -> bool:
         return True
     if "timeout" in err_str or "timed out" in err_str:
         return True
-    if "connection" in err_str and ("refused" in err_str or "reset" in err_str or "error" in err_str):
+    if "connection" in err_str and (
+        "refused" in err_str or "reset" in err_str or "error" in err_str
+    ):  # noqa: E501
         return True
     if "connect" in err_str and "error" in err_str:
         return True
@@ -120,6 +127,7 @@ def _is_retryable(exc: BaseException, policy: RetryPolicy) -> bool:
 def _retry_after_seconds(exc: BaseException) -> float | None:
     """Try to extract Retry-After header value from exception."""
     import httpx
+
     if not isinstance(exc, httpx.HTTPStatusError):
         return None
     resp = getattr(exc, "response", None)
@@ -263,7 +271,9 @@ class RetryProvider(LLMProvider):
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
         result, _stats = with_retry(
-            lambda: self._inner.chat_completion_stream(messages, tools, temperature, max_tokens, **kwargs),
+            lambda: self._inner.chat_completion_stream(
+                messages, tools, temperature, max_tokens, **kwargs
+            ),  # noqa: E501
             policy=self._policy,
             provider_name=self.name,
         )
@@ -320,7 +330,9 @@ def chat_with_retry(
     """
     if stream:
         result, stats = with_retry(
-            lambda: provider.chat_completion_stream(messages, tools, temperature, max_tokens, **kwargs),
+            lambda: provider.chat_completion_stream(
+                messages, tools, temperature, max_tokens, **kwargs
+            ),  # noqa: E501
             policy=policy,
             provider_name=provider.name,
         )

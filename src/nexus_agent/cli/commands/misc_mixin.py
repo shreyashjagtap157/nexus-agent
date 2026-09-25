@@ -18,6 +18,7 @@ class MiscCommandsMixin:
         self.r.divider()
         self.console.print("[bold]Slash Commands:[/bold]")
         from rich.table import Table
+
         table = Table(show_header=False, box=None, padding=(0, 2))
         for c in self.SLASH_COMMANDS:
             table.add_row(f"  [bold]{c['name']}[/bold]", f"[dim]{c['description']}[/dim]")
@@ -44,6 +45,7 @@ class MiscCommandsMixin:
     def _cmd_init(self, args: str):
         """Initialize a .nexus-agent.yaml project config in the current directory."""
         import yaml
+
         project_config = Path(".nexus-agent.yaml")
         if project_config.exists():
             self.r.system_message("Project config already exists. Use /config to modify.")
@@ -61,7 +63,9 @@ class MiscCommandsMixin:
                 "mode": "ask",
             },
         }
-        project_config.write_text(yaml.dump(default_project, default_flow_style=False), encoding="utf-8")
+        project_config.write_text(
+            yaml.dump(default_project, default_flow_style=False), encoding="utf-8"
+        )  # noqa: E501
         self.r.system_message(f"Created {project_config} — edit with /config or the file directly.")
 
     def _cmd_quit(self, args: str):
@@ -69,7 +73,10 @@ class MiscCommandsMixin:
 
     def _cmd_desktop(self, args: str):
         """Open workspace in default IDE/editor."""
-        import subprocess, sys, os
+        import os
+        import subprocess
+        import sys
+
         editor = os.environ.get("EDITOR") or os.environ.get("VISUAL")
         if editor:
             try:
@@ -103,8 +110,7 @@ class MiscCommandsMixin:
             )
         else:
             self.r.system_message(
-                f"GUI is running on {host}:{port}\n"
-                "Open this URL on your mobile device's browser."
+                f"GUI is running on {host}:{port}\nOpen this URL on your mobile device's browser."
             )
 
     def _cmd_release_notes(self, args: str):
@@ -119,15 +125,29 @@ class MiscCommandsMixin:
     def _cmd_pr_comments(self, args: str):
         """Show recent PR comments from the current repository."""
         import subprocess as sp
+
         try:
             result = sp.run(
-                ["gh", "pr", "list", "--state", "open", "--limit", "10", "--json", "number,title,author,updatedAt"],
-                capture_output=True, text=True, timeout=10
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--state",
+                    "open",
+                    "--limit",
+                    "10",
+                    "--json",
+                    "number,title,author,updatedAt",
+                ],  # noqa: E501
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode != 0:
                 self.r.system_message("gh CLI not available or not authenticated.")
                 return
             import json
+
             prs = json.loads(result.stdout)
             if not prs:
                 self.r.system_message("No open PRs found.")
@@ -135,7 +155,9 @@ class MiscCommandsMixin:
             self.console.print("\n  [bold]Open Pull Requests:[/bold]")
             for pr in prs:
                 author = pr.get("author", {}).get("login", "unknown")
-                self.console.print(f"  [cyan]#{pr['number']}[/cyan] {pr['title']} [dim]by {author}[/dim]")
+                self.console.print(
+                    f"  [cyan]#{pr['number']}[/cyan] {pr['title']} [dim]by {author}[/dim]"
+                )  # noqa: E501
             self.console.print()
         except FileNotFoundError:
             self.r.system_message("gh CLI not installed. Install from: https://cli.github.com/")
@@ -146,12 +168,15 @@ class MiscCommandsMixin:
         """Run a security scan of the current workspace."""
         try:
             from nexus_agent.core.devops import SecretScanner
+
             scanner = SecretScanner(Path.cwd())
             results = scanner.scan()
             if not results:
                 self.r.system_message("No secrets detected in workspace.")
                 return
-            self.console.print(f"\n  [bold red]Security Review — {len(results)} potential issue(s):[/bold red]")
+            self.console.print(
+                f"\n  [bold red]Security Review — {len(results)} potential issue(s):[/bold red]"
+            )  # noqa: E501
             for r in results[:20]:
                 loc = f"{r.file_path}:{r.line_number}"
                 self.console.print(f"  [red]![/red] [{r.pattern_name}] {loc}")
@@ -174,12 +199,15 @@ class MiscCommandsMixin:
         self.r.system_message("Terminal setup: Configure in ~/.nexus-agent/config.yaml")
 
     def _cmd_privacy_settings(self, args: str):
-        self.r.system_message("Privacy settings: Configure in ~/.nexus-agent/config.yaml under 'privacy'")
+        self.r.system_message(
+            "Privacy settings: Configure in ~/.nexus-agent/config.yaml under 'privacy'"
+        )  # noqa: E501
 
     def _cmd_upgrade(self, args: str):
         """Check for NexusAgent updates on PyPI."""
         try:
             from nexus_agent.core.updater import check_for_update, get_installed_version
+
             current = get_installed_version()
             info = check_for_update(current)
             if info.available:
@@ -208,35 +236,37 @@ class MiscCommandsMixin:
         self.r.system_message(f"Feedback saved to {file_path}")
 
     def _cmd_ide(self, args: str):
-        self.r.system_message("IDE integration: Configure VS Code/Cursor in config.yaml under 'editor'")
+        self.r.system_message(
+            "IDE integration: Configure VS Code/Cursor in config.yaml under 'editor'"
+        )  # noqa: E501
 
     def _cmd_chrome(self, args: str):
         self.r.system_message("Chrome: Configure debugging port in config.yaml under 'browser'")
 
     def _cmd_plugin(self, args: str):
         """List or manage plugins."""
-        if not hasattr(self, '_plugin_manager') or not self._plugin_manager:
+        if not hasattr(self, "_plugin_manager") or not self._plugin_manager:
             self.r.system_message("Plugin manager unavailable.")
             return
         pm = self._plugin_manager
-        plugins = getattr(pm, 'plugins', {})
+        plugins = getattr(pm, "plugins", {})
         if not plugins:
             self.r.system_message("No plugins loaded. Place .py files in ~/.nexus-agent/plugins/")
             return
         self.console.print("\n  [bold]Loaded Plugins:[/bold]")
         for name, info in plugins.items():
-            desc = getattr(info, 'description', '') or ''
+            desc = getattr(info, "description", "") or ""
             self.console.print(f"  - [bold]{name}[/bold]: {desc}")
         self.console.print()
 
     def _cmd_reload_plugins(self, args: str):
         """Reload all plugins from disk."""
-        if not hasattr(self, '_plugin_manager') or not self._plugin_manager:
+        if not hasattr(self, "_plugin_manager") or not self._plugin_manager:
             self.r.system_message("Plugin manager unavailable.")
             return
         try:
             self._plugin_manager.discover_plugins()
-            count = len(getattr(self._plugin_manager, 'plugins', {}))
+            count = len(getattr(self._plugin_manager, "plugins", {}))
             self.r.system_message(f"Plugins reloaded — {count} plugin(s) loaded.")
         except Exception as exc:
             self.r.system_message(f"Plugin reload failed: {exc}")
@@ -273,6 +303,7 @@ class MiscCommandsMixin:
         """Voice input via speech recognition (requires optional dependency)."""
         try:
             import speech_recognition as sr
+
             r = sr.Recognizer()
             with sr.Microphone() as source:
                 self.r.system_message("Listening... (speak now)")
@@ -293,11 +324,13 @@ class MiscCommandsMixin:
             self.r.system_message("Token usage stats unavailable.")
             return
         t = self._tokens
-        self.r.system_message(f"Token usage: Read={t.total_input:,}, Write={t.total_output:,}, Cache={t.cache_creation + t.cache_read:,}")
+        self.r.system_message(
+            f"Token usage: Read={t.total_input:,}, Write={t.total_output:,}, Cache={t.cache_creation + t.cache_read:,}"  # noqa: E501
+        )  # noqa: E501
 
     def _cmd_passes(self, args: str):
         """Show reasoning passes from the last agent run."""
-        if not hasattr(self, '_nla_telemetry') or not self._nla_telemetry:
+        if not hasattr(self, "_nla_telemetry") or not self._nla_telemetry:
             self.r.system_message("No telemetry data available.")
             return
         try:
@@ -307,8 +340,8 @@ class MiscCommandsMixin:
                 return
             self.console.print(f"\n  [bold]Reasoning Passes — {len(records)} record(s):[/bold]")
             for i, rec in enumerate(records[-10:], 1):
-                thought = getattr(rec, 'thought_process', '')[:80]
-                conf = getattr(rec, 'confidence', 0)
+                thought = getattr(rec, "thought_process", "")[:80]
+                conf = getattr(rec, "confidence", 0)
                 self.console.print(f"  {i}. [dim]{thought}...[/dim] (confidence: {conf:.0%})")
             self.console.print()
         except Exception as exc:

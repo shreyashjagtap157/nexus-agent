@@ -60,7 +60,9 @@ class OpenAIProvider(LLMProvider):
 
     def _get_headers(self) -> dict[str, str]:
         if not self._api_key:
-            raise ValueError("OpenAI API key is missing. Set it in config or via OPENAI_API_KEY env var.")
+            raise ValueError(
+                "OpenAI API key is missing. Set it in config or via OPENAI_API_KEY env var."
+            )  # noqa: E501
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -91,7 +93,6 @@ class OpenAIProvider(LLMProvider):
             payload["reasoning_effort"] = effort
 
         return payload
-
 
     def chat_completion(
         self,

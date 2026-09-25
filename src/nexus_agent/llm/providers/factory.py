@@ -104,9 +104,7 @@ class FallbackProvider(LLMProvider):
                 return result
             except (RuntimeError, ConnectionError, TimeoutError, OSError) as e:
                 last_exc = e
-                logger.warning(
-                    f"FallbackProvider: {op_name} failed on '{provider.name}': {e}"
-                )
+                logger.warning(f"FallbackProvider: {op_name} failed on '{provider.name}': {e}")
                 continue
         if last_exc is not None:
             raise last_exc
@@ -148,7 +146,7 @@ class FallbackProvider(LLMProvider):
                 logger.debug(f"FallbackProvider: close() on '{p.name}' failed: {e}")
 
     def __repr__(self) -> str:
-        return f"<FallbackProvider chain={self.name} last_used={self._last_used and self._last_used.name}>"
+        return f"<FallbackProvider chain={self.name} last_used={self._last_used and self._last_used.name}>"  # noqa: E501
 
 
 class ProviderFactory:
@@ -208,6 +206,7 @@ class ProviderFactory:
 
         if name == "local":
             from nexus_agent.llm.runtime_manager import RuntimeManager
+
             rm = RuntimeManager(config)
             instance = rm.select_engine(model_path_or_name)
         else:
@@ -232,19 +231,13 @@ class ProviderFactory:
         If `fallback_names` is empty, this is equivalent to a single-provider
         chain.
         """
-        primary = ProviderFactory.create_provider(
-            primary_name, config, model_path_or_name
-        )
+        primary = ProviderFactory.create_provider(primary_name, config, model_path_or_name)
         fallbacks: list[LLMProvider] = []
         for name in fallback_names:
             try:
-                fallbacks.append(
-                    ProviderFactory.create_provider(name, config, model_path_or_name)
-                )
+                fallbacks.append(ProviderFactory.create_provider(name, config, model_path_or_name))
             except (ValueError, ImportError, OSError, RuntimeError) as e:
-                logger.warning(
-                    f"create_with_fallback: skipping fallback '{name}': {e}"
-                )
+                logger.warning(f"create_with_fallback: skipping fallback '{name}': {e}")
         return FallbackProvider(primary, fallbacks)
 
     @staticmethod

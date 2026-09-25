@@ -28,15 +28,17 @@ logger = logging.getLogger(__name__)
 
 class FailureType(str, Enum):
     """Classification of tool execution failures."""
-    TRANSIENT = "transient"    # Network, timeout, resource busy → retry directly
-    SEMANTIC = "semantic"      # Wrong arguments, bad path → ask LLM to re-plan
-    FATAL = "fatal"            # Permission denied, missing dependency → report to user
-    UNKNOWN = "unknown"        # Unclassified error
+
+    TRANSIENT = "transient"  # Network, timeout, resource busy → retry directly
+    SEMANTIC = "semantic"  # Wrong arguments, bad path → ask LLM to re-plan
+    FATAL = "fatal"  # Permission denied, missing dependency → report to user
+    UNKNOWN = "unknown"  # Unclassified error
 
 
 @dataclass
 class RetryAttempt:
     """Record of a single retry attempt."""
+
     attempt_number: int
     tool_name: str
     arguments: dict[str, Any]
@@ -49,11 +51,12 @@ class RetryAttempt:
 @dataclass
 class HealingResult:
     """Result of self-healing execution."""
+
     success: bool
     final_output: str
     attempts: list[RetryAttempt] = field(default_factory=list)
     total_retries: int = 0
-    healed: bool = False       # True if succeeded after at least one failure
+    healed: bool = False  # True if succeeded after at least one failure
     failure_type: FailureType | None = None
     diagnosis: str | None = None
 
@@ -64,30 +67,65 @@ class HealingResult:
 
 # Patterns that indicate transient (retryable) errors
 _TRANSIENT_PATTERNS: tuple[str, ...] = (
-    "timed out", "timeout", "connection refused", "connection reset",
-    "resource temporarily unavailable", "try again", "busy",
-    "rate limit", "too many requests", "429", "503", "502",
-    "temporary failure", "network unreachable", "host unreachable",
-    "broken pipe", "eof", "incomplete read",
+    "timed out",
+    "timeout",
+    "connection refused",
+    "connection reset",
+    "resource temporarily unavailable",
+    "try again",
+    "busy",
+    "rate limit",
+    "too many requests",
+    "429",
+    "503",
+    "502",
+    "temporary failure",
+    "network unreachable",
+    "host unreachable",
+    "broken pipe",
+    "eof",
+    "incomplete read",
 )
 
 # Patterns that indicate semantic (re-plannable) errors
 _SEMANTIC_PATTERNS: tuple[str, ...] = (
-    "no such file", "file not found", "not found", "does not exist",
-    "invalid argument", "invalid parameter", "invalid path",
-    "syntax error", "parse error", "unexpected token",
-    "type error", "name error", "attribute error",
-    "missing required", "expected", "unknown tool",
-    "no match found", "no results",
+    "no such file",
+    "file not found",
+    "not found",
+    "does not exist",
+    "invalid argument",
+    "invalid parameter",
+    "invalid path",
+    "syntax error",
+    "parse error",
+    "unexpected token",
+    "type error",
+    "name error",
+    "attribute error",
+    "missing required",
+    "expected",
+    "unknown tool",
+    "no match found",
+    "no results",
 )
 
 # Patterns that indicate fatal (non-recoverable) errors
 _FATAL_PATTERNS: tuple[str, ...] = (
-    "permission denied", "access denied", "forbidden",
-    "authentication failed", "unauthorized", "401", "403",
-    "not installed", "command not found", "no such command",
-    "out of memory", "disk full", "quota exceeded",
-    "execution denied", "blocked",
+    "permission denied",
+    "access denied",
+    "forbidden",
+    "authentication failed",
+    "unauthorized",
+    "401",
+    "403",
+    "not installed",
+    "command not found",
+    "no such command",
+    "out of memory",
+    "disk full",
+    "quota exceeded",
+    "execution denied",
+    "blocked",
 )
 
 
@@ -166,10 +204,12 @@ class DiagnosisBuilder:
                     f"`{attempt.failure_type.value}` — {attempt.error_message[:100]}"
                 )
 
-        lines.extend([
-            "",
-            "### Recommended Action",
-        ])
+        lines.extend(
+            [
+                "",
+                "### Recommended Action",
+            ]
+        )
 
         if failure_type == FailureType.TRANSIENT:
             lines.append(
@@ -185,11 +225,11 @@ class DiagnosisBuilder:
         elif failure_type == FailureType.FATAL:
             lines.append(
                 "This is a fatal error that cannot be resolved by retrying. "
-                "Report the issue to the user and suggest manual intervention or an alternative approach."
+                "Report the issue to the user and suggest manual intervention or an alternative approach."  # noqa: E501
             )
         else:
             lines.append(
-                "The error type is unclear. Try an alternative approach or tool to accomplish the same goal."
+                "The error type is unclear. Try an alternative approach or tool to accomplish the same goal."  # noqa: E501
             )
 
         return "\n".join(lines)
@@ -316,12 +356,15 @@ class SelfHealingExecutor:
 
                 # Success
                 if on_event:
-                    on_event("self_heal_success", {
-                        "tool": tool_name,
-                        "attempt": attempt_num,
-                        "healed": attempt_num > 1,
-                        "duration_ms": duration_ms,
-                    })
+                    on_event(
+                        "self_heal_success",
+                        {
+                            "tool": tool_name,
+                            "attempt": attempt_num,
+                            "healed": attempt_num > 1,
+                            "duration_ms": duration_ms,
+                        },
+                    )
 
                 return HealingResult(
                     success=True,
@@ -354,13 +397,16 @@ class SelfHealingExecutor:
                 )
 
                 if on_event:
-                    on_event("self_heal_retry", {
-                        "tool": tool_name,
-                        "attempt": attempt_num,
-                        "failure_type": failure_type.value,
-                        "error": error_msg[:200],
-                        "duration_ms": duration_ms,
-                    })
+                    on_event(
+                        "self_heal_retry",
+                        {
+                            "tool": tool_name,
+                            "attempt": attempt_num,
+                            "failure_type": failure_type.value,
+                            "error": error_msg[:200],
+                            "duration_ms": duration_ms,
+                        },
+                    )
 
                 # Fatal errors: don't retry
                 if failure_type == FailureType.FATAL:
@@ -391,12 +437,15 @@ class SelfHealingExecutor:
         )
 
         if on_event:
-            on_event("self_heal_failed", {
-                "tool": tool_name,
-                "total_attempts": len(attempts),
-                "failure_type": last_failure_type.value,
-                "diagnosis_length": len(diagnosis),
-            })
+            on_event(
+                "self_heal_failed",
+                {
+                    "tool": tool_name,
+                    "total_attempts": len(attempts),
+                    "failure_type": last_failure_type.value,
+                    "diagnosis_length": len(diagnosis),
+                },
+            )
 
         return HealingResult(
             success=False,

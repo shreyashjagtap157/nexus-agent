@@ -71,7 +71,7 @@ class NexusApp(
         self.data_dir = data_dir
         self.initial_prompt = initial_prompt
         self._model_path = model_path
-        self._model_path_passed = (model_path is not None)
+        self._model_path_passed = model_path is not None
         self._provider_name = provider
         self._gpu_layers = gpu_layers
         self._session_id = session_id
@@ -267,7 +267,7 @@ class NexusApp(
             except (OSError, ValueError, RuntimeError):
                 pass
         # Close MCP clients
-        for client in getattr(self, '_mcp_clients', []):
+        for client in getattr(self, "_mcp_clients", []):
             try:
                 client.close()
             except (OSError, RuntimeError):
@@ -281,7 +281,9 @@ class NexusApp(
 """
         self.r.console.print(logo, style="bold cyan")
         if self._session_id:
-            self.r.console.print("  [bold green]Session saved.[/bold green] To resume this session, run:")
+            self.r.console.print(
+                "  [bold green]Session saved.[/bold green] To resume this session, run:"
+            )  # noqa: E501
             self.r.console.print(f"  [bold]nexus session resume {self._session_id}[/bold]\n")
         else:
             self.r.console.print("  [dim]Goodbye.[/dim]\n")

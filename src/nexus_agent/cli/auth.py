@@ -74,6 +74,7 @@ KEYRING_SERVICE = "nexus-agent"
 # Backend: OS Keychain
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class KeychainBackend:
     """Credentials stored in the OS keychain via the ``keyring`` library.
 
@@ -162,6 +163,7 @@ class KeychainBackend:
 # ═══════════════════════════════════════════════════════════════════════
 # Backend: JSON file with Fernet encryption
 # ═══════════════════════════════════════════════════════════════════════
+
 
 class FernetFileBackend:
     """Credentials stored in ``~/.nexus-agent/auth.json`` with Fernet encryption.
@@ -252,8 +254,15 @@ class FernetFileBackend:
         else:
             try:
                 subprocess.run(
-                    ["icacls", str(self._path), "/inheritance:r", "/grant", f"{os.environ['USERNAME']}:(F)"],
-                    capture_output=True, timeout=10,
+                    [
+                        "icacls",
+                        str(self._path),
+                        "/inheritance:r",
+                        "/grant",
+                        f"{os.environ['USERNAME']}:(F)",
+                    ],  # noqa: E501
+                    capture_output=True,
+                    timeout=10,
                 )
             except (OSError, subprocess.TimeoutExpired, ValueError, KeyError):
                 pass
@@ -364,6 +373,7 @@ class FernetFileBackend:
 # Unified AuthStore
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class AuthStore:
     """Manages API key persistence for cloud providers.
 
@@ -402,10 +412,11 @@ class AuthStore:
         if force_backend == self.BACKEND_KEYCHAIN:
             if not KeychainBackend.is_available():
                 logger.warning(
-                    "OS keychain forced but unavailable. "
-                    "Install keyring: pip install keyring"
+                    "OS keychain forced but unavailable. Install keyring: pip install keyring"
                 )
-            self._key_backend = KeychainBackend() if KeychainBackend.is_available() else self._metadata
+            self._key_backend = (
+                KeychainBackend() if KeychainBackend.is_available() else self._metadata
+            )  # noqa: E501
         elif force_backend == self.BACKEND_FILE:
             self._key_backend = self._metadata
         elif KeychainBackend.is_available():
@@ -432,7 +443,8 @@ class AuthStore:
             except _KeyringError as e:
                 logger.error(
                     "Keychain write failed for '%s': %s — falling back to file",
-                    provider, e,
+                    provider,
+                    e,
                 )
                 self._metadata.save_key(provider, api_key)
                 return

@@ -19,6 +19,7 @@ class EventHandlerMixin:
         added, removed = 0, 0
         try:
             import subprocess
+
             res = subprocess.run(
                 ["git", "diff", "--numstat"],
                 cwd=str(self.workspace),
@@ -50,7 +51,9 @@ class EventHandlerMixin:
                 self.r.error("No model loaded. Use --model or set NEXUS_MODEL_PATH.")
                 return
 
-            in_tokens = self._engine.count_tokens(user_input) if self._engine else len(user_input.split())
+            in_tokens = (
+                self._engine.count_tokens(user_input) if self._engine else len(user_input.split())
+            )  # noqa: E501
             self._tokens.input_tokens += in_tokens
             self._tokens.total_input += in_tokens
             self._tokens.current_request.input_tokens = in_tokens
@@ -93,7 +96,11 @@ class EventHandlerMixin:
                 if event.type == "thinking":
                     new_verb = random.choice(SPINNER_VERBS_PRESENT)
                     self.r.update_spinner(new_verb)
-                    self.r.update_agent_state("thinking", detail=new_verb, iteration=self._agent.iteration_count if self._agent else 0)
+                    self.r.update_agent_state(
+                        "thinking",
+                        detail=new_verb,
+                        iteration=self._agent.iteration_count if self._agent else 0,
+                    )  # noqa: E501
 
                 elif event.type == "content":
                     full_response = event.data
@@ -108,7 +115,11 @@ class EventHandlerMixin:
                 elif event.type == "content_complete":
                     full_response = event.data
                     if isinstance(event.data, str):
-                        out_tokens = self._engine.count_tokens(event.data) if self._engine else len(event.data.split())
+                        out_tokens = (
+                            self._engine.count_tokens(event.data)
+                            if self._engine
+                            else len(event.data.split())
+                        )  # noqa: E501
                         self._tokens.output_tokens += out_tokens
                         self._tokens.total_output += out_tokens
                         self._tokens.current_request.output_tokens = out_tokens
@@ -130,10 +141,18 @@ class EventHandlerMixin:
                             type="tool_call",
                             tool_calls=[{"name": name, "arguments": args}],
                         )
-                    tverb = random.choice([
-                        "Reading", "Writing", "Searching", "Executing",
-                        "Fetching", "Parsing", "Grepping", "Editing",
-                    ])
+                    tverb = random.choice(
+                        [
+                            "Reading",
+                            "Writing",
+                            "Searching",
+                            "Executing",
+                            "Fetching",
+                            "Parsing",
+                            "Grepping",
+                            "Editing",
+                        ]
+                    )
                     self.r.show_spinner(tverb)
 
                 elif event.type == "tool_result":
@@ -149,12 +168,12 @@ class EventHandlerMixin:
                         self.r.show_notification(f"Tool {name} failed", style="error", duration=6.0)
                     if self._session_mgr:
                         self._session_mgr.save_message(
-                        role="tool",
-                        type="tool_result",
-                        name=name,
-                        content=str(output)[:1000] if output else "",
-                        metadata={"success": success, "elapsed": elapsed},
-                    )
+                            role="tool",
+                            type="tool_result",
+                            name=name,
+                            content=str(output)[:1000] if output else "",
+                            metadata={"success": success, "elapsed": elapsed},
+                        )
                     self.r.show_spinner(random.choice(SPINNER_VERBS_PRESENT))
 
                 elif event.type == "error":
@@ -226,7 +245,7 @@ class EventHandlerMixin:
             self._tokens.last_request.lines_added = self._tokens.current_request.lines_added
             self._tokens.last_request.lines_removed = self._tokens.current_request.lines_removed
 
-        if self._agent and hasattr(self._agent, 'messages'):
+        if self._agent and hasattr(self._agent, "messages"):
             self._context.messages = len(self._agent.messages)
         self._refresh_status()
         self.r.set_terminal_title(self._status_line())
@@ -236,5 +255,5 @@ class EventHandlerMixin:
 
     def _finalize_streaming(self, full_response: str | None):
         """Consolidate duplicate finalize_stream() calls into one path."""
-        if hasattr(self.r, '_streaming_buffer') and self.r._streaming_buffer:
+        if hasattr(self.r, "_streaming_buffer") and self.r._streaming_buffer:
             self.r.finalize_stream()

@@ -27,12 +27,13 @@ DECOMPOSE_MAX_TOKENS = 2048
 @dataclass
 class TaskNode:
     """A single node representing a task or subgoal in the hierarchical task graph."""
+
     id: str
     title: str
     description: str
     status: str = "pending"  # pending, running, completed, failed, blocked
     parent_id: str | None = None
-    children: list[str] = field(default_factory=list)      # Node IDs of subtasks
+    children: list[str] = field(default_factory=list)  # Node IDs of subtasks
     dependencies: list[str] = field(default_factory=list)  # Node IDs this task depends on
     result: str | None = None
 
@@ -67,7 +68,7 @@ class TaskGraphStore:
             data = {
                 "session_id": session_id,
                 "root_id": root_id,
-                "nodes": {nid: node.to_dict() for nid, node in nodes.items()}
+                "nodes": {nid: node.to_dict() for nid, node in nodes.items()},
             }
             self.storage_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except (OSError, ValueError) as e:
@@ -139,7 +140,7 @@ class TaskGraphRenderer:
                 shape = f"({node.description[:30]}...)"
             else:
                 title = node.title
-                shape = f"[\"{title} ({nid})\"]"
+                shape = f'["{title} ({nid})"]'
 
             lines.append(f"    {nid}{shape}")
 
@@ -160,13 +161,15 @@ class TaskGraphRenderer:
             for dep_id in node.dependencies:
                 lines.append(f"    {dep_id} --> {nid}")
 
-        lines.extend([
-            "    classDef doneNode fill:#4caf50,stroke:#2e7d32,stroke-width:2px,color:#fff;",
-            "    classDef runNode fill:#2196f3,stroke:#1565c0,stroke-width:2px,color:#fff;",
-            "    classDef failNode fill:#f44336,stroke:#c62828,stroke-width:2px,color:#fff;",
-            "    classDef blockNode fill:#9e9e9e,stroke:#424242,stroke-width:2px,color:#fff;",
-            "    classDef waitNode fill:#37474f,stroke:#263238,stroke-width:1px,color:#cfd8dc;"
-        ])
+        lines.extend(
+            [
+                "    classDef doneNode fill:#4caf50,stroke:#2e7d32,stroke-width:2px,color:#fff;",
+                "    classDef runNode fill:#2196f3,stroke:#1565c0,stroke-width:2px,color:#fff;",
+                "    classDef failNode fill:#f44336,stroke:#c62828,stroke-width:2px,color:#fff;",
+                "    classDef blockNode fill:#9e9e9e,stroke:#424242,stroke-width:2px,color:#fff;",
+                "    classDef waitNode fill:#37474f,stroke:#263238,stroke-width:1px,color:#cfd8dc;",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -213,8 +216,7 @@ class TaskGraph:
             return False
         self.root_id = data.get("root_id")
         self.nodes = {
-            nid: TaskNode.from_dict(ndata)
-            for nid, ndata in data.get("nodes", {}).items()
+            nid: TaskNode.from_dict(ndata) for nid, ndata in data.get("nodes", {}).items()
         }
         return True
 
@@ -231,10 +233,7 @@ class TaskGraph:
         # Sanitize goal string to prevent prompt injection
         sanitized_goal = goal.replace("{", "{{").replace("}", "}}")
         root_node = TaskNode(
-            id=str(uuid.uuid4())[:8],
-            title="Root Goal",
-            description=goal,
-            status="pending"
+            id=str(uuid.uuid4())[:8], title="Root Goal", description=goal, status="pending"
         )
         self.root_id = root_node.id
         self.add_node(root_node)
@@ -247,16 +246,16 @@ class TaskGraph:
 
         try:
             system_prompt = (
-                "You are an expert project planner. Break down the user's high-level goal into a hierarchical list "
-                "of actionable subgoals/tasks. You MUST output a valid JSON array of tasks where each task contains:\n"
+                "You are an expert project planner. Break down the user's high-level goal into a hierarchical list "  # noqa: E501
+                "of actionable subgoals/tasks. You MUST output a valid JSON array of tasks where each task contains:\n"  # noqa: E501
                 "- 'title': Short descriptive title\n"
                 "- 'description': What to do\n"
-                "- 'dependencies': A list of integers referencing index indices of other tasks that MUST be completed first "
+                "- 'dependencies': A list of integers referencing index indices of other tasks that MUST be completed first "  # noqa: E501
                 "(0-indexed index of the task in this array)\n\n"
-                "Keep the list highly technical, sequential, and focused on codebase editing, verification, and testing. "
+                "Keep the list highly technical, sequential, and focused on codebase editing, verification, and testing. "  # noqa: E501
                 "Limit the breakdown to 3-6 key sub-tasks."
             )
-            user_prompt = f"Goal:\n{sanitized_goal}\n\nDecompose this goal into a list of structured JSON sub-tasks."
+            user_prompt = f"Goal:\n{sanitized_goal}\n\nDecompose this goal into a list of structured JSON sub-tasks."  # noqa: E501
 
             messages = [
                 Message(role=Role.SYSTEM, content=system_prompt),
@@ -266,7 +265,7 @@ class TaskGraph:
             response = self.provider.chat_completion(
                 messages=messages,
                 temperature=DECOMPOSE_TEMPERATURE,
-                max_tokens=DECOMPOSE_MAX_TOKENS
+                max_tokens=DECOMPOSE_MAX_TOKENS,
             )
 
             content = (response.content or "").strip()
@@ -295,7 +294,7 @@ class TaskGraph:
                     title=item.get("title", f"Subtask {idx + 1}"),
                     description=item.get("description", ""),
                     parent_id=root_node.id,
-                    status="pending"
+                    status="pending",
                 )
                 nodes_to_add.append(node)
 
@@ -312,7 +311,9 @@ class TaskGraph:
                 self.add_node(node)
 
         except (ValueError, RuntimeError) as e:
-            logger.warning(f"LLM goal decomposition failed: {e}. Falling back to heuristic breakdown.")
+            logger.warning(
+                f"LLM goal decomposition failed: {e}. Falling back to heuristic breakdown."
+            )  # noqa: E501
             self._heuristic_decompose(root_node, goal)
 
         self.save()
@@ -321,9 +322,21 @@ class TaskGraph:
     def _heuristic_decompose(self, root_node: TaskNode, goal: str) -> None:
         """Create a default deterministic three-stage checklist if LLM decomposition fails."""
         stages = [
-            ("Gather Context", "Scan workspace, locate relevant files, and understand current behavior", []),
-            ("Implement Changes", "Apply the necessary modifications and edit target source files", [0]),
-            ("Verify & Test", "Run diagnostics, compile checks, and execute existing tests to verify correctness", [1]),
+            (
+                "Gather Context",
+                "Scan workspace, locate relevant files, and understand current behavior",
+                [],
+            ),  # noqa: E501
+            (
+                "Implement Changes",
+                "Apply the necessary modifications and edit target source files",
+                [0],
+            ),  # noqa: E501
+            (
+                "Verify & Test",
+                "Run diagnostics, compile checks, and execute existing tests to verify correctness",
+                [1],
+            ),  # noqa: E501
         ]
 
         index_to_id: dict[int, str] = {}
@@ -331,11 +344,7 @@ class TaskGraph:
             nid = str(uuid.uuid4())[:8]
             index_to_id[idx] = nid
             node = TaskNode(
-                id=nid,
-                title=title,
-                description=desc,
-                parent_id=root_node.id,
-                status="pending"
+                id=nid, title=title, description=desc, parent_id=root_node.id, status="pending"
             )
             root_node.children.append(nid)
             for dep_idx in deps:
@@ -372,7 +381,15 @@ class TaskGraph:
         """
         total = sum(1 for nid in self.nodes if nid != self.root_id)
         if total == 0:
-            return {"percentage": 100, "total": 0, "completed": 0, "pending": 0, "running": 0, "failed": 0, "blocked": 0}
+            return {
+                "percentage": 100,
+                "total": 0,
+                "completed": 0,
+                "pending": 0,
+                "running": 0,
+                "failed": 0,
+                "blocked": 0,
+            }  # noqa: E501
 
         counts = {"pending": 0, "running": 0, "completed": 0, "failed": 0, "blocked": 0}
 
@@ -402,11 +419,7 @@ class TaskGraph:
                 counts["pending"] += 1
 
         pct = int((counts["completed"] / total) * 100)
-        return {
-            "percentage": pct,
-            "total": total,
-            **counts
-        }
+        return {"percentage": pct, "total": total, **counts}
 
     def to_markdown(self) -> str:
         """Render the task graph as a clean markdown checklist tree."""
