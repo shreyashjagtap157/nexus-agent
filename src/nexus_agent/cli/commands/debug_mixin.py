@@ -24,9 +24,13 @@ class DebugCommandsMixin:
         if self._agent:
             stats = self._agent.get_stats()
             for k, v in stats.items():
-                if k == "model" and (not stats.get("message_count") and not stats.get("iteration_count")):
+                if k == "model" and (
+                    not stats.get("message_count") and not stats.get("iteration_count")
+                ):  # noqa: E501
                     continue
-                if k == "provider" and (not stats.get("message_count") and not stats.get("iteration_count")):
+                if k == "provider" and (
+                    not stats.get("message_count") and not stats.get("iteration_count")
+                ):  # noqa: E501
                     continue
                 if k == "token_estimate" and v == 0:
                     continue
@@ -104,12 +108,14 @@ class DebugCommandsMixin:
                 summary = self._agent.nla_telemetry.generate_session_summary()
                 self.r.hide_spinner()
                 self.console.print()
-                self.console.print(Panel(
-                    Markdown(summary),
-                    title="🧠 NLA Reasoning Summary",
-                    border_style="purple",
-                    padding=(1, 2)
-                ))
+                self.console.print(
+                    Panel(
+                        Markdown(summary),
+                        title="🧠 NLA Reasoning Summary",
+                        border_style="purple",
+                        padding=(1, 2),
+                    )
+                )
             except (ValueError, RuntimeError) as e:
                 self.r.hide_spinner()
                 self.r.error(f"Failed to generate summary: {e}")
@@ -131,9 +137,13 @@ class DebugCommandsMixin:
                 self.r.hide_spinner()
                 if pairs:
                     path.write_text(json.dumps(pairs, indent=2), encoding="utf-8")
-                    self.r.system_message(f"Successfully exported {len(pairs)} autoencoder training pairs to {path}")
+                    self.r.system_message(
+                        f"Successfully exported {len(pairs)} autoencoder training pairs to {path}"
+                    )  # noqa: E501
                 else:
-                    self.r.system_message("No high-confidence reasoning steps available to export yet.")
+                    self.r.system_message(
+                        "No high-confidence reasoning steps available to export yet."
+                    )  # noqa: E501
             except (ValueError, RuntimeError, OSError, TypeError) as e:
                 self.r.hide_spinner()
                 self.r.error(f"Failed to export training pairs: {e}")
@@ -148,7 +158,9 @@ class DebugCommandsMixin:
                     for err, count in sorted(patterns.items(), key=lambda x: x[1], reverse=True):
                         self.console.print(f"  [{count:>3}x] [red]{err}[/red]")
                 else:
-                    self.console.print("  [green]No error triggers recorded in telemetry logs.[/green]")
+                    self.console.print(
+                        "  [green]No error triggers recorded in telemetry logs.[/green]"
+                    )  # noqa: E501
                 self.console.print()
             except (ValueError, RuntimeError) as e:
                 self.r.hide_spinner()
@@ -161,7 +173,9 @@ class DebugCommandsMixin:
             self.console.print(f"  Log File:     [dim]{tel.log_file}[/dim]")
             self.console.print(f"  Buffer Size:  {len(tel._buffer)} / {tel._buffer_max_size}")
             self.console.print(f"  Total In-Mem: {len(tel.records)}")
-            self.console.print(f"  Active Trace: {'✓ running' if tel.log_file.exists() else '○ standby'}\n")
+            self.console.print(
+                f"  Active Trace: {'✓ running' if tel.log_file.exists() else '○ standby'}\n"
+            )  # noqa: E501
         else:
             self.r.system_message("Usage: /nla [summary|export [path]|errors|status]")
 
@@ -171,6 +185,7 @@ class DebugCommandsMixin:
             return
 
         from nexus_agent.llm.base import Role
+
         last_thought = ""
         last_strategy = "unknown"
         last_tools = []
@@ -201,20 +216,42 @@ class DebugCommandsMixin:
 
         self.console.print()
         table = Table(box=None, show_header=False, padding=(0, 2))
-        table.add_row("[bold purple]Reasoning Strategy:[/bold purple]", f"[bold]{last_strategy.upper()}[/bold]")
+        table.add_row(
+            "[bold purple]Reasoning Strategy:[/bold purple]",
+            f"[bold]{last_strategy.upper()}[/bold]",
+        )  # noqa: E501
         if last_tools:
-            table.add_row("[bold purple]Tools Evaluated:[/bold purple]", ", ".join(f"`{t}`" for t in last_tools))
+            table.add_row(
+                "[bold purple]Tools Evaluated:[/bold purple]",
+                ", ".join(f"`{t}`" for t in last_tools),
+            )  # noqa: E501
 
-        words = re.findall(r'\b[a-zA-Z]{5,15}\b', last_thought.lower())
-        stop_words = {"about", "there", "their", "would", "could", "should", "these", "those", "which", "where", "assistant", "message", "thought"}
+        words = re.findall(r"\b[a-zA-Z]{5,15}\b", last_thought.lower())
+        stop_words = {
+            "about",
+            "there",
+            "their",
+            "would",
+            "could",
+            "should",
+            "these",
+            "those",
+            "which",
+            "where",
+            "assistant",
+            "message",
+            "thought",
+        }  # noqa: E501
         concepts = sorted(list(set(w for w in words if w not in stop_words)))[:6]
 
-        self.console.print(Panel(
-            table,
-            title="🎯 Active Concept Activation Map",
-            border_style="purple",
-            padding=(1, 1)
-        ))
+        self.console.print(
+            Panel(
+                table,
+                title="🎯 Active Concept Activation Map",
+                border_style="purple",
+                padding=(1, 1),
+            )
+        )
 
         if concepts:
             self.console.print("  [bold purple]Reconstructed Active Concepts:[/bold purple]")
@@ -222,7 +259,9 @@ class DebugCommandsMixin:
             for c in concepts:
                 intensity = (hash(c) % 34) + 65
                 bar = "█" * (intensity // 10) + "░" * (10 - (intensity // 10))
-                self.console.print(f"    - [cyan]{c:<15}[/cyan]  {bar}  [bold purple]{intensity}%[/bold purple]")
+                self.console.print(
+                    f"    - [cyan]{c:<15}[/cyan]  {bar}  [bold purple]{intensity}%[/bold purple]"
+                )  # noqa: E501
             self.console.print()
 
     def _cmd_cost(self, args: str):
@@ -244,9 +283,7 @@ class DebugCommandsMixin:
 
         current = self._tokens.estimated_cost
         if tracker is None:
-            self.r.system_message(
-                f"Cost: ${current:.4f} (no usage tracker configured)"
-            )
+            self.r.system_message(f"Cost: ${current:.4f} (no usage tracker configured)")
             return
 
         arg = args.strip().lower()
@@ -297,8 +334,7 @@ class DebugCommandsMixin:
 
     def _cmd_usage(self, args: str):
         self.r.system_message(
-            "Usage tracking: use /cost for token/cost details. "
-            "Use /cost help for subcommands."
+            "Usage tracking: use /cost for token/cost details. Use /cost help for subcommands."
         )
 
     def _cmd_extra_usage(self, args: str):
@@ -312,7 +348,9 @@ class DebugCommandsMixin:
         self.console.print(f"  Mode: {self._current_mode.value.upper()}")
         self.console.print(f"  Active Session: {self._session_id or 'none'}")
         self.console.print(f"  Workspace: {self.workspace}")
-        self.console.print(f"  Tokens (I/O): {self._tokens.total_input:,} / {self._tokens.total_output:,}")
+        self.console.print(
+            f"  Tokens (I/O): {self._tokens.total_input:,} / {self._tokens.total_output:,}"
+        )  # noqa: E501
         self.console.print(f"  Estimated Cost: ${self._tokens.estimated_cost:.4f}")
         if self._auth_store:
             providers = self._auth_store.get_status()
@@ -325,11 +363,21 @@ class DebugCommandsMixin:
     def _cmd_doctor(self, args: str):
         self.console.print("\n  [bold]NexusAgent Diagnostics[/bold]")
         self.console.print(f"  ✓ Version: {__version__}")
-        self.console.print(f"  {'✓' if self._engine else '✗'} Engine: {'Loaded' if self._engine and getattr(self._engine, 'is_loaded', False) else 'Not loaded'}")
-        self.console.print(f"  {'✓' if self._agent else '✗'} Agent: {'Initialized' if self._agent else 'Not initialized'}")
-        self.console.print(f"  {'✓' if self._memory else '✗'} Memory: {'Available' if self._memory else 'Unavailable'}")
-        self.console.print(f"  {'✓' if self._session_mgr else '✗'} Sessions: {'Available' if self._session_mgr else 'Unavailable'}")
+        self.console.print(
+            f"  {'✓' if self._engine else '✗'} Engine: {'Loaded' if self._engine and getattr(self._engine, 'is_loaded', False) else 'Not loaded'}"  # noqa: E501
+        )  # noqa: E501
+        self.console.print(
+            f"  {'✓' if self._agent else '✗'} Agent: {'Initialized' if self._agent else 'Not initialized'}"  # noqa: E501
+        )  # noqa: E501
+        self.console.print(
+            f"  {'✓' if self._memory else '✗'} Memory: {'Available' if self._memory else 'Unavailable'}"  # noqa: E501
+        )  # noqa: E501
+        self.console.print(
+            f"  {'✓' if self._session_mgr else '✗'} Sessions: {'Available' if self._session_mgr else 'Unavailable'}"  # noqa: E501
+        )  # noqa: E501
         self.console.print(f"  MCP servers: {len(getattr(self, '_mcp_clients', []))}")
-        self.console.print(f"  Skills: {len(getattr(self._skill_registry, 'skills', {})) if self._skill_registry else 0}")
+        self.console.print(
+            f"  Skills: {len(getattr(self._skill_registry, 'skills', {})) if self._skill_registry else 0}"  # noqa: E501
+        )  # noqa: E501
         self.console.print(f"  Workspace: {self.workspace}")
         self.console.print(f"  Config: {self.config_path or 'default'}")

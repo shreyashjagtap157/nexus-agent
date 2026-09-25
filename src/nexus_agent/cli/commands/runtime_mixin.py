@@ -24,9 +24,7 @@ class RuntimeCommandsMixin:
             self.console.print("  [dim]Scanning for available runtimes\u2026[/dim]")
             self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
             self.console.print(format_runtime_list(self._runtime_list))
-            self.console.print(
-                f"\n  [dim]{len(self._runtime_list)} runtime(s) detected[/dim]"
-            )
+            self.console.print(f"\n  [dim]{len(self._runtime_list)} runtime(s) detected[/dim]")
 
         elif subcmd == "add":
             pieces = parts[1].split(maxsplit=1) if len(parts) >= 2 else []
@@ -40,9 +38,7 @@ class RuntimeCommandsMixin:
                 return
             self._config.setdefault("custom_runtimes", {})[name] = abs_path
             save_config(self._config, self.config_path)
-            self.r.system_message(
-                f"Custom runtime registered: {name} \u2192 {abs_path}"
-            )
+            self.r.system_message(f"Custom runtime registered: {name} \u2192 {abs_path}")
             self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
 
         elif subcmd == "remove" and len(parts) >= 2:
@@ -73,48 +69,34 @@ class RuntimeCommandsMixin:
                         if rt.get("recommended")
                         else ""
                     )
-                    self.console.print(
-                        f"  {key:12s} {rt['name']:40s} {status}{rec_str}"
-                    )
-                    self.console.print(
-                        f"  {'':12s} [dim]{rt['description']}[/dim]"
-                    )
-                self.console.print(
-                    "\n  Usage: [bold]/runtime install <backend>[/bold]"
-                )
+                    self.console.print(f"  {key:12s} {rt['name']:40s} {status}{rec_str}")
+                    self.console.print(f"  {'':12s} [dim]{rt['description']}[/dim]")
+                self.console.print("\n  Usage: [bold]/runtime install <backend>[/bold]")
                 self.console.print(f"  Backends: {', '.join(installable.keys())}")
                 return
 
             if RuntimeManager.is_runtime_installed(backend):
                 self.r.system_message(
-                    f"{backend} runtime is already installed. Use /runtime reinstall {backend} to reinstall."
+                    f"{backend} runtime is already installed. Use /runtime reinstall {backend} to reinstall."  # noqa: E501
                 )
                 return
 
-            self.console.print(
-                f"  [dim]Installing {backend} runtime...[/dim]"
-            )
+            self.console.print(f"  [dim]Installing {backend} runtime...[/dim]")
             success = RuntimeManager.install_runtime(
                 backend, progress_callback=self._runtime_progress
             )
             if success:
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
-                self.r.system_message(
-                    f"\u2713 {backend} runtime installed successfully"
-                )
+                self.r.system_message(f"\u2713 {backend} runtime installed successfully")
             else:
-                self.r.error(
-                    f"Failed to install {backend} runtime. See logs for details."
-                )
+                self.r.error(f"Failed to install {backend} runtime. See logs for details.")
 
         elif subcmd == "reinstall":
             backend = parts[1].strip().lower() if len(parts) >= 2 else ""
             if not backend:
                 self.r.error("Usage: /runtime reinstall <backend>")
                 return
-            self.console.print(
-                f"  [dim]Reinstalling {backend} runtime...[/dim]"
-            )
+            self.console.print(f"  [dim]Reinstalling {backend} runtime...[/dim]")
             success = RuntimeManager.install_runtime(
                 backend,
                 force_reinstall=True,
@@ -122,28 +104,20 @@ class RuntimeCommandsMixin:
             )
             if success:
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
-                self.r.system_message(
-                    f"\u2713 {backend} runtime reinstalled successfully"
-                )
+                self.r.system_message(f"\u2713 {backend} runtime reinstalled successfully")
             else:
-                self.r.error(
-                    f"Failed to reinstall {backend} runtime. See logs for details."
-                )
+                self.r.error(f"Failed to reinstall {backend} runtime. See logs for details.")
 
         elif subcmd == "uninstall":
             backend = parts[1].strip().lower() if len(parts) >= 2 else ""
             if not backend:
                 self.r.error("Usage: /runtime uninstall <backend>")
                 return
-            self.console.print(
-                f"  [dim]Uninstalling {backend} runtime...[/dim]"
-            )
+            self.console.print(f"  [dim]Uninstalling {backend} runtime...[/dim]")
             success = RuntimeManager.uninstall_runtime(backend)
             if success:
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
-                self.r.system_message(
-                    f"\u2713 {backend} runtime uninstalled"
-                )
+                self.r.system_message(f"\u2713 {backend} runtime uninstalled")
             else:
                 self.r.error(f"Failed to uninstall {backend} runtime.")
 
@@ -153,9 +127,7 @@ class RuntimeCommandsMixin:
             runtime_items: list[tuple[str, str | None]] = []
             for rt in self._runtime_list:
                 status = "\u2713" if rt.available else "\u2717"
-                runtime_items.append(
-                    (f"{status} {rt.name} ({rt.description})", rt.name)
-                )
+                runtime_items.append((f"{status} {rt.name} ({rt.description})", rt.name))
             runtime_items.append(("Cancel", "exit"))
             sel = self._interactive_menu(
                 runtime_items, "Select a runtime (\u2191\u2193 Enter Esc):"
@@ -171,7 +143,7 @@ class RuntimeCommandsMixin:
                 backend = name.lower()
                 if not RuntimeManager.is_runtime_installed(backend):
                     self.r.error(
-                        f"Runtime '{backend}' is not installed. Run /runtime install {backend} first."
+                        f"Runtime '{backend}' is not installed. Run /runtime install {backend} first."  # noqa: E501
                     )
                     return
                 self._config.setdefault("runtime", {})["active"] = backend
@@ -182,9 +154,7 @@ class RuntimeCommandsMixin:
                     del self._config["runtime"]["name"]
                 save_config(self._config, self.config_path)
                 RuntimeManager.activate_runtime(backend)
-                self.r.system_message(
-                    f"Active runtime switched to isolated backend: {backend}"
-                )
+                self.r.system_message(f"Active runtime switched to isolated backend: {backend}")
                 self._init_engine()
                 self._init_agent()
                 return
@@ -197,14 +167,8 @@ class RuntimeCommandsMixin:
                 self._config["runtime"]["path"] = path
                 save_config(self._config, self.config_path)
 
-                path_dir = (
-                    os.path.dirname(path) if os.path.isfile(path) else path
-                )
-                os.environ["PATH"] = (
-                    path_dir
-                    + os.pathsep
-                    + os.environ.get("PATH", "")
-                )
+                path_dir = os.path.dirname(path) if os.path.isfile(path) else path
+                os.environ["PATH"] = path_dir + os.pathsep + os.environ.get("PATH", "")
 
                 self.r.system_message(
                     f"Selected custom runtime: {name} (\u2713 active path prepended)"
@@ -216,11 +180,7 @@ class RuntimeCommandsMixin:
 
             if not self._runtime_list:
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
-            found = [
-                r
-                for r in self._runtime_list
-                if name.lower() in r.name.lower()
-            ]
+            found = [r for r in self._runtime_list if name.lower() in r.name.lower()]
             if found:
                 rt = found[0]
                 self._config.setdefault("runtime", {})["active"] = rt.provider
@@ -230,16 +190,12 @@ class RuntimeCommandsMixin:
                 if "name" in cfg_runtime:
                     del self._config["runtime"]["name"]
                 save_config(self._config, self.config_path)
-                self.r.system_message(
-                    f"Active runtime: {rt.name} [{rt.provider}]"
-                )
+                self.r.system_message(f"Active runtime: {rt.name} [{rt.provider}]")
                 self._runtime_list = self._get_custom_runtimes() + scan_runtimes()
                 self._init_engine()
                 self._init_agent()
             else:
-                self.r.error(
-                    f"No runtime matches: {name}. Run /runtime list"
-                )
+                self.r.error(f"No runtime matches: {name}. Run /runtime list")
 
         elif subcmd == "switch":
             backend = parts[1].strip().lower() if len(parts) >= 2 else ""
@@ -251,9 +207,7 @@ class RuntimeCommandsMixin:
                 save_config(self._config, self.config_path)
                 self.r.system_message(f"Runtime backend switched to: {backend}")
             else:
-                self.r.error(
-                    "Failed to switch runtime. Valid: auto, llama-cpp, onnx"
-                )
+                self.r.error("Failed to switch runtime. Valid: auto, llama-cpp, onnx")
 
         elif subcmd in ("help", "--help", "-h") or (not args and subcmd not in ("list",)):
             self.console.print(
@@ -261,7 +215,7 @@ class RuntimeCommandsMixin:
   [cyan]/runtime list[/cyan]       \u2014 Show detected runtimes
   [cyan]/runtime scan[/cyan]       \u2014 Re-scan for runtimes
   [cyan]/runtime select <n>[/cyan] \u2014 Select active runtime by name
-  [cyan]/runtime install <b>[/cyan]  \u2014 Install a runtime backend (cpu|cuda|vulkan|metal|rocm|onnx)
+  [cyan]/runtime install <b>[/cyan]  \u2014 Install a runtime backend (cpu|cuda|vulkan|metal|rocm|onnx)  # noqa: E501
   [cyan]/runtime reinstall <b>[/cyan]\u2014 Force reinstall a runtime backend
   [cyan]/runtime uninstall <b>[/cyan]\u2014 Uninstall a runtime backend
   [cyan]/runtime switch <b>[/cyan]  \u2014 Switch runtime type (auto|llama-cpp|onnx)

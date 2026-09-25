@@ -71,13 +71,17 @@ def _create_mock_provider():
         @property
         def name(self) -> str:
             return "mock"
+
         @property
         def model_name(self) -> str:
             return "mock-model"
+
         def get_capabilities(self) -> dict[str, Any]:
             return {"max_context": 4096, "supports_streaming": True}
+
         def get_available_models(self) -> list[dict[str, Any]]:
             return [{"name": "mock-model", "provider": "mock"}]
+
         def chat_completion(
             self,
             messages: list[Message],
@@ -87,6 +91,7 @@ def _create_mock_provider():
             **kwargs: Any,
         ) -> LLMResponse:
             return LLMResponse(content="Mock response")
+
         def chat_completion_stream(
             self,
             messages: list[Message],
@@ -95,9 +100,14 @@ def _create_mock_provider():
             max_tokens: int = 4096,
             **kwargs: Any,
         ) -> Iterator[Any]:
-            chunk = type("Chunk", (), {"content": "Mock", "tool_calls": None, "usage": None, "is_final": False})
+            chunk = type(
+                "Chunk",
+                (),
+                {"content": "Mock", "tool_calls": None, "usage": None, "is_final": False},
+            )  # noqa: E501
             yield chunk()
             yield chunk()
+
         def close(self) -> None:
             pass
 
@@ -124,11 +134,13 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
 
     # 2. Initialize memory
     from nexus_agent.memory.memory_manager import MemoryManager
+
     memory_data_dir = config.get("data_dir", "~/.nexus-agent/memory")
     memory = MemoryManager(data_dir=memory_data_dir)
 
     # 3. Initialize session (creates or resumes)
     from nexus_agent.session.manager import SessionManager
+
     session_data_dir = config.get("data_dir", "~/.nexus-agent/sessions")
     SessionManager(data_dir=session_data_dir)
 
@@ -173,9 +185,8 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
     if model_path or provider_name != "local":
         # User specified a model or a cloud provider — create a real provider
         from nexus_agent.llm.providers.factory import ProviderFactory
-        llm_provider = ProviderFactory.create_provider(
-            provider_name, config, model_path
-        )
+
+        llm_provider = ProviderFactory.create_provider(provider_name, config, model_path)
         if llm_provider is None:
             raise RuntimeError(
                 f"Provider '{provider_name}' could not be initialized. "
@@ -221,8 +232,9 @@ def _create_agent_factory(workspace: Path, model: str | None, provider: str | No
         nonlocal agent_instance
         if agent_instance is not None:
             return agent_instance
-        logger.info("Initializing agent (workspace=%s, model=%s, provider=%s)",
-                     workspace, model, provider)
+        logger.info(
+            "Initializing agent (workspace=%s, model=%s, provider=%s)", workspace, model, provider
+        )
         try:
             agent_instance = _init_agent(workspace, model, provider)
             logger.info("Agent initialized successfully")

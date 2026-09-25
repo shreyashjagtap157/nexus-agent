@@ -105,8 +105,15 @@ class LSPClientTool(Tool):
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(self, action: str, file: str, line: int = 1,
-                 character: int = 0, new_name: str = "", **kwargs: Any) -> str:
+    def execute(
+        self,
+        action: str,
+        file: str,
+        line: int = 1,
+        character: int = 0,
+        new_name: str = "",
+        **kwargs: Any,
+    ) -> str:
         # Always use the tool's configured workspace - do not allow caller override
         try:
             resolved_path = Tool.resolve_workspace_path(self.workspace, file)
@@ -125,11 +132,13 @@ class LSPClientTool(Tool):
         client = self._pool.get(str(resolved_path))
         if client is not None:
             try:
-                return self._dispatch_lsp(client, resolved_path, content, action,
-                                          line, character, new_name)
+                return self._dispatch_lsp(
+                    client, resolved_path, content, action, line, character, new_name
+                )
             except LSPError as e:
-                logger.info("LSP dispatch failed (%s) — falling back to local analyzer: %s",
-                            action, e)
+                logger.info(
+                    "LSP dispatch failed (%s) — falling back to local analyzer: %s", action, e
+                )
 
         # Local fallback path
         if action == "diagnostics":
@@ -138,7 +147,9 @@ class LSPClientTool(Tool):
             return self._find_definition(resolved_path, content, line, character)
         if action == "hover":
             return self._get_hover_info(resolved_path, content, line, character)
-        return f"Action '{action}' is not supported by the local fallback (no LSP server installed)."
+        return (
+            f"Action '{action}' is not supported by the local fallback (no LSP server installed)."  # noqa: E501
+        )
 
     def _dispatch_lsp(
         self,
@@ -191,7 +202,11 @@ class LSPClientTool(Tool):
         if action == "references":
             result = client.request(
                 "textDocument/references",
-                {"textDocument": text_doc, "position": position, "context": {"includeDeclaration": True}},
+                {
+                    "textDocument": text_doc,
+                    "position": position,
+                    "context": {"includeDeclaration": True},
+                },  # noqa: E501
             )
             return self._render_locations(path, result, kind="Reference")
 
@@ -216,7 +231,7 @@ class LSPClientTool(Tool):
             )
             if not result:
                 return "No formatting changes reported by the language server."
-            return "Formatting edits available from the server. Apply via edit_file with the returned WorkspaceEdit."
+            return "Formatting edits available from the server. Apply via edit_file with the returned WorkspaceEdit."  # noqa: E501
 
         if action == "rename":
             if not new_name:
@@ -232,8 +247,7 @@ class LSPClientTool(Tool):
     # ----------------------------------------------------------------- renderers
 
     @staticmethod
-    def _render_diagnostics(path: Path, diagnostics: list[dict[str, Any]],
-                             content: str) -> str:
+    def _render_diagnostics(path: Path, diagnostics: list[dict[str, Any]], content: str) -> str:
         if not diagnostics:
             return f"✅ Diagnostics OK! Language server reported 0 issues in {path.name}."
         lines = [f"### {len(diagnostics)} issue(s) reported by language server in {path.name}:"]
@@ -247,7 +261,9 @@ class LSPClientTool(Tool):
             source = d.get("source", "")
             code = d.get("code", "")
             tag = f" [{source}/{code}]" if source or code else ""
-            lines.append(f"  [{sev_label}] line {line_no}, col {col_no}{tag}: {d.get('message', '').strip()}")
+            lines.append(
+                f"  [{sev_label}] line {line_no}, col {col_no}{tag}: {d.get('message', '').strip()}"
+            )  # noqa: E501
         return "\n".join(lines)
 
     @staticmethod
@@ -297,7 +313,11 @@ class LSPClientTool(Tool):
                     continue
                 name = item.get("name", "?")
                 kind = item.get("kind", 0)
-                r = item.get("location", {}).get("range", {}) if "location" in item else item.get("range", {})
+                r = (
+                    item.get("location", {}).get("range", {})
+                    if "location" in item
+                    else item.get("range", {})
+                )  # noqa: E501
                 start = (r or {}).get("start", {}) or {}
                 line_no = int(start.get("line", 0)) + 1
                 lines.append(f"  {'  ' * depth}{name}  (kind {kind})  line {line_no}")
@@ -307,7 +327,11 @@ class LSPClientTool(Tool):
             return lines
 
         body = flatten(symbols)
-        return "### Document symbols:\n" + "\n".join(body) if body else "No symbols reported by the language server."
+        return (
+            "### Document symbols:\n" + "\n".join(body)
+            if body
+            else "No symbols reported by the language server."
+        )  # noqa: E501
 
     @staticmethod
     def _render_completions(result: Any) -> str:
@@ -337,9 +361,7 @@ class LSPClientTool(Tool):
         changes = workspace_edit.get("changes") or {}
         document_changes = workspace_edit.get("documentChanges") or []
         total = sum(len(v) for v in changes.values()) if isinstance(changes, dict) else 0
-        total += sum(
-            len(d.get("edits") or []) for d in document_changes if isinstance(d, dict)
-        )
+        total += sum(len(d.get("edits") or []) for d in document_changes if isinstance(d, dict))
         if total == 0:
             return "No rename edits returned by the language server (target not found?)."
         return f"✅ Rename to '{new_name}' would affect {total} location(s) across the workspace."
@@ -350,7 +372,9 @@ class LSPClientTool(Tool):
             try:
                 # Compile to check syntax error
                 compile(content, str(path), "exec")
-                return f"✅ Diagnostics OK! No syntax compile errors found in Python file: {path.name}"
+                return (
+                    f"✅ Diagnostics OK! No syntax compile errors found in Python file: {path.name}"  # noqa: E501
+                )
             except SyntaxError as se:
                 return (
                     f"❌ SYNTAX DIAGNOSTICS FAILURE in {path.name}:\n"
@@ -359,7 +383,7 @@ class LSPClientTool(Tool):
                 )
         elif path.suffix.lower() in (".js", ".ts", ".jsx", ".tsx"):
             # Bracket/parenthesis linter fallback for JS with string/comment state tracking
-            bracket_map = {')': '(', '}': '{', ']': '['}
+            bracket_map = {")": "(", "}": "{", "]": "["}
             stack = []
             in_single_quote = False
             in_double_quote = False
@@ -373,36 +397,36 @@ class LSPClientTool(Tool):
                 for char_idx, char in enumerate(line):
                     # Track string state
                     if in_block_comment:
-                        if prev_char == '*' and char == '/':
+                        if prev_char == "*" and char == "/":
                             in_block_comment = False
                         prev_char = char
                         continue
                     if in_line_comment:
                         continue
                     if in_single_quote:
-                        if char == "'" and prev_char != '\\':
+                        if char == "'" and prev_char != "\\":
                             in_single_quote = False
                         prev_char = char
                         continue
                     if in_double_quote:
-                        if char == '"' and prev_char != '\\':
+                        if char == '"' and prev_char != "\\":
                             in_double_quote = False
                         prev_char = char
                         continue
                     if in_template:
-                        if char == '`' and prev_char != '\\':
+                        if char == "`" and prev_char != "\\":
                             in_template = False
                         prev_char = char
                         continue
 
                     # Check for comment starts
-                    if char == '/' and char_idx + 1 < len(line):
+                    if char == "/" and char_idx + 1 < len(line):
                         next_char = line[char_idx + 1]
-                        if next_char == '/':
+                        if next_char == "/":
                             in_line_comment = True
                             prev_char = char
                             continue
-                        elif next_char == '*':
+                        elif next_char == "*":
                             in_block_comment = True
                             prev_char = char
                             continue
@@ -412,20 +436,20 @@ class LSPClientTool(Tool):
                         in_single_quote = True
                     elif char == '"':
                         in_double_quote = True
-                    elif char == '`':
+                    elif char == "`":
                         in_template = True
                     elif char in bracket_map.values():
                         stack.append((char, idx + 1, char_idx))
                     elif char in bracket_map.keys():
                         if not stack:
-                            return f"❌ SYNTAX ERROR: Unexpected closing bracket '{char}' at line {idx + 1}, column {char_idx + 1}"
+                            return f"❌ SYNTAX ERROR: Unexpected closing bracket '{char}' at line {idx + 1}, column {char_idx + 1}"  # noqa: E501
                         last_char, last_line, last_col = stack.pop()
                         if last_char != bracket_map[char]:
-                            return f"❌ SYNTAX ERROR: Unmatched brackets: '{last_char}' opened at line {last_line} but closed with '{char}' at line {idx + 1}"
+                            return f"❌ SYNTAX ERROR: Unmatched brackets: '{last_char}' opened at line {last_line} but closed with '{char}' at line {idx + 1}"  # noqa: E501
                     prev_char = char
             if stack:
                 last_char, last_line, last_col = stack.pop()
-                return f"❌ SYNTAX ERROR: Unclosed bracket '{last_char}' opened at line {last_line}, column {last_col + 1}"
+                return f"❌ SYNTAX ERROR: Unclosed bracket '{last_char}' opened at line {last_line}, column {last_col + 1}"  # noqa: E501
             return f"✅ Diagnostics OK! Basic structural linter checks passed in file: {path.name}"
 
         return f"Diagnostics ignored for format: {path.suffix}"
@@ -444,23 +468,23 @@ class LSPClientTool(Tool):
             line_start = target_line[:character]
             line_end = target_line[character:]
             # Find word boundaries
-            before_match = re.search(r'\w+$', line_start)
-            after_match = re.search(r'^\w+', line_end)
+            before_match = re.search(r"\w+$", line_start)
+            after_match = re.search(r"^\w+", line_end)
             if before_match and after_match:
                 word = before_match.group(0) + after_match.group(0)
                 words = [word]
             else:
-                words = re.findall(r'\b\w+\b', target_line)
+                words = re.findall(r"\b\w+\b", target_line)
         else:
-            words = re.findall(r'\b\w+\b', target_line)
+            words = re.findall(r"\b\w+\b", target_line)
 
         if not words:
             return "No symbols identified at this location."
 
         results = []
-        for word in words[:3]: # Scan first few words
-            class_pat = re.compile(rf'^\s*class\s+{re.escape(word)}\b')
-            func_pat = re.compile(rf'^\s*(?:def|function|const|async\s+def)\s+{re.escape(word)}\b')
+        for word in words[:3]:  # Scan first few words
+            class_pat = re.compile(rf"^\s*class\s+{re.escape(word)}\b")
+            func_pat = re.compile(rf"^\s*(?:def|function|const|async\s+def)\s+{re.escape(word)}\b")
 
             for idx, line in enumerate(lines):
                 if class_pat.match(line):
@@ -473,8 +497,7 @@ class LSPClientTool(Tool):
 
         return f"Discovered definition(s) in {path.name}:\n" + "\n".join(results)
 
-    def _get_hover_info(self, path: Path, content: str, line_num: int,
-                         character: int = 0) -> str:
+    def _get_hover_info(self, path: Path, content: str, line_num: int, character: int = 0) -> str:
         """Retrieve docstrings and hover info for symbols at this line."""
         if path.suffix.lower() != ".py":
             return f"Hover docstrings extraction currently supported on Python. File: {path.name}"
@@ -493,14 +516,14 @@ class LSPClientTool(Tool):
             if character and 0 < character < len(target_line):
                 line_start = target_line[:character]
                 line_end = target_line[character:]
-                before_match = re.search(r'\w+$', line_start)
-                after_match = re.search(r'^\w+', line_end)
+                before_match = re.search(r"\w+$", line_start)
+                after_match = re.search(r"^\w+", line_end)
                 if before_match and after_match:
                     words = [before_match.group(0) + after_match.group(0)]
                 else:
-                    words = re.findall(r'\b\w+\b', target_line)
+                    words = re.findall(r"\b\w+\b", target_line)
             else:
-                words = re.findall(r'\b\w+\b', target_line)
+                words = re.findall(r"\b\w+\b", target_line)
             if not words:
                 return "No hover symbol found."
 

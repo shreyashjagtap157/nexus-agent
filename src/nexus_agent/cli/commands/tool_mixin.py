@@ -18,6 +18,7 @@ class ToolCommandsMixin:
         self.r.show_spinner("Searching workspace")
         try:
             from nexus_agent.tools.rag_search import RepositoryRAGTool
+
             tool = RepositoryRAGTool(self.workspace)
             results = tool.execute(query=args, max_results=8)
             self.r.hide_spinner()
@@ -39,6 +40,7 @@ class ToolCommandsMixin:
         self.r.show_spinner("Indexing workspace")
         try:
             from nexus_agent.tools.rag_search import RepositoryRAGTool
+
             tool = RepositoryRAGTool(self.workspace)
             result = tool.execute(action="index_all")
             self.r.hide_spinner()
@@ -54,6 +56,7 @@ class ToolCommandsMixin:
         self.r.show_spinner("Opening browser")
         try:
             from nexus_agent.tools.browser import BrowserTool
+
             tool = BrowserTool()
             result = tool.execute(action="navigate", url=args)
             self.r.hide_spinner()
@@ -70,7 +73,9 @@ class ToolCommandsMixin:
             if self._mcp_clients:
                 for i, client in enumerate(self._mcp_clients):
                     tools = getattr(client, "discovered_tools", [])
-                    self.console.print(f"  [cyan]MCP Server {i + 1}:[/cyan] {' '.join(client.command[:2])}")
+                    self.console.print(
+                        f"  [cyan]MCP Server {i + 1}:[/cyan] {' '.join(client.command[:2])}"
+                    )  # noqa: E501
                     self.console.print(f"    Tools: {len(tools)} registered")
                     for t in tools[:5]:
                         self.console.print(f"    - [bold]{t.name}[/bold]: {t.description[:60]}")
@@ -82,6 +87,7 @@ class ToolCommandsMixin:
             if cmd_parts:
                 try:
                     from nexus_agent.mcp.client import MCPClient
+
                     client = MCPClient(command=cmd_parts)
                     if client.start():
                         self._mcp_clients.append(client)
@@ -89,7 +95,9 @@ class ToolCommandsMixin:
                         if self._agent:
                             for tool in client.discovered_tools:
                                 self._agent._tool_map[tool.name] = tool
-                        self.r.system_message(f"MCP server connected ({len(client.discovered_tools)} tools)")
+                        self.r.system_message(
+                            f"MCP server connected ({len(client.discovered_tools)} tools)"
+                        )  # noqa: E501
                     else:
                         self.r.error("MCP server failed to start")
                 except (ValueError, RuntimeError, OSError, FileNotFoundError) as e:
@@ -99,6 +107,7 @@ class ToolCommandsMixin:
             if cmd_parts:
                 try:
                     from nexus_agent.mcp.client import MCPClient
+
                     client = MCPClient(command=cmd_parts)
                     if client.start():
                         self._mcp_clients.append(client)
@@ -110,12 +119,19 @@ class ToolCommandsMixin:
                         cmd_prefix = cmd_parts[0]
                         cmd_args = cmd_parts[1:]
                         servers = self._config.setdefault("mcp", {}).setdefault("servers", [])
-                        if not any(s.get("command") == cmd_prefix and s.get("args") == cmd_args for s in servers):
+                        if not any(
+                            s.get("command") == cmd_prefix and s.get("args") == cmd_args
+                            for s in servers
+                        ):  # noqa: E501
                             servers.append({"command": cmd_prefix, "args": cmd_args})
                             save_config(self._config, self.config_path)
-                            self.r.system_message("MCP server registered in config.yaml permanently")
+                            self.r.system_message(
+                                "MCP server registered in config.yaml permanently"
+                            )  # noqa: E501
 
-                        self.r.system_message(f"MCP server installed & tools loaded dynamically ({len(client.discovered_tools)} tools)")
+                        self.r.system_message(
+                            f"MCP server installed & tools loaded dynamically ({len(client.discovered_tools)} tools)"  # noqa: E501
+                        )  # noqa: E501
                     else:
                         self.r.error("MCP server failed to start")
                 except (ValueError, RuntimeError, OSError, FileNotFoundError, TypeError) as e:
@@ -182,7 +198,9 @@ class ToolCommandsMixin:
             elif action == "list" or not action:
                 pass
             else:
-                self.r.system_message("Usage: /tools [list|enable <name>|disable <name>|toggle <name>]")
+                self.r.system_message(
+                    "Usage: /tools [list|enable <name>|disable <name>|toggle <name>]"
+                )  # noqa: E501
                 return
 
         # Interactive mode

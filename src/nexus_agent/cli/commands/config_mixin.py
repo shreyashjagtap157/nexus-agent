@@ -54,7 +54,7 @@ class ConfigCommandsMixin:
             ("\033[36mScrollback Lines\033[0m", "scrollback"),
             ("\033[36mCursor Style\033[0m", "cursor_style"),
         ]
-        if not hasattr(self, '_display_settings_idx'):
+        if not hasattr(self, "_display_settings_idx"):
             self._display_settings_idx = 0
         sel = self._interactive_menu(
             [(label, val) for label, val in items],
@@ -101,7 +101,9 @@ class ConfigCommandsMixin:
                 self._config.setdefault("display", {})["ui_density"] = dn_sel
                 self.r.system_message(f"UI density set to {dn_sel}")
         elif sel == "scrollback":
-            self.r.system_message("Scrollback: 10000 lines (configurable in ~/.nexus-agent/config.yaml)")
+            self.r.system_message(
+                "Scrollback: 10000 lines (configurable in ~/.nexus-agent/config.yaml)"
+            )  # noqa: E501
         elif sel == "cursor_style":
             styles = ["block", "underline", "beam"]
             cs_sel = self._interactive_menu(
@@ -121,7 +123,7 @@ class ConfigCommandsMixin:
             self.r.exit_fullscreen()
         else:
             self.r.toggle_fullscreen()
-        mode = "fullscreen" if getattr(self.r, '_is_fullscreen', False) else "inline"
+        mode = "fullscreen" if getattr(self.r, "_is_fullscreen", False) else "inline"
         self.r.system_message(f"TUI: {mode}")
 
     def _cmd_theme(self, args: str):
@@ -141,7 +143,9 @@ class ConfigCommandsMixin:
             save_config(self._config, self.config_path)
             self.r.system_message(f"Prompt color set to {args}")
         else:
-            self.r.system_message(f"Usage: /color <{'|'.join(colors)}>\nCurrent: {self._config.get('tui', {}).get('prompt_color', 'purple')}")
+            self.r.system_message(
+                f"Usage: /color <{'|'.join(colors)}>\nCurrent: {self._config.get('tui', {}).get('prompt_color', 'purple')}"  # noqa: E501
+            )  # noqa: E501
 
     def _cmd_vim(self, args: str):
         """Toggle vim-style keybindings."""
@@ -161,7 +165,9 @@ class ConfigCommandsMixin:
         if not args:
             self.r.system_message("Usage: /statusline <comma_separated_items>")
             return
-        self._config.setdefault("tui", {})["statusline_items"] = [i.strip() for i in args.split(",")]
+        self._config.setdefault("tui", {})["statusline_items"] = [
+            i.strip() for i in args.split(",")
+        ]  # noqa: E501
         save_config(self._config, self.config_path)
         self.r.system_message(f"Statusline updated to: {args}")
 
@@ -171,9 +177,9 @@ class ConfigCommandsMixin:
             self.r.system_message("Permissions manager unavailable.")
             return
         if not args:
-            mode = getattr(self._permissions, 'mode', 'ask')
+            mode = getattr(self._permissions, "mode", "ask")
             self.console.print(f"\n  [bold]Permission Mode:[/bold] {mode}")
-            rules = getattr(self._permissions, 'rules', {})
+            rules = getattr(self._permissions, "rules", {})
             if rules:
                 self.console.print("  [bold]Tool Rules:[/bold]")
                 for tool_name, level in rules.items():

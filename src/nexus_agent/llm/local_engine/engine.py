@@ -162,13 +162,16 @@ class LocalEngine(ProtocolMixin, InferenceMixin, LLMProvider):
         )
 
         import llama_cpp
+
         kv_type = llama_cpp.GGML_TYPE_F16
         if self._kv_quant_type == "q8_0":
             kv_type = getattr(llama_cpp, "GGML_TYPE_Q8_0", kv_type)
         elif self._kv_quant_type == "q4_0":
             kv_type = getattr(llama_cpp, "GGML_TYPE_Q4_0", kv_type)
         elif self._kv_quant_type.lower() != "f16":
-            logger.warning(f"Unrecognized kv_quant_type '{self._kv_quant_type}', falling back to f16")
+            logger.warning(
+                f"Unrecognized kv_quant_type '{self._kv_quant_type}', falling back to f16"
+            )  # noqa: E501
 
         extra_args: dict[str, Any] = {}
         if self._rope_freq_base > 0:
@@ -220,6 +223,7 @@ class LocalEngine(ProtocolMixin, InferenceMixin, LLMProvider):
             self._llm = None
             self._model_name_str = ""
             import gc
+
             gc.collect()
             logger.info("Model unloaded")
 
@@ -231,13 +235,15 @@ class LocalEngine(ProtocolMixin, InferenceMixin, LLMProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         if self._model_path:
-            return [{
-                "id": self._model_name_str,
-                "name": self._model_name_str,
-                "path": self._model_path,
-                "provider": "local",
-                "supports_agent_protocol": True,
-            }]
+            return [
+                {
+                    "id": self._model_name_str,
+                    "name": self._model_name_str,
+                    "path": self._model_path,
+                    "provider": "local",
+                    "supports_agent_protocol": True,
+                }
+            ]
         return []
 
     def count_tokens(self, text: str) -> int:

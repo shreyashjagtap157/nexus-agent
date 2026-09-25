@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NLARecord:
     """A structured log representing a single reasoning iteration."""
+
     timestamp: float
     thought_process: str
     strategy_selected: str
     tools_considered: list[str]
-    confidence_score: float             # Value between 0.0 and 1.0
+    confidence_score: float  # Value between 0.0 and 1.0
     alternative_paths: list[str]
     learning_signal: str | None = None
     error_message: str | None = None
@@ -131,17 +132,19 @@ class NLATelemetry:
                         continue
                     try:
                         data = json.loads(line)
-                        records.append(NLARecord(
-                            timestamp=data.get("timestamp", time.time()),
-                            thought_process=data.get("thought_process", ""),
-                            strategy_selected=data.get("strategy_selected", ""),
-                            tools_considered=data.get("tools_considered", []),
-                            confidence_score=data.get("confidence_score", 1.0),
-                            alternative_paths=data.get("alternative_paths", []),
-                            learning_signal=data.get("learning_signal"),
-                            error_message=data.get("error_message"),
-                            metadata=data.get("metadata", {}),
-                        ))
+                        records.append(
+                            NLARecord(
+                                timestamp=data.get("timestamp", time.time()),
+                                thought_process=data.get("thought_process", ""),
+                                strategy_selected=data.get("strategy_selected", ""),
+                                tools_considered=data.get("tools_considered", []),
+                                confidence_score=data.get("confidence_score", 1.0),
+                                alternative_paths=data.get("alternative_paths", []),
+                                learning_signal=data.get("learning_signal"),
+                                error_message=data.get("error_message"),
+                                metadata=data.get("metadata", {}),
+                            )
+                        )
                     except json.JSONDecodeError as e:
                         logger.warning(f"Skipping corrupt JSON on line {line_num}: {e}")
             self.records = records
@@ -181,32 +184,40 @@ class NLATelemetry:
             lines.append(f"- `{strat}`: {count} times")
 
         if learning_signals:
-            lines.extend([
-                "",
-                "### 💡 Architectural Learning Signals",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "### 💡 Architectural Learning Signals",
+                ]
+            )
             for sig in learning_signals:
                 lines.append(f"- {sig}")
 
         if errors:
-            lines.extend([
-                "",
-                "### ⚠️ Errors Logged",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "### ⚠️ Errors Logged",
+                ]
+            )
             for err in errors[-5:]:  # Last 5 errors
                 lines.append(f"- `{err[:120]}`")
 
-        lines.extend([
-            "",
-            "### 🔍 Detailed Step Telemetry",
-        ])
+        lines.extend(
+            [
+                "",
+                "### 🔍 Detailed Step Telemetry",
+            ]
+        )
 
         for idx, r in enumerate(records, 1):
-            lines.extend([
-                f"\n#### Iteration {idx} — Strategy: `{r.strategy_selected}` (Confidence: {r.confidence_score*100:.0f}%)",
-                f"**Thought Process:** {r.thought_process[:250]}...",
-                f"**Tools Considered:** {', '.join(f'`{t}`' for t in r.tools_considered)}",
-            ])
+            lines.extend(
+                [
+                    f"\n#### Iteration {idx} — Strategy: `{r.strategy_selected}` (Confidence: {r.confidence_score * 100:.0f}%)",  # noqa: E501
+                    f"**Thought Process:** {r.thought_process[:250]}...",
+                    f"**Tools Considered:** {', '.join(f'`{t}`' for t in r.tools_considered)}",
+                ]
+            )
 
         return "\n".join(lines)
 
@@ -221,8 +232,16 @@ class NLATelemetry:
 
         # Redaction patterns for sensitive data
         _REDACT_PATTERNS = [
-            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+'), r'\1=[REDACTED]'),
-            (re.compile(r'(?i)(password|secret|api_key|token|credential)\s*["\']?\s*:\s*["\']?\S+'), r'\1: [REDACTED]'),
+            (
+                re.compile(r"(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+"),
+                r"\1=[REDACTED]",
+            ),  # noqa: E501
+            (
+                re.compile(
+                    r'(?i)(password|secret|api_key|token|credential)\s*["\']?\s*:\s*["\']?\S+'
+                ),
+                r"\1: [REDACTED]",
+            ),  # noqa: E501
         ]
 
         for idx, r in enumerate(records):
@@ -239,12 +258,14 @@ class NLATelemetry:
                     for pattern, replacement in _REDACT_PATTERNS
                 ]
 
-                pairs.append({
-                    "instruction": f"Formulate alternative strategy paths for solving tasks requiring tools: {', '.join(r.tools_considered)}",
-                    "thought": redacted_thought,
-                    "ideal_strategy": r.strategy_selected,
-                    "alternatives": redacted_alternatives,
-                })
+                pairs.append(
+                    {
+                        "instruction": f"Formulate alternative strategy paths for solving tasks requiring tools: {', '.join(r.tools_considered)}",  # noqa: E501
+                        "thought": redacted_thought,
+                        "ideal_strategy": r.strategy_selected,
+                        "alternatives": redacted_alternatives,
+                    }
+                )
         return pairs
 
     def get_error_patterns(self) -> dict[str, int]:
@@ -256,8 +277,8 @@ class NLATelemetry:
             if r.error_message:
                 # Classify the error to strip variable paths/numbers
                 clean_err = r.error_message.lower()
-                clean_err = re.sub(r'[\/\\].*?\.[a-z0-9]+', '[FILE]', clean_err)
-                clean_err = re.sub(r'\d+', '[NUM]', clean_err)
+                clean_err = re.sub(r"[\/\\].*?\.[a-z0-9]+", "[FILE]", clean_err)
+                clean_err = re.sub(r"\d+", "[NUM]", clean_err)
                 patterns[clean_err] = patterns.get(clean_err, 0) + 1
 
         return patterns

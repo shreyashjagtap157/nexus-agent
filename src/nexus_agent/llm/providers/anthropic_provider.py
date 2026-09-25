@@ -60,7 +60,9 @@ class AnthropicProvider(LLMProvider):
 
     def _get_headers(self) -> dict[str, str]:
         if not self._api_key:
-            raise ValueError("Anthropic API key is missing. Set it in config or via ANTHROPIC_API_KEY env var.")
+            raise ValueError(
+                "Anthropic API key is missing. Set it in config or via ANTHROPIC_API_KEY env var."
+            )  # noqa: E501
         return {
             "x-api-key": self._api_key,
             "anthropic-version": "2023-06-01",
@@ -93,28 +95,32 @@ class AnthropicProvider(LLMProvider):
 
                 if msg.tool_calls:
                     for tc in msg.tool_calls:
-                        content_blocks.append({
-                            "type": "tool_use",
-                            "id": tc.id,
-                            "name": tc.name,
-                            "input": tc.arguments,
-                        })
+                        content_blocks.append(
+                            {
+                                "type": "tool_use",
+                                "id": tc.id,
+                                "name": tc.name,
+                                "input": tc.arguments,
+                            }
+                        )
                 formatted.append({"role": "assistant", "content": content_blocks})
 
             elif msg.role == Role.TOOL:
                 # Tool responses in Anthropic go into user block with type tool_result
                 if not msg.tool_call_id:
                     logger.warning(f"Tool message missing tool_call_id: {msg.name}")
-                formatted.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": msg.tool_call_id or "",
-                            "content": msg.content or "",
-                        }
-                    ]
-                })
+                formatted.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": msg.tool_call_id or "",
+                                "content": msg.content or "",
+                            }
+                        ],
+                    }
+                )
 
         system_content = "\n\n".join(system_parts) if system_parts else None
         return formatted, system_content
@@ -122,15 +128,17 @@ class AnthropicProvider(LLMProvider):
     def _format_tools(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:
         formatted = []
         for t in tools:
-            formatted.append({
-                "name": t.name,
-                "description": t.description,
-                "input_schema": {
-                    "type": "object",
-                    "properties": t.parameters,
-                    "required": t.required_params,
+            formatted.append(
+                {
+                    "name": t.name,
+                    "description": t.description,
+                    "input_schema": {
+                        "type": "object",
+                        "properties": t.parameters,
+                        "required": t.required_params,
+                    },
                 }
-            })
+            )
         return formatted
 
     def _prepare_payload(
@@ -197,11 +205,13 @@ class AnthropicProvider(LLMProvider):
                 elif block.get("type") == "tool_use":
                     if tool_calls is None:
                         tool_calls = []
-                    tool_calls.append(ToolCall(
-                        id=block["id"],
-                        name=block["name"],
-                        arguments=block["input"],
-                    ))
+                    tool_calls.append(
+                        ToolCall(
+                            id=block["id"],
+                            name=block["name"],
+                            arguments=block["input"],
+                        )
+                    )
 
             stop_reason = result.get("stop_reason")
             finish_reason = "stop" if stop_reason == "end_turn" else stop_reason
@@ -213,7 +223,8 @@ class AnthropicProvider(LLMProvider):
                 usage={
                     "prompt_tokens": result.get("usage", {}).get("input_tokens", 0),
                     "completion_tokens": result.get("usage", {}).get("output_tokens", 0),
-                    "total_tokens": result.get("usage", {}).get("input_tokens", 0) + result.get("usage", {}).get("output_tokens", 0),
+                    "total_tokens": result.get("usage", {}).get("input_tokens", 0)
+                    + result.get("usage", {}).get("output_tokens", 0),  # noqa: E501
                 },
                 model=self._model_name,
             )
@@ -279,11 +290,13 @@ class AnthropicProvider(LLMProvider):
                                     args = json.loads(tc["input_str"])
                                 except json.JSONDecodeError:
                                     args = {"raw": tc["input_str"]}
-                                chunk_tool_calls.append(ToolCall(
-                                    id=tc["id"],
-                                    name=tc["name"],
-                                    arguments=args,
-                                ))
+                                chunk_tool_calls.append(
+                                    ToolCall(
+                                        id=tc["id"],
+                                        name=tc["name"],
+                                        arguments=args,
+                                    )
+                                )
 
                             accumulated_tool_calls.clear()
 
@@ -295,9 +308,21 @@ class AnthropicProvider(LLMProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": "claude-3-5-sonnet-latest", "name": "Claude 3.5 Sonnet (Default)", "provider": "anthropic"},
-            {"id": "claude-3-5-haiku-latest", "name": "Claude 3.5 Haiku (Fast)", "provider": "anthropic"},
-            {"id": "claude-3-opus-latest", "name": "Claude 3 Opus (Advanced)", "provider": "anthropic"},
+            {
+                "id": "claude-3-5-sonnet-latest",
+                "name": "Claude 3.5 Sonnet (Default)",
+                "provider": "anthropic",
+            },  # noqa: E501
+            {
+                "id": "claude-3-5-haiku-latest",
+                "name": "Claude 3.5 Haiku (Fast)",
+                "provider": "anthropic",
+            },  # noqa: E501
+            {
+                "id": "claude-3-opus-latest",
+                "name": "Claude 3 Opus (Advanced)",
+                "provider": "anthropic",
+            },  # noqa: E501
         ]
 
     def validate_config(self) -> list[str]:
