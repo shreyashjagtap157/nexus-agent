@@ -258,7 +258,7 @@ class RepositoryRAGTool(Tool):
             for sym in symbol_cursor:
                 # Find matching chunk that contains this symbol's start line
                 chunk_cursor = conn.execute(
-                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",
+                    "SELECT * FROM file_chunks WHERE file_path = ? AND start_line <= ? AND end_line >= ?",  # noqa: E501
                     (sym["file_path"], sym["start_line"], sym["start_line"])
                 )
                 for chunk in chunk_cursor:
@@ -303,7 +303,7 @@ class RepositoryRAGTool(Tool):
             escaped = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             like_query = f"%{escaped}%"
             cursor = conn.execute(
-                "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
+                "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                 (like_query, max_results),
             )
             for row in cursor:
