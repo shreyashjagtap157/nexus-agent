@@ -143,7 +143,7 @@ class OnnxEngine(LLMProvider):
         if self._model is None:
             raise RuntimeError("No ONNX model loaded. Call load_model() first.")
 
-    def _format_prompt(self, messages: list[Message], tools: list[ToolDefinition] | None = None) -> str:
+    def _format_prompt(self, messages: list[Message], tools: list[ToolDefinition] | None = None) -> str:  # noqa: E501
         """Format message conversation list into standard ChatML or Instruct prompt text.
 
         Injects tool definitions and formatting rules if tools are present.
@@ -178,13 +178,13 @@ class OnnxEngine(LLMProvider):
             if msg.role == Role.SYSTEM:
                 system_content += content
             elif msg.role == Role.TOOL:
-                prompt += f"<|im_start|>user\n[TOOL RESULT for {msg.name or 'tool'} (ID: {msg.tool_call_id or ''})]:\n{content}<|im_end|>\n"
+                prompt += f"<|im_start|>user\n[TOOL RESULT for {msg.name or 'tool'} (ID: {msg.tool_call_id or ''})]:\n{content}<|im_end|>\n"  # noqa: E501
             else:
                 prompt += f"<|im_start|>{role}\n{content}<|im_end|>\n"
 
         # Prefix system prompt
         if system_content or tool_system_prompt:
-            prompt = f"<|im_start|>system\n{system_content}{tool_system_prompt}<|im_end|>\n" + prompt
+            prompt = f"<|im_start|>system\n{system_content}{tool_system_prompt}<|im_end|>\n" + prompt  # noqa: E501
 
         # Append assistant trigger
         prompt += "<|im_start|>assistant\n"
@@ -298,7 +298,7 @@ class OnnxEngine(LLMProvider):
                 text_chunk = tokenizer_stream.decode(next_token)
                 full_text += text_chunk
 
-                # If the assistant is starting to output a JSON tool call block, we should accumulate
+                # If the assistant is starting to output a JSON tool call block, we should accumulate  # noqa: E501
                 # and check if we are yielding content or a tool call chunk.
                 yield StreamChunk(
                     content=text_chunk,

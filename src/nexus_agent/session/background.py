@@ -120,7 +120,7 @@ class BackgroundSession:
 
     def cancel(self) -> bool:
         """Request cancellation. Returns True if a cancel was signalled."""
-        if self._state in (BackgroundState.COMPLETED, BackgroundState.FAILED, BackgroundState.CANCELLED):
+        if self._state in (BackgroundState.COMPLETED, BackgroundState.FAILED, BackgroundState.CANCELLED):  # noqa: E501
             return False
         self._cancel.set()
         return True

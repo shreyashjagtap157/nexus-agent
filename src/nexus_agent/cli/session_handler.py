@@ -19,6 +19,7 @@ from nexus_agent.cli.renderer import (
 )
 from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
 from nexus_agent.core.config import load_config
+from nexus_agent.core.plugins import PluginManager
 from nexus_agent.core.usage import UsageTracker
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.runtime_manager import RuntimeManager
@@ -27,7 +28,6 @@ from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.permissions.rules import PermissionLevel
 from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.manager import SessionManager
-from nexus_agent.core.plugins import PluginManager
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class SessionOrchestratorMixin:
                 logger.info(f"Dynamically prepended custom runtime path: {path_dir}")
 
         if getattr(self, "_model_path_passed", False):
-            self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")
+            self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")  # noqa: E501
         else:
             self._model_path = None
 
@@ -66,7 +66,7 @@ class SessionOrchestratorMixin:
         project_mem_dir = self.workspace / ".nexus" / "memory"
         self._project_memory = MemoryManager(data_dir=str(project_mem_dir))
         self._session_mgr = SessionManager(data_dir=f"{data_dir_path}/sessions")
-        self._checkpoint_mgr = CheckpointManager(os.path.join(data_dir_path, "checkpoints")) if self._session_mgr else None
+        self._checkpoint_mgr = CheckpointManager(os.path.join(data_dir_path, "checkpoints")) if self._session_mgr else None  # noqa: E501
         self._usage_tracker = UsageTracker(
             path=Path(data_dir_path) / "usage.json"
         )
@@ -173,11 +173,11 @@ class SessionOrchestratorMixin:
         if not self._engine:
             return
 
-        from nexus_agent.tools.boomerang import BoomerangTool
-        from nexus_agent.tools.council import CouncilTool
         from nexus_agent.tools.batch_edit import BatchEditTool
+        from nexus_agent.tools.boomerang import BoomerangTool
         from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
         from nexus_agent.tools.code_intel import ImportGraphTool
+        from nexus_agent.tools.council import CouncilTool
         from nexus_agent.tools.file_ops import (
             ListDirectoryTool,
             ReadFileTool,
@@ -292,7 +292,7 @@ class SessionOrchestratorMixin:
                 )
 
         mcp_count = len(self._mcp_tools) if self._mcp_tools else 0
-        skills_count = len(self._skill_registry.list_skills()) if self._skill_registry and hasattr(self._skill_registry, 'list_skills') else 0
+        skills_count = len(self._skill_registry.list_skills()) if self._skill_registry and hasattr(self._skill_registry, 'list_skills') else 0  # noqa: E501
         self._context.update_from_agent(
             agent=self._agent,
             engine=self._engine,
@@ -345,7 +345,7 @@ class SessionOrchestratorMixin:
         tokens_short = self._tokens.display_short()
         ctx_display = self._tokens.display_context()
 
-        items = [f"[bold]{model[:40]}[/bold]", f"Mode: [bold]{mode}[/bold]", f"/{effort}", tokens_short, ctx_display]
+        items = [f"[bold]{model[:40]}[/bold]", f"Mode: [bold]{mode}[/bold]", f"/{effort}", tokens_short, ctx_display]  # noqa: E501
 
         cost = self._tokens.estimated_cost
         if cost > 0:

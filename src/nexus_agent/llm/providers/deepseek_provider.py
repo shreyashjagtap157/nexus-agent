@@ -44,7 +44,7 @@ class DeepSeekProvider(OpenAIProvider):
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
             {"id": "deepseek-chat", "name": "DeepSeek Chat (V3 / R1-Lite)", "provider": "deepseek"},
-            {"id": "deepseek-coder", "name": "DeepSeek Coder (Coding Optimized)", "provider": "deepseek"},
+            {"id": "deepseek-coder", "name": "DeepSeek Coder (Coding Optimized)", "provider": "deepseek"},  # noqa: E501
         ]
 
     def validate_config(self) -> list[str]:
