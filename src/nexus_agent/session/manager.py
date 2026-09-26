@@ -19,6 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from nexus_agent.session.background import BackgroundSession
 from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.storage import SessionStorage
 

@@ -168,7 +168,7 @@ class LocalEngine(ProtocolMixin, InferenceMixin, LLMProvider):
         elif self._kv_quant_type == "q4_0":
             kv_type = getattr(llama_cpp, "GGML_TYPE_Q4_0", kv_type)
         elif self._kv_quant_type.lower() != "f16":
-            logger.warning(f"Unrecognized kv_quant_type '{self._kv_quant_type}', falling back to f16")
+            logger.warning(f"Unrecognized kv_quant_type '{self._kv_quant_type}', falling back to f16")  # noqa: E501
 
         extra_args: dict[str, Any] = {}
         if self._rope_freq_base > 0:

@@ -252,7 +252,7 @@ class FernetFileBackend:
         else:
             try:
                 subprocess.run(
-                    ["icacls", str(self._path), "/inheritance:r", "/grant", f"{os.environ['USERNAME']}:(F)"],
+                    ["icacls", str(self._path), "/inheritance:r", "/grant", f"{os.environ['USERNAME']}:(F)"],  # noqa: E501
                     capture_output=True, timeout=10,
                 )
             except (OSError, subprocess.TimeoutExpired, ValueError, KeyError):
@@ -405,7 +405,7 @@ class AuthStore:
                     "OS keychain forced but unavailable. "
                     "Install keyring: pip install keyring"
                 )
-            self._key_backend = KeychainBackend() if KeychainBackend.is_available() else self._metadata
+            self._key_backend = KeychainBackend() if KeychainBackend.is_available() else self._metadata  # noqa: E501
         elif force_backend == self.BACKEND_FILE:
             self._key_backend = self._metadata
         elif KeychainBackend.is_available():

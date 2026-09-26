@@ -51,9 +51,9 @@ class OpenRouterProvider(OpenAIProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet (OpenRouter)", "provider": "openrouter"},
-            {"id": "meta-llama/llama-3.1-70b-instruct", "name": "Llama 3.1 70B (OpenRouter)", "provider": "openrouter"},
-            {"id": "google/gemini-pro-1.5", "name": "Gemini 1.5 Pro (OpenRouter)", "provider": "openrouter"},
+            {"id": "anthropic/claude-3.5-sonnet", "name": "Claude 3.5 Sonnet (OpenRouter)", "provider": "openrouter"},  # noqa: E501
+            {"id": "meta-llama/llama-3.1-70b-instruct", "name": "Llama 3.1 70B (OpenRouter)", "provider": "openrouter"},  # noqa: E501
+            {"id": "google/gemini-pro-1.5", "name": "Gemini 1.5 Pro (OpenRouter)", "provider": "openrouter"},  # noqa: E501
         ]
 
     def validate_config(self) -> list[str]:
