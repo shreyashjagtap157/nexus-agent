@@ -37,7 +37,7 @@ PERMISSION_MODES = {
 }
 
 MEMORY_MODES = {
-    "full": "Full persistent memory — agent remembers across sessions (working + long-term + episodic)",
+    "full": "Full persistent memory — agent remembers across sessions (working + long-term + episodic)",  # noqa: E501
     "session": "Session-only memory — agent forgets everything when you quit",
 }
 
@@ -99,7 +99,7 @@ class SetupWizard:
                 "[bold]Welcome to NexusAgent![/bold]\n\n"
                 "This quick setup will detect your hardware, recommend a model,\n"
                 "and configure permissions, memory, and safety settings.\n\n"
-                "You can change any of these later via [cyan]nexus config set[/cyan] or by editing\n"
+                "You can change any of these later via [cyan]nexus config set[/cyan] or by editing\n"  # noqa: E501
                 f"the config file at [cyan]{get_config_dir() / 'config.yaml'}[/cyan]",
                 border_style="cyan",
             )
@@ -124,7 +124,7 @@ class SetupWizard:
         table.add_row("GPU", str(self.hardware.get("gpu", "Not detected")))
         table.add_row("VRAM", str(self.hardware.get("vram", "N/A")))
         table.add_row("NPU", str(self.hardware.get("npu", "Not detected")))
-        table.add_row("Recommended Model Size", self.hardware.get("recommended_model_size", "unknown"))
+        table.add_row("Recommended Model Size", self.hardware.get("recommended_model_size", "unknown"))  # noqa: E501
 
         self.console.print(table)
         self.console.print()
@@ -174,9 +174,9 @@ class SetupWizard:
                     self.config_updates["local_model"]["runtime"] = default_runtime
                     self.console.print(f"  [green]✓ {default_runtime} runtime installed[/green]")
                 else:
-                    self.console.print(f"  [yellow]Installation skipped or failed. You can install later via /runtime install {default_runtime}[/yellow]")
+                    self.console.print(f"  [yellow]Installation skipped or failed. You can install later via /runtime install {default_runtime}[/yellow]")  # noqa: E501
             else:
-                self.console.print(f"  [green]✓ {default_runtime} runtime already installed[/green]")
+                self.console.print(f"  [green]✓ {default_runtime} runtime already installed[/green]")  # noqa: E501
                 self.config_updates.setdefault("local_model", {})
                 self.config_updates["local_model"]["runtime"] = default_runtime
 
@@ -203,38 +203,38 @@ class SetupWizard:
         gpu_detected = hw.get("gpu", "Not detected") != "Not detected"
         npu_detected = hw.get("npu", "Not detected") != "Not detected"
 
-        self.console.print(f"Based on your hardware ([green]{hw.get('recommended_model_size', '?')}[/green]):")
+        self.console.print(f"Based on your hardware ([green]{hw.get('recommended_model_size', '?')}[/green]):")  # noqa: E501
         self.console.print()
 
         if usable >= 64 * 1024**3:
-            self.console.print("  [bold]Large models (70B+):[/bold] llama-3.3-70b, qwen2.5-72b, deepseek-v2-67b")
+            self.console.print("  [bold]Large models (70B+):[/bold] llama-3.3-70b, qwen2.5-72b, deepseek-v2-67b")  # noqa: E501
             recommended = "llama-3.3-70b (Q4_K_M)"
         elif usable >= 32 * 1024**3:
-            self.console.print("  [bold]Medium models (30B-70B):[/bold] llama-3.1-70b (Q4), mixtral-8x22b (Q4)")
+            self.console.print("  [bold]Medium models (30B-70B):[/bold] llama-3.1-70b (Q4), mixtral-8x22b (Q4)")  # noqa: E501
             recommended = "llama-3.1-70b (Q4_K_M)"
         elif usable >= 16 * 1024**3:
-            self.console.print("  [bold]Standard models (13B-30B):[/bold] llama-3.1-8b, qwen2.5-14b, phi-4-14b")
+            self.console.print("  [bold]Standard models (13B-30B):[/bold] llama-3.1-8b, qwen2.5-14b, phi-4-14b")  # noqa: E501
             recommended = "llama-3.1-8b (Q4_K_M)"
         elif usable >= 8 * 1024**3:
-            self.console.print("  [bold]Small models (7B-13B):[/bold] qwen2.5-7b, gemma-2-9b, llama-3.2-3b")
+            self.console.print("  [bold]Small models (7B-13B):[/bold] qwen2.5-7b, gemma-2-9b, llama-3.2-3b")  # noqa: E501
             recommended = "qwen2.5-7b (Q4_K_M)"
         else:
-            self.console.print("  [bold]Tiny models (1B-3B):[/bold] phi-3-mini, gemma-2-2b, qwen2.5-1.5b")
+            self.console.print("  [bold]Tiny models (1B-3B):[/bold] phi-3-mini, gemma-2-2b, qwen2.5-1.5b")  # noqa: E501
             recommended = "phi-3-mini (Q4_K_M)"
 
         platform_note = ""
         if gpu_detected:
-            platform_note += "\n  [green]GPU detected — GPU offloading will accelerate inference.[/green]"
+            platform_note += "\n  [green]GPU detected — GPU offloading will accelerate inference.[/green]"  # noqa: E501
         if npu_detected:
-            platform_note += "\n  [green]NPU detected — ONNX Runtime with DirectML can utilize this.[/green]"
+            platform_note += "\n  [green]NPU detected — ONNX Runtime with DirectML can utilize this.[/green]"  # noqa: E501
         if platform_note:
             self.console.print(platform_note)
 
         self.console.print()
         self.console.print(f"  [dim]Recommended starting model: [cyan]{recommended}[/cyan][/dim]")
-        self.console.print("  [dim]You can download GGUF models from: [cyan]https://huggingface.co/models?search=gguf[/cyan][/dim]")
+        self.console.print("  [dim]You can download GGUF models from: [cyan]https://huggingface.co/models?search=gguf[/cyan][/dim]")  # noqa: E501
 
-        download = self._confirm("  Would you like to open the HF model search page?", default=False)
+        download = self._confirm("  Would you like to open the HF model search page?", default=False)  # noqa: E501
         if download:
             import webbrowser
             webbrowser.open("https://huggingface.co/models?sort=trending&search=gguf")
@@ -353,12 +353,12 @@ class SetupWizard:
             ("Runtime Backend", runtime),
             ("Permission Mode", self.config_updates.get("permissions", {}).get("mode", "ask")),
             ("Memory Mode", self.config_updates.get("memory", {}).get("mode", "full")),
-            ("Guardrail Level", self.config_updates.get("local_model", {}).get("guardrails", "balanced")),
-            ("GPU Offloading", "Enabled" if self.config_updates.get("local_model", {}).get("gpu_layers", 0) != 0 else "Disabled (CPU only)"),
+            ("Guardrail Level", self.config_updates.get("local_model", {}).get("guardrails", "balanced")),  # noqa: E501
+            ("GPU Offloading", "Enabled" if self.config_updates.get("local_model", {}).get("gpu_layers", 0) != 0 else "Disabled (CPU only)"),  # noqa: E501
         ]
 
         providers_configured = [k for k in CLOUD_PROVIDERS
-                                if self.config_updates.get("providers", {}).get(k[0], {}).get("api_key")]
+                                if self.config_updates.get("providers", {}).get(k[0], {}).get("api_key")]  # noqa: E501
         if providers_configured:
             items.append(("Cloud Providers", ", ".join(c[1] for c in providers_configured)))
         else:
@@ -379,10 +379,10 @@ class SetupWizard:
             config_path = get_config_dir() / "config.yaml"
             self.console.print(f"  [green]Configuration saved to {config_path}[/green]")
             self.console.print()
-            self.console.print("[bold green]Setup complete![/bold green] Run [cyan]nexus chat[/cyan] to start.")
+            self.console.print("[bold green]Setup complete![/bold green] Run [cyan]nexus chat[/cyan] to start.")  # noqa: E501
         except OSError as e:
             logger.error(f"Failed to save config: {e}")
             self.console.print(f"  [red]Failed to save configuration: {e}[/red]")
             self.console.print("  You can manually edit the config file later.")
             self.console.print()
-            self.console.print("[yellow]Setup incomplete. Run [cyan]nexus wizard[/cyan] to try again.[/yellow]")
+            self.console.print("[yellow]Setup incomplete. Run [cyan]nexus wizard[/cyan] to try again.[/yellow]")  # noqa: E501

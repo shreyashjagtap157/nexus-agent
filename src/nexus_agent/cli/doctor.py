@@ -455,7 +455,7 @@ def print_report(report: DoctorReport) -> None:
     console = Console()
 
     console.print()
-    console.print(Panel.fit("[bold]🩺 Nexus Doctor — Full Diagnostic Report[/bold]", border_style="cyan"))
+    console.print(Panel.fit("[bold]🩺 Nexus Doctor — Full Diagnostic Report[/bold]", border_style="cyan"))  # noqa: E501
     console.print()
 
     # ── System ──
@@ -470,7 +470,7 @@ def print_report(report: DoctorReport) -> None:
     console.print()
 
     # ── Python Env ──
-    py_table = Table(title="Python Environment", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+    py_table = Table(title="Python Environment", box=box.SIMPLE, title_style="bold cyan", show_header=False)  # noqa: E501
     py_table.add_column("Package", style="cyan", width=22)
     py_table.add_column("Version", style="white")
     py_table.add_column("Status", width=8)
@@ -483,7 +483,7 @@ def print_report(report: DoctorReport) -> None:
     # ── Benchmarks ──
     bench = report.benchmarks
     if bench:
-        bm_table = Table(title="Benchmarks", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+        bm_table = Table(title="Benchmarks", box=box.SIMPLE, title_style="bold cyan", show_header=False)  # noqa: E501
         bm_table.add_column("Metric", style="cyan", width=22)
         bm_table.add_column("Value", style="white")
         bm_table.add_column("Status", width=8)
