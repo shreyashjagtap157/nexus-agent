@@ -1,4 +1,3 @@
-import os
 """
 FastAPI GUI Server for NexusAgent.
 
@@ -11,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import socket
 import subprocess
 import threading
@@ -259,7 +259,7 @@ async def load_model(req: ModelLoadRequest):
         if req.threads is not None: load_kwargs["threads"] = req.threads  # noqa: E701
         if req.flash_attention is not None: load_kwargs["flash_attention"] = req.flash_attention  # noqa: E701
         if req.unified_kv_cache is not None: load_kwargs["unified_kv_cache"] = req.unified_kv_cache  # noqa: E701
-        if req.kv_quant_type is not None: load_kwargs["kv_quant_type"] = req.kv_quant_type
+        if req.kv_quant_type is not None: load_kwargs["kv_quant_type"] = req.kv_quant_type  # noqa: E701
 
         # Select and swap active LocalEngine — close previous engine first
         old_engine = state_manager.get("engine")
