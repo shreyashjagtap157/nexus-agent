@@ -1,7 +1,18 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
+import builtins
 import unittest
 from unittest.mock import MagicMock, patch
+_real_import = builtins.__import__
+
+def _mock_import_for_missing(missing_module):
+    def mock_import(name, *args, **kwargs):
+        if name == missing_module:
+            raise ImportError(f"No module named '{name}'")
+        return _real_import(name, *args, **kwargs)
+    return mock_import
+
+
 
 from nexus_agent.cli.runtimes import (
     RuntimeInfo,
@@ -207,10 +218,11 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(len(runtimes), 1)
             self.assertEqual(runtimes[0].provider, "openvino")
 
-    def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_openvino()
-            self.assertEqual(len(runtimes), 0)
+    @patch('builtins.__import__')
+    def test_no_openvino(self, mock_import):
+        mock_import.side_effect = _mock_import_for_missing("openvino")
+        runtimes = _check_openvino()
+        self.assertEqual(len(runtimes), 0)
 
 
 class TestCheckTpu(unittest.TestCase):
@@ -222,10 +234,11 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(len(runtimes), 1)
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
-    def test_no_jax(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_tpu()
-            self.assertEqual(len(runtimes), 0)
+    @patch('builtins.__import__')
+    def test_no_jax(self, mock_import):
+        mock_import.side_effect = _mock_import_for_missing("jax")
+        runtimes = _check_tpu()
+        self.assertEqual(len(runtimes), 0)
 
 
 class TestScanRuntimes(unittest.TestCase):
