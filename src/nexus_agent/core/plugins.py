@@ -152,13 +152,56 @@ class PluginManager:
 
     def _load_entry_points(self) -> None:
         """Load plugins registered under package entry points 'nexus_agent.plugins'."""
-            # Fallback for Python < 3.10
+
         eps = importlib.metadata.entry_points()
+
         if hasattr(eps, "select"):
-            group = eps.select(group="nexus_agent.plugins")
+
+            group = tuple(eps.select(group="nexus_agent.plugins"))
+
         elif hasattr(eps, "get"):
+
             group = eps.get("nexus_agent.plugins", [])
+
         elif isinstance(eps, dict):
+
             group = eps.get("nexus_agent.plugins", [])
+
+        elif isinstance(eps, (list, tuple)):
+
+            group = eps
+
         else:
+
             group = [ep for ep in eps if getattr(ep, "group", None) == "nexus_agent.plugins"]
+
+
+
+        for ep in group:
+
+            name = ep.name
+            info = PluginInfo(name=name)
+            try:
+                module = ep.load()
+                register_func = getattr(module, "register_plugin", None)
+                if register_func and callable(register_func):
+                    self.plugins[name] = info
+                    register_func(self)
+                else:
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        if (
+                            isinstance(attr, type)
+                            and issubclass(attr, NexusPlugin)
+                            and attr is not NexusPlugin
+                        ):
+                            self.plugins[name] = info
+                            instance = attr(self)
+                            instance.name = name
+                            info.plugin_instance = instance
+                            instance.initialize()
+                            break
+            except Exception as e:
+                logger.warning(f"PluginManager: Failed to load entrypoint plugin {name}: {e}")
+                info.error = str(e)
+                self.plugins[name] = info
