@@ -69,13 +69,13 @@ class MCPClient:
         """
         # Sanitize command to prevent shell escape or arbitrary command execution
         sanitized_command = []
-        allowed_executables = {"node", "npx", "python", "python3", "pip", "pip3", "pipx", "uv", "ruby", "git", "deno"}
+        allowed_executables = {"node", "npx", "python", "python3", "pip", "pip3", "pipx", "uv", "ruby", "git", "deno"}  # noqa: E501
         for idx, arg in enumerate(command):
             # Reject any argument containing shell control characters
             if any(char in arg for char in (";", "&", "|", ">", "<", "$", "`", "\n")):
                 raise ValueError(f"Dangerous character in MCP command argument: {arg}")
 
-            # If it is the first argument (the executable), ensure it's in the allowlist or is a valid file path
+            # If it is the first argument (the executable), ensure it's in the allowlist or is a valid file path  # noqa: E501
             if idx == 0:
                 base_exe = Path(arg).name.lower()
                 base_name = base_exe.split(".")[0]
@@ -88,7 +88,7 @@ class MCPClient:
                             raise ValueError(f"Absolute path is not a valid executable file: {arg}")
                     else:
                         if not path_obj.exists():
-                            raise ValueError(f"Unauthorized or non-existent MCP server executable: {arg}")
+                            raise ValueError(f"Unauthorized or non-existent MCP server executable: {arg}")  # noqa: E501
             sanitized_command.append(arg)
         self.command = sanitized_command
 
@@ -100,7 +100,7 @@ class MCPClient:
         sanitized_env = {}
         if env:
             for k, v in env.items():
-                if k.upper() in allowed_env_keys or k.upper().startswith("NEXUS_") or k.upper().startswith("MCP_"):
+                if k.upper() in allowed_env_keys or k.upper().startswith("NEXUS_") or k.upper().startswith("MCP_"):  # noqa: E501
                     sanitized_env[k] = v
         self.env = sanitized_env or None
 
@@ -153,7 +153,7 @@ class MCPClient:
             if self._initialize(timeout=startup_timeout):
                 # Discover tools
                 self.discovered_tools = self._list_tools()
-                logger.info(f"MCP server initialized. Discovered {len(self.discovered_tools)} tools.")
+                logger.info(f"MCP server initialized. Discovered {len(self.discovered_tools)} tools.")  # noqa: E501
                 return True
 
             logger.error("MCP server initialization failed, cleaning up")
@@ -206,7 +206,7 @@ class MCPClient:
         with self._lock:
             response = self._responses.pop(req_id, {})
         if "error" in response:
-            raise RuntimeError(f"MCP Server error: {response['error'].get('message', 'Unknown error')}")
+            raise RuntimeError(f"MCP Server error: {response['error'].get('message', 'Unknown error')}")  # noqa: E501
 
         return response.get("result", {})
 
@@ -301,7 +301,7 @@ class MCPClient:
                     self._process.wait(timeout=5.0)  # Increase timeout to 5 seconds
                 except subprocess.TimeoutExpired:
                     # Force kill if graceful termination fails
-                    logger.warning("MCP server process did not exit gracefully. Killing process tree...")
+                    logger.warning("MCP server process did not exit gracefully. Killing process tree...")  # noqa: E501
                     self._process.kill()
                     self._process.wait(timeout=2.0)
             except (OSError, subprocess.TimeoutExpired) as e:

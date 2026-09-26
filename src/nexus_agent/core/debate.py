@@ -85,7 +85,7 @@ PERFORMANCE_ENGINEER = ReviewerPersona(
     focus_area="performance",
     system_prompt=(
         "You are an expert Performance and Reliability Engineer.\n"
-        "Your task is to analyze proposed code changes for execution bottlenecks and resource usage:\n"
+        "Your task is to analyze proposed code changes for execution bottlenecks and resource usage:\n"  # noqa: E501
         "- Inefficient loops, O(N^2) algorithms, unnecessary DB/network queries\n"
         "- Resource leaks (unclosed sockets, unclosed files, DB connections)\n"
         "- Memory overhead, caching possibilities, blocking I/O inside async functions\n"
@@ -127,7 +127,7 @@ STYLE_LINTER = ReviewerPersona(
     focus_area="style",
     system_prompt=(
         "You are an expert Software Maintainability & Style Critic.\n"
-        "Your task is to evaluate the code changes against clean code conventions (PEP 8, idiomatic structure):\n"
+        "Your task is to evaluate the code changes against clean code conventions (PEP 8, idiomatic structure):\n"  # noqa: E501
         "- Readability, naming conventions, docstrings, variable scoping\n"
         "- Complex code blocks that need refactoring or simplifications\n"
         "- Code duplication or adherence to SOLID principles\n"
@@ -163,7 +163,7 @@ class DebateEngine:
             STYLE_LINTER
         ]
 
-    def _review_single(self, persona: ReviewerPersona, code_changes: str, context: str) -> CritiqueFeedback:
+    def _review_single(self, persona: ReviewerPersona, code_changes: str, context: str) -> CritiqueFeedback:  # noqa: E501
         """Run a single reviewer and return CritiqueFeedback."""
         try:
             system_prompt = persona.system_prompt
@@ -208,7 +208,7 @@ class DebateEngine:
             )
 
         except (ValueError, RuntimeError) as e:
-            logger.warning(f"Reviewer '{persona.name}' failed: {e}. Generating default review.", exc_info=True)
+            logger.warning(f"Reviewer '{persona.name}' failed: {e}. Generating default review.", exc_info=True)  # noqa: E501
             return CritiqueFeedback(
                 reviewer_name=persona.name,
                 score=50,
@@ -261,7 +261,7 @@ class DebateEngine:
                 sec_issues.append("Potential hardcoded sensitive keys or credentials detected.")
                 sec_sug.append("Store secrets in environment variables or configuration files.")
                 sec_score -= 20
-        feedbacks.append(CritiqueFeedback("SecurityAuditor", sec_score, sec_score >= 70, sec_issues, sec_sug, "Rule-based security scan completed."))
+        feedbacks.append(CritiqueFeedback("SecurityAuditor", sec_score, sec_score >= 70, sec_issues, sec_sug, "Rule-based security scan completed."))  # noqa: E501
 
         # 2. Performance Review
         perf_issues = []
@@ -273,7 +273,7 @@ class DebateEngine:
             perf_score -= 10
         if ".read()" in lower_code and "with open" in lower_code:
             perf_sug.append("Ensure reading chunks for extremely large files.")
-        feedbacks.append(CritiqueFeedback("PerformanceEngineer", perf_score, perf_score >= 70, perf_issues, perf_sug, "Rule-based performance scan completed."))
+        feedbacks.append(CritiqueFeedback("PerformanceEngineer", perf_score, perf_score >= 70, perf_issues, perf_sug, "Rule-based performance scan completed."))  # noqa: E501
 
         # 3. Correctness Review
         corr_issues = []
@@ -281,10 +281,10 @@ class DebateEngine:
         corr_score = 85
         if "except:" in lower_code or "except Exception:" in lower_code:
             if "raise" not in lower_code and "pass" in lower_code:
-                corr_issues.append("Silent exception catching detected (except without raise or log).")
+                corr_issues.append("Silent exception catching detected (except without raise or log).")  # noqa: E501
                 corr_sug.append("At least log the error or specify a more targeted exception type.")
                 corr_score -= 15
-        feedbacks.append(CritiqueFeedback("CorrectnessQA", corr_score, corr_score >= 70, corr_issues, corr_sug, "Rule-based correctness scan completed."))
+        feedbacks.append(CritiqueFeedback("CorrectnessQA", corr_score, corr_score >= 70, corr_issues, corr_sug, "Rule-based correctness scan completed."))  # noqa: E501
 
         # 4. Style Review
         style_issues = []
@@ -292,7 +292,7 @@ class DebateEngine:
         style_score = 80
         if "todo" in lower_code or "fixme" in lower_code:
             style_sug.append("Resolve open TODOs and FIXMEs before finalizing implementation.")
-        feedbacks.append(CritiqueFeedback("StyleLinter", style_score, style_score >= 70, style_issues, style_sug, "Rule-based style linter completed."))
+        feedbacks.append(CritiqueFeedback("StyleLinter", style_score, style_score >= 70, style_issues, style_sug, "Rule-based style linter completed."))  # noqa: E501
 
         return feedbacks
 
@@ -313,7 +313,7 @@ class DebateEngine:
             for sug in r.suggestions:
                 recommendations.append(f"[{r.reviewer_name}] {sug}")
 
-        final_approved = consensus_score >= self.approval_threshold and all(r.approved for r in reviews)
+        final_approved = consensus_score >= self.approval_threshold and all(r.approved for r in reviews)  # noqa: E501
 
         summary_lines = [
             f"### ⚖️ Debate Verdict Summary (Consensus Score: {consensus_score}/100)",
@@ -338,7 +338,7 @@ class DebateEngine:
             rounds_conducted=rounds
         )
 
-    def run_debate(self, code_changes: str, context: str = "", max_rounds: int = 2) -> DebateVerdict:
+    def run_debate(self, code_changes: str, context: str = "", max_rounds: int = 2) -> DebateVerdict:  # noqa: E501
         """Run debate loop.
 
         Args:
@@ -362,16 +362,16 @@ class DebateEngine:
 
             if r_num < max_rounds and self.provider:
                 # LLM correction cycle: try to self-heal code changes using Judge recommendations
-                logger.info(f"Consensus failed in round {r_num} with score {verdict.consensus_score}. Reworking code changes...")
+                logger.info(f"Consensus failed in round {r_num} with score {verdict.consensus_score}. Reworking code changes...")  # noqa: E501
                 try:
                     system_prompt = (
-                        "You are an expert senior code refactoring assistant. Your job is to address the issues raised "
-                        "by multiple code reviewers and produce the perfect, fixed code changes block."
+                        "You are an expert senior code refactoring assistant. Your job is to address the issues raised "  # noqa: E501
+                        "by multiple code reviewers and produce the perfect, fixed code changes block."  # noqa: E501
                     )
                     user_prompt = (
                         f"Proposed changes:\n{current_changes}\n\n"
-                        f"Reviewer issues:\n" + "\n".join(f"- {i}" for i in verdict.aggregated_issues) + "\n\n"
-                        "Refactoring recommendations:\n" + "\n".join(f"- {r}" for r in verdict.recommendations) + "\n\n"
+                        f"Reviewer issues:\n" + "\n".join(f"- {i}" for i in verdict.aggregated_issues) + "\n\n"  # noqa: E501
+                        "Refactoring recommendations:\n" + "\n".join(f"- {r}" for r in verdict.recommendations) + "\n\n"  # noqa: E501
                         "Please output only the complete, fixed code block."
                     )
                     messages = [
@@ -620,7 +620,7 @@ class Council:
 
         summary_lines = ["\nRound 1 votes:"]
         for v in round1_votes:
-            summary_lines.append(f"- {v.member_name}: {v.vote} (confidence {v.confidence:.1f}) — {v.reasoning[:200]}")
+            summary_lines.append(f"- {v.member_name}: {v.vote} (confidence {v.confidence:.1f}) — {v.reasoning[:200]}")  # noqa: E501
         round1_summary = "\n".join(summary_lines)
 
         round2_votes: list[CouncilVote] = []
@@ -660,11 +660,11 @@ class Council:
                     member_name=member.name,
                     vote=vote_str,
                     reasoning=str(data.get("reasoning", existing.reasoning if existing else "")),
-                    confidence=min(1.0, max(0.0, float(data.get("confidence", existing.confidence if existing else 0.5)))),
+                    confidence=min(1.0, max(0.0, float(data.get("confidence", existing.confidence if existing else 0.5)))),  # noqa: E501
                 ))
             except Exception as e:
                 round2_votes.append(existing or CouncilVote(
-                    member_name=member.name, vote="abstain", reasoning=f"Rebuttal failed: {e}", confidence=0.0,
+                    member_name=member.name, vote="abstain", reasoning=f"Rebuttal failed: {e}", confidence=0.0,  # noqa: E501
                 ))
 
         return round2_votes
@@ -699,7 +699,7 @@ class Council:
 
         summary_lines = [
             f"Council Decision: {consensus.upper()}",
-            f"Approve: {approve_pct:.0%}  |  Reject: {reject_pct:.0%}  |  Abstain: {weighted['abstain'] / total_weight:.0%}" if total_weight > 0 else "",
+            f"Approve: {approve_pct:.0%}  |  Reject: {reject_pct:.0%}  |  Abstain: {weighted['abstain'] / total_weight:.0%}" if total_weight > 0 else "",  # noqa: E501
             "",
         ]
         for v in votes:
@@ -723,12 +723,12 @@ class Council:
 
         for member in self.members:
             if member.role == "product_strategy" and ("migrate" in t or "refactor" in t):
-                votes.append(CouncilVote(member.name, "approve", "Strategic value in modernization.", 0.6))
+                votes.append(CouncilVote(member.name, "approve", "Strategic value in modernization.", 0.6))  # noqa: E501
             elif member.role == "security_audit" and ("migrate" in t or "upgrade" in t):
-                votes.append(CouncilVote(member.name, "approve", "Newer versions have fewer vulnerabilities.", 0.7))
+                votes.append(CouncilVote(member.name, "approve", "Newer versions have fewer vulnerabilities.", 0.7))  # noqa: E501
             elif member.role == "execution_feasibility" and ("large" in t or "complex" in t):
-                votes.append(CouncilVote(member.name, "abstain", "Need more implementation detail.", 0.4))
+                votes.append(CouncilVote(member.name, "abstain", "Need more implementation detail.", 0.4))  # noqa: E501
             else:
-                votes.append(CouncilVote(member.name, "approve", "Heuristic: default approve.", 0.5))
+                votes.append(CouncilVote(member.name, "approve", "Heuristic: default approve.", 0.5))  # noqa: E501
 
         return votes
