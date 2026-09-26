@@ -8,3 +8,7 @@
 ## 2024-09-26 - [Mock missing optional dependencies correctly]
 **Learning:** In test environments where an optional dependency (like `openvino`) is actually installed globally or natively cached in `sys.modules`, mocking `sys.modules` with an unrelated missing library key (e.g. `{"jax": None}`) to simulate the target dependency being missing does not work, because `import openvino` will still successfully resolve from the environment. This causes assertions checking for the absence of the library (like `len(runtimes) == 0`) to fail across different CI runners.
 **Action:** When simulating a missing dependency in tests via `sys.modules`, explicitly map the exact module name of the target dependency to `None` (e.g. `with patch.dict("sys.modules", {"openvino": None}):`).
+
+## 2024-09-26 - [Robustly mock missing dependencies]
+**Learning:** Patching `sys.modules` with `None` to simulate a missing dependency is flaky because underlying import machinery might bypass it or natively load the C-extension in different Python environments.
+**Action:** Use a side-effect mock on `builtins.__import__` to explicitly raise `ImportError("No module named X")` only when module X is requested, delegating everything else to the real `__import__`.
