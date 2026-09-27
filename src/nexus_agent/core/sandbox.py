@@ -391,7 +391,7 @@ class Sandbox:
                     risk_level=risk,
                 )
 
-            # Use direct execution on both Unix and Windows when parsing succeeds
+            # Use direct execution on all platforms when parsing succeeds
             proc = subprocess.run(
                 parsed_args,
                 capture_output=True,

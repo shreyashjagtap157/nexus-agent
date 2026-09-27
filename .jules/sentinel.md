@@ -12,3 +12,8 @@
 **Vulnerability:** When escaping `%` and `_` for SQLite `LIKE` queries, the backslash `\` escape character itself was not escaped.
 **Learning:** Failing to escape the escape character allows attackers to supply inputs like `\%` to bypass wildcard escaping, potentially causing denial of service or logic flaws.
 **Prevention:** Always escape the escape character (e.g., `\` -> `\\`) before escaping the actual wildcards.
+
+## 2025-02-27 - Python Subprocess Command Injection Regression
+**Vulnerability:** Command Injection via cmd.exe arguments
+**Learning:** Wrapping arguments in `["cmd.exe", "/c"]` exposes the system to command injection, as `cmd.exe` evaluates metacharacters (e.g., `&`, `|`). Attempting to manually escape these metacharacters using `^` inside Python's list arguments fails completely because Python's `subprocess.list2cmdline` automatically double-quotes arguments containing special characters, which neutralizes the caret `^` escape in cmd.exe. This leads to both injection risks and functional regressions (e.g., corrupting valid arguments).
+**Prevention:** Remove `["cmd.exe", "/c"]` wrappers entirely on Windows. Pass the parsed arguments list directly to `subprocess.run(parsed_args)` to allow Python to safely bypass shell interpretation altogether.
