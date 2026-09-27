@@ -253,8 +253,11 @@ class Sandbox:
                 return self.workspace
             # Enforce workspace boundary on all platforms
             workspace_resolved = self.workspace.resolve()
-            if not str(resolved).startswith(str(workspace_resolved) + os.sep) and resolved != workspace_resolved:
-                logger.warning(f"Path {resolved} is outside workspace boundary {workspace_resolved}")
+            if (not str(resolved).startswith(str(workspace_resolved) + os.sep)
+                and resolved != workspace_resolved):
+                logger.warning(
+                    f"Path {resolved} is outside workspace boundary {workspace_resolved}"
+                )
                 return self.workspace
             return resolved
         except (OSError, ValueError) as e:
@@ -301,7 +304,8 @@ class Sandbox:
         # Build environment
         exec_env = os.environ.copy()
         if env:
-            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors
+            # Sanitize additional env variables to prevent PATH hijacking
+            # or execution override vectors
             for k, v in dict(env).items():
                 k_clean = str(k).strip()
                 v_clean = str(v).strip()
@@ -326,7 +330,10 @@ class Sandbox:
                     command=command,
                     returncode=-1,
                     stdout="",
-                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",
+                    stderr=(
+                        "Execution denied: Command parsing failed "
+                        "(potential shell injection risk)."
+                    ),
                     duration=time.time() - start_time,
                     was_approved=False,
                     risk_level=risk,
