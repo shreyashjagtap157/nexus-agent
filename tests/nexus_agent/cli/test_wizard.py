@@ -18,6 +18,24 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        self.mock_detect_patch = patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+        self.mock_detect = self.mock_detect_patch.start()
+        self.mock_detect.return_value = {
+            "cpu": "Intel",
+            "cpu_threads": 8,
+            "ram_total": "16 GB",
+            "ram_available": "8 GB",
+            "gpu": "NVIDIA RTX 3060",
+            "vram": "12 GB",
+            "npu": "Not detected",
+            "recommended_model_size": "7B-13B",
+            "ram_total_bytes": 16 * 1024**3,
+            "vram_bytes": 12 * 1024**3,
+        }
+
+    def tearDown(self):
+        self.mock_detect_patch.stop()
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses
@@ -81,29 +99,15 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock.side_effect = ["auto", "full", "balanced"]
         self.confirm_mock.side_effect = [False, False, False]
 
-        with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
-            mock_detect.return_value = {
-                "cpu": "Intel",
-                "cpu_threads": 8,
-                "ram_total": "16 GB",
-                "ram_available": "8 GB",
-                "gpu": "NVIDIA RTX 3060",
-                "vram": "12 GB",
-                "npu": "Not detected",
-                "recommended_model_size": "7B-13B",
-                "ram_total_bytes": 16 * 1024**3,
-                "vram_bytes": 12 * 1024**3,
-            }
+        with patch("nexus_agent.cli.wizard.save_user_config"):
+            wizard = SetupWizard(
+                console=self.console,
+                prompt_func=self.prompt_mock,
+                confirm_func=self.confirm_mock
+            )
+            wizard.run()
 
-            with patch("nexus_agent.cli.wizard.save_user_config"):
-                wizard = SetupWizard(
-                    console=self.console,
-                    prompt_func=self.prompt_mock,
-                    confirm_func=self.confirm_mock
-                )
-                wizard.run()
-
-                # Verify hardware detection was called
-                mock_detect.assert_called_once()
-                # Verify GPU layers was set to -1 because GPU was detected
-                self.assertEqual(wizard.config_updates["local_model"]["gpu_layers"], -1)
+            # Verify hardware detection was called
+            self.mock_detect.assert_called_once()
+            # Verify GPU layers was set to -1 because GPU was detected
+            self.assertEqual(wizard.config_updates["local_model"]["gpu_layers"], -1)
