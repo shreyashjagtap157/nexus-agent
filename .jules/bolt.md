@@ -5,3 +5,6 @@
 ## 2025-02-14 - [Avoid `pathlib.Path` instantiation in deep recursive traversals]
 **Learning:** Instantiating `pathlib.Path` objects inside a hot loop (like a recursive filesystem crawler) causes unnecessary memory overhead and slows down traversal. Furthermore, keeping static collections (like skip lists) defined inside the loop causes continuous garbage collection churn.
 **Action:** Extract skip lists to module-level constants (e.g., `frozenset`). When writing custom `os.scandir` wrappers, recursively pass raw strings (`str`) instead of `Path` objects, only yielding `Path` objects at the absolute outermost layer.
+## 2025-02-14 - [Mocking hardware detection in CLI tests to avoid timeouts]
+**Learning:** Calling system-level processes (like `subprocess.run(["powershell", ...])`) in unit tests causes CI environments (especially Windows runners) to hang or timeout. When `ModelManager.detect_hardware()` is invoked during `SetupWizard.run()`, the test hangs.
+**Action:** Always patch `detect_hardware` in tests that utilize `SetupWizard` to return static dictionary structures compatible with `rich.Table` rendering (e.g., returning strings instead of booleans for "cpu").
