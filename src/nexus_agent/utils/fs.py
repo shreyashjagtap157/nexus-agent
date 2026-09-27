@@ -2,15 +2,17 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-_SKIP_DIRS = frozenset({
-    "node_modules",
-    "__pycache__",
-    ".git",
-    "venv",
-    ".venv",
-    "dist",
-    "build",
-})
+_SKIP_DIRS = frozenset(
+    {
+        "node_modules",
+        "__pycache__",
+        ".git",
+        "venv",
+        ".venv",
+        "dist",
+        "build",
+    }
+)
 
 _ALLOWED_HIDDEN = frozenset({".env", ".gitignore"})
 
