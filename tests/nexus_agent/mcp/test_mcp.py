@@ -1,7 +1,8 @@
 """Tests for MCP and ACP modules."""
 
+import pytest
 
-from nexus_agent.mcp.acp_server import ACPResponse
+from nexus_agent.mcp.acp_server import ACPServer, ACPResponse
 
 
 class TestACPResponse:

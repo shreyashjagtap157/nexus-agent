@@ -1,11 +1,11 @@
 """Tests for session management."""
 
-
 import pytest
+from pathlib import Path
 
-from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.manager import SessionManager
 from nexus_agent.session.storage import SessionStorage
+from nexus_agent.session.checkpoint import CheckpointManager
 
 
 class TestSessionStorage:
