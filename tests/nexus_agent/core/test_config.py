@@ -1,17 +1,13 @@
 """Tests for the configuration system."""
 
 import os
-import pytest
-from pathlib import Path
 from unittest.mock import patch
 
 from nexus_agent.core.config import (
-    load_config,
-    save_config,
-    save_user_config,
-    _deep_merge,
     _apply_env_overrides,
+    _deep_merge,
     _strip_secrets,
+    load_config,
 )
 
 

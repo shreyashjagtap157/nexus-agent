@@ -3,7 +3,7 @@
 import pytest
 
 from nexus_agent.permissions.manager import PermissionManager
-from nexus_agent.permissions.rules import PermissionLevel, PermissionRule, DEFAULT_RULES
+from nexus_agent.permissions.rules import DEFAULT_RULES, PermissionLevel, PermissionRule
 
 
 class TestPermissionLevel:
