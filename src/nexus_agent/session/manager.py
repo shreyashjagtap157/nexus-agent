@@ -17,10 +17,13 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.storage import SessionStorage
+
+if TYPE_CHECKING:
+    from nexus_agent.core.background import BackgroundSession
 
 logger = logging.getLogger(__name__)
 
