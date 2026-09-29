@@ -1,5 +1,6 @@
 """Tests for runtimes.py — runtime detection, scanning, and formatting."""
 
+import builtins
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -226,7 +227,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        _real_import = __import__
+        _real_import = builtins.__import__
 
         def _mock_import(name, *args, **kwargs):
             if name == "openvino":
