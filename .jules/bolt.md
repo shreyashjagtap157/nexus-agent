@@ -6,3 +6,6 @@
 ## 2025-05-15 - [Simulating Missing Dependencies in CI]
 **Learning:** In CI environments where optional dependencies (like `openvino` or `jax`) are installed globally, testing "module not found" fallback paths by mocking `builtins.__import__` fails because Python skips the `__import__` call if the module is already cached in `sys.modules`.
 **Action:** Always use `patch.dict("sys.modules", {"module_name": None})` to robustly simulate missing modules. Python's import machinery guarantees a `ModuleNotFoundError` if a key exists in `sys.modules` with the value `None`, bypassing any existing installations.
+## 2025-05-15 - [Mocking Subprocesses in CI]
+**Learning:** When tests execute code that issues system-specific shell commands (e.g., `ModelManager.detect_hardware` running PowerShell via `subprocess.run`), it will often time out or fail unpredictably in generic CI environments.
+**Action:** Always patch/mock system-level sub-process methods in `setUp` (and `stop()` them in `tearDown`) for test suites covering code paths that execute OS-specific bash/powershell utilities, even if the test isn't directly asserting against those calls.
