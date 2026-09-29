@@ -253,7 +253,7 @@ class RepositoryRAGTool(Tool):
             # Check exact or partial symbol matches
             escaped_query = query.replace('\\', r'\\').replace('%', r'\%').replace('_', r'\_')
             symbol_cursor = conn.execute(
-                "SELECT * FROM code_symbols WHERE symbol_name LIKE ? ESCAPE '\\' LIMIT ?",
+                "SELECT * FROM code_symbols WHERE symbol_name LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                 (f"%{escaped_query}%", max_results)
             )
             for sym in symbol_cursor:
@@ -304,7 +304,7 @@ class RepositoryRAGTool(Tool):
             escaped = query.replace("\\", r"\\").replace("%", r"\%").replace("_", r"\_")
             like_query = f"%{escaped}%"
             cursor = conn.execute(
-                "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
+                "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",  # noqa: E501
                 (like_query, max_results),
             )
             for row in cursor:
