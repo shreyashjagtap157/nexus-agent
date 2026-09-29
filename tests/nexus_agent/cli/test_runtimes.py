@@ -226,16 +226,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        import builtins
-
-        _real_import = builtins.__import__
-
-        def mock_import(name, *args, **kwargs):
-            if name == "openvino":
-                raise ImportError("No module named 'openvino'")
-            return _real_import(name, *args, **kwargs)
-
-        with patch("builtins.__import__", side_effect=mock_import):
+        with patch.dict("sys.modules", {"openvino": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
