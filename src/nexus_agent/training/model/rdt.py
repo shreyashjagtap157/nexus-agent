@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
 
 
-class RecurrentBlock(nn.Module):
+class RecurrentBlock(nn.Module):  # type: ignore
     """Single recurrent transformer block with multi-head attention.
 
     Args:
@@ -118,7 +118,7 @@ class RecurrentBlock(nn.Module):
         return x, info
 
 
-class RecurrentDepthTransformer(nn.Module):
+class RecurrentDepthTransformer(nn.Module):  # type: ignore
     """Recurrent-Depth Transformer with dynamic confidence halting.
 
     Uses ACT (Adaptive Computation Time) to dynamically halt computation
@@ -223,7 +223,7 @@ class RecurrentDepthTransformer(nn.Module):
 
         # Track halting across recurrent steps
         cumulative_halt = torch.zeros(batch, 1, device=device)
-        hidden_states = [] if return_hidden_states else None
+        hidden_states: Any = [] if return_hidden_states else None
         all_halt_probs = []
         final_output = x
 
