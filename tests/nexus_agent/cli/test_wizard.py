@@ -14,9 +14,26 @@ from nexus_agent.cli.wizard import CLOUD_PROVIDERS, SetupWizard
 
 class TestSetupWizard(unittest.TestCase):
     def setUp(self):
+        self.detect_patcher = patch(
+            "nexus_agent.llm.model_manager.ModelManager.detect_hardware",
+            return_value={
+                "cpu": "Mock",
+                "ram_total": "16 GB",
+                "ram_available": "8 GB",
+                "gpu": "Not detected",
+                "vram": "Not detected",
+                "npu": "Not detected",
+                "recommended_model_size": "3B-7B",
+            },
+        )
+        self.mock_detect = self.detect_patcher.start()
+
         self.console = Console(force_terminal=False)
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
+
+    def tearDown(self):
+        self.detect_patcher.stop()
 
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
@@ -28,9 +45,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -57,16 +72,14 @@ class TestSetupWizard(unittest.TestCase):
         # ... others False ...
         # 5. Make active? (True)
         confirm_responses = [False, False, True, True] + [False] * (len(CLOUD_PROVIDERS) - 1)
-        # We need to handle the "Make active" prompt which happens after the loop if any were configured
+        # We need to handle the "Make active" prompt which happens after the loop if any were configured # noqa: E501
         confirm_responses.append(True)
 
         self.confirm_mock.side_effect = confirm_responses
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -81,8 +94,8 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock.side_effect = ["auto", "full", "balanced"]
         self.confirm_mock.side_effect = [False, False, False]
 
-        with patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware") as mock_detect:
-            mock_detect.return_value = {
+        if True:
+            self.mock_detect.return_value = {
                 "cpu": "Intel",
                 "cpu_threads": 8,
                 "ram_total": "16 GB",
@@ -99,11 +112,11 @@ class TestSetupWizard(unittest.TestCase):
                 wizard = SetupWizard(
                     console=self.console,
                     prompt_func=self.prompt_mock,
-                    confirm_func=self.confirm_mock
+                    confirm_func=self.confirm_mock,
                 )
                 wizard.run()
 
                 # Verify hardware detection was called
-                mock_detect.assert_called_once()
+                self.mock_detect.assert_called_once()
                 # Verify GPU layers was set to -1 because GPU was detected
                 self.assertEqual(wizard.config_updates["local_model"]["gpu_layers"], -1)
