@@ -2,6 +2,8 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
+# Use frozenset for O(1) lookups and define it at module level
+# to prevent re-allocating the set on every recursive call.
 _SKIP_DIRS = frozenset(
     {
         "node_modules",
@@ -27,8 +29,12 @@ def iter_files(search_path: Path | str) -> Iterator[Path]:
                             continue
                         if entry.name in _SKIP_DIRS:
                             continue
+
+                        # Pass string paths directly during recursion to avoid the overhead
+                        # of continuously allocating intermediate pathlib.Path objects.
                         yield from iter_files(entry.path)
                     elif entry.is_file():
+                        # Only convert to Path at the leaf nodes before yielding
                         yield Path(entry.path)
                 except OSError:
                     continue
