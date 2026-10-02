@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from nexus_agent.llm.model_manager import ModelManager
@@ -14,6 +15,8 @@ class TestAdvancedFeatures(unittest.TestCase):
     """Test suite for Phase 7 advanced options."""
 
     def setUp(self) -> None:
+        self.patcher_hw = patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware", return_value={"ram_total_bytes": 16 * 1024**3, "vram_bytes": 8 * 1024**3})
+        self.mock_detect_hw = self.patcher_hw.start()
         # Create temp folder simulating user workspace
         self.test_dir = tempfile.TemporaryDirectory()
         self.workspace = Path(self.test_dir.name)
@@ -36,6 +39,7 @@ class TestAdvancedFeatures(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
+        self.patcher_hw.stop()
         if self.rag_tool:
             try:
                 self.rag_tool.close()

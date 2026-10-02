@@ -14,9 +14,14 @@ from nexus_agent.cli.wizard import CLOUD_PROVIDERS, SetupWizard
 
 class TestSetupWizard(unittest.TestCase):
     def setUp(self):
+        self.patcher_hw = patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware", return_value={"ram_total_bytes": 0, "vram_bytes": 0})
+        self.mock_detect_hw = self.patcher_hw.start()
         self.console = Console(force_terminal=False)
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
+
+    def tearDown(self):
+        self.patcher_hw.stop()
 
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
