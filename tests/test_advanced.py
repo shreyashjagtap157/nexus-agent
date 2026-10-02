@@ -1,4 +1,5 @@
 """Unit tests to verify RAG search, batch editing, and loading guardrails."""
+from unittest.mock import patch, MagicMock
 
 import os
 import tempfile
@@ -105,7 +106,9 @@ class TestAdvancedFeatures(unittest.TestCase):
         # utils.py must be rolled back to "a * b" rather than "a / b"
         self.assertIn("a * b", self.file1.read_text(encoding="utf-8"))
 
-    def test_loading_guardrails(self) -> None:
+    @patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+    def test_loading_guardrails(self, mock_detect) -> None:
+        mock_detect.return_value = {"accelerator": "cpu", "vram_bytes": 0, "ram_total_bytes": 16 * 1024**3, "ram_available_bytes": 10 * 1024**3}
         """Verify model loading guardrails safety validations under simulated memory."""
         mgr = ModelManager()
 
@@ -122,7 +125,7 @@ class TestAdvancedFeatures(unittest.TestCase):
     def test_agent_telemetry_tracing(self) -> None:
         """Verify AgentLoop writes JSONL execution trace files to the workspace."""
         # Create a mock provider
-        from unittest.mock import MagicMock
+        from unittest.mock import MagicMock, patch
 
         from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
         mock_provider = MagicMock()
