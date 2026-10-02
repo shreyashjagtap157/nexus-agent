@@ -92,7 +92,7 @@ class TestCheckCpu(unittest.TestCase):
 
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     @patch("nexus_agent.cli.runtimes.shutil.which", return_value=None)
-    def test_llama_cpp_python_imported(self, mock_which, mock_shutil):
+    def test_llama_cpp_python_imported(self, mock_which, mock_shutil):  # noqa: E501
         with patch.dict("sys.modules", {"llama_cpp": MagicMock(__file__="/path/llama_cpp/__init__.py")}):
             runtimes = _check_cpu()
             names = [r.name for r in runtimes]
@@ -100,7 +100,7 @@ class TestCheckCpu(unittest.TestCase):
 
     @patch("nexus_agent.cli.runtimes._which", return_value=None)
     @patch("nexus_agent.cli.runtimes.shutil.which", return_value=None)
-    def test_transformers_imported(self, mock_which, mock_shutil):
+    def test_transformers_imported(self, mock_which, mock_shutil):  # noqa: E501
         with patch.dict("sys.modules", {"transformers": MagicMock(__file__="/path/transformers/__init__.py")}):
             runtimes = _check_cpu()
             names = [r.name for r in runtimes]
@@ -208,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
+        with patch.dict("sys.modules", {"openvino": None}):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
