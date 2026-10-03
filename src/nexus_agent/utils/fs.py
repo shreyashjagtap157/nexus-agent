@@ -6,11 +6,6 @@ _SKIP_DIRS = frozenset({"node_modules", "__pycache__", ".git", "venv", ".venv", 
 _ALLOWED_HIDDEN = frozenset({".env", ".gitignore"})
 
 
-def iter_files(search_path: Path) -> Iterator[Path]:
-    """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
-    yield from (Path(p) for p in _iter_files_str(str(search_path)))
-
-
 def _iter_files_str(search_path: str) -> Iterator[str]:
     try:
         with os.scandir(search_path) as it:
@@ -29,3 +24,9 @@ def _iter_files_str(search_path: str) -> Iterator[str]:
                     continue
     except OSError:
         return
+
+
+def iter_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
+    for file_str in _iter_files_str(str(search_path)):
+        yield Path(file_str)
