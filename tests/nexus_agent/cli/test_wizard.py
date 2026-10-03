@@ -17,6 +17,12 @@ class TestSetupWizard(unittest.TestCase):
         self.console = Console(force_terminal=False)
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
+        self.hardware_patcher = patch("nexus_agent.llm.model_manager.ModelManager.detect_hardware")
+        self.mock_hardware = self.hardware_patcher.start()
+        self.mock_hardware.return_value = {"cpu": "Mock CPU", "ram": "16GB", "os": "Mock OS"}
+
+    def tearDown(self):
+        self.hardware_patcher.stop()
 
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
@@ -28,9 +34,7 @@ class TestSetupWizard(unittest.TestCase):
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -57,16 +61,14 @@ class TestSetupWizard(unittest.TestCase):
         # ... others False ...
         # 5. Make active? (True)
         confirm_responses = [False, False, True, True] + [False] * (len(CLOUD_PROVIDERS) - 1)
-        # We need to handle the "Make active" prompt which happens after the loop if any were configured
+        # We need to handle the "Make active" prompt which happens after the loop if any were configured  # noqa: E501
         confirm_responses.append(True)
 
         self.confirm_mock.side_effect = confirm_responses
 
         with patch("nexus_agent.cli.wizard.save_user_config") as mock_save:
             wizard = SetupWizard(
-                console=self.console,
-                prompt_func=self.prompt_mock,
-                confirm_func=self.confirm_mock
+                console=self.console, prompt_func=self.prompt_mock, confirm_func=self.confirm_mock
             )
             updates = wizard.run()
 
@@ -99,7 +101,7 @@ class TestSetupWizard(unittest.TestCase):
                 wizard = SetupWizard(
                     console=self.console,
                     prompt_func=self.prompt_mock,
-                    confirm_func=self.confirm_mock
+                    confirm_func=self.confirm_mock,
                 )
                 wizard.run()
 
