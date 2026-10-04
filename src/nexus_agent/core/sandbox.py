@@ -393,15 +393,15 @@ class Sandbox:
 
             # Use direct execution on both Unix and Windows when parsing succeeds
             if sys.platform == "win32":
-                # Security mitigation: Explicitly reject Windows shell metacharacters to prevent command injection
-                # when arguments are passed to cmd.exe, as it does not securely isolate array arguments.
+                # Security mitigation: Explicitly reject Windows shell metacharacters to prevent command injection  # noqa: E501
+                # when arguments are passed to cmd.exe, as it does not securely isolate array arguments.  # noqa: E501
                 meta_chars = {"&", "|", "<", ">", "^", "%", "\n", "\r"}
                 if any(any(c in arg for c in meta_chars) for arg in parsed_args):
                     return CommandResult(
                         command=command,
                         returncode=-1,
                         stdout="",
-                        stderr="Execution denied: Command contains unsafe Windows shell metacharacters.",
+                        stderr="Execution denied: Command contains unsafe Windows shell metacharacters.",  # noqa: E501
                         duration=0.0,
                         was_approved=False,
                         risk_level=risk,
