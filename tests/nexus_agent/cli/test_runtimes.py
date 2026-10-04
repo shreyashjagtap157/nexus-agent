@@ -227,8 +227,9 @@ class TestCheckOpenvino(unittest.TestCase):
 
     def test_no_openvino(self):
         with patch.dict("sys.modules", {"openvino": None}):
-            runtimes = _check_openvino()
-            self.assertEqual(len(runtimes), 0)
+            with patch("importlib.util.find_spec", return_value=None):
+                runtimes = _check_openvino()
+                self.assertEqual(len(runtimes), 0)
 
 
 class TestCheckTpu(unittest.TestCase):
