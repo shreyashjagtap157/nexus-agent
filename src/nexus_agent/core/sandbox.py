@@ -334,6 +334,20 @@ class Sandbox:
 
             # Use direct execution on both Unix and Windows when parsing succeeds
             if sys.platform == "win32":
+                # Mitigate command injection on Windows:
+                # cmd.exe /c can interpret shell metacharacters like &, |, <, >, etc.
+                # Since we want to pass the raw parsed args, we block any metacharacters.
+                if any(char in arg for arg in parsed_args for char in "&|<>^%\n\r"):
+                    return CommandResult(
+                        command=command,
+                        returncode=-1,
+                        stdout="",
+                        stderr="Execution denied: Command contains blocked Windows shell metacharacters.",
+                        duration=time.time() - start_time,
+                        was_approved=False,
+                        risk_level=risk,
+                    )
+
                 # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
                 cmd_args = ["cmd.exe", "/c"] + parsed_args
                 proc = subprocess.run(
