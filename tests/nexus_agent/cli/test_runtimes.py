@@ -208,9 +208,10 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"jax": None}):
-            runtimes = _check_openvino()
-            self.assertEqual(len(runtimes), 0)
+        with patch.dict("sys.modules", {"openvino": None}):
+            with patch("importlib.util.find_spec", return_value=None):
+                runtimes = _check_openvino()
+                self.assertEqual(len(runtimes), 0)
 
 
 class TestCheckTpu(unittest.TestCase):

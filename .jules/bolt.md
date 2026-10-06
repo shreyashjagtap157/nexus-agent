@@ -6,3 +6,7 @@
 ## 2024-07-25 - [Optimize os.scandir with raw strings and frozensets]
 **Learning:** While `os.scandir` avoids `Path.rglob()` overhead, instantiating `Path` objects and redundant `set` allocations within deep recursive directory traversals still adds significant overhead. Passing raw strings through recursive generator calls and using static global `frozenset` objects speeds up traversal significantly.
 **Action:** When writing recursive file system traversal loops, pass paths as raw strings through the recursive calls instead of `pathlib.Path` objects, and declare static lookup sets as global `frozenset` constants outside the function to eliminate instantiation overhead, converting to `Path` only when yielding final results.
+
+## 2024-07-25 - [Test Mocking Consistency]
+**Learning:** In test files checking module imports, accidentally mocking the wrong dependency module name (e.g. mocking `jax` instead of `openvino` in an `openvino` test case) can cause false positives/negatives and sporadic CI failures.
+**Action:** Always verify the mocked module name matches the dependency being tested exactly.
