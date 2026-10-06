@@ -360,7 +360,8 @@ class Sandbox:
         # Build environment
         exec_env = os.environ.copy()
         if env:
-            # Sanitize additional env variables to prevent PATH hijacking or execution override vectors
+            # Sanitize additional env variables to prevent PATH hijacking
+            # or execution override vectors
             for k, v in dict(env).items():
                 k_clean = str(k).strip()
                 v_clean = str(v).strip()
@@ -385,7 +386,8 @@ class Sandbox:
                     command=command,
                     returncode=-1,
                     stdout="",
-                    stderr="Execution denied: Command parsing failed (potential shell injection risk).",
+                    stderr="Execution denied: Command parsing failed "
+                           "(potential shell injection risk).",
                     duration=time.time() - start_time,
                     was_approved=False,
                     risk_level=risk,
