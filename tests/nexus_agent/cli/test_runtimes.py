@@ -208,7 +208,7 @@ class TestCheckOpenvino(unittest.TestCase):
             self.assertEqual(runtimes[0].provider, "openvino")
 
     def test_no_openvino(self):
-        with patch.dict("sys.modules", {"openvino": None}):
+        with patch.dict("sys.modules", {"openvino": None}), patch("importlib.util.find_spec", return_value=None):
             runtimes = _check_openvino()
             self.assertEqual(len(runtimes), 0)
 
@@ -223,7 +223,7 @@ class TestCheckTpu(unittest.TestCase):
             self.assertEqual(runtimes[0].name, "JAX (TPU/GPU)")
 
     def test_no_jax(self):
-        with patch.dict("sys.modules", {"openvino": None}):
+        with patch.dict("sys.modules", {"jax": None}), patch("importlib.util.find_spec", return_value=None):
             runtimes = _check_tpu()
             self.assertEqual(len(runtimes), 0)
 
