@@ -18,6 +18,14 @@ class TestSetupWizard(unittest.TestCase):
         self.prompt_mock = MagicMock()
         self.confirm_mock = MagicMock()
 
+        # Mock subprocess.run across all tests to prevent hardware detection from timing out or failing on CI
+        self.patcher = patch("subprocess.run")
+        self.mock_subprocess = self.patcher.start()
+        self.mock_subprocess.return_value = MagicMock(returncode=1, stdout="")
+
+    def tearDown(self):
+        self.patcher.stop()
+
     def test_wizard_collects_basic_settings(self):
         """Verify wizard collects permission, memory, and guardrail modes."""
         # Setup mock responses

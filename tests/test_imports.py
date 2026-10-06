@@ -1,5 +1,6 @@
 """Test that all package modules can be imported without errors."""
 
+import pytest
 
 
 class TestCoreImports:
@@ -11,23 +12,23 @@ class TestCoreImports:
         assert nexus_agent.__version__ == "0.1.0"
 
     def test_import_agent_loop(self):
-        from nexus_agent.core.agent import AgentMode
+        from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode, AgentState
         assert AgentMode.AUTO.value == "auto"
 
     def test_import_config(self):
-        from nexus_agent.core.config import load_config
+        from nexus_agent.core.config import load_config, save_config, save_user_config
         assert callable(load_config)
 
     def test_import_context(self):
-        from nexus_agent.core.context import ContextManager
+        from nexus_agent.core.context import ContextManager, ContextStats
         assert callable(ContextManager)
 
     def test_import_sandbox(self):
-        from nexus_agent.core.sandbox import SandboxMode
+        from nexus_agent.core.sandbox import Sandbox, SandboxConfig, SandboxMode, CommandRisk
         assert SandboxMode.ASK.value == "ask"
 
     def test_import_orchestrator(self):
-        from nexus_agent.core.orchestrator import Orchestrator
+        from nexus_agent.core.orchestrator import Orchestrator, BoomerangSubTask
         assert callable(Orchestrator)
 
     def test_import_planner(self):
@@ -39,39 +40,39 @@ class TestCoreImports:
         assert callable(Executor)
 
     def test_import_debate(self):
-        from nexus_agent.core.debate import DebateEngine
+        from nexus_agent.core.debate import DebateEngine, DebateVerdict
         assert callable(DebateEngine)
 
     def test_import_devops(self):
-        from nexus_agent.core.devops import VerificationPipeline
+        from nexus_agent.core.devops import VerificationPipeline, PipelineReport
         assert callable(VerificationPipeline)
 
     def test_import_nla_telemetry(self):
-        from nexus_agent.core.nla_telemetry import NLATelemetry
+        from nexus_agent.core.nla_telemetry import NLATelemetry, NLARecord
         assert callable(NLATelemetry)
 
     def test_import_reflection(self):
-        from nexus_agent.core.reflection import ReflectionEngine
+        from nexus_agent.core.reflection import ReflectionEngine, CritiqueResult
         assert callable(ReflectionEngine)
 
     def test_import_self_heal(self):
-        from nexus_agent.core.self_heal import SelfHealingExecutor
+        from nexus_agent.core.self_heal import SelfHealingExecutor, FailureClassifier
         assert callable(SelfHealingExecutor)
 
     def test_import_task_graph(self):
-        from nexus_agent.core.task_graph import TaskGraph
+        from nexus_agent.core.task_graph import TaskGraph, TaskNode
         assert callable(TaskGraph)
 
     def test_import_plugins(self):
-        from nexus_agent.core.plugins import PluginManager
+        from nexus_agent.core.plugins import PluginManager, NexusPlugin
         assert callable(PluginManager)
 
     def test_import_usage(self):
-        from nexus_agent.core.usage import UsageTracker
+        from nexus_agent.core.usage import UsageTracker, UsageEntry
         assert callable(UsageTracker)
 
     def test_import_updater(self):
-        from nexus_agent.core.updater import check_for_update
+        from nexus_agent.core.updater import check_for_update, UpdateInfo
         assert callable(check_for_update)
 
     def test_import_project_context(self):
@@ -87,15 +88,15 @@ class TestLLMImports:
     """Test LLM module imports."""
 
     def test_import_base(self):
-        from nexus_agent.llm.base import Role
+        from nexus_agent.llm.base import LLMProvider, Message, Role, ToolCall, LLMResponse
         assert Role.SYSTEM.value == "system"
 
     def test_import_retry(self):
-        from nexus_agent.llm.retry import with_retry
+        from nexus_agent.llm.retry import RetryPolicy, with_retry, RetryProvider
         assert callable(with_retry)
 
     def test_import_runtime_manager(self):
-        from nexus_agent.llm.runtime_manager import RuntimeManager
+        from nexus_agent.llm.runtime_manager import RuntimeManager, SmartRouter
         assert callable(RuntimeManager)
 
     def test_import_model_manager(self):
@@ -127,13 +128,11 @@ class TestToolImports:
     """Test tool module imports."""
 
     def test_import_tool_base(self):
-        from nexus_agent.tools.base import format_aci_output
+        from nexus_agent.tools.base import Tool, ToolError, format_aci_output
         assert callable(format_aci_output)
 
     def test_import_file_ops(self):
-        from nexus_agent.tools.file_ops import (
-            ReadFileTool,
-        )
+        from nexus_agent.tools.file_ops import ReadFileTool, WriteFileTool, SearchFilesTool, ListDirectoryTool
         assert callable(ReadFileTool)
 
     def test_import_shell(self):
@@ -141,7 +140,7 @@ class TestToolImports:
         assert callable(ShellTool)
 
     def test_import_code_edit(self):
-        from nexus_agent.tools.code_edit import CodeEditTool
+        from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
         assert callable(CodeEditTool)
 
     def test_import_git_ops(self):
@@ -225,7 +224,7 @@ class TestSessionImports:
         assert callable(SessionStorage)
 
     def test_import_checkpoint(self):
-        from nexus_agent.session.checkpoint import CheckpointManager
+        from nexus_agent.session.checkpoint import CheckpointManager, Checkpoint
         assert callable(CheckpointManager)
 
 
@@ -237,7 +236,7 @@ class TestPermissionImports:
         assert callable(PermissionManager)
 
     def test_import_permission_rules(self):
-        from nexus_agent.permissions.rules import DEFAULT_RULES, PermissionLevel
+        from nexus_agent.permissions.rules import PermissionLevel, PermissionRule, DEFAULT_RULES
         assert PermissionLevel.ALLOW.value == "allow"
         assert len(DEFAULT_RULES) > 0
 
@@ -266,7 +265,7 @@ class TestSkillImports:
     """Test skill module imports."""
 
     def test_import_skill_loader(self):
-        from nexus_agent.skills.skill_loader import load_skill_from_markdown
+        from nexus_agent.skills.skill_loader import Skill, load_skill_from_markdown
         assert callable(load_skill_from_markdown)
 
     def test_import_skill_registry(self):
@@ -278,12 +277,14 @@ class TestCLIImports:
     """Test CLI module imports."""
 
     def test_import_main(self):
-        from nexus_agent.__main__ import main
+        from nexus_agent.__main__ import main, cli
         assert callable(main)
 
     def test_import_renderer(self):
         from nexus_agent.cli.renderer import (
-            SPINNER_VERBS_PRESENT,
+            NexusTerminalRenderer, TokenUsage, ContextBreakdown,
+            Verbosity, PermissionDialog, detect_dark_mode,
+            enable_vt_processing, strip_markup, SPINNER_VERBS_PRESENT
         )
         assert len(SPINNER_VERBS_PRESENT) > 0
 
@@ -324,11 +325,11 @@ class TestCLIImports:
         assert callable(RuntimeInfo)
 
     def test_import_doctor(self):
-        from nexus_agent.cli.doctor import run_doctor
+        from nexus_agent.cli.doctor import run_doctor, print_report
         assert callable(run_doctor)
 
     def test_import_command_dispatcher(self):
-        from nexus_agent.cli.command_dispatcher import SLASH_COMMANDS
+        from nexus_agent.cli.command_dispatcher import CommandDispatcherMixin, SLASH_COMMANDS
         assert len(SLASH_COMMANDS) > 50
 
     def test_import_agent_mixin(self):
