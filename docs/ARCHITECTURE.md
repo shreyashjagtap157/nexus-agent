@@ -1,13 +1,13 @@
 # NexusAgent Architecture
 
-> **Version:** 0.1.0  
-> **Status:** Production-ready v1.0  
+> **Version:** 0.2.0  
+> **Status:** Active Alpha / integration hardening  
 
 ---
 
 ## 1. High-Level Architecture
 
-NexusAgent is an offline-first, local-LLM-powered coding agent with two interfaces:
+NexusAgent is a local-first agentic workbench combining single-agent coding/research sessions with dynamically assembled multi-agent teams. It provides CLI/TUI, a local web UI, and a native Rust client over a shared Python runtime.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -276,3 +276,33 @@ Model Context Protocol via `mcp/` module:
 - Pattern-based `dangerous_indicators` regex for detection
 - Git operations protected via worktree isolation
 - API keys stored via `AuthStore` in user data dir (not in config)
+
+## 13. Multi-agent Team Runtime
+
+The team runtime dynamically assembles professional roles, executes isolated AgentLoops concurrently, coordinates through a persistent SQLite blackboard, and performs reviewer/synthesis passes. Dependencies execute in waves so independent workers remain parallel while dependent workers wait for prerequisites. Pause, resume and stop requests are persisted for local cross-client control.
+
+Team outputs support chat, Markdown/text artifacts and JSON artifacts. Role-specific provider/model/fallback routing can override named team roles.
+
+## 14. Agent Profiles and Agent Forge
+
+Reusable Markdown agent definitions resolve from built-in, global, user, project and workspace scopes. Users can author profiles manually or ask NexusAgent to generate them from natural-language requirements. Profiles can be pinned into teams or executed directly with nexus agent run.
+
+## 15. Scoped Memory
+
+The existing hybrid memory system is exposed through explicit global, user, project, workspace, agent, team and session scopes. Team workers retrieve relevant prior context and can persist completed findings to agent/team memory.
+
+## 16. Evidence-first Research
+
+Research teams support configurable depth from glance through maximal, source seeding, a persistent source registry, source snapshots, claim/evidence records and deterministic quotation verification.
+
+## 17. Provider and Authentication Plane
+
+Provider metadata, model/endpoint configuration and credentials are separate concerns. AuthStore supports an OS keychain when available and a permission-restricted file fallback. Role-level provider/model/fallback configuration is resolved before generic team defaults.
+
+## 18. Universal Tool Plane
+
+CLI, web, native and team workers share filesystem mutation/recovery, shell, Git/CI, web/browser, LSP, code intelligence, RAG, memory, delegation/council and MCP tools.
+
+## 19. Runtime Storage and File Governance
+
+Persistent user state, project configuration and workspace runtime state are deliberately separated. File mutations are journaled with hashes where applicable; deletes default to reversible runtime trash. Git metadata paths and workspace escapes are explicitly rejected by file mutation tools.
