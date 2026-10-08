@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from fastapi import HTTPException, Request
+
 from nexus_agent.skills import SkillRegistry
 
 
@@ -17,7 +19,9 @@ def register_skill_routes(app: Any, state_manager: Any) -> None:
     )
 
     @app.get("/api/skills")
-    async def list_skills():
+    async def list_skills(request: Request):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Workspace skill access is restricted to local clients.")
         skills = registry.discover_skills()
         return {
             "skills": [
