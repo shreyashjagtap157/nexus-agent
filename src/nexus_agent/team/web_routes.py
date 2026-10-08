@@ -99,6 +99,26 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
     async def research_depths():
         return {"depths": all_policies()}
 
+    @router.get("/api/research-sources")
+    async def research_sources():
+        from nexus_agent.research.sources import ResearchSourceRegistry
+        registry = ResearchSourceRegistry(
+            _workspace(state_manager) / ".nexus-agent" / "research-sources.yaml"
+        )
+        return {"sources": [item.to_dict() for item in registry.list()]}
+
+    @router.post("/api/research-sources/seed")
+    async def seed_research_sources(payload: dict[str, Any]):
+        from nexus_agent.research.sources import ResearchSourceRegistry
+        urls = payload.get("urls") if isinstance(payload, dict) else []
+        if not isinstance(urls, list):
+            raise HTTPException(status_code=422, detail="urls must be a list")
+        registry = ResearchSourceRegistry(
+            _workspace(state_manager) / ".nexus-agent" / "research-sources.yaml"
+        )
+        count = registry.seed_urls([str(url) for url in urls])
+        return {"seeded": count, "sources": [item.to_dict() for item in registry.list()]}
+
     @router.get("/api/teams")
     async def list_teams(limit: int = 100, offset: int = 0):
         store = store_for()
