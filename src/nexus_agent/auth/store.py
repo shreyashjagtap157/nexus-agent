@@ -65,13 +65,25 @@ class AuthStore:
             data = self._read()
             provider_id = provider.strip().lower()
             if self._keyring is not None:
-                self._keyring.set_password("nexus-agent", provider_id, key)
-                data = self._read()
-                data[provider_id] = {
-                    "type": "api_key",
-                    "backend": "keyring",
-                    "metadata": metadata or {},
-                }
+                try:
+                    self._keyring.set_password("nexus-agent", provider_id, key)
+                except Exception:
+                    self._keyring = None
+                if self._keyring is not None:
+                    data = self._read()
+                    data[provider_id] = {
+                        "type": "api_key",
+                        "backend": "keyring",
+                        "metadata": metadata or {},
+                    }
+                else:
+                    data = self._read()
+                    data[provider_id] = {
+                        "type": "api_key",
+                        "backend": "file",
+                        "key": key,
+                        "metadata": metadata or {},
+                    }
             else:
                 data = self._read()
                 data[provider_id] = {
@@ -87,7 +99,10 @@ class AuthStore:
             item = self._read().get(provider.strip().lower())
         if isinstance(item, dict):
             if item.get("backend") == "keyring" and self._keyring is not None:
-                return self._keyring.get_password("nexus-agent", provider.strip().lower())
+                try:
+                    return self._keyring.get_password("nexus-agent", provider.strip().lower())
+                except Exception:
+                    return None
             value = item.get("key")
             return str(value) if value else None
         return None
