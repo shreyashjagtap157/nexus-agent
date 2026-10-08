@@ -774,6 +774,11 @@ Team protocol:
         yield AgentEvent(AgentEventType.CONTENT_COMPLETE, synthesis or summary)
         yield AgentEvent(AgentEventType.DONE, result.__dict__)
         unregister_team_control(team_id)
+        for client in self.mcp_clients:
+            try:
+                client.close()
+            except (OSError, RuntimeError):
+                pass
         store.close()
 
     def run_collect(self, goal: str, config: TeamConfig | None = None) -> TeamRunResult:
