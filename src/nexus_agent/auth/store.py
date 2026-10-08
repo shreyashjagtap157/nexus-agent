@@ -14,10 +14,19 @@ from nexus_agent.storage.layout import StorageLayout
 class AuthStore:
     """Persist provider credentials separately from model configuration."""
 
-    def __init__(self, path: Path | None = None):
+    def __init__(self, path: Path | None = None, backend: str | None = None):
         self.path = path or StorageLayout(Path.cwd()).auth_file
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        requested = (backend or os.environ.get("NEXUS_AUTH_BACKEND", "auto")).strip().lower()
+        self._keyring = None
+        if requested in {"auto", "keyring"}:
+            try:
+                import keyring
+                self._keyring = keyring
+            except ImportError:
+                if requested == "keyring":
+                    raise
 
     def _read(self) -> dict[str, Any]:
         if not self.path.exists():
@@ -55,17 +64,31 @@ class AuthStore:
             raise ValueError("Provider and credential key are required.")
         with self._lock:
             data = self._read()
-            data[provider.strip().lower()] = {
-                "type": "api_key",
-                "key": key,
-                "metadata": metadata or {},
-            }
+            provider_id = provider.strip().lower()
+            if self._keyring is not None:
+                self._keyring.set_password("nexus-agent", provider_id, key)
+                data = self._read()
+                data[provider_id] = {
+                    "type": "api_key",
+                    "backend": "keyring",
+                    "metadata": metadata or {},
+                }
+            else:
+                data = self._read()
+                data[provider_id] = {
+                    "type": "api_key",
+                    "backend": "file",
+                    "key": key,
+                    "metadata": metadata or {},
+                }
             self._write(data)
 
     def get(self, provider: str) -> str | None:
         with self._lock:
             item = self._read().get(provider.strip().lower())
         if isinstance(item, dict):
+            if item.get("backend") == "keyring" and self._keyring is not None:
+                return self._keyring.get_password("nexus-agent", provider.strip().lower())
             value = item.get("key")
             return str(value) if value else None
         return None
@@ -80,16 +103,22 @@ class AuthStore:
             data = self._read()
         rows = []
         for provider, item in sorted(data.items()):
-            key = str(item.get("key", "")) if isinstance(item, dict) else ""
+            key = self.get(provider) or ""
             masked = (key[:4] + "…" + key[-4:]) if len(key) > 10 else ("*" * len(key))
             rows.append({"provider": provider, "type": item.get("type", "api_key") if isinstance(item, dict) else "api_key", "key": masked})
         return rows
 
     def remove(self, provider: str) -> bool:
         with self._lock:
+            provider_id = provider.strip().lower()
             data = self._read()
-            existed = provider.strip().lower() in data
-            data.pop(provider.strip().lower(), None)
+            existed = provider_id in data
             if existed:
+                item = data.pop(provider_id, {})
+                if isinstance(item, dict) and item.get("backend") == "keyring" and self._keyring is not None:
+                    try:
+                        self._keyring.delete_password("nexus-agent", provider_id)
+                    except Exception:
+                        pass
                 self._write(data)
             return existed
