@@ -72,25 +72,38 @@ class LiteLLMProvider(LLMProvider):
         result: list[ToolCall] = []
         for item in raw:
             try:
+                function = getattr(item, "function", None)
+                name = getattr(function, "name", None) if function is not None else None
+                arguments = getattr(function, "arguments", None) if function is not None else None
+                if not isinstance(arguments, str):
+                    arguments = "{}" if arguments is None else str(arguments)
+                try:
+                    import json
+                    parsed = json.loads(arguments)
+                except (TypeError, ValueError):
+                    parsed = {"raw": arguments}
                 result.append(
                     ToolCall(
-                        id=str(getattr(item, "id", "") or item.get("id", "")),
-                        type="function",
-                        function={
-                            "name": str(
-                                getattr(getattr(item, "function", None), "name", "")
-                                or item.get("function", {}).get("name", "")
-                            ),
-                            "arguments": str(
-                                getattr(getattr(item, "function", None), "arguments", "")
-                                or item.get("function", {}).get("arguments", "")
-                            ),
-                        },
+                        id=str(getattr(item, "id", "") or ""),
+                        name=str(name or ""),
+                        arguments=parsed if isinstance(parsed, dict) else {"value": parsed},
                     )
                 )
             except (AttributeError, TypeError):
                 continue
         return result or None
+
+    @staticmethod
+    def _usage(response: Any) -> dict[str, int] | None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None
+        if isinstance(usage, dict):
+            return {str(k): int(v) for k, v in usage.items() if isinstance(v, (int, float))}
+        if hasattr(usage, "model_dump"):
+            data = usage.model_dump()
+            return {str(k): int(v) for k, v in data.items() if isinstance(v, (int, float))}
+        return None
 
     def _kwargs(self, temperature: float, max_tokens: int, kwargs: dict[str, Any]) -> dict[str, Any]:
         payload = dict(kwargs)
@@ -122,7 +135,7 @@ class LiteLLMProvider(LLMProvider):
             content=getattr(message, "content", None),
             tool_calls=self._tool_calls(message),
             finish_reason=getattr(choice, "finish_reason", None),
-            usage=getattr(response, "usage", None),
+            usage=self._usage(response),
             model=self._model_name,
         )
 
