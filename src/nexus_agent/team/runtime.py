@@ -176,18 +176,22 @@ class TeamRuntime:
         from nexus_agent.memory.scoped import ScopedMemory
         from nexus_agent.storage.layout import StorageLayout
         from nexus_agent.tools.scoped_memory import ScopedMemoryTool
-        selected = [
-            tool
-            for tool in self.tools
-            if self._tool_matches(getattr(tool, "name", ""), categories)
-            and (
-                getattr(tool, "name", "").lower()
-                not in {"write_file", "code_edit", "insert_lines", "batch_edit", "delete_file", "move_file"}
-                or profile.write_access
-            )
-        ]
-        if "mcp" in categories:
-            selected.extend(
+
+        selected: list[Any] = []
+        for tool in self.tools:
+            name = getattr(tool, "name", "")
+            allowed = self._tool_matches(name, categories)
+            if "mcp" in categories and bool(getattr(tool, "is_mcp", False)):
+                allowed = True
+            if (
+                name.lower() in {"write_file", "code_edit", "insert_lines", "batch_edit", "delete_file", "move_file", "restore_file"}
+                and not profile.write_access
+            ):
+                allowed = False
+            if allowed:
+                selected.append(tool)
+
+        selected.extend(
                 tool
                 for tool in self.tools
                 if tool not in selected and tool.__class__.__name__ == "MCPProxyTool"
