@@ -13,6 +13,7 @@ from rich.table import Table
 from nexus_agent.core.config import load_config
 from nexus_agent.llm.providers.factory import ProviderFactory
 from nexus_agent.permissions.manager import PermissionManager
+from nexus_agent.storage.layout import StorageLayout
 
 from .team.models import TeamConfig, TeamMode
 from .team.runtime import TeamRuntime, build_workspace_tools
@@ -116,7 +117,7 @@ def run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations:
 @click.option("--limit", type=int, default=50, show_default=True)
 def list_teams(workspace: Path, limit: int) -> None:
     """List persisted multi-agent team runs."""
-    store = TeamStore(workspace.resolve() / ".nexus" / "teams.db")
+    store = TeamStore(StorageLayout(workspace.resolve()).team_db)
     try:
         rows = store.list_teams(limit=max(1, min(limit, 1000)))
         if not rows:
