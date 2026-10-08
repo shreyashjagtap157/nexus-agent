@@ -31,6 +31,12 @@ def test_gui_mutation_access_accepts_loopback_clients():
     "path",
     [
         "/api/agents",
+        "/api/config/full",
+        "/api/models",
+        "/api/activity/files",
+        "/api/sessions",
+        "/api/tasks",
+        "/api/nla/test-session",
         "/api/memory/scoped/stats",
         "/api/mcp",
         "/api/skills",
