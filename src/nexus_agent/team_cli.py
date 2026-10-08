@@ -136,6 +136,21 @@ def list_teams(workspace: Path, limit: int) -> None:
         store.close()
 
 
+@main.command("control")
+@click.argument("team_id")
+@click.argument("action", type=click.Choice(["pause", "resume", "stop"]))
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
+def control_team(team_id: str, action: str, workspace: Path) -> None:
+    """Request pause, resume or stop for a running team."""
+    store = TeamStore(workspace.resolve() / ".nexus" / "teams.db")
+    try:
+        if not store.request_control(team_id, action):
+            raise click.ClickException("Unknown or terminal team.")
+        console.print(f"[green]Control request persisted:[/green] {action} -> {team_id}")
+    finally:
+        store.close()
+
+
 @main.command("show")
 @click.argument("team_id")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
