@@ -45,6 +45,7 @@ from nexus_agent.llm.runtime_manager import RuntimeManager
 from nexus_agent.memory.memory_manager import MemoryManager
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.session.manager import SessionManager
+from nexus_agent.storage.layout import StorageLayout
 from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
 from nexus_agent.tools.file_ops import (
     ListDirectoryTool,
@@ -484,7 +485,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 GitTool(state_manager.get("workspace")),
                 WebSearchTool(),
                 WebFetchTool(),
-                TodoWriteTool(persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"),
+                TodoWriteTool(persist_path=StorageLayout(Path(state_manager.get("workspace"))).todos),
             ]
             memory_tool = MemoryTool()
             if state_manager.get("memory_manager"):
