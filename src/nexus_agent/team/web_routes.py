@@ -112,6 +112,23 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
     async def workflows():
         return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry(_workspace(state_manager)).list()]}
 
+    @router.put("/api/workflows/{workflow_id}")
+    async def save_workflow(workflow_id: str, req: WorkflowWriteRequest):
+        if workflow_id.strip().lower() != req.id.strip().lower():
+            raise HTTPException(status_code=400, detail="Path workflow ID and body ID must match")
+        from nexus_agent.workflows.registry import WorkflowSpec
+        registry = WorkflowRegistry(_workspace(state_manager))
+        candidate = WorkflowSpec.from_dict(req.model_dump(), f"{req.scope}:web")
+        path = registry.save(candidate, req.scope)
+        return {"workflow": candidate.__dict__, "path": str(path)}
+
+    @router.delete("/api/workflows/{workflow_id}")
+    async def delete_workflow(workflow_id: str, scope: str = "workspace"):
+        registry = WorkflowRegistry(_workspace(state_manager))
+        if not registry.delete(workflow_id, scope):
+            raise HTTPException(status_code=404, detail="Custom workflow not found")
+        return {"deleted": workflow_id, "scope": scope}
+
     @router.get("/api/research-depths")
     async def research_depths():
         return {"depths": all_policies()}
