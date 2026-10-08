@@ -124,47 +124,18 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
 
     # 2. Initialize memory
     from nexus_agent.memory.memory_manager import MemoryManager
-    memory_data_dir = config.get("data_dir", "~/.nexus-agent/memory")
+    from nexus_agent.storage.layout import StorageLayout
+    layout = StorageLayout(workspace)
+    layout.ensure()
+    memory_data_dir = str(layout.user_memory)
     memory = MemoryManager(data_dir=memory_data_dir)
 
     # 3. Initialize session (creates or resumes)
     from nexus_agent.session.manager import SessionManager
-    session_data_dir = config.get("data_dir", "~/.nexus-agent/sessions")
+    session_data_dir = str(layout.sessions)
     SessionManager(data_dir=session_data_dir)
 
-    # 4. Create tool registry
-    from nexus_agent.tools.boomerang import BoomerangTool
-    from nexus_agent.tools.code_edit import CodeEditTool
-    from nexus_agent.tools.council import CouncilTool
-    from nexus_agent.tools.file_ops import (
-        ListDirectoryTool,
-        ReadFileTool,
-        SearchFilesTool,
-        WriteFileTool,
-    )
-    from nexus_agent.tools.memory import MemoryTool
-    from nexus_agent.tools.shell import ShellTool
-    from nexus_agent.tools.todowrite import TodoWriteTool
-    from nexus_agent.tools.web_search import WebSearchTool
-    from nexus_agent.tools.webfetch import WebFetchTool
-
-    boomerang_tool = BoomerangTool()
-    council_tool = CouncilTool()
-
-    tools: list[Any] = [
-        ReadFileTool(workspace),
-        WriteFileTool(workspace),
-        ListDirectoryTool(workspace),
-        SearchFilesTool(workspace),
-        CodeEditTool(workspace),
-        ShellTool(workspace),
-        WebSearchTool(),
-        WebFetchTool(),
-        TodoWriteTool(),
-        MemoryTool(memory),
-        boomerang_tool,
-        council_tool,
-    ]
+    # 4. The native backend uses the same universal workspace tool catalog as teams and CLI sessions.
 
     # 5. Determine provider
     provider_name = provider or config.get("agent", {}).get("provider", "local")
