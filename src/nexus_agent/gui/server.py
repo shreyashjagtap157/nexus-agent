@@ -32,7 +32,6 @@ from nexus_agent import __app_name__, __version__
 from nexus_agent.agents.web_routes import register_agent_routes
 from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.auth.web_routes import register_auth_routes
-from nexus_agent.auth.provider_config_routes import register_provider_config_routes
 from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.core.config import load_config
@@ -116,7 +115,6 @@ register_team_routes(app, state_manager)
 register_agent_routes(app, state_manager)
 register_skill_routes(app, state_manager)
 register_auth_routes(app)
-register_provider_config_routes(app, state_manager)
 register_memory_routes(app, state_manager)
 
 # Rate limiting store
