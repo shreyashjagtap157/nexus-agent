@@ -855,7 +855,14 @@ Team protocol:
             path.write_text("\n".join(lines), encoding="utf-8")
         return [str(path.resolve())]
 
-    def _synthesize(self, team_id: str, goal: str, results: list[dict[str, Any]], store: TeamStore) -> str:
+    def _synthesize(
+        self,
+        team_id: str,
+        goal: str,
+        results: list[dict[str, Any]],
+        store: TeamStore,
+        research_claims: list[dict[str, Any]] | None = None,
+    ) -> str:
         compact = [
             {
                 "agent_id": item.get("agent_id"),
@@ -869,29 +876,56 @@ Team protocol:
         ]
         if not compact:
             return ""
+        if research_claims is not None and not research_claims:
+            store.event(
+                team_id,
+                "research_report_suppressed",
+                {"reason": "No verified claims were available for factual synthesis."},
+            )
+            return (
+                "Evidence gate did not produce any verified claims. "
+                "No factual research report was emitted."
+            )
+
+        system = (
+            "You are the integration lead for a NexusAgent team. "
+            "Synthesize only the supplied worker results. Do not invent facts. "
+            "Call out disagreement and missing evidence explicitly."
+        )
+        user = f"Goal:\n{goal}\n\nWorker results:\n{json_dump(compact)}"
+        if research_claims is not None:
+            system = (
+                "You are the evidence-bound integration lead for a NexusAgent research team. "
+                "Use the verified claim ledger as the only authority for factual statements. "
+                "Every factual statement must include one or more [claim:N] markers corresponding "
+                "to supplied verified claims. Include source URLs where useful. Do not use "
+                "unverified worker prose as factual evidence. Explicitly state unresolved gaps."
+            )
+            user += (
+                f"\n\nVerified claim ledger:\n{json_dump(research_claims)}"
+                "\n\nProduce the integrated research result. Preserve [claim:N] markers."
+            )
+        else:
+            user += "\n\nProduce a concise integrated result."
+
         response = self.provider.chat_completion(
             [
-                Message(
-                    role=Role.SYSTEM,
-                    content=(
-                        "You are the integration lead for a NexusAgent team. "
-                        "Synthesize only the supplied worker results. Do not invent facts. "
-                        "Call out disagreement and missing evidence explicitly."
-                    ),
-                ),
-                Message(
-                    role=Role.USER,
-                    content=(
-                        f"Goal:\\n{goal}\\n\\nWorker results:\\n"
-                        f"{json_dump(compact)}\\n\\nProduce a concise integrated result."
-                    ),
-                ),
+                Message(role=Role.SYSTEM, content=system),
+                Message(role=Role.USER, content=user),
             ],
             temperature=0.1,
             max_tokens=8000,
         )
         synthesis = response.content or ""
-        store.event(team_id, "team_synthesis", {"content": synthesis})
+        store.event(
+            team_id,
+            "team_synthesis",
+            {
+                "content": synthesis,
+                "evidence_bound": research_claims is not None,
+                "verified_claim_count": len(research_claims or []),
+            },
+        )
         return synthesis
 
     def run(self, goal: str, config: TeamConfig | None = None) -> Iterator[AgentEvent]:
@@ -1205,6 +1239,28 @@ Team protocol:
                 research_store.close()
             store.event(team_id, "research_quality_gate", research_quality)
 
+        research_claims: list[dict[str, Any]] | None = None
+        if mode == TeamMode.RESEARCH:
+            from nexus_agent.research.store import ResearchStore
+            evidence_store = ResearchStore(self.data_dir / "research.db")
+            try:
+                research_claims = evidence_store.verified_claims(team_id)
+            finally:
+                evidence_store.close()
+
+        store.event(
+            team_id,
+            "final_review_started",
+            {
+                "workflow": "post-deployment-final-review",
+                "workers_completed": len(
+                    [item for item in results if item.get("status") == TeamAgentState.COMPLETED.value]
+                ),
+                "reviewers_completed": len(reviewers),
+                "verified_claim_count": len(research_claims or []),
+            },
+        )
+
         synthesis = ""
         summary = (
             f"{len([r for r in results if r['status'] == TeamAgentState.COMPLETED.value])}/"
@@ -1233,7 +1289,27 @@ Team protocol:
 
         if cfg.auto_synthesize:
             try:
-                synthesis = self._synthesize(team_id, goal, results, store)
+                if mode == TeamMode.RESEARCH and research_quality and not research_quality.get("passed"):
+                    store.event(
+                        team_id,
+                        "research_report_suppressed",
+                        {
+                            "reason": "Evidence quality gate failed; factual synthesis withheld.",
+                            "quality": research_quality,
+                        },
+                    )
+                    synthesis = (
+                        "Evidence gate did not pass. No factual research report was emitted. "
+                        "Resolve the outstanding source, claim and verification requirements."
+                    )
+                else:
+                    synthesis = self._synthesize(
+                        team_id,
+                        goal,
+                        results,
+                        store,
+                        research_claims=research_claims,
+                    )
             except (RuntimeError, ValueError, OSError, TypeError) as exc:
                 store.event(team_id, "team_synthesis_failed", {"error": str(exc)})
                 failures.append(f"Team synthesis failed: {exc}")
