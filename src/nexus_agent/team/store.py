@@ -7,6 +7,8 @@ import threading
 import time
 import uuid
 from pathlib import Path
+
+from nexus_agent.audit import AuditLog
 from typing import Any
 
 
@@ -78,6 +80,7 @@ class TeamStore:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(self.SCHEMA)
         self._conn.commit()
+        self._audit = AuditLog(self.db_path.parent / "activity.jsonl")
 
     def close(self) -> None:
         with self._lock:
@@ -182,6 +185,7 @@ class TeamStore:
     ) -> str:
         message_id = uuid.uuid4().hex[:16]
         with self._lock:
+            created_at = time.time()
             self._conn.execute(
                 """INSERT INTO team_messages(
                     message_id,team_id,sender_id,recipient_id,message_type,topic,payload_json,created_at,parent_message_id
@@ -194,11 +198,23 @@ class TeamStore:
                     message_type,
                     topic,
                     json.dumps(payload, ensure_ascii=False, default=str),
-                    time.time(),
+                    created_at,
                     parent_message_id,
                 ),
             )
             self._conn.commit()
+            self._audit.append(
+                scope="team",
+                run_id=team_id,
+                actor=sender_id,
+                event_type=f"message:{message_type}",
+                payload={
+                    "recipient_id": recipient_id,
+                    "topic": topic,
+                    "message_id": message_id,
+                    "payload": payload,
+                },
+            )
         return message_id
 
     def event(
@@ -210,6 +226,7 @@ class TeamStore:
     ) -> str:
         event_id = uuid.uuid4().hex[:16]
         with self._lock:
+            created_at = time.time()
             self._conn.execute(
                 "INSERT INTO team_events(event_id,team_id,agent_id,event_type,payload_json,created_at) VALUES(?,?,?,?,?,?)",
                 (
@@ -218,10 +235,17 @@ class TeamStore:
                     agent_id,
                     event_type,
                     json.dumps(payload, ensure_ascii=False, default=str),
-                    time.time(),
+                    created_at,
                 ),
             )
             self._conn.commit()
+            self._audit.append(
+                scope="team",
+                run_id=team_id,
+                actor=agent_id or "orchestrator",
+                event_type=event_type,
+                payload=payload,
+            )
         return event_id
 
     def request_control(self, team_id: str, action: str) -> bool:
