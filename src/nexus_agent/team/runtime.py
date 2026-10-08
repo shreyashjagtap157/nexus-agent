@@ -16,7 +16,7 @@ from nexus_agent.skills.skill_registry import SkillRegistry
 
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
 from .control import register as register_team_control, unregister as unregister_team_control
-from .planner import generate_team
+from .planner import generate_team, infer_mode
 from .store import TeamStore
 from .tools import TeamReadMessagesTool, TeamSendMessageTool
 
@@ -550,7 +550,7 @@ Team protocol:
                     provider=worker_provider,
                     tools=worker_tools,
                     config=cfg,
-                    permission_callback=lambda tc: self._permission(tc, config),
+                    permission_callback=lambda tc: self._permission(tc, config, profile),
                 )
                 for tool in worker_tools:
                     if hasattr(tool, "set_agent_loop"):
@@ -826,6 +826,9 @@ Team protocol:
     def run(self, goal: str, config: TeamConfig | None = None) -> Iterator[AgentEvent]:
         cfg = (config or TeamConfig()).normalize()
         cfg.workspace = str(self.workspace)
+        effective_mode = infer_mode(goal, cfg.mode)
+        cfg.mode = effective_mode
+        cfg.normalize()
         saved_specs = self.agent_registry.load() if cfg.use_saved_agents else []
         saved_profiles = [spec.to_team_profile() for spec in saved_specs]
         if cfg.research_source_urls:
