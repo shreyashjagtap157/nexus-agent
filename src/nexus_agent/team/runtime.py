@@ -1328,6 +1328,7 @@ Team protocol:
             config=cfg,
             artifacts=artifact_paths,
             research_summary=research_quality,
+            research_synthesis=synthesis if mode == TeamMode.RESEARCH else "",
         )
         success = bool(final_quality["passed"]) and not failures
         if failures:
