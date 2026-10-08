@@ -204,6 +204,10 @@ class SessionOrchestratorMixin:
             system_prompt_extra=memory_context,
             effort_level=self._config.get("agent", {}).get("effort_level", "medium"),
             goal=self._config.get("agent", {}).get("goal", ""),
+            research_depth=self._config.get("research", {}).get("depth", "detailed"),
+            research_collection=self._config.get("research", {}).get("collection", "until_saturation"),
+            research_source_strategy=self._config.get("research", {}).get("source_strategy", "hybrid"),
+            research_session_id=self._session_id,
         )
 
         self._agent = AgentLoop(
