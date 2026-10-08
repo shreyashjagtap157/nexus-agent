@@ -136,7 +136,7 @@ class AuditLog:
             with self.path.open("r", encoding="utf-8") as handle:
                 for line in handle:
                     if not line.strip():
-                    continue
+                        continue
                     try:
                         data = json.loads(line)
                         if run_id and str(data.get("run_id")) != run_id:
@@ -153,31 +153,34 @@ class AuditLog:
         count = 0
         if not self.path.exists():
             return {"valid": True, "records": 0, "last_hash": previous}
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line_number, line in enumerate(handle, start=1):
-                if not line.strip():
-                    continue
-                data = json.loads(line)
-                expected_previous = data.get("previous_hash")
-                if expected_previous != previous:
-                    return {
-                        "valid": False,
-                        "records": count,
-                        "line": line_number,
-                        "reason": "previous_hash_mismatch",
-                    }
-                body = dict(data)
-                record_hash = body.pop("record_hash", "")
-                actual = hashlib.sha256(self._canonical(body).encode("utf-8")).hexdigest()
-                if actual != record_hash:
-                    return {
-                        "valid": False,
-                        "records": count,
-                        "line": line_number,
-                        "reason": "record_hash_mismatch",
-                    }
-                previous = record_hash
-                count += 1
+        with self._lock, self._file_lock:
+            with self.path.open("r", encoding="utf-8") as handle:
+                for line_number, line in enumerate(handle, start=1):
+                    if not line.strip():
+                        continue
+                    data = json.loads(line)
+                    expected_previous = data.get("previous_hash")
+                    if expected_previous != previous:
+                        return {
+                            "valid": False,
+                            "records": count,
+                            "line": line_number,
+                            "reason": "previous_hash_mismatch",
+                        }
+                    body = dict(data)
+                    record_hash = body.pop("record_hash", "")
+                    actual = hashlib.sha256(
+                        self._canonical(body).encode("utf-8")
+                    ).hexdigest()
+                    if actual != record_hash:
+                        return {
+                            "valid": False,
+                            "records": count,
+                            "line": line_number,
+                            "reason": "record_hash_mismatch",
+                        }
+                    previous = record_hash
+                    count += 1
         return {"valid": True, "records": count, "last_hash": previous}
 
     def export_csv(self, stream: TextIO, run_id: str | None = None) -> None:
