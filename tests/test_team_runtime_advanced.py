@@ -160,3 +160,50 @@ def test_team_runtime_markdown_artifact_serializes_quality_gate(tmp_path: Path):
     content = artifact.read_text(encoding="utf-8")
     assert "## Evidence Quality Gate" in content
     assert "{}" in content
+
+
+def test_unknown_dependency_is_failed_before_worker_submission(tmp_path, monkeypatch):
+    from nexus_agent.team import AgentProfile, TeamConfig, TeamMode
+    import nexus_agent.team.runtime as runtime_module
+
+    profiles = [
+        AgentProfile(
+            role_id="blocked",
+            name="Blocked",
+            profession="Blocked Worker",
+            mission="Must not execute",
+            instructions="Must not execute",
+            tool_categories=["read"],
+            dependencies=["missing"],
+        ),
+        AgentProfile(
+            role_id="independent",
+            name="Independent",
+            profession="Independent Worker",
+            mission="Execute normally",
+            instructions="Execute normally",
+            tool_categories=["read"],
+        ),
+    ]
+    monkeypatch.setattr(
+        runtime_module,
+        "generate_team",
+        lambda provider, goal, config, saved_agents=None: (TeamMode.ANALYSIS, profiles),
+    )
+
+    result = TeamRuntime(FakeProvider(), [], workspace=tmp_path).run_collect(
+        "Run the team.",
+        TeamConfig(
+            mode=TeamMode.ANALYSIS,
+            max_agents=2,
+            parallelism=2,
+            max_iterations_per_agent=1,
+            auto_synthesize=False,
+            require_reviewer=False,
+        ),
+    )
+
+    blocked = next(item for item in result.agents if item["agent_id"] == "blocked")
+    assert blocked["status"] == "failed"
+    assert "Unknown dependency: missing" in blocked["error"]
+    assert result.success is False
