@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from nexus_agent.core.team import TeamConfig, TeamMode, TeamRuntime
+from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime
 from nexus_agent.llm.base import LLMProvider, LLMResponse, Message, ProviderCapabilities
 
 
@@ -96,5 +96,24 @@ def test_team_runtime_persists_blackboard_messages(tmp_path: Path):
         assert any(m["message_type"] == "COMPLETION" for m in messages)
         assert any(m["message_type"] == "TEAM_COMPLETE" for m in messages)
         assert store.team(result.team_id)["status"] == "completed"
+    finally:
+        store.close()
+
+    
+def test_team_roles_do_not_collide_between_runs(tmp_path: Path):
+    provider = FakeProvider()
+    runtime = TeamRuntime(provider=provider, tools=[], workspace=tmp_path)
+    cfg = TeamConfig(mode=TeamMode.ANALYSIS, max_agents=2, parallelism=2, max_iterations_per_agent=2)
+    first = runtime.run_collect("Analyze task one.", cfg)
+    second = runtime.run_collect("Analyze task two.", cfg)
+
+    from nexus_agent.team.store import TeamStore
+
+    store = TeamStore(tmp_path / ".nexus" / "teams.db")
+    try:
+        first_agents = store.agents(first.team_id)
+        second_agents = store.agents(second.team_id)
+        assert len(first_agents) == len(second_agents) == 2
+        assert {a["agent_id"] for a in first_agents}.isdisjoint({a["agent_id"] for a in second_agents})
     finally:
         store.close()
