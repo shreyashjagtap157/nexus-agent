@@ -251,6 +251,182 @@ class WriteFileTool(Tool):
         return Tool.resolve_workspace_path(self.workspace, path)
 
 
+class DeleteFileTool(Tool):
+    """Delete files through the NexusAgent reversible-trash boundary."""
+
+    def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+        self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+
+    @property
+    def name(self) -> str:
+        return "delete_file"
+
+    @property
+    def description(self) -> str:
+        return "Delete a file or empty directory. Files are moved to NexusAgent runtime trash by default so accidental deletion can be recovered."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "path": {"type": "string", "description": "Workspace-relative or absolute target path."},
+            "permanent": {"type": "boolean", "description": "Permanently remove instead of moving to runtime trash. Use only when explicitly requested.", "required": False},
+        }
+
+    @property
+    def permission_level(self) -> str:
+        return "read-write"
+
+    def execute(self, path: str, permanent: bool = False, **kwargs: Any) -> str:
+        try:
+            target = Tool.resolve_workspace_path(self.workspace, path)
+        except (ValueError, ToolError):
+            return "Error: Invalid path."
+        if not target.exists() and not target.is_symlink():
+            return "Error: Path not found."
+        if target.resolve() == self.workspace or any(part == ".git" for part in target.parts):
+            return "Error: Refusing to delete the workspace root or .git content."
+        try:
+            if target.is_dir():
+                if any(target.iterdir()):
+                    return "Error: Refusing to delete a non-empty directory."
+                target.rmdir()
+                return f"Deleted empty directory {path}."
+            if permanent:
+                target.unlink()
+                return f"Permanently deleted {path}."
+            import time
+            import uuid
+            self.trash_dir.mkdir(parents=True, exist_ok=True)
+            relative = target.relative_to(self.workspace)
+            safe_name = f"{int(time.time())}-{uuid.uuid4().hex[:8]}-{relative.name}"
+            destination = self.trash_dir / safe_name
+            target.rename(destination)
+            return f"Moved {path} to NexusAgent trash: {destination.relative_to(self.workspace)}"
+        except (OSError, ValueError) as exc:
+            return f"Error: delete failed: {exc}"
+
+
+class MoveFileTool(Tool):
+    """Move or rename a workspace file or empty directory."""
+
+    def __init__(self, workspace: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+
+    @property
+    def name(self) -> str:
+        return "move_file"
+
+    @property
+    def description(self) -> str:
+        return "Move or rename a workspace file or directory without allowing paths to escape the workspace."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "source": {"type": "string", "description": "Existing workspace-relative source path."},
+            "destination": {"type": "string", "description": "Destination workspace-relative path."},
+        }
+
+    @property
+    def permission_level(self) -> str:
+        return "read-write"
+
+    def execute(self, source: str, destination: str, **kwargs: Any) -> str:
+        try:
+            src = Tool.resolve_workspace_path(self.workspace, source)
+            dst = Tool.resolve_workspace_path(self.workspace, destination)
+        except (ValueError, ToolError):
+            return "Error: Invalid path."
+        if not src.exists():
+            return "Error: Source not found."
+        if dst.exists():
+            return "Error: Destination already exists."
+        if any(part == ".git" for part in src.parts + dst.parts):
+            return "Error: .git paths are not mutable through this tool."
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            src.rename(dst)
+            return f"Moved {source} -> {destination}"
+        except OSError as exc:
+            return f"Error: move failed: {exc}"
+
+
+class ParseDataTool(Tool):
+    """Parse common structured data formats into bounded JSON."""
+
+    def __init__(self, workspace: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+
+    @property
+    def name(self) -> str:
+        return "parse_data"
+
+    @property
+    def description(self) -> str:
+        return "Parse JSON, YAML, TOML, CSV, or XML files into structured data. Output is bounded to prevent context exhaustion."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "path": {"type": "string", "description": "Path to a structured data file."},
+            "format": {"type": "string", "description": "auto, json, yaml, toml, csv, xml", "required": False},
+            "max_chars": {"type": "integer", "description": "Maximum serialized output length.", "required": False},
+        }
+
+    @property
+    def permission_level(self) -> str:
+        return "read-only"
+
+    def execute(self, path: str, format: str = "auto", max_chars: int = 50000, **kwargs: Any) -> str:
+        try:
+            target = Tool.resolve_workspace_path(self.workspace, path)
+            raw = target.read_text(encoding="utf-8")
+        except (ValueError, ToolError, OSError, UnicodeDecodeError):
+            return "Error: unable to read structured data file."
+        fmt = format.lower().strip()
+        if fmt == "auto":
+            fmt = target.suffix.lower().lstrip(".") or "text"
+        try:
+            if fmt == "json":
+                import json
+                data = json.loads(raw)
+            elif fmt in {"yaml", "yml"}:
+                import yaml
+                data = yaml.safe_load(raw)
+            elif fmt == "toml":
+                import tomllib
+                data = tomllib.loads(raw)
+            elif fmt == "csv":
+                import csv
+                import io
+                data = list(csv.DictReader(io.StringIO(raw)))
+            elif fmt == "xml":
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(raw)
+                data = self._xml_node(root)
+            else:
+                return f"Error: unsupported format {fmt!r}."
+            import json
+            encoded = json.dumps(data, ensure_ascii=False, indent=2, default=str)
+            limit = max(100, min(int(max_chars), 2_000_000))
+            return encoded[:limit] + ("\\n…[truncated]" if len(encoded) > limit else "")
+        except (ValueError, TypeError, OSError, UnicodeDecodeError) as exc:
+            return f"Error: parse failed: {exc}"
+
+    def _xml_node(self, element: Any) -> dict[str, Any]:
+        children = [self._xml_node(child) for child in list(element)]
+        data: dict[str, Any] = {
+            "tag": element.tag,
+            "attributes": dict(element.attrib),
+        }
+        if element.text and element.text.strip():
+            data["text"] = element.text.strip()
+        if children:
+            data["children"] = children
+        return data
+
+
 class SearchFilesTool(Tool):
     """Search for patterns in files using regex."""
 
