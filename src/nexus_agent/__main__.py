@@ -650,6 +650,191 @@ def backend(
 
 
 @cli.group()
+def agent() -> None:
+    """Create, configure, validate and generate reusable agent profiles."""
+    pass
+
+
+@agent.command("list")
+@click.option(
+    "--workspace", "-w", type=click.Path(exists=True, file_okay=False), default="."
+)
+def agent_list(workspace: str) -> None:
+    """List resolved agent profiles after scope precedence is applied."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.agents import AgentRegistry
+
+    console = Console()
+    registry = AgentRegistry(Path(workspace).resolve())
+    rows = registry.load(include_disabled=True)
+    table = Table(title="NexusAgent Agents")
+    table.add_column("ID")
+    table.add_column("Name")
+    table.add_column("Profession")
+    table.add_column("Scope")
+    table.add_column("Tools")
+    table.add_column("Write")
+    table.add_column("State")
+    for item in rows:
+        table.add_row(
+            item.id,
+            item.name,
+            item.profession,
+            item.scope.value,
+            ",".join(item.tool_categories),
+            "yes" if item.write_access else "no",
+            "enabled" if item.enabled else "disabled",
+        )
+    console.print(table)
+
+
+@agent.command("show")
+@click.argument("agent_id")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_show(agent_id: str, workspace: str) -> None:
+    """Show one resolved agent profile."""
+    import json
+    from nexus_agent.agents import AgentRegistry
+
+    spec = AgentRegistry(Path(workspace).resolve()).get(agent_id)
+    if spec is None:
+        raise click.ClickException(f"Unknown or disabled agent: {agent_id}")
+    click.echo(json.dumps(spec.to_dict(), indent=2, ensure_ascii=False, default=str))
+
+
+@agent.command("paths")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_paths(workspace: str) -> None:
+    """Show agent definition storage paths for every scope."""
+    import json
+    from nexus_agent.agents import AgentRegistry
+
+    click.echo(json.dumps(
+        AgentRegistry(Path(workspace).resolve()).roots_info(),
+        indent=2,
+        ensure_ascii=False,
+    ))
+
+
+@agent.command("init")
+@click.argument("agent_id")
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "workspace", "global"]),
+    default="user",
+    show_default=True,
+)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_init(agent_id: str, scope: str, workspace: str) -> None:
+    """Create an editable agent profile template."""
+    from nexus_agent.agents import AgentRegistry, AgentScope, AgentSpec
+
+    aid = agent_id.strip().lower()
+    spec = AgentSpec(
+        id=aid,
+        name=aid.replace("-", " ").replace("_", " ").title(),
+        profession="Professional Specialist",
+        description="Describe what this agent is uniquely responsible for.",
+        mission="Define the result this agent owns.",
+        instructions="Describe the exact operating procedure, constraints, evidence requirements and completion criteria.",
+        tool_categories=["read", "search"],
+    )
+    registry = AgentRegistry(Path(workspace).resolve())
+    errors = registry.validate(spec)
+    if errors:
+        raise click.ClickException("; ".join(errors))
+    path = registry.save(spec, AgentScope(scope))
+    click.echo(f"Created agent profile: {path}")
+
+
+@agent.command("generate")
+@click.argument("request")
+@click.option("--max-agents", type=int, default=6, show_default=True)
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "workspace", "global"]),
+    default="user",
+    show_default=True,
+)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--provider", type=str, default=None)
+@click.option("--model-path", type=click.Path(exists=True), default=None)
+@click.option("--preview", is_flag=True, help="Generate and print profiles without saving them.")
+@click.pass_context
+def agent_generate(
+    ctx: click.Context,
+    request: str,
+    max_agents: int,
+    scope: str,
+    workspace: str,
+    provider: str | None,
+    model_path: str | None,
+    preview: bool,
+) -> None:
+    """Ask NexusAgent to design reusable professional agents for a requirement."""
+    import json
+    from nexus_agent.agents import AgentGenerator, AgentRegistry, AgentScope
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.providers.factory import ProviderFactory
+
+    ws = Path(workspace).resolve()
+    config = load_config(config_path=ctx.obj.get("config_path"), workspace=ws)
+    provider_name = provider or config.get("providers", {}).get("active", "local")
+    llm = ProviderFactory.create_provider(provider_name, config, model_path)
+    specs = AgentGenerator(llm).generate(request, max_agents=max(1, min(max_agents, 32)))
+    registry = AgentRegistry(ws)
+    if preview:
+        click.echo(json.dumps([spec.to_dict() for spec in specs], indent=2, ensure_ascii=False, default=str))
+        return
+    target_scope = AgentScope(scope)
+    for spec in specs:
+        errors = registry.validate(spec)
+        if errors:
+            raise click.ClickException(f"{spec.id}: {'; '.join(errors)}")
+        path = registry.save(spec, target_scope)
+        click.echo(f"Saved {spec.id}: {path}")
+
+
+@agent.command("validate")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_validate(workspace: str) -> None:
+    """Validate every resolved agent definition."""
+    from nexus_agent.agents import AgentRegistry
+
+    registry = AgentRegistry(Path(workspace).resolve())
+    failures = 0
+    for spec in registry.load(include_disabled=True):
+        errors = registry.validate(spec)
+        if errors:
+            failures += 1
+            click.echo(f"{spec.id}: " + "; ".join(errors))
+    if failures:
+        raise click.ClickException(f"{failures} agent profile(s) failed validation.")
+    click.echo("All agent profiles are valid.")
+
+
+@agent.command("delete")
+@click.argument("agent_id")
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "workspace", "global"]),
+    default=None,
+)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_delete(agent_id: str, scope: str | None, workspace: str) -> None:
+    """Remove a persisted agent definition from one or all mutable scopes."""
+    from nexus_agent.agents import AgentRegistry, AgentScope
+
+    registry = AgentRegistry(Path(workspace).resolve())
+    removed = registry.delete(agent_id, AgentScope(scope) if scope else None)
+    if not removed:
+        raise click.ClickException(f"No persisted definition found for {agent_id}")
+    for path in removed:
+        click.echo(f"Deleted: {path}")
+
+
+@cli.group()
 def team() -> None:
     """Run and inspect dynamically assembled multi-agent teams."""
     pass
