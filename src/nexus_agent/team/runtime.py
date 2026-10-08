@@ -250,6 +250,7 @@ class TeamRuntime:
         )
 
         if "research" in categories:
+            from nexus_agent.research.configured_source_tool import ResearchConfiguredSourceTool
             from nexus_agent.research.tools import (
                 ResearchRecordClaimTool,
                 ResearchRecordSourceTool,
@@ -258,6 +259,12 @@ class TeamRuntime:
             research_db = self.data_dir / "research.db"
             selected.extend(
                 [
+                    ResearchConfiguredSourceTool(
+                        self.workspace / ".nexus-agent" / "research-sources.yaml",
+                        research_db,
+                        team_id,
+                        profile.role_id,
+                    ),
                     ResearchRecordSourceTool(research_db, team_id, profile.role_id),
                     ResearchRecordClaimTool(research_db, team_id, profile.role_id),
                     ResearchVerifyClaimTool(research_db, team_id, profile.role_id),
@@ -267,7 +274,7 @@ class TeamRuntime:
                 selected = [
                     tool
                     for tool in selected
-                    if getattr(tool, "name", "") not in {"web_search", "browser"}
+                    if getattr(tool, "name", "") not in {"web_search", "webfetch", "browser"}
                 ]
 
         return selected
