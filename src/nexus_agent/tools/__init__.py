@@ -27,6 +27,7 @@ from nexus_agent.tools.lsp_transport import (
 )
 from nexus_agent.tools.memory import MemoryTool
 from nexus_agent.tools.rag_search import RepositoryRAGTool
+from nexus_agent.tools.restore_file import RestoreFileTool
 from nexus_agent.tools.shell import ShellTool
 from nexus_agent.tools.todowrite import (
     Todo,
@@ -59,6 +60,7 @@ __all__ = [
     "WebFetchTool",
     "MemoryTool",
     "RepositoryRAGTool",
+    "RestoreFileTool",
     "BatchEditTool",
     "BoomerangTool",
     "BrowserTool",
