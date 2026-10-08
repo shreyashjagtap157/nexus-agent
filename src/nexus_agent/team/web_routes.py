@@ -337,6 +337,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
         extension = {"markdown": "result.md", "text": "result.txt", "json": "result.json"}[format]
         artifact = (root / extension).resolve()
+        try:
+            artifact.relative_to(root)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid report artifact path")
         if artifact.is_file():
             return FileResponse(
                 artifact,
