@@ -37,6 +37,10 @@ CLI:
 
     nexus-team run "Inspect the repository, implement the requested change, test it, and independently review the result." --mode code --max-agents 6 --parallelism 4
 
+Named workflow example:
+
+    nexus team run --workflow code-change "Implement this feature end-to-end and verify it."
+
 Web team console:
 
     /team.html
@@ -121,6 +125,19 @@ pip install -e ".[all]"
 ```bash
 # Launch the interactive setup wizard (recommended first time)
 nexus wizard
+
+# Discover providers and stored credential state
+nexus provider list
+nexus auth list
+```
+
+### Agent Profiles
+
+```bash
+nexus agent list
+nexus agent init security-reviewer --scope workspace
+nexus agent generate "Create a security auditor and a dependency analyst"
+nexus agent run security-reviewer "Audit this repository"
 ```
 
 ### Running the Agent
@@ -195,6 +212,10 @@ code ~/.nexus-agent/config.yaml
 | [docs/API.md](docs/API.md) | REST, WebSocket, and MCP API reference |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Development setup & PR guide |
 | [docs/SECURITY.md](docs/SECURITY.md) | Security model & best practices |
+| [docs/AGENTS.md](docs/AGENTS.md) | Reusable and generated agents |
+| [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | Named workflows and scheduling |
+| [docs/STORAGE_AND_GOVERNANCE.md](docs/STORAGE_AND_GOVERNANCE.md) | Storage, credentials and file governance |
+| [docs/PROVIDERS.md](docs/PROVIDERS.md) | Provider catalog and routing |
 | [docs/MULTI_AGENT_PLATFORM.md](docs/MULTI_AGENT_PLATFORM.md) | Dynamic peer teams, shared blackboard and client architecture |
 
 ---
