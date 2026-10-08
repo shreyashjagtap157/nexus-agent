@@ -18,7 +18,7 @@ label{display:block;color:var(--muted);font-size:11px;margin:10px 0 4px}input,se
 <section class="panel"><h2>Providers</h2><div class="body"><div id="providers">Loading…</div></div></section>
 <section class="panel"><h2>Configuration</h2><div class="body">
 <div id="selected" class="sub">Select a provider.</div>
-<label>Model</label><input id="model" placeholder="provider/model-name">
+<label>Model</label><div class="row"><input id="model" list="model-options" placeholder="provider/model-name"><button class="btn" id="models">Load Models</button></div><datalist id="model-options"></datalist>
 <div class="row"><div><label>Base URL</label><input id="base" placeholder="https://.../v1"></div><div><label>Chat API URL</label><input id="api" placeholder="https://.../chat/completions"></div></div>
 <div class="row"><div><label>Context size</label><input id="context" type="number"></div><div><label>Max output tokens</label><input id="tokens" type="number"></div></div>
 <div class="row"><div><label>Reasoning budget</label><input id="reasoning" type="number" min="1"></div><div><label>Top-p</label><input id="top_p" type="number" min="0" max="1" step="0.01"></div></div>
@@ -39,11 +39,21 @@ async function load(){
  document.querySelectorAll(".provider").forEach(el=>el.onclick=()=>select(el.dataset.id,cfg));
  if(!selected && providers[0])select(providers[0].id,cfg);
 }
+async function loadModels(){
+ if(!selected)return;
+ try{
+  const r=await fetch("/api/providers/models?provider="+encodeURIComponent(selected));
+  const d=await r.json();
+  $("model-options").innerHTML=(d.models||[]).slice(0,500).map(function(m){return "<option value=\"" + esc((m.id||"")) + "\">" + esc(m.name||m.id||"") + "</option>"}).join("");
+  notice("Loaded "+((d.models||[]).length))+" model entries from Models.dev.");
+ }catch(e){notice("Model catalog unavailable: "+e.message)}
+}
 function select(id,cfg){selected=id;$("selected").textContent="Selected: "+id;const v=cfg[id]||{};$("model").value=v.model||"";$("base").value=v.base_url||"";$("api").value=v.api_url||"";$("context").value=v.context_size||"";$("tokens").value=v.max_tokens||"";$("reasoning").value=v.reasoning_budget||"";$("top_p").value=v.top_p||"";$("timeout").value=v.timeout_seconds||"";$("poll").value=v.pending_poll_seconds||"";$("pending_wait").value=v.pending_max_wait_seconds||"";$("key").value="";}
 function notice(t){$("notice").textContent=t}
 $("save").onclick=async()=>{if(!selected){notice("Select a provider.");return}const body={model:$("model").value||null,base_url:$("base").value||null,api_url:$("api").value||null,context_size:$("context").value?+$("context").value:null,max_tokens:$("tokens").value?+$("tokens").value:null,reasoning_budget:$("reasoning").value?+$("reasoning").value:null,top_p:$("top_p").value?+$("top_p").value:null,timeout_seconds:$("timeout").value?+$("timeout").value:null,pending_poll_seconds:$("poll").value?+$("poll").value:null,pending_max_wait_seconds:$("pending_wait").value?+$("pending_wait").value:null};const r=await fetch("/api/provider-config/"+encodeURIComponent(selected),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();notice(r.ok?"Saved configuration for "+selected:String(d.detail||"save failed"));if(r.ok)load()};
 $("credential").onclick=async()=>{if(!selected){notice("Select a provider.");return}const key=$("key").value;if(!key){notice("Enter a credential.");return}const r=await fetch("/api/auth/"+encodeURIComponent(selected),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:key})});const d=await r.json();notice(r.ok?"Credential stored for "+selected:String(d.detail||"credential save failed"));$("key").value="";if(r.ok)load()};
 $("test").onclick=async()=>{if(!selected){notice("Select a provider.");return}$("test").disabled=true;notice("Running real inference test…");try{const r=await fetch("/api/providers/"+encodeURIComponent(selected)+"/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:$("model").value||null,prompt:"Respond with exactly: NexusAgent provider test OK",max_tokens:64})});const d=await r.json();notice(d.ok?"PASS • "+d.provider+" • "+d.model+" • "+d.latency_ms+" ms • "+String(d.response||"").slice(0,300):"FAIL • "+String(d.error||"unknown").slice(0,700))}finally{$("test").disabled=false}};
+$("models").onclick=loadModels;
 $("remove").onclick=async()=>{if(!selected){notice("Select a provider.");return}const r=await fetch("/api/auth/"+encodeURIComponent(selected),{method:"DELETE"});const d=await r.json();notice(d.removed?"Credential removed.":"No stored credential.");if(r.ok)load()};
 load();
 </script></body></html>
