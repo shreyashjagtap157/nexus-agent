@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 from nexus_agent.core.context import ContextManager
 from nexus_agent.core.self_heal import SelfHealingExecutor
+from nexus_agent.audit import AuditLog
 from nexus_agent.llm.base import (
     LLMProvider,
     LLMResponse,
@@ -282,6 +283,7 @@ Current workspace: {workspace}
         self.iteration_count = 0
         self._lock = threading.Lock()
         self.session_id = uuid.uuid4().hex[:12]
+        self.audit_log = AuditLog(Path(self.workspace) / ".nexus-agent" / "runtime" / "audit.jsonl")
 
         # Core Architecture telemetry & reflection
         from nexus_agent.core.nla_telemetry import NLATelemetry as _NLATelemetry
@@ -363,7 +365,7 @@ Current workspace: {workspace}
         elif hasattr(data, "value"):  # Enum support
             serializable_data = data.value
 
-        self._trace_buffer.append({
+        record = {
             "timestamp": time.time(),
             "session_id": self.session_id,
             "iteration": self.iteration_count,
@@ -371,7 +373,18 @@ Current workspace: {workspace}
             "state": self.state.value,
             "event_type": event_type,
             "data": serializable_data,
-        })
+        }
+        self._trace_buffer.append(record)
+        try:
+            self.audit_log.append(
+                scope="session",
+                run_id=self.session_id,
+                actor="agent",
+                event_type=event_type,
+                payload=record,
+            )
+        except (OSError, ValueError, RuntimeError) as audit_error:
+            logger.debug("Audit append failed without interrupting agent loop: %s", audit_error)
 
         if len(self._trace_buffer) >= 10:
             self._flush_trace_buffer()
