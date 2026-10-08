@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/nexus-agent/nexus-agent/workflows/Tests/badge.svg)](https://github.com/nexus-agent/nexus-agent/actions)
-[![Lint](https://github.com/nexus-agent/nexus-agent/workflows/Lint/badge.svg)](https://github.com/nexus-agent/nexus-agent/actions)
+[![Tests](https://github.com/shreyashjagtap157/nexus-agent/workflows/Tests/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions)
+[![Lint](https://github.com/shreyashjagtap157/nexus-agent/workflows/Lint/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions)
 
 NexusAgent is a local-first agent runtime and workbench for software engineering, research, analysis, automation and other tool-driven tasks. It supports the familiar single-agent workflow of modern coding agents while adding dynamically assembled multi-agent teams with concurrent specialist workers, a shared blackboard, explicit permissions and persistent telemetry.
 
@@ -101,17 +101,17 @@ Web team console:
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/nexus-agent/nexus-agent/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/shreyashjagtap157/nexus-agent/master/install.ps1 | iex
 ```
 
 **Linux/macOS:**
 ```bash
-curl -LsSf https://raw.githubusercontent.com/nexus-agent/nexus-agent/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/shreyashjagtap157/nexus-agent/master/install.sh | sh
 ```
 
 **Manual:**
 ```bash
-git clone https://github.com/nexus-agent/nexus-agent.git
+git clone https://github.com/shreyashjagtap157/nexus-agent.git
 cd nexus-agent
 pip install -e ".[all]"
 ```
@@ -195,6 +195,7 @@ code ~/.nexus-agent/config.yaml
 | [docs/API.md](docs/API.md) | REST, WebSocket, and MCP API reference |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Development setup & PR guide |
 | [docs/SECURITY.md](docs/SECURITY.md) | Security model & best practices |
+| [docs/MULTI_AGENT_PLATFORM.md](docs/MULTI_AGENT_PLATFORM.md) | Dynamic peer teams, shared blackboard and client architecture |
 
 ---
 
