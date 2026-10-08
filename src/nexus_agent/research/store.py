@@ -144,6 +144,49 @@ class ResearchStore:
                 "status": "quote_present" if quote_present else "unverified",
             }
 
+    def attach_evidence(
+        self,
+        team_id: str,
+        claim_id: int,
+        source_id: int,
+        quote: str,
+    ) -> dict[str, Any]:
+        with self._connect() as conn:
+            claim = conn.execute(
+                "SELECT claim_id FROM research_claims WHERE claim_id=? AND team_id=?",
+                (claim_id, team_id),
+            ).fetchone()
+            if claim is None:
+                raise ValueError("Unknown research claim for this team.")
+            source = conn.execute(
+                "SELECT content FROM research_sources WHERE source_id=? AND team_id=?",
+                (source_id, team_id),
+            ).fetchone()
+            if source is None:
+                raise ValueError("Unknown research source for this team.")
+            quote_present = int(
+                bool(quote.strip()) and quote.strip() in str(source["content"])
+            )
+            conn.execute(
+                """INSERT INTO research_claim_evidence(
+                    claim_id,source_id,quote,quote_present
+                ) VALUES(?,?,?,?)
+                ON CONFLICT(claim_id,source_id) DO UPDATE SET
+                    quote=excluded.quote,
+                    quote_present=excluded.quote_present""",
+                (claim_id, source_id, quote, quote_present),
+            )
+            conn.execute(
+                "UPDATE research_claims SET status=? WHERE claim_id=? AND status='unverified'",
+                ("quote_present" if quote_present else "unverified", claim_id),
+            )
+            conn.commit()
+            return {
+                "claim_id": claim_id,
+                "source_id": source_id,
+                "quote_present": bool(quote_present),
+            }
+
     def verify_claim(self, team_id: str, claim_id: int, verifier_id: str, note: str = "") -> dict[str, Any]:
         with self._connect() as conn:
             claim = conn.execute(
@@ -201,3 +244,61 @@ class ResearchStore:
             "sources": self.sources(team_id),
             "claims": self.claims(team_id),
         }
+
+    def coverage(self, team_id: str, required_verification_passes: int) -> dict[str, Any]:
+        required = max(1, int(required_verification_passes))
+        with self._connect() as conn:
+            source_count = int(
+                conn.execute(
+                    "SELECT COUNT(*) AS count FROM research_sources WHERE team_id=?",
+                    (team_id,),
+                ).fetchone()["count"]
+            )
+            claim_rows = conn.execute(
+                "SELECT claim_id,status FROM research_claims WHERE team_id=? ORDER BY claim_id",
+                (team_id,),
+            ).fetchall()
+            verified_rows = conn.execute(
+                """SELECT v.claim_id, COUNT(DISTINCT v.verifier_id) AS distinct_verifiers
+                   FROM research_verifications v
+                   JOIN research_claims c ON c.claim_id=v.claim_id
+                   WHERE c.team_id=? AND v.verdict='verified'
+                   GROUP BY v.claim_id""",
+                (team_id,),
+            ).fetchall()
+
+        verification_counts = {
+            int(row["claim_id"]): int(row["distinct_verifiers"])
+            for row in verified_rows
+        }
+        total_claims = len(claim_rows)
+        verified_claims = sum(1 for row in claim_rows if row["status"] == "verified")
+        rejected_claims = sum(1 for row in claim_rows if row["status"] == "rejected")
+        unresolved_claims = sum(
+            1 for row in claim_rows if row["status"] not in {"verified", "rejected"}
+        )
+        threshold_claims = sum(
+            1
+            for row in claim_rows
+            if row["status"] == "verified"
+            and verification_counts.get(int(row["claim_id"]), 0) >= required
+        )
+        passed = (
+            source_count > 0
+            and total_claims > 0
+            and verified_claims > 0
+            and unresolved_claims == 0
+            and threshold_claims == verified_claims
+        )
+        return {
+            "team_id": team_id,
+            "required_verification_passes": required,
+            "source_count": source_count,
+            "claim_count": total_claims,
+            "verified_claims": verified_claims,
+            "rejected_claims": rejected_claims,
+            "unresolved_claims": unresolved_claims,
+            "claims_meeting_verification_threshold": threshold_claims,
+            "passed": passed,
+        }
+
