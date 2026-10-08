@@ -755,6 +755,7 @@ Team protocol:
                     after_sources = len(research_store.sources(team_id))
                     delta = max(0, after_sources - before_sources)
                     research_store.close()
+                    research_store = None
                     if delta == 0:
                         idle_rounds += 1
                     else:
@@ -867,6 +868,8 @@ Team protocol:
                 "error": str(exc),
             }
         finally:
+            if research_store is not None:
+                research_store.close()
             scoped_memory.close()
 
     def _write_artifacts(
