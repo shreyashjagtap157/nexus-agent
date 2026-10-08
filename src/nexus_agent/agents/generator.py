@@ -31,7 +31,7 @@ Maximum agents: {max_agents}
 
 Return:
 {{"agents":[{{"id":"slug","name":"...","profession":"...","description":"...",
-"mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],
+"mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research","formal"],
 "write_access":false,"reviewer":false,"dependencies":[],"model_role":"default",
 "provider":null,"model":null,"fallbacks":[],"tags":[],"metadata":{{}}}}]}}"""
         response = self.provider.chat_completion(
