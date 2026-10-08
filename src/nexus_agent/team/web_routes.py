@@ -296,6 +296,34 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         finally:
             store.close()
 
+    @router.get("/api/teams/{team_id}/audit")
+    async def team_audit(team_id: str):
+        store = store_for()
+        try:
+            result = store._audit.verify()
+            result["records"] = [
+                record.to_dict()
+                for record in store._audit.read(run_id=team_id, limit=5000)
+            ]
+            return result
+        finally:
+            store.close()
+
+    @router.get("/api/teams/{team_id}/audit/verify")
+    async def team_audit_verify(team_id: str):
+        store = store_for()
+        try:
+            result = store._audit.verify()
+            return {
+                "team_id": team_id,
+                "valid": result.get("valid", False),
+                "records": len(store._audit.read(run_id=team_id)),
+                "chain_records_total": result.get("records", 0),
+                "last_hash": result.get("last_hash"),
+            }
+        finally:
+            store.close()
+
     @router.get("/api/teams/{team_id}/research")
     async def team_research(team_id: str):
         research = ResearchStore(StorageLayout(_workspace(state_manager)).research_db)
