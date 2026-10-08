@@ -1050,11 +1050,13 @@ def team() -> None:
 @click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
 @click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
 @click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
+@click.option("--agent", "agent_ids", multiple=True, help="Pin a saved agent profile by ID. Repeat for multiple profiles.")
+@click.option("--no-saved-agents", is_flag=True, help="Do not load saved agent profiles when assembling the team.")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], no_saved_agents: bool, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Execute a dynamically assembled peer team."""
     from rich.console import Console
     from rich.table import Table
@@ -1094,6 +1096,8 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
         output_format=output_format,
         research_depth=research_depth,
         research_collection=research_collection,
+        agent_ids=list(agent_ids),
+        use_saved_agents=not no_saved_agents,
         auto_approve_tools=yes,
     )
     final = None
@@ -1112,6 +1116,8 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
     console.print(f"[bold green]{final.get('summary', '')}[/bold green]")
     if final.get("synthesis"):
         console.print(final["synthesis"])
+    if final.get("artifact_paths"):
+        console.print("Artifacts:\n" + "\n".join(str(path) for path in final["artifact_paths"]))
     table = Table(title="Team Workers")
     table.add_column("Agent")
     table.add_column("Profession")
@@ -1128,7 +1134,8 @@ def team_show(team_id: str, workspace: str) -> None:
     """Inspect a persisted team run as JSON."""
     import json
     from nexus_agent.team import TeamStore
-    store = TeamStore(Path(workspace).resolve() / ".nexus" / "teams.db")
+    from nexus_agent.storage.layout import StorageLayout
+    store = TeamStore(StorageLayout(Path(workspace).resolve()).team_db)
     try:
         team_data = store.team(team_id)
         if team_data is None:
