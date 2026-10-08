@@ -13,6 +13,7 @@ from nexus_agent.core.agent import AgentEvent, AgentEventType, AgentLoop, AgentL
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
+from .control import control as control_team_request, register as register_team_control, unregister as unregister_team_control
 from .planner import generate_team
 from .store import TeamStore
 from .tools import TeamReadMessagesTool, TeamSendMessageTool
@@ -425,6 +426,7 @@ Team protocol:
 
         team_id = uuid.uuid4().hex[:12]
         store = self._make_store()
+        control_state = register_team_control(team_id)
         events: queue.Queue[AgentEvent] = queue.Queue()
         store.create_team(
             team_id,
@@ -462,6 +464,33 @@ Team protocol:
             thread_name_prefix=f"nexus-team-{team_id}",
         ) as pool:
             while pending or active:
+                if control_state.stop_requested.is_set():
+                    for role_id in sorted(pending):
+                        store.update_agent(
+                            agent_storage_ids[role_id],
+                            state=TeamAgentState.CANCELLED.value,
+                            ended_at=time.time(),
+                            error="Cancelled by user.",
+                        )
+                        store.event(
+                            team_id,
+                            "agent_cancelled_before_start",
+                            {"reason": "user_stop"},
+                            role_id,
+                        )
+                    pending.clear()
+                    break
+
+                if control_state.pause_requested.is_set() and not active:
+                    store.set_status(team_id, "paused")
+                    yield AgentEvent(AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "paused"})
+                    while control_state.pause_requested.is_set() and not control_state.stop_requested.is_set():
+                        time.sleep(0.5)
+                    if control_state.stop_requested.is_set():
+                        continue
+                    store.set_status(team_id, "running")
+                    yield AgentEvent(AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "running"})
+
                 ready = [
                     profile_by_id[role_id]
                     for role_id in sorted(pending)
@@ -616,7 +645,8 @@ Team protocol:
         if cfg.require_reviewer:
             summary += f"; reviewer={'present' if reviewers else 'missing'}"
         store.message(team_id, "orchestrator", "TEAM_COMPLETE", {"success": success, "summary": summary})
-        store.finish_team(team_id, "completed" if success else "needs_review")
+        terminal_status = "cancelled" if control_state.stop_requested.is_set() else ("completed" if success else "needs_review")
+        store.finish_team(team_id, terminal_status)
 
         artifact_paths = self._write_artifacts(
             team_id,
@@ -640,6 +670,7 @@ Team protocol:
         )
         yield AgentEvent(AgentEventType.CONTENT_COMPLETE, synthesis or summary)
         yield AgentEvent(AgentEventType.DONE, result.__dict__)
+        unregister_team_control(team_id)
         store.close()
 
     def run_collect(self, goal: str, config: TeamConfig | None = None) -> TeamRunResult:
