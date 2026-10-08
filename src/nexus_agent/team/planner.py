@@ -129,16 +129,26 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
     return profiles[:max_agents]
 
 
-def generate_team(provider: LLMProvider, goal: str, config: TeamConfig) -> tuple[TeamMode, list[AgentProfile]]:
+def generate_team(
+    provider: LLMProvider,
+    goal: str,
+    config: TeamConfig,
+    saved_agents: list[AgentProfile] | None = None,
+) -> tuple[TeamMode, list[AgentProfile]]:
     mode = infer_mode(goal, config.mode)
-    depth_data = research_policy(config.research_depth) if mode == TeamMode.RESEARCH else {
-        "name": "not_applicable",
-        "label": "Not applicable",
-        "role_floor": config.max_agents,
-        "query_rounds": 0,
-        "sources_per_query": 0,
-        "verification_passes": 0,
-    }
+    depth_data = (
+        research_policy(config.research_depth)
+        if mode == TeamMode.RESEARCH
+        else {
+            "name": "not_applicable",
+            "label": "Not applicable",
+            "role_floor": config.max_agents,
+            "query_rounds": 0,
+            "sources_per_query": 0,
+            "verification_passes": 0,
+        }
+    )
+    saved = saved_agents or []
     prompt = f"""Task:
 {goal}
 
@@ -157,12 +167,15 @@ Research collection policy:
 Research policy:
 {json.dumps(depth_data, ensure_ascii=False)}
 
-Return JSON:
-{{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default"}}]}}
+Saved agent profiles available for reuse:
+{json.dumps([p.__dict__ for p in saved], ensure_ascii=False)}
+
+Create a distinct professional team. Reuse relevant saved profiles instead of recreating
+them. Do not remove or weaken pinned roles; the runtime will preserve pinned roles.
+Return JSON only:
+{{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default"}}]}}
 """
     try:
-        response = provider.chat_completion(
-   try:
         response = provider.chat_completion(
             [
                 Message(role=Role.SYSTEM, content=SYSTEM_PROMPT),
@@ -175,6 +188,15 @@ Return JSON:
     except (RuntimeError, ValueError, OSError, TypeError):
         profiles = _parse_profiles("{}", mode, config.max_agents)
 
+    if saved:
+        existing = {p.role_id for p in profiles}
+        for saved_profile in saved:
+            if saved_profile.role_id not in existing:
+                profiles.append(saved_profile)
+                existing.add(saved_profile.role_id)
+            if len(profiles) >= config.max_agents:
+                break
+
     if not profiles:
         profiles = list(FALLBACKS.get(mode, FALLBACKS[TeamMode.ANALYSIS]))[: config.max_agents]
 
@@ -184,12 +206,16 @@ Return JSON:
             if profile.write_access:
                 if seen_writer:
                     profile.write_access = False
-                    profile.tool_categories = [x for x in profile.tool_categories if x != "write"]
+                    profile.tool_categories = [
+                        x for x in profile.tool_categories if x != "write"
+                    ]
                 else:
                     seen_writer = True
 
     if config.require_reviewer and profiles and not any(p.reviewer for p in profiles):
         profiles[-1].reviewer = True
-        profiles[-1].instructions += "\nIndependently review the work of the other team members before completing."
+        profiles[-1].instructions += (
+            "\nIndependently review the work of the other team members before completing."
+        )
 
     return mode, profiles
