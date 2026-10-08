@@ -122,6 +122,13 @@ def test_delete_and_restore_file_round_trip(tmp_path: Path):
     assert "Restored" in result
     assert target.read_text(encoding="utf-8") == "restore me"
 
+    from nexus_agent.storage.journal import FileJournal
+    journal = FileJournal(tmp_path / ".nexus-agent" / "runtime" / "file-journal.db")
+    operations = [row["operation"] for row in journal.recent(10)]
+    journal.close()
+    assert "delete_to_trash" in operations
+    assert "restore" in operations
+
 
 def test_storage_layout_is_explicit(tmp_path: Path):
     layout = StorageLayout(tmp_path)
