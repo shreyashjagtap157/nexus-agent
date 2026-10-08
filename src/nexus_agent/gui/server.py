@@ -552,11 +552,21 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             # Run the agent in a background thread to prevent blocking the async loop
             # and yield events back to the websocket client.
             def run_agent_loop(loop, ws, agent_prompt, prompt_mcp_clients):
+                content_parts: list[str] = []
                 try:
                     for event in agent.run(agent_prompt):
-                        # Dispatch events back to async websocket thread safely
+                        if event.type.value in {"content", "content_chunk"}:
+                            content_parts.append(str(event.data or ""))
                         asyncio.run_coroutine_threadsafe(
                             send_agent_event(ws, event), loop
+                        )
+                    response_text = "".join(content_parts).strip()
+                    session_manager = state_manager.get("session_manager")
+                    if response_text and session_manager:
+                        session_manager.save_message(
+                            "assistant",
+                            content=response_text,
+                            type="assistant",
                         )
                 except (RuntimeError, ValueError, OSError, LookupError) as ex:
                     logger.exception("Agent thread execution failure")
@@ -569,6 +579,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             mcp_client.close()
                         except (OSError, RuntimeError):
                             logger.debug("Failed to close web chat MCP client", exc_info=True)
+                    with state_manager.get("web_agent_lock"):
+                        state_manager.get("web_agent_threads").pop(session_id, None)
 
             loop = asyncio.get_running_loop()
             thread = threading.Thread(
@@ -577,6 +589,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 name=f"nexus-web-agent-{session_id}",
                 daemon=True,
             )
+            with state_manager.get("web_agent_lock"):
+                state_manager.get("web_agent_threads")[session_id] = thread
 
             def _log_thread_error(future):
                 exc = future.exception()
