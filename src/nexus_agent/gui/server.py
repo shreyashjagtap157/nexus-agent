@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 from nexus_agent import __app_name__, __version__
 from nexus_agent.agents.web_routes import register_agent_routes
 from nexus_agent.audit.web_routes import register_audit_routes
+from nexus_agent.mcp.web_routes import register_mcp_routes
 from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.auth.web_routes import register_auth_routes
 from nexus_agent.memory.web_routes import register_memory_routes
@@ -115,6 +116,7 @@ app = FastAPI(
 register_team_routes(app, state_manager)
 register_agent_routes(app, state_manager)
 register_audit_routes(app, state_manager)
+register_mcp_routes(app, state_manager)
 register_skill_routes(app, state_manager)
 register_auth_routes(app)
 register_memory_routes(app, state_manager)
