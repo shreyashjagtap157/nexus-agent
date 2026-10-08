@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import os
 import threading
 import uuid
 from pathlib import Path
@@ -72,7 +73,21 @@ def load_configured_servers(config: dict[str, Any]) -> tuple[list[MCPClient], li
             continue
         try:
             command_list = [str(command)] + [str(arg) for arg in item.get("args", [])]
-            client = MCPClient(command=command_list, env=item.get("env"))
+            inherited = {}
+            passthrough = item.get("env_passthrough", [])
+            if isinstance(passthrough, list):
+                for env_name in passthrough:
+                    name = str(env_name).strip()
+                    if name and name in os.environ:
+                        inherited[name] = os.environ[name]
+            configured_env = item.get("env") if isinstance(item.get("env"), dict) else {}
+            merged_env = {str(k): str(v) for k, v in configured_env.items()}
+            merged_env.update(inherited)
+            client = MCPClient(
+                command=command_list,
+                env=merged_env,
+                allowed_secret_env=list(inherited),
+            )
             if client.start(startup_timeout=float(item.get("startup_timeout", 15))):
                 clients.append(client)
                 tools.extend(client.discovered_tools)
@@ -88,7 +103,7 @@ class MCPClient:
     tools dynamically to expand the agent's capabilities.
     """
 
-    def __init__(self, command: list[str], env: dict[str, str] | None = None):
+    def __init__(self, command: list[str], env: dict[str, str] | None = None, allowed_secret_env: list[str] | None = None):
         """Initialize MCP client.
 
         Args:
