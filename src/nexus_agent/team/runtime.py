@@ -133,6 +133,22 @@ class TeamRuntime:
         self.skill_registry.discover_skills()
         self.mcp_clients = list(mcp_clients or [])
 
+    def close(self) -> None:
+        """Release external runtime resources owned by this team runtime."""
+        for client in list(self.mcp_clients):
+            try:
+                client.close()
+            except (OSError, RuntimeError, ValueError):
+                pass
+        self.mcp_clients.clear()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
     def _make_store(self) -> TeamStore:
         return TeamStore(self.data_dir / "teams.db")
 
