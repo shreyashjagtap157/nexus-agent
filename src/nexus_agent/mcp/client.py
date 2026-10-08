@@ -30,6 +30,10 @@ class MCPProxyTool(Tool):
     @property
     def name(self) -> str:
         return self._name
+    @property
+    def is_mcp(self) -> bool:
+        return True
+
 
     @property
     def description(self) -> str:
