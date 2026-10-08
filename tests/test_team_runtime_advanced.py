@@ -138,3 +138,25 @@ def test_builtin_profiles_are_not_auto_loaded_as_saved_agents(tmp_path: Path):
         if getattr(spec.scope, "value", spec.scope) != "builtin"
     ]
     assert any(spec.id == "user-reviewer" for spec in saved)
+
+
+def test_team_runtime_markdown_artifact_serializes_quality_gate(tmp_path: Path):
+    provider = FakeProvider()
+    runtime = TeamRuntime(provider, [], workspace=tmp_path)
+    result = runtime.run_collect(
+        "Perform the assigned task and produce a report.",
+        TeamConfig(
+            mode=TeamMode.ANALYSIS,
+            max_agents=2,
+            parallelism=2,
+            max_iterations_per_agent=2,
+            output_mode="file",
+            output_format="markdown",
+            require_reviewer=True,
+        ),
+    )
+    assert result.success
+    artifact = Path(result.artifact_paths[0])
+    content = artifact.read_text(encoding="utf-8")
+    assert "## Evidence Quality Gate" in content
+    assert "{}" in content
