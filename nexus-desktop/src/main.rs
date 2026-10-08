@@ -98,6 +98,8 @@ struct TeamResult {
     artifact_paths: Vec<String>,
     #[serde(default)]
     summary: String,
+    #[serde(default)]
+    quality: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
