@@ -663,7 +663,12 @@ Team protocol:
                     provider=worker_provider,
                     tools=worker_tools,
                     config=cfg,
-                    permission_callback=lambda tc: self._permission(tc, config, profile),
+                    permission_callback=lambda tc: self._permission(
+                        tc,
+                        config,
+                        profile,
+                        worker_tools,
+                    ),
                 )
                 for tool in worker_tools:
                     if hasattr(tool, "set_agent_loop"):
