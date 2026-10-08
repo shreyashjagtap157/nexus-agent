@@ -38,8 +38,8 @@ main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:12px;padding:12p
 <label>Reusable skills (comma-separated)</label><input id="skills" placeholder="debug,test_writer,code_review">
 <div class="grid">
 <label>Model role</label><input id="model_role" value="default">
-<label>Provider</label><input id="provider" placeholder="nvidia_nim">
-<label>Model</label><input id="model" placeholder="nvidia/nemotron-3.5-lightning-30b-a3b">
+<label>Provider</label><select id="provider"><option value="">Default provider</option></select>
+<label>Model</label><input id="model" list="model-options" placeholder="provider/model"><datalist id="model-options"></datalist>
 <label>Fallback providers</label><input id="fallbacks" placeholder="openrouter,litellm">
 </div>
 <label>Dependencies (comma-separated)</label><input id="dependencies" placeholder="architect">
@@ -57,6 +57,36 @@ main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:12px;padding:12p
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 function notice(t,bad){$("notice").textContent=t;$("notice").style.color=bad?"#fca5a5":"#8ea0b8"}
+async function loadProviders(){
+ try{
+   const r=await fetch("/api/providers");
+   if(!r.ok)return;
+   const d=await r.json();
+   const select=$("provider");
+   for(const p of d.providers||[]){
+     const option=document.createElement("option");
+     option.value=p.id;
+     option.textContent=p.name+" ("+p.id+")";
+     select.appendChild(option);
+   }
+   select.onchange=async function(){
+     const value=select.value;
+     const list=$("model-options");
+     list.innerHTML="";
+     if(!value)return;
+     try{
+       const rr=await fetch("/api/providers/models?provider="+encodeURIComponent(value));
+       const md=await rr.json();
+       for(const m of md.models||[]){
+         const o=document.createElement("option");
+         o.value=m.id;
+         o.label=m.name||m.id;
+         list.appendChild(o);
+       }
+     }catch(_){}
+   };
+ }catch(_){}
+}
 async function load(){
  const r=await fetch("/api/agents?include_disabled=true");
  if(!r.ok){notice("Unable to load agents.",true);return}
@@ -80,7 +110,7 @@ $("save").onclick=async function(){
  if(!payload.id||!payload.name||!payload.profession||!payload.mission||!payload.instructions){notice("Fill all manual-agent fields.",true);return}
  const r=await fetch("/api/agents/"+encodeURIComponent(payload.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok){notice(String(d.detail||"save failed"),true);return}notice("Saved "+payload.id);await load()
 };
-$("refresh").onclick=load;load();
+$("refresh").onclick=load;loadProviders();load();
 </script>
 </body>
 </html>
