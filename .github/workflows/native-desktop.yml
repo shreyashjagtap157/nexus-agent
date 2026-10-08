@@ -5,6 +5,7 @@ on:
     branches: ["master", "multi-agent-platform"]
     paths:
       - "nexus-desktop/**"
+      - "nexus-rs/**"
   pull_request:
     paths:
       - "nexus-desktop/**"
