@@ -1,6 +1,7 @@
 """Dynamic professional-team planner."""
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import uuid
 
@@ -125,8 +126,9 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
     if len(profiles) < max_agents:
         for profile in fallback:
             if profile.role_id not in seen:
-                profiles.append(profile)
-                seen.add(profile.role_id)
+                clone = replace(profile, tool_categories=list(profile.tool_categories), dependencies=list(profile.dependencies), fallbacks=list(profile.fallbacks), skill_ids=list(profile.skill_ids))
+                profiles.append(clone)
+                seen.add(clone.role_id)
             if len(profiles) >= max_agents:
                 break
 
@@ -207,7 +209,7 @@ Return JSON only:
                 break
 
     if not profiles:
-        profiles = list(FALLBACKS.get(mode, FALLBACKS[TeamMode.ANALYSIS]))[: config.max_agents]
+        profiles = [replace(profile, tool_categories=list(profile.tool_categories), dependencies=list(profile.dependencies), fallbacks=list(profile.fallbacks), skill_ids=list(profile.skill_ids)) for profile in list(FALLBACKS.get(mode, FALLBACKS[TeamMode.ANALYSIS]))[: config.max_agents]]
 
     if not config.allow_parallel_writers:
         seen_writer = False
