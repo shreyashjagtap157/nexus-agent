@@ -1,0 +1,45 @@
+# Main branch governance
+
+main is the canonical integration branch for NexusAgent.
+
+## Required repository settings
+
+The GitHub repository administrator should configure these controls for main:
+
+1. Require a pull request before merging.
+2. Require at least one approving review.
+3. Require review from Code Owners.
+4. Dismiss stale approvals when new commits are pushed.
+5. Require all required status checks before merging.
+6. Require branches to be up to date before merging.
+7. Require conversation resolution before merging.
+8. Restrict force-pushes and branch deletion.
+9. Apply the rules to administrators.
+10. Allow only the repository's approved merge strategy, preferably squash merge for development PRs.
+11. Require signed commits when the repository policy and contributor workflow support it.
+12. Require the security and CI workflows in this repository before merge.
+
+## Required checks
+
+The protected branch should require the successful completion of the repository's CI/security gates, including:
+
+- Tests matrix
+- Ruff and MyPy
+- Native Clients
+- Version Contract
+- Test & Audit
+- Security
+
+Matrix-generated jobs should all be treated as required for the corresponding workflow.
+
+## Release policy
+
+Release tags must be created from commits that are already reachable from main. The release workflow independently verifies that the tagged commit belongs to main history.
+
+Published tags are immutable. Never force-push or rewrite a release tag.
+
+## Current migration state
+
+The main branch has been created as the canonical integration target and the multi-agent platform work is being integrated through a dedicated pull request.
+
+Branch protection itself is a GitHub administration setting and must be enabled by a repository administrator with administration-level GitHub credentials. The source-controlled policy in this file is the authoritative expected configuration; it is not a substitute for the GitHub-side rule.
