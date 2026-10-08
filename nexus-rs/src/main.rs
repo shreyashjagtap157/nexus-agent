@@ -180,6 +180,10 @@ async fn main() {
             format,
             depth,
             collection,
+            workflow,
+            agents,
+            provider,
+            model,
             workspace,
             yes,
         } => {
@@ -194,6 +198,10 @@ async fn main() {
                 &format,
                 &depth,
                 &collection,
+                workflow.as_deref(),
+                &agents,
+                provider.as_deref(),
+                model.as_deref(),
                 &workspace,
                 yes,
             )
@@ -484,6 +492,10 @@ async fn run_team(
     format: &str,
     depth: &str,
     collection: &str,
+    workflow: Option<&str>,
+    agents: &[String],
+    provider: Option<&str>,
+    model: Option<&str>,
     workspace: &str,
     yes: bool,
 ) {
@@ -508,6 +520,19 @@ async fn run_team(
         .args(["--depth", depth])
         .args(["--collection", collection])
         .args(["--workspace", workspace]);
+
+    if let Some(workflow_id) = workflow {
+        command.args(["--workflow", workflow_id]);
+    }
+    for agent in agents {
+        command.args(["--agent", agent]);
+    }
+    if let Some(provider_name) = provider {
+        command.args(["--provider", provider_name]);
+    }
+    if let Some(model_name) = model {
+        command.args(["--model-path", model_name]);
+    }
 
     if yes {
         command.arg("--yes");
