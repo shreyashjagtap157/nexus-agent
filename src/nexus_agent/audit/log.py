@@ -74,11 +74,20 @@ class AuditLog:
         try:
             with self.path.open("rb") as handle:
                 handle.seek(0, 2)
-                size = handle.tell()
-                read_size = min(size, 65536)
-                handle.seek(-read_size, 2)
-                block = handle.read(read_size)
-            lines = [line for line in block.decode("utf-8", errors="replace").splitlines() if line.strip()]
+                position = handle.tell()
+                buffer = b""
+                while position > 0:
+                    chunk_size = min(position, 65536)
+                    position -= chunk_size
+                    handle.seek(position)
+                    buffer = handle.read(chunk_size) + buffer
+                    if b"\n" in buffer or position == 0:
+                        break
+            lines = [
+                line
+                for line in buffer.decode("utf-8", errors="replace").splitlines()
+                if line.strip()
+            ]
             if not lines:
                 return "0" * 64
             item = json.loads(lines[-1])
