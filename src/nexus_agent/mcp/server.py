@@ -18,14 +18,11 @@ class MCPServer:
     Claude Desktop) over stdio streams using JSON-RPC 2.0.
     """
 
-    def __init__(self, tools: list[Any]):
-        """Initialize MCP server.
-
-        Args:
-            tools: List of Tool instances to expose.
-        """
+    def __init__(self, tools: list[Any], permission_callback=None):
+        """Initialize MCP server with an optional permission callback."""
         self.tools = tools
         self._tool_map = {t.name: t for t in tools}
+        self._permission_callback = permission_callback
 
         self._transport = StdioTransport(reader=sys.stdin, writer=sys.stdout)
         self._transport.register_handler(self._handle_request)
