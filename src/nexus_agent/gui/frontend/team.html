@@ -50,7 +50,7 @@ main{display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:12px;paddi
 <div id="agents" class="scroll agents"><div class="empty">No team yet.</div></div>
 </section>
 <section>
-<h2>Integrated Synthesis</h2>
+<h2>Team Artifacts</h2><div id="artifacts" class="box"><div class="empty">Artifacts will appear after the team produces files.</div></div><h2>Integrated Synthesis</h2>
 <div id="synthesis" class="box"><div class="empty">Waiting for team completion.</div></div>
 <h2>Peer Messages</h2>
 <div id="messages" class="box"><div class="empty">No messages.</div></div>
@@ -77,7 +77,7 @@ function addMessage(m){
 async function snapshot(){
   if(!jobId)return;var r=await fetch("/api/teams/"+encodeURIComponent(jobId));if(!r.ok)return;var d=await r.json();
   if(d.team_id)teamId=d.team_id;if(d.agents)renderAgents(d.agents);(d.events||[]).forEach(addEvent);(d.messages||[]).forEach(addMessage);
-  if(d.result&&d.result.synthesis)$("synthesis").innerHTML="<div style='padding:12px;white-space:pre-wrap'>"+esc(d.result.synthesis)+"</div>";
+  if(d.result&&d.result.synthesis)$("synthesis").innerHTML="<div style='padding:12px;white-space:pre-wrap'>"+esc(d.result.synthesis)+"</div>";  if(teamId){fetch("/api/teams/"+encodeURIComponent(teamId)+"/artifacts").then(function(r){return r.json()}).then(function(a){var rows=a.artifacts||[];$("artifacts").innerHTML=rows.length?rows.map(function(x){return "<div class='msg'><a href='/api/teams/"+encodeURIComponent(teamId)+"/artifacts/"+encodeURIComponent(x.name)+"' target='_blank'>"+esc(x.name)+"</a><span class='meta'> • "+esc(x.size)+" bytes</span></div>"}).join(""):"<div class='empty'>No artifacts yet.</div>"})}
   var st=(d.team&&d.team.status)||d.status||"unknown";$("pause").disabled=!teamId||!["running"].includes(st);$("resume").disabled=!teamId||!["paused"].includes(st);$("stop").disabled=!teamId||["completed","failed","cancelled","needs_review"].includes(st);$("start").disabled=!!jobId&&!["completed","failed","cancelled","needs_review"].includes(d.status||"");$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
   if(teamId&&!es){es=new EventSource("/api/teams/"+encodeURIComponent(teamId)+"/stream");es.onmessage=function(ev){try{var x=JSON.parse(ev.data);if(x.type==="terminal"){notice("Team ended: "+x.status);es.close();es=null}else{addEvent(x)}snapshot()}catch(e){}};es.onerror=function(){notice("Live stream reconnecting…")}}
 }
