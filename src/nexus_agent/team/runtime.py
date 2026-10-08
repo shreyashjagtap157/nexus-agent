@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterator
 from nexus_agent.agents.registry import AgentRegistry
 from nexus_agent.core.agent import AgentEvent, AgentEventType, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.llm.base import LLMProvider, Message, Role
+from nexus_agent.skills.skill_registry import SkillRegistry
 
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
 from .control import register as register_team_control, unregister as unregister_team_control
@@ -134,6 +135,15 @@ class TeamRuntime:
         self.permission_callback = permission_callback
         self.provider_selector = provider_selector
         self.agent_registry = agent_registry or AgentRegistry(self.workspace)
+        from nexus_agent.core.config import get_data_dir
+        self.skill_registry = SkillRegistry(
+            search_dirs=[
+                str(Path(get_data_dir()) / "skills"),
+                str(self.workspace / ".nexus-agent" / "skills"),
+            ],
+            workspace=self.workspace,
+        )
+        self.skill_registry.discover_skills()
         self.mcp_clients = list(mcp_clients or [])
 
     def _make_store(self) -> TeamStore:
@@ -197,6 +207,12 @@ class TeamRuntime:
                 for tool in self.tools
                 if tool not in selected and tool.__class__.__name__ == "MCPProxyTool"
             )
+        if profile.skill_ids:
+            for skill_id in profile.skill_ids:
+                skill = self.skill_registry.get_skill(skill_id)
+                if skill is not None:
+                    selected.append(skill)
+
         selected.append(
             ScopedMemoryTool(
                 ScopedMemory(
@@ -274,6 +290,9 @@ Mission: {profile.mission}
 
 Team objective:
 {goal}
+
+Enabled reusable skills:
+{", ".join(profile.skill_ids) if profile.skill_ids else "none"}
 
 Your assigned instructions:
 {profile.instructions}
