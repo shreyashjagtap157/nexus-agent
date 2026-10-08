@@ -8,6 +8,28 @@ Release precedence and compatibility are governed by Semantic Versioning.
 
 Future changes not yet assigned to a release.
 
+## [0.3.0-alpha.2]
+
+### Added
+
+- Continued unified multi-agent runtime hardening after the alpha.1 baseline.
+- Reusable user-authored and LLM-generated agent profiles with explicit global/user/project/workspace scopes.
+- Persistent team lifecycle controls, team history and resumable operator control surfaces.
+- Explicit chat/file/both team output contracts with markdown, text and JSON artifacts.
+- Per-agent provider/model routing and provider credential separation.
+- Evidence-first research storage with source snapshots, claim quotations and deterministic quote verification.
+- Canonical workspace runtime/storage layout and reversible destructive-file operations.
+- Expanded filesystem, parsing, browser, code-intelligence and team-tool catalog integration.
+
+### Changed
+
+- Provider configuration is now separated conceptually from credential storage, following the established provider/auth separation used by modern agent CLIs.
+- Version metadata is synchronized from the repository-root canonical `VERSION` file.
+
+### Release status
+
+Alpha.2 is an unreleased development snapshot. The public API, provider schema, team protocol, tool contracts and storage layout remain provisional.
+
 ## [0.3.0-alpha.1]
 
 ### Added
