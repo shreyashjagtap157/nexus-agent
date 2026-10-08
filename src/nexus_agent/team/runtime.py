@@ -30,6 +30,7 @@ def build_workspace_tools(
     provider: LLMProvider | None = None,
     agent_loop: Any | None = None,
     include_advanced: bool = True,
+    mcp_tools: list[Any] | None = None,
 ) -> list[Any]:
     from nexus_agent.tools.browser import BrowserTool
     from nexus_agent.tools.boomerang import BoomerangTool
@@ -85,6 +86,12 @@ def build_workspace_tools(
         memory = MemoryTool()
         memory.set_memory(memory_manager)
         tools.append(memory)
+    from nexus_agent.memory.scoped import ScopedMemory
+    from nexus_agent.storage.layout import StorageLayout
+    from nexus_agent.tools.scoped_memory import ScopedMemoryTool
+    tools.append(ScopedMemoryTool(ScopedMemory(StorageLayout(workspace))))
+    if mcp_tools:
+        tools.extend(mcp_tools)
     if include_advanced:
         boomerang = BoomerangTool(agent_loop)
         council = CouncilTool(provider)
