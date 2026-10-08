@@ -29,6 +29,7 @@ class WorkflowSpec:
     output_format: str = "markdown"
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    research_source_strategy: str = "hybrid"
     agent_ids: tuple[str, ...] = ()
     research_source_urls: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
@@ -50,6 +51,7 @@ class WorkflowSpec:
             "output_format": self.output_format,
             "research_depth": self.research_depth,
             "research_collection": self.research_collection,
+            "research_source_strategy": self.research_source_strategy,
             "agent_ids": list(self.agent_ids),
             "research_source_urls": list(self.research_source_urls),
         }
@@ -78,6 +80,7 @@ class WorkflowSpec:
             output_format=str(data.get("output_format") or "markdown"),
             research_depth=str(data.get("research_depth") or "detailed"),
             research_collection=str(data.get("research_collection") or "until_saturation"),
+            research_source_strategy=str(data.get("research_source_strategy") or "hybrid"),
             agent_ids=tuple(str(x).strip().lower() for x in data.get("agent_ids", []) if str(x).strip()),
             research_source_urls=tuple(str(x).strip() for x in data.get("research_source_urls", []) if str(x).strip()),
             tags=tuple(str(x).strip() for x in data.get("tags", []) if str(x).strip()),
@@ -162,6 +165,7 @@ class WorkflowRegistry:
             "output_format": workflow.output_format,
             "research_depth": workflow.research_depth,
             "research_collection": workflow.research_collection,
+            "research_source_strategy": workflow.research_source_strategy,
             "agent_ids": list(workflow.agent_ids),
             "research_source_urls": list(workflow.research_source_urls),
             "tags": list(workflow.tags),
