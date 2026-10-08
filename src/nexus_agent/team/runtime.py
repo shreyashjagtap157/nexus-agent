@@ -402,12 +402,15 @@ class TeamRuntime:
                     "log",
                     "diff",
                     "show",
-                    "remote",
                     "describe",
                     "version",
                 }
                 if subcommand in safe_git_reads:
                     return True
+                if subcommand == "remote":
+                    raw_args = str(arguments.get("args", "")).strip()
+                    if raw_args in {"", "-v", "--verbose", "get-url", "--get-url"}:
+                        return True
 
             research_write = (
                 profile is not None
