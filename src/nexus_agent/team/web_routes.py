@@ -227,6 +227,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             except Exception as exc:
                 with lock:
                     jobs[job_id].update({"status": "failed", "error": str(exc)})
+            finally:
+                runtime.close()
 
         threading.Thread(target=worker, name=job_id, daemon=True).start()
         return {"job_id": job_id}
