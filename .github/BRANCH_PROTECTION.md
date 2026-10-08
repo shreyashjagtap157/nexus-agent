@@ -24,7 +24,7 @@ The GitHub repository administrator should configure these controls for main:
 The protected branch should require the successful completion of the repository's CI/security gates, including:
 
 - CI / Required
-- Security
+- Security / Required
 
 The `CI / Required` job is the single authoritative application-quality gate and aggregates the complete Python, native, lint, version and audit validation matrix. Security remains a separate required control.
 
