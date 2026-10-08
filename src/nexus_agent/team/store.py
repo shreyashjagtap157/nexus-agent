@@ -78,15 +78,46 @@ class TeamStore:
             self._conn.close()
 
     def migrate(self) -> None:
+        """Apply additive schema migrations safely."""
         with self._lock:
-            self._conn.execute("ALTER TABLE teams ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'")
+            columns = {
+                row["name"]
+                for row in self._conn.execute("PRAGMA table_info(teams)").fetchall()
+            }
+            if "config_json" not in columns:
+                self._conn.execute(
+                    "ALTER TABLE teams ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'"
+                )
             self._conn.commit()
 
-    def create_team(self, team_id: str, goal: str, mode: str, workspace: str, config: dict[str, Any]) -> None:
+    def create_team(
+        self,
+        team_id: str,
+        goal: str,
+        mode: str,
+        workspace: str,
+        config: dict[str, Any],
+    ) -> None:
         with self._lock:
             self._conn.execute(
                 "INSERT INTO teams(team_id,goal,mode,workspace,config_json,status,created_at) VALUES(?,?,?,?,?,?,?)",
-                (team_id, goal, mode, workspace, json.dumps(config, default=str), "running", time.time()),
+                (
+                    team_id,
+                    goal,
+                    mode,
+                    workspace,
+                    json.dumps(config, default=str),
+                    "running",
+                    time.time(),
+                ),
+            )
+            self._conn.commit()
+
+    def set_status(self, team_id: str, status: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE teams SET status=? WHERE team_id=?",
+                (status, team_id),
             )
             self._conn.commit()
 
@@ -106,9 +137,15 @@ class TeamStore:
                     agent_id,team_id,name,profession,mission,instructions,role_json,state,model_role
                 ) VALUES(?,?,?,?,?,?,?,?,?)""",
                 (
-                    agent_id, team_id, profile["name"], profile["profession"],
-                    profile["mission"], profile["instructions"],
-                    json.dumps(profile, default=str), "planned", profile.get("model_role", "default"),
+                    agent_id,
+                    team_id,
+                    profile["name"],
+                    profile["profession"],
+                    profile["mission"],
+                    profile["instructions"],
+                    json.dumps(profile, default=str),
+                    "planned",
+                    profile.get("model_role", "default"),
                 ),
             )
             self._conn.commit()
@@ -121,7 +158,10 @@ class TeamStore:
             return
         with self._lock:
             sets = ",".join(f"{key}=?" for key in updates)
-            self._conn.execute(f"UPDATE team_agents SET {sets} WHERE agent_id=?", (*updates.values(), agent_id))
+            self._conn.execute(
+                f"UPDATE team_agents SET {sets} WHERE agent_id=?",
+                (*updates.values(), agent_id),
+            )
             self._conn.commit()
 
     def message(
@@ -141,19 +181,39 @@ class TeamStore:
                     message_id,team_id,sender_id,recipient_id,message_type,topic,payload_json,created_at,parent_message_id
                 ) VALUES(?,?,?,?,?,?,?,?,?)""",
                 (
-                    message_id, team_id, sender_id, recipient_id, message_type, topic,
-                    json.dumps(payload, ensure_ascii=False, default=str), time.time(), parent_message_id,
+                    message_id,
+                    team_id,
+                    sender_id,
+                    recipient_id,
+                    message_type,
+                    topic,
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    time.time(),
+                    parent_message_id,
                 ),
             )
             self._conn.commit()
         return message_id
 
-    def event(self, team_id: str, event_type: str, payload: dict[str, Any], agent_id: str | None = None) -> str:
+    def event(
+        self,
+        team_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        agent_id: str | None = None,
+    ) -> str:
         event_id = uuid.uuid4().hex[:16]
         with self._lock:
             self._conn.execute(
                 "INSERT INTO team_events(event_id,team_id,agent_id,event_type,payload_json,created_at) VALUES(?,?,?,?,?,?)",
-                (event_id, team_id, agent_id, event_type, json.dumps(payload, ensure_ascii=False, default=str), time.time()),
+                (
+                    event_id,
+                    team_id,
+                    agent_id,
+                    event_type,
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    time.time(),
+                ),
             )
             self._conn.commit()
         return event_id
@@ -177,17 +237,26 @@ class TeamStore:
 
     def team(self, team_id: str) -> dict[str, Any] | None:
         with self._lock:
-            row = self._conn.execute("SELECT * FROM teams WHERE team_id=?", (team_id,)).fetchone()
+            row = self._conn.execute(
+                "SELECT * FROM teams WHERE team_id=?",
+                (team_id,),
+            ).fetchone()
         return dict(row) if row else None
 
     def agents(self, team_id: str) -> list[dict[str, Any]]:
         with self._lock:
             rows = self._conn.execute(
-                "SELECT * FROM team_agents WHERE team_id=? ORDER BY rowid", (team_id,)
+                "SELECT * FROM team_agents WHERE team_id=? ORDER BY rowid",
+                (team_id,),
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def messages(self, team_id: str, recipient_id: str | None = None, since: float = 0.0) -> list[dict[str, Any]]:
+    def messages(
+        self,
+        team_id: str,
+        recipient_id: str | None = None,
+        since: float = 0.0,
+    ) -> list[dict[str, Any]]:
         with self._lock:
             rows = self._conn.execute(
                 """SELECT * FROM team_messages
