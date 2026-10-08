@@ -1,16 +1,45 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NexusAgent — Providers</title>
-<style>:root{color-scheme:dark;--bg:#060a10;--p:#0d1522;--l:#22334c;--t:#e8eef8;--m:#8ea0b8;--a:#7dd3fc;--g:#86efac;--r:#fca5a5}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#162942 0,#060a10 50%,#030509 100%);color:var(--t);font:14px system-ui,-apple-system,Segoe UI,sans-serif}header{padding:14px 18px;border-bottom:1px solid var(--l);display:flex;justify-content:space-between}main{padding:12px;max-width:1100px;margin:auto}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{border:1px solid var(--l);background:rgba(13,21,34,.9);border-radius:12px;overflow:hidden}.panel h2{padding:11px 12px;margin:0;border-bottom:1px solid var(--l);font-size:12px;text-transform:uppercase;color:var(--m)}.item{padding:12px;border-bottom:1px solid #18253a}.name{font-weight:600}.meta{color:var(--m);font-size:11px}.input{width:100%;padding:9px;background:#08111d;color:var(--t);border:1px solid var(--l);border-radius:8px}.row{display:flex;gap:8px;align-items:center;margin-top:8px}.btn{background:#102033;border:1px solid var(--l);color:var(--t);padding:8px 12px;border-radius:8px;cursor:pointer}.good{color:var(--g)}.bad{color:var(--r)}@media(max-width:850px){.grid{grid-template-columns:1fr}}</style>
-</head><body>
-<header><div><b>NexusAgent / Providers</b><div class="meta">Provider metadata is public; credentials are stored locally and never returned.</div></div><div><a class="btn" href="/">Workspace</a> <a class="btn" href="/agents.html">Agents</a></div></header>
-<main><div class="grid"><section class="panel"><h2>Provider Catalog</h2><div id="providers">Loading…</div></section><section class="panel"><h2>Local Credentials</h2><div id="auth">Loading…</div><div style="padding:12px"><div class="meta">Credentials are stored in the user-level NexusAgent auth store. Use environment variables when you do not want NexusAgent to persist a key.</div><label class="meta">Provider</label><select id="provider" class="input"></select><label class="meta">API key</label><input id="key" class="input" type="password" autocomplete="off"><div class="row"><button class="btn" id="save">Store credential locally</button><button class="btn" id="remove">Remove</button></div><div id="notice" class="meta" style="margin-top:8px"></div></div></section></div></main>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — Provider Vault</title>
+<style>
+:root{color-scheme:dark;--bg:#050a10;--panel:#0c1521;--line:#20324b;--text:#e9f1fb;--muted:#8da0b8}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 15% 0,#18314c 0,#050a10 50%,#02050a 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#07101bdf;backdrop-filter:blur(10px);z-index:3}
+h1{font-size:18px;margin:0}.sub{font-size:11px;color:var(--muted)}a,.btn{color:var(--text)}.btn{border:1px solid var(--line);background:#101b2a;padding:8px 12px;border-radius:8px;cursor:pointer}
+main{padding:12px;display:grid;grid-template-columns:1.1fr 1fr;gap:12px}.panel{border:1px solid var(--line);background:rgba(12,21,33,.93);border-radius:12px;overflow:hidden}
+.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.body{padding:12px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #17253a;padding:8px;font-size:12px}th{color:var(--muted);font-size:10px;text-transform:uppercase}.provider{cursor:pointer}.provider:hover{background:#101a2a}
+label{display:block;color:var(--muted);font-size:11px;margin:10px 0 4px}input,select{width:100%;padding:9px;background:#08111d;border:1px solid var(--line);border-radius:8px;color:var(--text)}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;margin-top:12px}.primary{flex:1;background:#0b3144;border-color:#2b7194}.notice{margin-top:10px;color:var(--muted);font-size:11px}.key{font-family:ui-monospace,monospace}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><h1>NexusAgent / Provider Vault</h1><div class="sub">Credentials are separated from model and endpoint configuration.</div></div><div><a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/">Workspace</a></div></header>
+<main>
+<section class="panel"><h2>Providers</h2><div class="body"><div id="providers">Loading…</div></div></section>
+<section class="panel"><h2>Configuration</h2><div class="body">
+<div id="selected" class="sub">Select a provider.</div>
+<label>Model</label><input id="model" placeholder="provider/model-name">
+<div class="row"><div><label>Base URL</label><input id="base" placeholder="https://.../v1"></div><div><label>Chat API URL</label><input id="api" placeholder="https://.../chat/completions"></div></div>
+<div class="row"><div><label>Context size</label><input id="context" type="number"></div><div><label>Max output tokens</label><input id="tokens" type="number"></div></div>
+<label>API credential</label><input id="key" type="password" autocomplete="off" placeholder="value is never rendered after storage">
+<div class="actions"><button class="btn primary" id="save">Save configuration</button><button class="btn" id="credential">Store credential</button><button class="btn" id="remove">Remove credential</button></div>
+<div id="notice" class="notice"></div>
+</div></section></main>
 <script>
 const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-let providers=[];function notice(t,bad){$("notice").textContent=t;$("notice").className=bad?"meta bad":"meta"}
-async function load(){const [p,a]=await Promise.all([fetch("/api/providers"),fetch("/api/auth")]);const pd=await p.json(),ad=await a.json();providers=pd.providers;$("providers").innerHTML=providers.map(x=>`<div class="item"><div class="name">${esc(x.name)} <span class="meta">(${esc(x.id)})</span></div><div class="meta">protocol=${esc(x.protocol)}<br>endpoint=${esc(x.base_url||"provider-native")}<br>env=${esc(x.env_key||"none")}</div></div>`).join("");$("provider").innerHTML=providers.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");$("auth").innerHTML=ad.credentials.length?ad.credentials.map(x=>`<div class="item"><div class="name">${esc(x.provider)}</div><div class="meta">${esc(x.key)}</div></div>`).join(""):"<div class='item meta'>No stored credentials.</div>"}
-$("save").onclick=async()=>{const r=await fetch("/api/auth/"+encodeURIComponent($("provider").value),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:$("key").value})});const d=await r.json();if(!r.ok){notice(d.detail||"Store failed",true);return}$("key").value="";notice("Credential stored locally.");load()};
-$("remove").onclick=async()=>{const r=await fetch("/api/auth/"+encodeURIComponent($("provider").value),{method:"DELETE"});const d=await r.json();notice(d.removed?"Credential removed.":"No stored credential.");load()};load();
+let selected="";
+async function load(){
+ const [pr,cr,cf]=await Promise.all([fetch("/api/providers"),fetch("/api/auth"),fetch("/api/provider-config")]);
+ const providers=(await pr.json()).providers||[], creds=(await cr.json()).credentials||[], cfg=(await cf.json()).providers||{};
+ const credMap={};creds.forEach(x=>credMap[x.provider]=x.key);
+ $("providers").innerHTML="<table><thead><tr><th>Provider</th><th>Protocol</th><th>Credential</th><th>Endpoint</th></tr></thead><tbody>"+providers.map(p=>"<tr class='provider' data-id='"+esc(p.id)+"'><td>"+esc(p.name)+"<div class='sub'>"+esc(p.id)+"</div></td><td>"+esc(p.protocol)+"</td><td class='key'>"+esc(credMap[p.id]||"not set")+"</td><td>"+esc(cfg[p.id]?.api_url||cfg[p.id]?.base_url||p.base_url||"provider-native")+"</td></tr>").join("")+"</tbody></table>";
+ document.querySelectorAll(".provider").forEach(el=>el.onclick=()=>select(el.dataset.id,cfg));
+ if(!selected && providers[0])select(providers[0].id,cfg);
+}
+function select(id,cfg){selected=id;$("selected").textContent="Selected: "+id;const v=cfg[id]||{};$("model").value=v.model||"";$("base").value=v.base_url||"";$("api").value=v.api_url||"";$("context").value=v.context_size||"";$("tokens").value=v.max_tokens||"";$("key").value="";}
+function notice(t){$("notice").textContent=t}
+$("save").onclick=async()=>{if(!selected){notice("Select a provider.");return}const body={model:$("model").value||null,base_url:$("base").value||null,api_url:$("api").value||null,context_size:$("context").value?+$("context").value:null,max_tokens:$("tokens").value?+$("tokens").value:null};const r=await fetch("/api/provider-config/"+encodeURIComponent(selected),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json();notice(r.ok?"Saved configuration for "+selected:String(d.detail||"save failed"));if(r.ok)load()};
+$("credential").onclick=async()=>{if(!selected){notice("Select a provider.");return}const key=$("key").value;if(!key){notice("Enter a credential.");return}const r=await fetch("/api/auth/"+encodeURIComponent(selected),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({api_key:key})});const d=await r.json();notice(r.ok?"Credential stored for "+selected:String(d.detail||"credential save failed"));$("key").value="";if(r.ok)load()};
+$("remove").onclick=async()=>{if(!selected){notice("Select a provider.");return}const r=await fetch("/api/auth/"+encodeURIComponent(selected),{method:"DELETE"});const d=await r.json();notice(d.removed?"Credential removed.":"No stored credential.");if(r.ok)load()};
+load();
 </script></body></html>
