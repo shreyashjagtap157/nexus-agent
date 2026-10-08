@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from nexus_agent.core.config import load_config
@@ -299,6 +299,79 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             return store.messages(team_id, recipient_id=recipient_id)
         finally:
             store.close()
+
+    @router.get("/api/teams/{team_id}/report")
+    async def team_report(team_id: str, format: str = "markdown"):
+        root = (StorageLayout(_workspace(state_manager)).artifacts / team_id).resolve()
+        if format not in {"markdown", "text", "json"}:
+            raise HTTPException(status_code=400, detail="format must be markdown, text or json")
+
+        extension = {"markdown": "result.md", "text": "result.txt", "json": "result.json"}[format]
+        artifact = (root / extension).resolve()
+        if artifact.is_file():
+            return FileResponse(
+                artifact,
+                filename=artifact.name,
+                media_type={
+                    "markdown": "text/markdown",
+                    "text": "text/plain",
+                    "json": "application/json",
+                }[format],
+            )
+
+        store = store_for()
+        try:
+            team = store.team(team_id)
+            if team is None:
+                raise HTTPException(status_code=404, detail="Unknown team")
+            agents = store.agents(team_id)
+            events = store.events(team_id, limit=5000)
+            quality = {}
+            for event in reversed(events):
+                if event.get("event_type") == "team_quality_gate":
+                    quality = event.get("payload") or {}
+                    break
+            synthesis = ""
+            for event in reversed(events):
+                if event.get("event_type") == "team_synthesis":
+                    synthesis = str((event.get("payload") or {}).get("content") or "")
+                    break
+            payload = {
+                "team": team,
+                "agents": agents,
+                "quality": quality,
+                "synthesis": synthesis,
+                "events": events,
+            }
+        finally:
+            store.close()
+
+        if format == "json":
+            return JSONResponse(payload)
+
+        markdown = (
+            "# NexusAgent Team Report\n\n"
+            + f"Team: `{team_id}`\n\n"
+            + "## Goal\n\n"
+            + str(payload["team"]["goal"])
+            + "\n\n## Synthesis\n\n"
+            + (payload["synthesis"] or "No synthesis was persisted.")
+            + "\n\n## Quality Gate\n\n"
+            + json.dumps(payload["quality"], ensure_ascii=False, indent=2, default=str)
+            + "\n\n## Agents\n\n"
+            + "\n".join(
+                f"- **{item.get('name', item.get('agent_id'))}** — {item.get('profession', '')} — {item.get('state', item.get('status', 'unknown'))}"
+                for item in payload["agents"]
+            )
+            + "\n"
+        )
+        if format == "text":
+            markdown = markdown.replace("# NexusAgent Team Report\n\n", "")
+            markdown = markdown.replace("## ", "")
+        return PlainTextResponse(
+            markdown,
+            media_type="text/markdown" if format == "markdown" else "text/plain",
+        )
 
     @router.get("/api/teams/{team_id}/artifacts")
     async def team_artifacts(team_id: str):
