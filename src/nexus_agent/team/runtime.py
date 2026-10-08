@@ -588,12 +588,16 @@ Team protocol:
             ).seed_urls(cfg.research_source_urls)
         mode, profiles = generate_team(self.provider, goal, cfg, saved_agents=saved_profiles)
         pinned: list[AgentProfile] = []
+        pinned_ids: set[str] = set()
         for agent_id in cfg.agent_ids:
-            profile = next((item for item in saved_profiles if item.role_id == agent_id.strip().lower()), None)
-            if profile is not None:
+            profile = next(
+                (item for item in saved_profiles if item.role_id == agent_id.strip().lower()),
+                None,
+            )
+            if profile is not None and profile.role_id not in pinned_ids:
                 pinned.append(profile)
+                pinned_ids.add(profile.role_id)
         if pinned:
-            pinned_ids = {item.role_id for item in pinned}
             remainder = [item for item in profiles if item.role_id not in pinned_ids]
             profiles = (pinned + remainder)[: cfg.max_agents]
 
