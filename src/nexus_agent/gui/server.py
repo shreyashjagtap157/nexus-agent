@@ -32,6 +32,7 @@ from nexus_agent import __app_name__, __version__
 from nexus_agent.agents.web_routes import register_agent_routes
 from nexus_agent.audit.web_routes import register_audit_routes
 from nexus_agent.mcp.web_routes import register_mcp_routes
+from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.auth.web_routes import register_auth_routes
 from nexus_agent.memory.web_routes import register_memory_routes
@@ -492,24 +493,17 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 continue
 
 
-            # Prepare active tools
-            tools = [
-                ReadFileTool(state_manager.get("workspace")),
-                WriteFileTool(state_manager.get("workspace")),
-                SearchFilesTool(state_manager.get("workspace")),
-                ListDirectoryTool(state_manager.get("workspace")),
-                ShellTool(state_manager.get("workspace")),
-                CodeEditTool(state_manager.get("workspace")),
-                InsertLinesTool(state_manager.get("workspace")),
-                GitTool(state_manager.get("workspace")),
-                WebSearchTool(),
-                WebFetchTool(),
-                TodoWriteTool(persist_path=StorageLayout(Path(state_manager.get("workspace"))).todos),
-            ]
-            memory_tool = MemoryTool()
-            if state_manager.get("memory_manager"):
-                memory_tool.set_memory(state_manager.get("memory_manager"))
-            tools.append(memory_tool)
+            # Prepare the same comprehensive workspace tool catalog used by
+            # the CLI/TUI and multi-agent runtime, plus configured MCP proxies.
+            from nexus_agent.team.runtime import build_workspace_tools
+            config = state_manager.get("config") or {}
+            mcp_clients, mcp_tools = load_configured_servers(config)
+            tools = build_workspace_tools(
+                Path(state_manager.get("workspace")),
+                memory_manager=state_manager.get("memory_manager"),
+                provider=engine,
+                mcp_tools=mcp_tools,
+            )
 
             # Build memory prompt context
             memory_context = ""
