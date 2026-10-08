@@ -576,6 +576,11 @@ Team protocol:
         cfg.workspace = str(self.workspace)
         saved_specs = self.agent_registry.load() if cfg.use_saved_agents else []
         saved_profiles = [spec.to_team_profile() for spec in saved_specs]
+        if cfg.research_source_urls:
+            from nexus_agent.research.sources import ResearchSourceRegistry
+            ResearchSourceRegistry(
+                self.workspace / ".nexus-agent" / "research-sources.yaml"
+            ).seed_urls(cfg.research_source_urls)
         mode, profiles = generate_team(self.provider, goal, cfg, saved_agents=saved_profiles)
         pinned: list[AgentProfile] = []
         for agent_id in cfg.agent_ids:
