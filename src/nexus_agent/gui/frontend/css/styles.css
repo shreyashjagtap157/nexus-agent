@@ -5,6 +5,10 @@
   harmonies of cyber-blue & green, and smooth animation transitions.
 */
 
+html {
+    font-size: 125%;
+}
+
 :root {
     --bg-main: #060913;
     --bg-panel: rgba(16, 22, 42, 0.5);
@@ -43,6 +47,7 @@ body {
     overflow: hidden;
     height: 100vh;
     width: 100vw;
+    font-size: 1rem;
 }
 
 /* Glassmorphism utility */
@@ -853,4 +858,35 @@ kbd {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+
+/* Desktop-first 125% UI density with automatic fallbacks for smaller viewports. */
+@media (min-width: 1800px) and (min-height: 900px) {
+    .app-layout { grid-template-columns: 340px minmax(820px, 1fr) 420px; gap: 16px; padding: 16px; }
+    .sidebar-left, .sidebar-right { padding: 24px 20px; }
+    .messages-area { padding: 26px; gap: 24px; }
+    .msg-bubble { font-size: 1rem; max-width: 78%; padding: 17px 21px; }
+    .agent-activity-panel { font-size: .86rem; }
+}
+@media (max-width: 1400px) {
+    html { font-size: 112.5%; }
+    .app-layout { grid-template-columns: 260px minmax(0, 1fr) 320px; }
+}
+@media (max-width: 1050px) {
+    html { font-size: 106.25%; }
+    .app-layout { grid-template-columns: 230px minmax(0, 1fr); }
+    .sidebar-right { display: none; }
+}
+@media (max-width: 760px) {
+    html { font-size: 100%; }
+    body { overflow: auto; height: auto; min-height: 100vh; }
+    .app-layout { grid-template-columns: 1fr; height: auto; min-height: 100vh; padding: 8px; }
+    .sidebar-left { display: none; }
+    .chat-workspace { min-height: calc(100vh - 16px); }
+    .mode-selector { overflow-x: auto; max-width: 100%; }
+    .mode-tab { flex: 0 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
