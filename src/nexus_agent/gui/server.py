@@ -35,6 +35,7 @@ from nexus_agent.mcp.web_routes import register_mcp_routes
 from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.auth.web_routes import register_auth_routes
+from nexus_agent.research.web_routes import register_research_source_routes
 from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.core.config import load_config
@@ -120,6 +121,7 @@ register_audit_routes(app, state_manager)
 register_mcp_routes(app, state_manager)
 register_skill_routes(app, state_manager)
 register_auth_routes(app)
+register_research_source_routes(app, state_manager)
 register_memory_routes(app, state_manager)
 
 # Rate limiting store
