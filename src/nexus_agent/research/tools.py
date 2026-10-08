@@ -56,20 +56,31 @@ class ResearchRecordClaimTool(_ResearchTool):
     @property
     def parameters(self) -> dict[str, Any]:
         return {
-            "statement": {"type": "string", "description": "Claim statement"},
+            "claim_id": {"type": "integer", "description": "Existing claim ID; when provided, attach another source quotation instead of creating a new claim.", "required": False},
+            "statement": {"type": "string", "description": "Claim statement; required when claim_id is not provided."},
             "claim_type": {"type": "string", "description": "fact, definition, requirement, historical or assessment"},
             "source_id": {"type": "integer", "description": "Research source ID from research_record_source"},
             "quote": {"type": "string", "description": "Exact supporting quotation"},
         }
 
     def execute(self, **kwargs: Any) -> Any:
+        claim_id = int(kwargs.get("claim_id") or 0)
+        source_id = int(kwargs.get("source_id") or 0)
+        quote = str(kwargs.get("quote") or "")
+        if claim_id:
+            return self.store.attach_evidence(
+                self.team_id,
+                claim_id,
+                source_id,
+                quote,
+            )
         return self.store.record_claim(
             self.team_id,
             self.agent_id,
             str(kwargs.get("statement") or ""),
             str(kwargs.get("claim_type") or "fact"),
-            int(kwargs.get("source_id") or 0),
-            str(kwargs.get("quote") or ""),
+            source_id,
+            quote,
         )
 
 
