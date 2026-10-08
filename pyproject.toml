@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexus-agent"
-version = "0.2.0-alpha.1"
+version = "0.3.0-alpha.1"
 description = "Local multi-agent development and research workbench with CLI, TUI and web interfaces"
 readme = "README.md"
 license = {text = "MIT"}
