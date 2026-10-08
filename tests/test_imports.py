@@ -9,7 +9,7 @@ class TestCoreImports:
     def test_import_nexus_agent(self):
         import nexus_agent
         assert hasattr(nexus_agent, "__version__")
-        assert nexus_agent.__version__ == "0.1.0"
+        assert nexus_agent.__version__ == "0.2.0-alpha.1"
 
     def test_import_agent_loop(self):
         from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode, AgentState
