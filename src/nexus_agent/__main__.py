@@ -640,11 +640,13 @@ def team() -> None:
 @click.option("--parallelism", type=int, default=4, show_default=True)
 @click.option("--max-iterations", type=int, default=30, show_default=True)
 @click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
+@click.option("--output", "output_mode", type=click.Choice(["chat", "file", "both"]), default="chat")
+@click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Execute a dynamically assembled peer team."""
     from rich.console import Console
     from rich.table import Table
@@ -677,6 +679,8 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
         max_iterations_per_agent=max_iterations,
         workspace=str(ws),
         effort_level=effort,
+        output_mode=output_mode,
+        output_format=output_format,
         auto_approve_tools=yes,
     )
     final = None
