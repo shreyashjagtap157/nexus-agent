@@ -40,7 +40,8 @@ def _memory(state_manager: Any, payload: MemoryStoreRequest | MemorySearchReques
 
 
 def _require_local(request: Request) -> None:
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+    host = request.client.host if request.client else None
+    if host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="Scoped memory access is restricted to local clients.")
 
 
