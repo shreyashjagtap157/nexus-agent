@@ -626,6 +626,106 @@ def backend(
     run_acp_backend(args)
 
 
+
+@cli.group()
+def team() -> None:
+    """Run and inspect dynamically assembled multi-agent teams."""
+    pass
+
+
+@team.command("run")
+@click.argument("goal", type=str)
+@click.option("--mode", type=click.Choice(["auto", "code", "research", "review", "analysis", "plan", "automation"]), default="auto")
+@click.option("--max-agents", type=int, default=6, show_default=True)
+@click.option("--parallelism", type=int, default=4, show_default=True)
+@click.option("--max-iterations", type=int, default=30, show_default=True)
+@click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--provider", type=str, default=None)
+@click.option("--model-path", type=click.Path(exists=True), default=None)
+@click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
+def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+    """Execute a dynamically assembled peer team."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.permissions.manager import PermissionManager
+    from nexus_agent.core.config import load_config
+    from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime, build_workspace_tools
+    from nexus_agent.llm.providers.factory import ProviderFactory
+
+    console = Console()
+    ws = Path(workspace).resolve()
+    config = load_config(workspace=ws)
+    provider_name = provider or config.get("providers", {}).get("active", "local")
+    llm = ProviderFactory.create_provider(provider_name, config, model_path)
+    permissions = PermissionManager(project=str(ws))
+    permissions.load_from_config(config)
+    runtime = TeamRuntime(
+        llm,
+        build_workspace_tools(ws),
+        workspace=ws,
+        permission_callback=lambda tc: permissions.check_and_approve(
+            tool_name=tc.name,
+            arguments=tc.arguments,
+            description=f"Team worker requesting {tc.name}",
+        ),
+    )
+    team_config = TeamConfig(
+        mode=TeamMode(mode),
+        max_agents=max_agents,
+        parallelism=parallelism,
+        max_iterations_per_agent=max_iterations,
+        workspace=str(ws),
+        effort_level=effort,
+        auto_approve_tools=yes,
+    )
+    final = None
+    for event in runtime.run(goal, team_config):
+        if event.type.value == "state_change":
+            console.print(f"[cyan]TEAM[/cyan] {event.data}")
+        elif event.type.value == "content":
+            if isinstance(event.data, dict) and event.data.get("agent_id"):
+                console.print(f"[green]{event.data.get('agent_id')}[/green] {event.data.get('status', 'event')}")
+            else:
+                console.print(str(event.data))
+        elif event.type.value == "done" and isinstance(event.data, dict):
+            final = event.data
+    if final is None:
+        raise click.ClickException("Team runtime ended without a result.")
+    console.print(f"[bold green]{final.get('summary', '')}[/bold green]")
+    if final.get("synthesis"):
+        console.print(final["synthesis"])
+    table = Table(title="Team Workers")
+    table.add_column("Agent")
+    table.add_column("Profession")
+    table.add_column("State")
+    for agent in final.get("agents", []):
+        table.add_row(str(agent.get("name")), str(agent.get("profession")), str(agent.get("status")))
+    console.print(table)
+
+
+@team.command("show")
+@click.argument("team_id", type=str)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def team_show(team_id: str, workspace: str) -> None:
+    """Inspect a persisted team run as JSON."""
+    import json
+    from nexus_agent.team import TeamStore
+    store = TeamStore(Path(workspace).resolve() / ".nexus" / "teams.db")
+    try:
+        team_data = store.team(team_id)
+        if team_data is None:
+            raise click.ClickException(f"Unknown team: {team_id}")
+        click.echo(json.dumps({
+            "team": team_data,
+            "agents": store.agents(team_id),
+            "messages": store.messages(team_id),
+            "events": store.events(team_id, limit=5000),
+        }, indent=2, ensure_ascii=False, default=str))
+    finally:
+        store.close()
+
+
 def main() -> None:
     """Main entry point."""
     cli(obj={})
