@@ -721,6 +721,7 @@ Team protocol:
         synthesis: str,
         results: list[dict[str, Any]],
         config: TeamConfig,
+        quality: dict[str, Any] | None = None,
     ) -> list[str]:
         if config.output_mode not in {"file", "both"}:
             return []
@@ -741,6 +742,7 @@ Team protocol:
                         "summary": summary,
                         "synthesis": synthesis,
                         "agents": results,
+                        "quality": quality or {},
                     },
                     ensure_ascii=False,
                     indent=2,
@@ -766,6 +768,10 @@ Team protocol:
                 "## Synthesis",
                 "",
                 content,
+                "",
+                "## Evidence Quality Gate",
+                "",
+                json_dump(quality or {}),
                 "",
                 "## Workers",
                 "",
@@ -1140,6 +1146,7 @@ Team protocol:
             synthesis,
             results,
             cfg,
+            quality,
         )
         if artifact_paths:
             store.event(team_id, "artifacts_written", {"paths": artifact_paths})
