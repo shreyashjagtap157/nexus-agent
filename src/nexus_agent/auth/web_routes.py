@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from nexus_agent.auth import AuthStore
 from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.providers.catalog import all_providers
+from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
+from nexus_agent.storage.layout import StorageLayout
 from nexus_agent.core.config import save_user_config
 
 
@@ -120,6 +122,17 @@ def register_auth_routes(app: Any) -> None:
         values = payload.model_dump(exclude_none=True)
         save_user_config({"providers": {provider.lower(): values}})
         return {"provider": provider.lower(), "config": values}
+
+
+    @app.get("/api/providers/models")
+    async def provider_models(provider: str, refresh: bool = False):
+        catalog = ModelsDevCatalog(
+            StorageLayout(Path.cwd()).caches / "models-dev.json"
+        )
+        return {
+            "provider": provider,
+            "models": catalog.models(provider, refresh=refresh),
+        }
 
     @app.get("/api/auth")
     async def auth_list():
