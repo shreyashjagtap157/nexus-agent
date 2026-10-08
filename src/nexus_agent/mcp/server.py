@@ -77,6 +77,28 @@ class MCPServer:
                     self._send_error(req_id, -32601, f"Tool not found: {tool_name}")
                     return
 
+                approved = False
+                if self._permission_callback is not None:
+                    approved = bool(
+                        self._permission_callback(
+                            tool.name,
+                            tool_args,
+                            tool.description,
+                        )
+                    )
+                else:
+                    level = str(getattr(tool, "permission_level", "ask")).lower()
+                    approved = level in {"read-only", "allow"}
+
+                if not approved:
+                    self._send_response(req_id, {
+                        "isError": True,
+                        "content": [
+                            {"type": "text", "text": f"Permission denied for tool: {tool_name}"}
+                        ]
+                    })
+                    return
+
                 # Execute tool
                 try:
                     res = tool.execute(**tool_args)
