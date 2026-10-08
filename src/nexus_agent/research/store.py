@@ -245,6 +245,21 @@ class ResearchStore:
             conn.commit()
             return {"claim_id": claim_id, "verdict": verdict, "evidence_count": len(evidence), "source_ids": source_ids}
 
+    def verified_claims(self, team_id: str) -> list[dict[str, Any]]:
+        """Return only claims that passed the persisted verification gate, with provenance."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT c.claim_id, c.statement, c.claim_type, c.created_by, c.status,
+                          e.source_id, e.quote, s.url, s.title, s.content_hash
+                   FROM research_claims c
+                   JOIN research_claim_evidence e ON e.claim_id=c.claim_id
+                   JOIN research_sources s ON s.source_id=e.source_id
+                   WHERE c.team_id=? AND c.status='verified'
+                   ORDER BY c.claim_id, e.source_id""",
+                (team_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def claims(self, team_id: str) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
