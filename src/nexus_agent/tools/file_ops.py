@@ -315,9 +315,20 @@ class DeleteFileTool(Tool):
                 if any(target.iterdir()):
                     return "Error: Refusing to delete a non-empty directory."
                 target.rmdir()
+                FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db").record(
+                    "delete_directory",
+                    str(target.relative_to(self.workspace)),
+                )
                 return f"Deleted empty directory {path}."
             if permanent:
+                previous_hash = FileJournal.digest_file(target)
                 target.unlink()
+                FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db").record(
+                    "delete_permanent",
+                    str(target.relative_to(self.workspace)),
+                    previous_hash,
+                    None,
+                )
                 return f"Permanently deleted {path}."
             import time
             import uuid
@@ -326,6 +337,13 @@ class DeleteFileTool(Tool):
             safe_name = f"{int(time.time())}-{uuid.uuid4().hex[:8]}-{relative.name}"
             destination = self.trash_dir / safe_name
             target.rename(destination)
+            FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db").record(
+                "delete_to_trash",
+                str(relative),
+                previous_hash,
+                None,
+                details={"trash_name": safe_name},
+            )
             return f"Moved {path} to NexusAgent trash: {destination.relative_to(self.workspace)}"
         except (OSError, ValueError) as exc:
             return f"Error: delete failed: {exc}"
@@ -369,8 +387,17 @@ class MoveFileTool(Tool):
         if any(part == ".git" for part in src.parts + dst.parts):
             return "Error: .git paths are not mutable through this tool."
         try:
+            previous_hash = FileJournal.digest_file(src)
             dst.parent.mkdir(parents=True, exist_ok=True)
             src.rename(dst)
+            new_hash = FileJournal.digest_file(dst)
+            FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db").record(
+                "move",
+                str(dst.relative_to(self.workspace)),
+                previous_hash,
+                new_hash,
+                details={"source": str(src.relative_to(self.workspace))},
+            )
             return f"Moved {source} -> {destination}"
         except OSError as exc:
             return f"Error: move failed: {exc}"
