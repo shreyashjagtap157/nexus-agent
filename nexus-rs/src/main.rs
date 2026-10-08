@@ -92,6 +92,14 @@ enum Commands {
         #[arg(long, default_value = "medium")]
         effort: String,
 
+        /// Team output mode: chat, file or both.
+        #[arg(long, default_value = "chat")]
+        output: String,
+
+        /// Team output format: markdown, text or json.
+        #[arg(long, default_value = "markdown")]
+        format: String,
+
         /// Workspace directory.
         #[arg(long, default_value = ".")]
         workspace: String,
@@ -144,6 +152,8 @@ async fn main() {
             parallelism,
             max_iterations,
             effort,
+            output,
+            format,
             workspace,
             yes,
         } => {
@@ -154,6 +164,8 @@ async fn main() {
                 parallelism,
                 max_iterations,
                 &effort,
+                &output,
+                &format,
                 &workspace,
                 yes,
             )
@@ -440,6 +452,8 @@ async fn run_team(
     parallelism: u32,
     max_iterations: u32,
     effort: &str,
+    output: &str,
+    format: &str,
     workspace: &str,
     yes: bool,
 ) {
@@ -459,6 +473,8 @@ async fn run_team(
         .args(["--parallelism", &parallelism.to_string()])
         .args(["--max-iterations", &max_iterations.to_string()])
         .args(["--effort", effort])
+        .args(["--output", output])
+        .args(["--format", format])
         .args(["--workspace", workspace]);
 
     if yes {
