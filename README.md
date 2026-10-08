@@ -1,11 +1,11 @@
-# 🤖 NexusAgent — Premium Offline-First AI Coding Agent
+# 🤖 NexusAgent — Local Multi-Agent Development & Research Workbench
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/nexus-agent/nexus-agent/workflows/Tests/badge.svg)](https://github.com/nexus-agent/nexus-agent/actions)
 [![Lint](https://github.com/nexus-agent/nexus-agent/workflows/Lint/badge.svg)](https://github.com/nexus-agent/nexus-agent/actions)
 
-NexusAgent is a state-of-the-art, fully offline-ready AI coding agent hosted entirely on your local machine. It combines the premium user experiences of *claude-code*, *opencode*, *letta*, *hermes*, and *codex* into a single, unified terminal (TUI) and high-fidelity dashboard (GUI).
+NexusAgent is a local-first agent runtime and workbench for software engineering, research, analysis, automation and other tool-driven tasks. It supports the familiar single-agent workflow of modern coding agents while adding dynamically assembled multi-agent teams with concurrent specialist workers, a shared blackboard, explicit permissions and persistent telemetry.
 
 Unlike traditional coding agents that force reliance on external cloud APIs, NexusAgent is built **local-first**, letting you load, hot-swap, and run local generative model runtimes (GGUF, ONNX) directly inside your machine's CPU, GPU, or Copilot+ PC NPU processors.
 
@@ -25,6 +25,31 @@ Unlike traditional coding agents that force reliance on external cloud APIs, Nex
 
 ---
 
+## 👥 Multi-Agent Teams
+
+A task can run as one agent or as a dynamically assembled team. The team architect generates professional roles from the task and operating mode, then runs eligible workers concurrently with role-specific tool access.
+
+Supported modes: auto, code, research, review, analysis, plan and automation.
+
+Team workers receive a dedicated AgentLoop context and shared team_send_message / team_read_messages tools. Team state, peer messages and events persist under .nexus/teams.db.
+
+CLI:
+
+    nexus-team run "Inspect the repository, implement the requested change, test it, and independently review the result." --mode code --max-agents 6 --parallelism 4
+
+Web team console:
+
+    /team.html
+
+## 🧭 Client Surfaces
+
+| Surface | Entry point | Purpose |
+|---|---|---|
+| CLI/TUI | `nexus` | General agent interaction and commands |
+| Team CLI | `nexus-team` | Dynamic multi-agent teams |
+| Web GUI | `nexus gui` | Browser workspace and single-agent chat |
+| Team Console | `/team.html` | Live team topology, messages and telemetry |
+| Native client | `nexus-rs/` | Native Rust CLI/TUI over the agent backend |
 ## 🏗️ Technical Architecture
 
 ```
