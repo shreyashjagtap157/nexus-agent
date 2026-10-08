@@ -99,3 +99,11 @@ def test_agent_skill_roundtrip_and_team_profile_binding(tmp_path):
     assert loaded is not None
     assert loaded.skill_ids == ["example"]
     assert loaded.to_team_profile().skill_ids == ["example"]
+
+
+def test_team_config_reserves_pinned_agent_capacity():
+    from nexus_agent.team.models import TeamConfig
+
+    config = TeamConfig(max_agents=2, agent_ids=["architect", "reviewer", "tester"]).normalize()
+    assert config.max_agents == 3
+    assert config.agent_ids == ["architect", "reviewer", "tester"]
