@@ -86,7 +86,7 @@ impl NexusDesktop {
         thread::spawn(move || worker_loop(command_rx, event_tx));
 
         Self {
-            endpoint: "http://127.0.0.1:8765".into(),
+            endpoint: "http://127.0.0.1:7860".into(),
             goal: String::new(),
             mode: "auto".into(),
             max_agents: 6,
