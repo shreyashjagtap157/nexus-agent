@@ -289,6 +289,13 @@ class ResearchStore:
                    WHERE c.team_id=? AND v.verdict='verified'""",
                 (team_id,),
             ).fetchall()
+            claim_source_rows = conn.execute(
+                """SELECT ce.claim_id, ce.source_id
+                   FROM research_claim_evidence ce
+                   JOIN research_claims c ON c.claim_id=ce.claim_id
+                   WHERE c.team_id=?""",
+                (team_id,),
+            ).fetchall()
 
         source_verifier_counts: dict[tuple[int, int], set[str]] = {}
         for row in verification_rows:
@@ -300,13 +307,6 @@ class ResearchStore:
                 key = (int(row["claim_id"]), int(source_id))
                 source_verifier_counts.setdefault(key, set()).add(str(row["verifier_id"]))
 
-        claim_source_rows = conn.execute(
-            """SELECT ce.claim_id, ce.source_id
-               FROM research_claim_evidence ce
-               JOIN research_claims c ON c.claim_id=ce.claim_id
-               WHERE c.team_id=?""",
-            (team_id,),
-        ).fetchall()
         total_claims = len(claim_rows)
         verified_claims = sum(1 for row in claim_rows if row["status"] == "verified")
         rejected_claims = sum(1 for row in claim_rows if row["status"] == "rejected")
