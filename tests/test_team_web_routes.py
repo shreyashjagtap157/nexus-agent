@@ -65,3 +65,19 @@ def test_sensitive_team_read_routes_reject_remote_clients(tmp_path: Path, path: 
     register_team_routes(app, RouteState(tmp_path))
     response = TestClient(app).get(path)
     assert response.status_code == 403
+\n
+def test_team_report_rejects_symlinked_result_artifact(tmp_path: Path):
+    root = _artifact_root(State(tmp_path), "team-1")
+    root.mkdir(parents=True, exist_ok=True)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    link = root / "result.md"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("Symlinks are not available on this platform")
+
+    app = FastAPI()
+    register_team_routes(app, State(tmp_path))
+    response = TestClient(app).get("/api/teams/team-1/report")
+    assert response.status_code == 400
