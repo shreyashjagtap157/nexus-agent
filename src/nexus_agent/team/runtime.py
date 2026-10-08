@@ -306,6 +306,7 @@ Team protocol:
         config: TeamConfig,
         store: TeamStore,
         events: queue.Queue,
+        control_state: Any,
     ) -> dict[str, Any]:
         started = time.time()
         store.update_agent(agent_storage_id, state=TeamAgentState.RUNNING.value, started_at=started)
@@ -382,43 +383,204 @@ Team protocol:
                 tool.set_provider(worker_provider)
 
         chunks: list[str] = []
-        had_agent_error = False
+        round_results: list[str] = []
         try:
-            worker_goal = f"{goal}\n\nYour specific assignment: {profile.mission}\n\nRole instructions:\n{profile.instructions}"
-            for event in agent.run(worker_goal):
-                store.event(
-                    team_id,
-                    "agent_event",
-                    {
-                        "event_type": event.type.value,
-                        "data": event.data,
-                        "timestamp": event.timestamp,
-                    },
-                    profile.role_id,
-                )
-                events.put(
-                    AgentEvent(
-                        event.type,
-                        {"team_id": team_id, "agent_id": profile.role_id, "data": event.data},
-                        event.timestamp,
-                    )
-                )
-                if event.type == AgentEventType.ERROR:
-                    had_agent_error = True
-                elif event.type == AgentEventType.CONTENT_CHUNK:
-                    chunks.append(str(event.data or ""))
-                elif event.type == AgentEventType.CONTENT_COMPLETE:
-                    chunks = [str(event.data or "")]
+            research_mode = "research" in profile.tool_categories
+            if research_mode:
+                from .research import policy as research_policy
+                policy_data = research_policy(config.research_depth)
+                if config.research_collection == "bounded":
+                    max_rounds = max(1, int(policy_data["query_rounds"]))
+                elif config.research_collection == "until_saturation":
+                    max_rounds = max(1, int(policy_data["query_rounds"]))
+                else:
+                    max_rounds = 0
+            else:
+                max_rounds = 1
 
-            result = "".join(chunks).strip()
-            if had_agent_error:
-                raise RuntimeError("Worker emitted an agent error event; see team event log for details.")
+            started_monotonic = time.monotonic()
+            idle_rounds = 0
+            round_index = 0
+
+            while max_rounds == 0 or round_index < max_rounds:
+                persisted_control = store.pop_control(team_id)
+                if persisted_control == "pause":
+                    control_state.pause_requested.set()
+                elif persisted_control == "resume":
+                    control_state.pause_requested.clear()
+                elif persisted_control == "stop":
+                    control_state.stop_requested.set()
+
+                if control_state.stop_requested.is_set():
+                    store.update_agent(
+                        agent_storage_id,
+                        state=TeamAgentState.CANCELLED.value,
+                        ended_at=time.time(),
+                        error="Cancelled by user.",
+                    )
+                    store.event(team_id, "agent_cancelled", {"round": round_index + 1}, profile.role_id)
+                    return {
+                        "agent_id": profile.role_id,
+                        "name": profile.name,
+                        "profession": profile.profession,
+                        "status": TeamAgentState.CANCELLED.value,
+                        "result": "\n\n".join(round_results),
+                        "reviewer": profile.reviewer,
+                        "error": "Cancelled by user.",
+                    }
+
+                if control_state.pause_requested.is_set():
+                    store.update_agent(agent_storage_id, state=TeamAgentState.WAITING_AGENT.value)
+                    store.set_status(team_id, "paused")
+                    while control_state.pause_requested.is_set() and not control_state.stop_requested.is_set():
+                        persisted_control = store.pop_control(team_id)
+                        if persisted_control == "resume":
+                            control_state.pause_requested.clear()
+                        elif persisted_control == "stop":
+                            control_state.stop_requested.set()
+                        time.sleep(0.5)
+                    if control_state.stop_requested.is_set():
+                        continue
+                    store.update_agent(agent_storage_id, state=TeamAgentState.RUNNING.value)
+                    store.set_status(team_id, "running")
+
+                round_index += 1
+                before_sources = 0
+                research_store = None
+                if research_mode:
+                    from nexus_agent.research.store import ResearchStore
+                    research_store = ResearchStore(self.data_dir / "research.db")
+                    before_sources = len(research_store.sources(team_id))
+                    store.event(
+                        team_id,
+                        "research_round_started",
+                        {
+                            "round": round_index,
+                            "depth": config.research_depth,
+                            "collection": config.research_collection,
+                            "source_strategy": config.research_source_strategy,
+                            "source_count_before": before_sources,
+                        },
+                        profile.role_id,
+                    )
+
+                round_chunks: list[str] = []
+                round_had_error = False
+                round_goal = (
+                    f"{goal}\n\nYour specific assignment: {profile.mission}"
+                    f"\n\nRole instructions:\n{profile.instructions}"
+                )
+                if research_mode:
+                    round_goal += (
+                        f"\n\nThis is evidence-gathering round {round_index}. "
+                        "Inspect existing ledger evidence first. Seek genuinely new or stronger "
+                        "evidence, close unresolved gaps, challenge prior findings, and avoid "
+                        "duplicate collection. Record exact source snapshots and quotations."
+                    )
+
+                agent = AgentLoop(
+                    provider=worker_provider,
+                    tools=worker_tools,
+                    config=cfg,
+                    permission_callback=lambda tc: self._permission(tc, config),
+                )
+                for tool in worker_tools:
+                    if hasattr(tool, "set_agent_loop"):
+                        tool.set_agent_loop(agent)
+                    if hasattr(tool, "set_provider"):
+                        tool.set_provider(worker_provider)
+
+                for event in agent.run(round_goal):
+                    store.event(
+                        team_id,
+                        "agent_event",
+                        {
+                            "event_type": event.type.value,
+                            "data": event.data,
+                            "timestamp": event.timestamp,
+                            "round": round_index,
+                        },
+                        profile.role_id,
+                    )
+                    events.put(
+                        AgentEvent(
+                            event.type,
+                            {
+                                "team_id": team_id,
+                                "agent_id": profile.role_id,
+                                "data": event.data,
+                                "round": round_index,
+                            },
+                            event.timestamp,
+                        )
+                    )
+                    if event.type == AgentEventType.ERROR:
+                        round_had_error = True
+                    elif event.type == AgentEventType.CONTENT_CHUNK:
+                        round_chunks.append(str(event.data or ""))
+                    elif event.type == AgentEventType.CONTENT_COMPLETE:
+                        round_chunks = [str(event.data or "")]
+
+                if round_had_error:
+                    raise RuntimeError(
+                        f"Worker emitted an agent error event during round {round_index}."
+                    )
+
+                round_result = "".join(round_chunks).strip()
+                if round_result:
+                    round_results.append(f"[Round {round_index}]\n{round_result}")
+                chunks = list(round_chunks)
+
+                if research_store is not None:
+                    after_sources = len(research_store.sources(team_id))
+                    delta = max(0, after_sources - before_sources)
+                    research_store.close()
+                    if delta == 0:
+                        idle_rounds += 1
+                    else:
+                        idle_rounds = 0
+                    store.event(
+                        team_id,
+                        "research_round_completed",
+                        {
+                            "round": round_index,
+                            "source_count_before": before_sources,
+                            "source_count_after": after_sources,
+                            "new_distinct_sources": delta,
+                            "idle_rounds": idle_rounds,
+                        },
+                        profile.role_id,
+                    )
+                    if config.research_collection == "until_saturation" and idle_rounds >= config.research_idle_rounds:
+                        store.event(
+                            team_id,
+                            "research_saturation_reached",
+                            {"round": round_index, "idle_rounds": idle_rounds},
+                            profile.role_id,
+                        )
+                        break
+                    if (
+                        config.research_collection == "continuous"
+                        and time.monotonic() - started_monotonic >= config.research_max_minutes * 60
+                    ):
+                        store.event(
+                            team_id,
+                            "research_safety_deadline_reached",
+                            {"round": round_index, "max_minutes": config.research_max_minutes},
+                            profile.role_id,
+                        )
+                        break
+                else:
+                    break
+
+            result = "\n\n".join(round_results).strip()
             store.update_agent(
                 agent_storage_id,
                 state=TeamAgentState.COMPLETED.value,
                 ended_at=time.time(),
                 result=result,
             )
+            from nexus_agent.memory.scoped import MemoryScope
             if result:
                 scoped_memory.store(
                     result[-5000:],
@@ -629,6 +791,21 @@ Team protocol:
             str(self.workspace),
             cfg.__dict__,
         )
+        if mode == TeamMode.RESEARCH:
+            from .research import policy as research_policy
+            store.event(
+                team_id,
+                "research_policy",
+                {
+                    "depth": cfg.research_depth,
+                    "policy": research_policy(cfg.research_depth),
+                    "collection": cfg.research_collection,
+                    "source_strategy": cfg.research_source_strategy,
+                    "seed_urls": list(cfg.research_source_urls),
+                    "max_minutes": cfg.research_max_minutes,
+                    "idle_rounds": cfg.research_idle_rounds,
+                },
+            )
 
         agent_storage_ids: dict[str, str] = {}
         for profile in profiles:
@@ -744,6 +921,7 @@ Team protocol:
                         cfg,
                         store,
                         events,
+                        control_state,
                     )
                     active[future] = profile
 
