@@ -59,11 +59,17 @@ def make_provider_selector(
         if not provider_name:
             return default_provider
 
-        primary = ProviderFactory.create_provider(
-            provider_name,
-            config,
-            model_override,
-        )
+        primary: LLMProvider | None = None
+        primary_error: Exception | None = None
+        try:
+            primary = ProviderFactory.create_provider(
+                provider_name,
+                config,
+                model_override,
+            )
+        except (ValueError, ImportError, OSError, RuntimeError) as exc:
+            primary_error = exc
+
         fallback_targets: list[LLMProvider] = []
         for raw_target in fallback_specs:
             fallback_provider, fallback_model = _routing_target(raw_target)
@@ -80,10 +86,21 @@ def make_provider_selector(
             except (ValueError, ImportError, OSError, RuntimeError):
                 continue
 
+        from nexus_agent.llm.providers.factory import FallbackProvider
+
+        if primary is None:
+            if not fallback_targets:
+                if primary_error is not None:
+                    raise primary_error
+                return default_provider
+            # A primary that cannot initialize is skipped entirely; the first
+            # usable fallback becomes the active primary and the remaining
+            # providers continue the normal fallback chain.
+            return FallbackProvider(fallback_targets[0], fallback_targets[1:])
+
         if not fallback_targets:
             return primary
 
-        from nexus_agent.llm.providers.factory import FallbackProvider
         return FallbackProvider(primary, fallback_targets)
 
     return select
