@@ -23,14 +23,10 @@ The GitHub repository administrator should configure these controls for main:
 
 The protected branch should require the successful completion of the repository's CI/security gates, including:
 
-- Tests matrix
-- Ruff and MyPy
-- Native Clients
-- Version Contract
-- Test & Audit
+- CI / Required
 - Security
 
-Matrix-generated jobs should all be treated as required for the corresponding workflow.
+The `CI / Required` job is the single authoritative application-quality gate and aggregates the complete Python, native, lint, version and audit validation matrix. Security remains a separate required control.
 
 ## Release policy
 
