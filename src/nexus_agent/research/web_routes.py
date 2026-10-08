@@ -48,7 +48,6 @@ def register_research_source_routes(app: Any, state_manager: Any) -> None:
         _require_local(request)
         source = registry().get(source_id)
         if source is None:
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Research source not found")
         return source.to_dict()
 
@@ -56,7 +55,6 @@ def register_research_source_routes(app: Any, state_manager: Any) -> None:
     async def update_research_source(source_id: str, request: Request, payload: SourceRequest):
         _require_local(request)
         if source_id.strip().lower() != payload.id.strip().lower():
-            from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="Path source ID and body ID must match")
         saved = registry().add(ResearchSource(**payload.model_dump()))
         return {"source": saved.to_dict()}
