@@ -40,6 +40,9 @@ class AgentProfile:
     reviewer: bool = False
     dependencies: list[str] = field(default_factory=list)
     model_role: str = "default"
+    provider: str | None = None
+    model: str | None = None
+    fallbacks: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -53,6 +56,9 @@ class AgentProfile:
             "reviewer": self.reviewer,
             "dependencies": list(self.dependencies),
             "model_role": self.model_role,
+            "provider": self.provider,
+            "model": self.model,
+            "fallbacks": list(self.fallbacks),
         }
 
 
