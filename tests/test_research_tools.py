@@ -131,3 +131,30 @@ def test_interactive_user_only_policy_excludes_arbitrary_source_fetch(tmp_path: 
     assert "research_configured_source" in names
     assert "research_record_source" not in names
     assert not names.intersection({"web_search", "web_fetch", "webfetch", "browser"})
+
+
+def test_research_ledger_write_is_denied_to_non_research_workers(tmp_path: Path):
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    from nexus_agent.team.store import TeamStore
+
+    store = TeamStore(tmp_path / "teams.db")
+    try:
+        profile = AgentProfile(
+            role_id="reviewer",
+            name="Reviewer",
+            profession="Reviewer",
+            mission="Review",
+            instructions="Review",
+            tool_categories=["read"],
+            write_access=False,
+        )
+        tool = ResearchRecordSourceTool(tmp_path / "research.db", "team-1", profile.role_id)
+        call = type("ToolCall", (), {"name": "research_record_source"})()
+        assert runtime._permission(
+            call,
+            TeamConfig(mode=TeamMode.REVIEW),
+            profile,
+            [tool],
+        ) is False
+    finally:
+        store.close()
