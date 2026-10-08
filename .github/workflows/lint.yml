@@ -6,40 +6,40 @@ concurrency:
 
 on:
   push:
-    branches: [main, master, multi-agent-platform]
+    branches: ["main"]
   pull_request:
-    branches: [main, master]
+    branches: ["main"]
+
+permissions:
+  contents: read
 
 jobs:
   lint:
-    name: Lint (Python ${{ matrix.python-version }})
+    name: Ruff and MyPy
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12"]
-        tool: [ruff, mypy]
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Install development dependencies
         run: |
-          pip install -e ".[dev]"
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
 
-      - name: Run Ruff
-        if: matrix.tool == 'ruff'
+      - name: Ruff
         run: |
           python -m ruff check src/
           python -m ruff format --check src/
 
-      - name: Run MyPy
-        if: matrix.tool == 'mypy'
-        run: |
-          python -m mypy src/nexus_agent/
+      - name: MyPy
+        run: python -m mypy src/nexus_agent/
