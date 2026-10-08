@@ -76,6 +76,32 @@ class AgentRegistry:
                     del merged[spec.id]
         return list(sorted(merged.values(), key=lambda item: (item.name.lower(), item.id)))
 
+    def match_relevant(self, query: str, limit: int = 16) -> list[AgentSpec]:
+        """Return enabled user/project/workspace profiles ranked by lexical relevance."""
+        tokens = {
+            token
+            for token in re.findall(r"[a-z0-9_+-]{3,}", query.lower())
+        }
+        scored: list[tuple[int, str, AgentSpec]] = []
+        for spec in self.load():
+            haystack = " ".join(
+                [
+                    spec.id,
+                    spec.name,
+                    spec.profession,
+                    spec.description,
+                    spec.mission,
+                    *spec.tags,
+                ]
+            ).lower()
+            score = sum(1 for token in tokens if token in haystack)
+            # Reviewers and specialist profiles get a deterministic tie-break.
+            if spec.reviewer and any(term in tokens for term in {"review", "audit", "verify", "security"}):
+                score += 2
+            scored.append((score, spec.name.lower(), spec))
+        scored.sort(key=lambda item: (-item[0], item[1]))
+        return [spec for score, _, spec in scored[: max(1, min(limit, 64))] if score > 0]
+ 
     def get(self, agent_id: str) -> AgentSpec | None:
         normalized = agent_id.strip().lower()
         return next((spec for spec in self.load(include_disabled=True) if spec.id == normalized and spec.enabled), None)
