@@ -5,7 +5,18 @@ from typing import Any
 
 from nexus_agent.llm.base import LLMProvider
 from nexus_agent.llm.providers.factory import ProviderFactory
+
 from .models import AgentProfile
+
+
+def _routing_target(value: str) -> tuple[str, str | None]:
+    target = str(value or "").strip()
+    if not target:
+        return "", None
+    if "/" not in target:
+        return target, None
+    provider, model = target.split("/", 1)
+    return provider.strip(), model.strip() or None
 
 
 def make_provider_selector(
@@ -19,6 +30,7 @@ def make_provider_selector(
       team.roles.<model_role or role_id>.model
       team.roles.<model_role or role_id>.fallbacks
 
+    Fallback entries may be provider names or `provider/model` targets.
     A missing role mapping returns the default provider.
     """
     specs = config.get("team", {}).get("roles", {})
@@ -30,15 +42,15 @@ def make_provider_selector(
         if not isinstance(spec, dict):
             spec = {}
 
-        # Agent-local routing has highest precedence, followed by the
-        # workflow/team role map, followed by the shared default provider.
-        provider_name = str(profile.provider or spec.get("provider") or "").strip()
-        model = profile.model or spec.get("model")
+        provider_name, provider_model = _routing_target(
+            profile.provider or spec.get("provider") or ""
+        )
+        model = profile.model or spec.get("model") or provider_model
         model_override = str(model).strip() if model is not None else None
 
-        fallbacks = list(profile.fallbacks or [])
-        if not fallbacks:
-            fallbacks = [
+        fallback_specs = list(profile.fallbacks or [])
+        if not fallback_specs:
+            fallback_specs = [
                 str(item).strip()
                 for item in spec.get("fallbacks", [])
                 if str(item).strip()
@@ -47,19 +59,31 @@ def make_provider_selector(
         if not provider_name:
             return default_provider
 
-        if fallbacks:
-            return ProviderFactory.create_with_fallback(
-                provider_name,
-                fallbacks,
-                config,
-                model_override,
-            )
-
-        return ProviderFactory.create_provider(
+        primary = ProviderFactory.create_provider(
             provider_name,
             config,
             model_override,
         )
+        fallback_targets: list[LLMProvider] = []
+        for raw_target in fallback_specs:
+            fallback_provider, fallback_model = _routing_target(raw_target)
+            if not fallback_provider:
+                continue
+            try:
+                fallback_targets.append(
+                    ProviderFactory.create_provider(
+                        fallback_provider,
+                        config,
+                        fallback_model,
+                    )
+                )
+            except (ValueError, ImportError, OSError, RuntimeError):
+                continue
 
+        if not fallback_targets:
+            return primary
+
+        from nexus_agent.llm.providers.factory import FallbackProvider
+        return FallbackProvider(primary, fallback_targets)
 
     return select
