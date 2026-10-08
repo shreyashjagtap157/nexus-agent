@@ -137,7 +137,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         )
 
     @router.get("/api/workflows")
-    async def workflows():
+    async def workflows(request: Request):
+        _require_local_client(request)
         return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry(_workspace(state_manager)).list()]}
 
     @router.put("/api/workflows/{workflow_id}")
@@ -160,11 +161,13 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return {"deleted": workflow_id, "scope": scope}
 
     @router.get("/api/research-depths")
-    async def research_depths():
+    async def research_depths(request: Request):
+        _require_local_client(request)
         return {"depths": all_policies()}
 
     @router.get("/api/research-sources")
-    async def research_sources():
+    async def research_sources(request: Request):
+        _require_local_client(request)
         from nexus_agent.research.sources import ResearchSourceRegistry
         registry = ResearchSourceRegistry(
             _workspace(state_manager) / ".nexus-agent" / "research-sources.yaml"
@@ -391,23 +394,30 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         )
 
     @router.get("/api/teams/{team_id}/artifacts")
-    async def team_artifacts(team_id: str):
-        root = (StorageLayout(_workspace(state_manager)).artifacts / team_id).resolve()
+    async def team_artifacts(request: Request, team_id: str):
+        _require_local_client(request)
+        root = _artifact_root(state_manager, team_id)
         if not root.exists():
             return {"artifacts": []}
         artifacts = []
         for path in sorted(root.rglob("*")):
-            if path.is_file():
+            resolved = path.resolve()
+            try:
+                resolved.relative_to(root)
+            except ValueError:
+                continue
+            if resolved.is_file():
                 artifacts.append({
-                    "name": str(path.relative_to(root)),
-                    "size": path.stat().st_size,
-                    "path": str(path),
+                    "name": str(resolved.relative_to(root)),
+                    "size": resolved.stat().st_size,
+                    "path": str(resolved),
                 })
         return {"team_id": team_id, "artifacts": artifacts}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
-    async def download_team_artifact(team_id: str, artifact_path: str):
-        root = (StorageLayout(_workspace(state_manager)).artifacts / team_id).resolve()
+    async def download_team_artifact(request: Request, team_id: str, artifact_path: str):
+        _require_local_client(request)
+        root = _artifact_root(state_manager, team_id)
         target = (root / artifact_path).resolve()
         try:
             target.relative_to(root)
