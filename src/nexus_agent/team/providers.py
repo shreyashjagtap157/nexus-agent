@@ -37,17 +37,14 @@ def make_provider_selector(
             return ProviderFactory.create_provider(profile.provider, config, profile.model)
         spec = specs.get(profile.model_role) or specs.get(profile.role_id) or {}
         if not isinstance(spec, dict):
-            return default_provider
-        provider_name = str(spec.get("provider") or "").strip()
-        model = spec.get("model")
+            spec = {}
+        provider_name = (profile.provider or str(spec.get("provider") or "")).strip()
+        model = profile.model or spec.get("model")
         if not provider_name:
             return default_provider
         model_override = str(model).strip() if model is not None else None
-        fallbacks = [
-            str(item).strip()
-            for item in spec.get("fallbacks", [])
-            if str(item).strip()
-        ]
+        configured_fallbacks = profile.fallbacks or spec.get("fallbacks", [])
+        fallbacks = [str(item).strip() for item in configured_fallbacks if str(item).strip()]
         if fallbacks:
             return ProviderFactory.create_with_fallback(
                 provider_name,
