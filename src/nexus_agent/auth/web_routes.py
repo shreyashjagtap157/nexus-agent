@@ -1,6 +1,7 @@
 """Web endpoints for provider catalog and credential lifecycle."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 import time
 
