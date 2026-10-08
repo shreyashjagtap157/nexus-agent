@@ -138,6 +138,7 @@ Team protocol:
     def _worker(
         self,
         profile: AgentProfile,
+        agent_storage_id: str,
         team_id: str,
         goal: str,
         config: TeamConfig,
@@ -145,7 +146,7 @@ Team protocol:
         events: queue.Queue,
     ) -> dict[str, Any]:
         started = time.time()
-        store.update_agent(profile.role_id, state=TeamAgentState.RUNNING.value, started_at=started)
+        store.update_agent(agent_storage_id, state=TeamAgentState.RUNNING.value, started_at=started)
         store.event(
             team_id,
             "agent_started",
@@ -181,6 +182,7 @@ Team protocol:
         )
 
         chunks: list[str] = []
+        had_agent_error = False
         try:
             for event in agent.run(goal):
                 store.event(
@@ -200,14 +202,18 @@ Team protocol:
                         event.timestamp,
                     )
                 )
-                if event.type == AgentEventType.CONTENT_CHUNK:
+                if event.type == AgentEventType.ERROR:
+                    had_agent_error = True
+                elif event.type == AgentEventType.CONTENT_CHUNK:
                     chunks.append(str(event.data or ""))
                 elif event.type == AgentEventType.CONTENT_COMPLETE:
                     chunks = [str(event.data or "")]
 
             result = "".join(chunks).strip()
+            if had_agent_error:
+                raise RuntimeError("Worker emitted an agent error event; see team event log for details.")
             store.update_agent(
-                profile.role_id,
+                agent_storage_id,
                 state=TeamAgentState.COMPLETED.value,
                 ended_at=time.time(),
                 result=result,
@@ -239,7 +245,7 @@ Team protocol:
             }
         except (RuntimeError, ValueError, OSError, TypeError) as exc:
             store.update_agent(
-                profile.role_id,
+                agent_storage_id,
                 state=TeamAgentState.FAILED.value,
                 ended_at=time.time(),
                 error=str(exc),
@@ -316,8 +322,9 @@ Team protocol:
             cfg.__dict__,
         )
 
+        agent_storage_ids: dict[str, str] = {}
         for profile in profiles:
-            store.add_agent(team_id, profile.to_dict())
+            agent_storage_ids[profile.role_id] = store.add_agent(team_id, profile.to_dict())
             store.event(team_id, "agent_planned", {"profile": profile.to_dict()}, profile.role_id)
 
         yield AgentEvent(
@@ -335,7 +342,16 @@ Team protocol:
             thread_name_prefix=f"nexus-team-{team_id}",
         ) as pool:
             futures = [
-                pool.submit(self._worker, profile, team_id, goal, cfg, store, events)
+                pool.submit(
+                    self._worker,
+                    profile,
+                    agent_storage_ids[profile.role_id],
+                    team_id,
+                    goal,
+                    cfg,
+                    store,
+                    events,
+                )
                 for profile in profiles
             ]
             for future in as_completed(futures):
