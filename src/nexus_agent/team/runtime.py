@@ -92,19 +92,6 @@ def build_workspace_tools(
         memory = MemoryTool()
         memory.set_memory(memory_manager)
         tools.append(memory)
-    from nexus_agent.memory.scoped import ScopedMemory
-    from nexus_agent.storage.layout import StorageLayout
-    from nexus_agent.tools.scoped_memory import ScopedMemoryTool
-    tools.append(
-        ScopedMemoryTool(
-            ScopedMemory(
-                StorageLayout(workspace),
-                agent_id=agent_id,
-                team_id=team_id,
-                session_id=session_id,
-            )
-        )
-    )
     if mcp_tools:
         tools.extend(mcp_tools)
     if include_advanced:
