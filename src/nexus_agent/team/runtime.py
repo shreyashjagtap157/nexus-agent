@@ -1136,18 +1136,6 @@ Team protocol:
                     store.set_status(team_id, "running")
                     yield AgentEvent(AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "running"})
 
-                # Active workers constitute one coordination wave. Do not replenish
-                # the wave until every member finishes; this makes the 5-10
-                # post-deployment coordination-turn guarantee observable and testable.
-                ready = [] if active else [
-                    profile_by_id[role_id]
-                    for role_id in sorted(pending)
-                    if all(
-                        dependency in completed_ids
-                        for dependency in profile_by_id[role_id].dependencies
-                    )
-                ]
-
                 # Unknown dependencies cannot ever unblock. Mark those workers
                 # as failed/review-required instead of deadlocking the team.
                 for role_id in sorted(pending):
@@ -1171,6 +1159,18 @@ Team protocol:
                             {"unknown_dependencies": unknown},
                             role_id,
                         )
+
+                # Active workers constitute one coordination wave. Do not replenish
+                # the wave until every member finishes; this makes the 5-10
+                # post-deployment coordination-turn guarantee observable and testable.
+                ready = [] if active else [
+                    profile_by_id[role_id]
+                    for role_id in sorted(pending)
+                    if all(
+                        dependency in completed_ids
+                        for dependency in profile_by_id[role_id].dependencies
+                    )
+                ]
 
                 if ready and coordination_turn_cap is not None and coordination_turn >= coordination_turn_cap:
                     store.event(
