@@ -51,3 +51,17 @@ def test_research_synthesis_requires_markers_when_verified_claims_exist():
         research_synthesis="A factual statement without provenance.",
     )
     assert result["checks"]["research_synthesis_evidence"]["passed"] is False
+
+
+def test_research_synthesis_accepts_verified_claim_ids_from_actual_coverage_shape():
+    research = {"passed": True, "verified_claim_ids": [11, 12], "unresolved_claims": 0}
+    result = evaluate_team(
+        results=[
+            {"status": "completed", "reviewer": True, "agent_id": "reviewer"},
+        ],
+        config=cfg(),
+        artifacts=[],
+        research_summary=research,
+        research_synthesis="Verified findings [claim:11] and [claim:12].",
+    )
+    assert result["checks"]["research_synthesis_evidence"]["passed"] is True
