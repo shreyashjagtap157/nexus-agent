@@ -532,7 +532,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             # Run the agent in a background thread to prevent blocking the async loop
             # and yield events back to the websocket client.
-            def run_agent_loop(loop, ws, agent_prompt):
+            def run_agent_loop(loop, ws, agent_prompt, prompt_mcp_clients):
                 try:
                     for event in agent.run(agent_prompt):
                         # Dispatch events back to async websocket thread safely
@@ -544,11 +544,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     asyncio.run_coroutine_threadsafe(
                         ws.send_json({"type": "error", "content": f"Agent error: {ex}"}), loop
                     )
+                finally:
+                    for mcp_client in prompt_mcp_clients:
+                        try:
+                            mcp_client.close()
+                        except (OSError, RuntimeError):
+                            logger.debug("Failed to close web chat MCP client", exc_info=True)
 
             loop = asyncio.get_running_loop()
             thread = threading.Thread(
                 target=run_agent_loop,
-                args=(loop, websocket, prompt)
+                args=(loop, websocket, prompt, mcp_clients),
+                name=f"nexus-web-agent-{session_id}",
+                daemon=True,
             )
 
             def _log_thread_error(future):
