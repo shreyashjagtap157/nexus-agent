@@ -47,6 +47,7 @@ class ResearchStore:
         verifier_id TEXT NOT NULL,
         verdict TEXT NOT NULL,
         note TEXT NOT NULL DEFAULT '',
+        source_ids_json TEXT NOT NULL DEFAULT '[]',
         created_at REAL NOT NULL,
         FOREIGN KEY(claim_id) REFERENCES research_claims(claim_id)
     );
@@ -58,6 +59,19 @@ class ResearchStore:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
+        self._ensure_migrations()
+
+    def _ensure_migrations(self) -> None:
+        with self._connect() as conn:
+            columns = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(research_verifications)").fetchall()
+            }
+            if "source_ids_json" not in columns:
+                conn.execute(
+                    "ALTER TABLE research_verifications ADD COLUMN source_ids_json TEXT NOT NULL DEFAULT '[]'"
+                )
+                conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path), timeout=30)
@@ -210,16 +224,26 @@ class ResearchStore:
                     for row in evidence
                 )
                 verdict = "verified" if matches else "rejected"
+            source_ids = [int(row["source_id"]) for row in evidence]
             conn.execute(
-                "INSERT INTO research_verifications(claim_id,verifier_id,verdict,note,created_at) VALUES(?,?,?,?,?)",
-                (claim_id, verifier_id, verdict, note[:4000], time.time()),
+                """INSERT INTO research_verifications(
+                    claim_id,verifier_id,verdict,note,source_ids_json,created_at
+                ) VALUES(?,?,?,?,?,?)""",
+                (
+                    claim_id,
+                    verifier_id,
+                    verdict,
+                    note[:4000],
+                    json.dumps(source_ids),
+                    time.time(),
+                ),
             )
             conn.execute(
                 "UPDATE research_claims SET status=? WHERE claim_id=?",
                 (verdict, claim_id),
             )
             conn.commit()
-            return {"claim_id": claim_id, "verdict": verdict, "evidence_count": len(evidence)}
+            return {"claim_id": claim_id, "verdict": verdict, "evidence_count": len(evidence), "source_ids": source_ids}
 
     def claims(self, team_id: str) -> list[dict[str, Any]]:
         with self._connect() as conn:
@@ -258,31 +282,58 @@ class ResearchStore:
                 "SELECT claim_id,status FROM research_claims WHERE team_id=? ORDER BY claim_id",
                 (team_id,),
             ).fetchall()
-            verified_rows = conn.execute(
-                """SELECT v.claim_id, COUNT(DISTINCT v.verifier_id) AS distinct_verifiers
+            verification_rows = conn.execute(
+                """SELECT v.claim_id, v.verifier_id, v.source_ids_json
                    FROM research_verifications v
                    JOIN research_claims c ON c.claim_id=v.claim_id
-                   WHERE c.team_id=? AND v.verdict='verified'
-                   GROUP BY v.claim_id""",
+                   WHERE c.team_id=? AND v.verdict='verified'""",
                 (team_id,),
             ).fetchall()
 
-        verification_counts = {
-            int(row["claim_id"]): int(row["distinct_verifiers"])
-            for row in verified_rows
-        }
+        source_verifier_counts: dict[tuple[int, int], set[str]] = {}
+        for row in verification_rows:
+            try:
+                source_ids = json.loads(row["source_ids_json"] or "[]")
+            except (TypeError, ValueError):
+                source_ids = []
+            for source_id in source_ids if isinstance(source_ids, list) else []:
+                key = (int(row["claim_id"]), int(source_id))
+                source_verifier_counts.setdefault(key, set()).add(str(row["verifier_id"]))
+
+        claim_source_rows = conn.execute(
+            """SELECT ce.claim_id, ce.source_id
+               FROM research_claim_evidence ce
+               JOIN research_claims c ON c.claim_id=ce.claim_id
+               WHERE c.team_id=?""",
+            (team_id,),
+        ).fetchall()
         total_claims = len(claim_rows)
         verified_claims = sum(1 for row in claim_rows if row["status"] == "verified")
         rejected_claims = sum(1 for row in claim_rows if row["status"] == "rejected")
         unresolved_claims = sum(
             1 for row in claim_rows if row["status"] not in {"verified", "rejected"}
         )
-        threshold_claims = sum(
-            1
-            for row in claim_rows
-            if row["status"] == "verified"
-            and verification_counts.get(int(row["claim_id"]), 0) >= required
-        )
+        required_source_checks: dict[int, int] = {}
+        for row in claim_source_rows:
+            claim_id = int(row["claim_id"])
+            source_id = int(row["source_id"])
+            required_source_checks[claim_id] = required_source_checks.get(claim_id, 0) + 1
+
+        threshold_claims = 0
+        for row in claim_rows:
+            claim_id = int(row["claim_id"])
+            if row["status"] != "verified":
+                continue
+            source_ids_for_claim = [
+                int(item["source_id"])
+                for item in claim_source_rows
+                if int(item["claim_id"]) == claim_id
+            ]
+            if source_ids_for_claim and all(
+                len(source_verifier_counts.get((claim_id, source_id), set())) >= required
+                for source_id in source_ids_for_claim
+            ):
+                threshold_claims += 1
         passed = (
             source_count > 0
             and total_claims > 0
