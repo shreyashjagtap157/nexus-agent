@@ -43,6 +43,7 @@ class WorkflowWriteRequest(BaseModel):
     output_format: str = Field(default="markdown", pattern="^(markdown|text|json)$")
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    research_source_strategy: str = Field(default="hybrid", pattern="^(user_only|hybrid|autonomous)$")
     agent_ids: list[str] = Field(default_factory=list)
     research_source_urls: list[str] = Field(default_factory=list, max_length=200)
     tags: list[str] = Field(default_factory=list)
@@ -69,6 +70,7 @@ class TeamStartRequest(BaseModel):
     auto_approve_tools: bool = False
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    research_source_strategy: str = Field(default="hybrid", pattern="^(user_only|hybrid|autonomous)$")
     research_source_urls: list[str] = Field(default_factory=list, max_length=200)
     agent_ids: list[str] = Field(default_factory=list)
     use_saved_agents: bool = True
@@ -197,6 +199,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             cfg.auto_approve_tools = req.auto_approve_tools
             cfg.research_depth = req.research_depth
             cfg.research_collection = req.research_collection
+            cfg.research_source_strategy = req.research_source_strategy
             cfg.research_source_urls = req.research_source_urls
             cfg.agent_ids = req.agent_ids
             cfg.use_saved_agents = req.use_saved_agents
