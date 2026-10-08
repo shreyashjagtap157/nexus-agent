@@ -355,6 +355,25 @@ Current workspace: {workspace}
             prompt += "\n\n## Mode: BUILD\nYou have full read/write access. Execute the plan and make necessary changes."
         elif self.mode == AgentMode.REVIEW:
             prompt += "\n\n## Mode: REVIEW\nYou are reviewing code. Provide analysis, suggestions, and identify issues."
+        elif self.mode == AgentMode.RESEARCH:
+            try:
+                from nexus_agent.team.research import policy as research_policy
+                depth = research_policy(self.research_depth)
+                prompt += (
+                    "\n\n## Mode: RESEARCH\n"
+                    "This is an evidence-first research task. Gather authoritative sources before "
+                    "forming conclusions. Preserve exact source snapshots and quotations with the "
+                    "research ledger tools. Treat a claim as verified only after the ledger verification "
+                    "tool succeeds. Explicitly identify unresolved, contradictory, or unsupported claims. "
+                    f"Research depth: {depth['label']}; target verification passes: {depth['verification_passes']}; "
+                    f"collection: {self.research_collection}; source strategy: {self.research_source_strategy}."
+                )
+            except (ImportError, ValueError):
+                prompt += (
+                    "\n\n## Mode: RESEARCH\n"
+                    "Gather authoritative sources, record exact evidence, verify claims, and flag "
+                    "unsupported or contradictory assertions."
+                )
 
         if self.system_prompt_extra:
             prompt += f"\n\n{self.system_prompt_extra}"
