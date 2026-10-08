@@ -112,6 +112,9 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
                 reviewer=bool(item.get("reviewer", False)),
                 dependencies=[str(x) for x in item.get("dependencies", []) if x],
                 model_role=str(item.get("model_role", "default")),
+                provider=str(item.get("provider")) if item.get("provider") else None,
+                model=str(item.get("model")) if item.get("model") else None,
+                fallbacks=[str(x) for x in item.get("fallbacks", []) if x],
             )
         )
         if len(profiles) >= max_agents:
