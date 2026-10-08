@@ -20,8 +20,10 @@ The tool is read-only — it never writes anywhere on disk.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
+import socket
 import time
 from collections import OrderedDict
 from html.parser import HTMLParser
@@ -53,6 +55,36 @@ _BLOCK_TAGS: frozenset[str] = frozenset({
 
 # Headings produce `#` decorations.
 _HEADING_TAGS: frozenset[str] = frozenset({f"h{i}" for i in range(1, 7)})
+
+
+def _private_target_error(url: str) -> str | None:
+    parsed = urlparse(url)
+    if not parsed.hostname:
+        return "URL has no host."
+    host = parsed.hostname.strip().lower().rstrip(".")
+    if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
+        return "Private/local hosts are blocked."
+    try:
+        addresses = [ipaddress.ip_address(host)]
+    except ValueError:
+        try:
+            addresses = [
+                ipaddress.ip_address(item[4][0])
+                for item in socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+            ]
+        except OSError as exc:
+            return f"Unable to resolve host safely: {exc}"
+    for address in addresses:
+        if (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_multicast
+            or address.is_unspecified
+        ):
+            return "Private/local hosts are blocked."
+    return None
 
 
 def _coerce_int(value: Any, default: int, *, lo: int = 0, hi: int | None = None) -> int:
@@ -445,6 +477,7 @@ class WebFetchTool(Tool):
         cache_size: int = DEFAULT_CACHE_SIZE,
         cache_ttl_s: int = DEFAULT_CACHE_TTL_S,
         user_agent: str | None = None,
+        block_private_hosts: bool = False,
     ) -> None:
         self._timeout_s = _coerce_int(timeout_s, self.DEFAULT_TIMEOUT_S, lo=1, hi=600)
         self._max_chars = _coerce_int(max_chars, self.DEFAULT_MAX_CHARS, lo=100, hi=10_000_000)
@@ -453,6 +486,7 @@ class WebFetchTool(Tool):
         self._user_agent = user_agent or (
             "Mozilla/5.0 (compatible; NexusAgent/1.0; +https://github.com/nexus-agent)"
         )
+        self._block_private_hosts = bool(block_private_hosts)
 
     @property
     def name(self) -> str:
@@ -531,6 +565,11 @@ class WebFetchTool(Tool):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         }
+        if self._block_private_hosts:
+            target_error = _private_target_error(url)
+            if target_error:
+                raise RuntimeError(target_error)
+
         try:
             with httpx.Client(
                 timeout=self._timeout_s,
@@ -541,6 +580,11 @@ class WebFetchTool(Tool):
                 resp = client.get(url)
         except (httpx.HTTPError, OSError) as e:
             raise RuntimeError(f"HTTP error: {e}") from e
+
+        if self._block_private_hosts:
+            target_error = _private_target_error(str(resp.url))
+            if target_error:
+                raise RuntimeError(target_error)
 
         if resp.status_code >= 400:
             raise RuntimeError(
