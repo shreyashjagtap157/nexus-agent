@@ -30,7 +30,6 @@ from pydantic import BaseModel, Field
 
 from nexus_agent import __app_name__, __version__
 from nexus_agent.agents.web_routes import register_agent_routes
-from nexus_agent.auth import AuthStore
 from nexus_agent.audit.web_routes import register_audit_routes
 from nexus_agent.mcp.web_routes import register_mcp_routes
 from nexus_agent.mcp.client import load_configured_servers
@@ -49,8 +48,6 @@ from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.local_engine import LocalEngine
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.providers.factory import ProviderFactory
-from nexus_agent.llm.providers.catalog import all_providers
-from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
 from nexus_agent.llm.runtime_manager import RuntimeManager
 from nexus_agent.memory.memory_manager import MemoryManager
 from nexus_agent.permissions.manager import PermissionManager
@@ -208,33 +205,6 @@ class SessionCreateRequest(BaseModel):
 
 
 
-class ProviderConfigUpdateRequest(BaseModel):
-    model: Annotated[str | None, Field(max_length=1000)] = None
-    base_url: Annotated[str | None, Field(max_length=4000)] = None
-    api_url: Annotated[str | None, Field(max_length=4000)] = None
-    context_size: int | None = Field(default=None, ge=256, le=2_000_000)
-    max_tokens: int | None = Field(default=None, ge=1, le=2_000_000)
-    reasoning_budget: int | None = Field(default=None, ge=1, le=2_000_000)
-    top_p: float | None = Field(default=None, ge=0.0, le=1.0)
-    timeout_seconds: float | None = Field(default=None, ge=1.0, le=3600.0)
-    pending_poll_seconds: float | None = Field(default=None, ge=0.1, le=60.0)
-    pending_max_wait_seconds: float | None = Field(default=None, ge=1.0, le=86400.0)
-
-
-class GeneralConfigUpdateRequest(BaseModel):
-    values: dict[str, Any]
-
-
-class ProviderActivationRequest(BaseModel):
-    model: Annotated[str | None, Field(max_length=1000)] = None
-
-
-class ProviderTestRequest(BaseModel):
-    model: Annotated[str | None, Field(max_length=1000)] = None
-    prompt: Annotated[str, Field(min_length=1, max_length=4000)] = "Respond with exactly: NexusAgent provider test OK"
-    max_tokens: int = Field(default=64, ge=1, le=512)
-
-
 def _merge_user_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
     allowed_sections = {
         "agent", "research", "team", "local_model", "permissions", "gui", "session",
@@ -263,142 +233,6 @@ async def update_config_section(section: str, req: GeneralConfigUpdateRequest, r
     if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="Configuration mutation is restricted to local clients.")
     return {"success": True, "section": section, "config": _merge_user_section(section, req.values)}
-
-
-@app.get("/api/providers")
-async def provider_catalog():
-    return {
-        "providers": [
-            {
-                "id": item.id,
-                "name": item.name,
-                "protocol": item.protocol,
-                "base_url": item.base_url,
-                "env_key": item.env_key,
-                "supports_custom_models": item.supports_custom_models,
-            }
-            for item in all_providers()
-        ]
-    }
-
-
-@app.get("/api/auth")
-async def provider_credentials():
-    return {"credentials": AuthStore().list()}
-
-
-@app.put("/api/auth/{provider}")
-async def set_provider_credential(provider: str, payload: dict[str, Any], request: Request):
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
-    key = str(payload.get("api_key") or "")
-    if not key:
-        raise HTTPException(status_code=422, detail="api_key is required")
-    AuthStore().set(provider, key)
-    return {"provider": provider.lower(), "stored": True}
-
-
-@app.delete("/api/auth/{provider}")
-async def delete_provider_credential(provider: str, request: Request):
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
-    return {"provider": provider.lower(), "removed": AuthStore().remove(provider)}
-
-
-@app.get("/api/provider-config")
-async def provider_configs():
-    cfg = state_manager.get("config") or {}
-    providers = {}
-    for provider_id, value in (cfg.get("providers", {}) or {}).items():
-        if provider_id == "active":
-            continue
-        providers[provider_id] = _strip_secrets(value if isinstance(value, dict) else {})
-    return {"active": cfg.get("providers", {}).get("active", "local"), "providers": providers}
-
-
-@app.put("/api/provider-config/{provider}")
-async def update_provider_config(provider: str, req: ProviderConfigUpdateRequest, request: Request):
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Provider configuration mutation is restricted to local clients.")
-    values = {key: value for key, value in req.model_dump().items() if value is not None}
-    save_user_config({"providers": {provider: _strip_secrets(values)}})
-    cfg = state_manager.get("config") or {}
-    provider_cfg = dict(cfg.get("providers", {}).get(provider, {}) or {})
-    provider_cfg.update(values)
-    cfg.setdefault("providers", {})[provider] = provider_cfg
-    state_manager.set("config", cfg)
-    return {"provider": provider, "config": _strip_secrets(provider_cfg)}
-
-
-@app.post("/api/providers/{provider}/activate")
-async def activate_provider(provider: str, req: ProviderActivationRequest, request: Request):
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Provider activation is restricted to local clients.")
-    cfg = state_manager.get("config") or {}
-    provider_cfg = dict(cfg.get("providers", {}).get(provider, {}) or {})
-    if req.model:
-        provider_cfg["model"] = req.model
-    cfg.setdefault("providers", {})[provider] = provider_cfg
-    cfg["providers"]["active"] = provider
-    state_manager.set("config", cfg)
-    save_user_config({"providers": {"active": provider, provider: _strip_secrets(provider_cfg)}})
-    try:
-        llm = ProviderFactory.create_provider(provider, cfg, req.model or provider_cfg.get("model"))
-    except (ImportError, ValueError, OSError, RuntimeError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    old = state_manager.get("engine")
-    state_manager.set("engine", llm)
-    if old is not None and hasattr(old, "close"):
-        try:
-            old.close()
-        except (OSError, RuntimeError):
-            pass
-    return {"active": True, "provider": llm.name, "model": llm.model_name}
-
-
-@app.get("/api/providers/models")
-async def provider_models(provider: str, refresh: bool = False):
-    cfg = state_manager.get("config") or {}
-    cache_path = StorageLayout(Path(state_manager.get("workspace") or Path.cwd())).caches / "models-dev.json"
-    try:
-        catalog = ModelsDevCatalog(cache_path)
-        models = catalog.models(provider, refresh=refresh)
-    except (OSError, ValueError, RuntimeError):
-        models = []
-    if not models:
-        provider_cfg = cfg.get("providers", {}).get(provider, {})
-        model = provider_cfg.get("model")
-        models = [{"id": model, "name": model}] if model else []
-    return {"provider": provider, "models": models}
-
-
-@app.post("/api/providers/{provider}/test")
-async def test_provider(provider: str, req: ProviderTestRequest, request: Request):
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Provider testing is restricted to local clients.")
-    cfg = state_manager.get("config") or {}
-    provider_cfg = dict(cfg.get("providers", {}).get(provider, {}) or {})
-    if req.model:
-        provider_cfg["model"] = req.model
-    test_cfg = dict(cfg)
-    test_cfg.setdefault("providers", {})[provider] = provider_cfg
-    started = time.perf_counter()
-    try:
-        llm = ProviderFactory.create_provider(provider, test_cfg, req.model or provider_cfg.get("model"))
-        response = llm.chat_completion(
-            [Message(role=Role.USER, content=req.prompt)],
-            temperature=0.0,
-            max_tokens=req.max_tokens,
-        )
-    except (ImportError, ValueError, OSError, RuntimeError) as exc:
-        return {"ok": False, "provider": provider, "error": str(exc)}
-    return {
-        "ok": True,
-        "provider": llm.name,
-        "model": llm.model_name,
-        "latency_ms": round((time.perf_counter() - started) * 1000, 2),
-        "response": response.content,
-    }
 
 
 # --- API ENDPOINTS ---
