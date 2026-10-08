@@ -19,6 +19,7 @@ from .tools import TeamReadMessagesTool, TeamSendMessageTool
 
 
 PermissionCallback = Callable[[Any], bool]
+ProviderSelector = Callable[[AgentProfile], LLMProvider]
 
 
 def build_workspace_tools(workspace: Path, memory_manager: Any | None = None) -> list[Any]:
@@ -59,6 +60,7 @@ class TeamRuntime:
         workspace: Path | None = None,
         data_dir: Path | None = None,
         permission_callback: PermissionCallback | None = None,
+        provider_selector: ProviderSelector | None = None,
     ):
         self.provider = provider
         self.tools = list(tools)
@@ -66,6 +68,7 @@ class TeamRuntime:
         self.data_dir = data_dir or (self.workspace / ".nexus")
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.permission_callback = permission_callback
+        self.provider_selector = provider_selector
 
     def _make_store(self) -> TeamStore:
         return TeamStore(self.data_dir / "teams.db")
@@ -157,6 +160,14 @@ Team protocol:
 {research_protocol}
 """
 
+    def _provider_for(self, profile: AgentProfile) -> LLMProvider:
+        if self.provider_selector is None:
+            return self.provider
+        try:
+            return self.provider_selector(profile)
+        except (RuntimeError, ValueError, OSError, TypeError) as exc:
+            raise RuntimeError(f"Unable to resolve provider for agent {profile.role_id}: {exc}") from exc
+
     def _worker(
         self,
         profile: AgentProfile,
@@ -196,8 +207,15 @@ Team protocol:
             system_prompt_extra=self._system_extra(goal, profile, team_id),
             effort_level=config.effort_level,
         )
+        worker_provider = self._provider_for(profile)
+        store.event(
+            team_id,
+            "agent_provider_resolved",
+            {"provider": worker_provider.name, "model": worker_provider.model_name},
+            profile.role_id,
+        )
         agent = AgentLoop(
-            provider=self.provider,
+            provider=worker_provider,
             tools=self._tools_for(profile, store, team_id),
             config=cfg,
             permission_callback=lambda tc: self._permission(tc, config),
