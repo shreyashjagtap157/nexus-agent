@@ -158,3 +158,17 @@ def test_research_ledger_write_is_denied_to_non_research_workers(tmp_path: Path)
         ) is False
     finally:
         store.close()
+
+
+def test_autonomous_source_capture_rejects_private_targets(tmp_path: Path):
+    tool = ResearchRecordSourceTool(tmp_path / "research.db", "team-1", "researcher")
+    for url in (
+        "http://127.0.0.1:8080/admin",
+        "http://169.254.169.254/latest/meta-data",
+        "http://localhost:8080/",
+        "https://[::1]/",
+        "https://user:password@example.com/private",
+    ):
+        result = tool.execute(url=url)
+        assert isinstance(result, str)
+        assert result.startswith("Error:")
