@@ -112,6 +112,7 @@ class TeamRuntime:
         permission_callback: PermissionCallback | None = None,
         provider_selector: ProviderSelector | None = None,
         agent_registry: AgentRegistry | None = None,
+        mcp_clients: list[Any] | None = None,
     ):
         self.provider = provider
         self.tools = list(tools)
@@ -121,6 +122,7 @@ class TeamRuntime:
         self.permission_callback = permission_callback
         self.provider_selector = provider_selector
         self.agent_registry = agent_registry or AgentRegistry(self.workspace)
+        self.mcp_clients = list(mcp_clients or [])
 
     def _make_store(self) -> TeamStore:
         return TeamStore(self.data_dir / "teams.db")
