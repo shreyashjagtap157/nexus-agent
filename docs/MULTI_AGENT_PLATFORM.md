@@ -28,7 +28,7 @@ Workers run concurrently up to the configured parallelism. Each worker is a real
 
 Workers share a persistent SQLite blackboard at:
 
-<workspace>/.nexus/teams.db
+<workspace>/.nexus-agent/runtime/teams.db
 
 The blackboard stores:
 
@@ -51,6 +51,8 @@ This creates a structured team communication channel without forcing uncontrolle
 Team execution defaults to safe behavior. Read/search/web/git inspection tools can run through the normal permission system; write/edit/shell/commit-like operations remain subject to the configured permission policy.
 
 The CLI exposes --yes for deliberate non-interactive runs that should automatically approve tool calls.
+
+Teams also support persisted pause/resume/stop requests, dependency-aware scheduling, per-agent provider/model routing, chat/file/both output modes, and deterministic research quality gates.
 
 ## CLI
 
@@ -89,3 +91,54 @@ nexus-rs/ remains the native Rust client and TUI. It is the native surface for t
 NexusAgent deliberately keeps orchestration, permissions, tools, providers and persistence in the shared core while treating web, CLI/TUI and native clients as presentation/control surfaces.
 
 That means a team started by the web client is the same type of persisted team that can be inspected by the CLI, and the native client does not need a second implementation of planning, provider routing, tool execution or team messaging.
+
+## Agent definitions
+
+Agent profiles are Markdown files with YAML front matter and explicit scope:
+
+- built-in
+- global
+- user
+- project
+- workspace
+
+Use `nexus agent init` to author a profile, `nexus agent generate` to have an LLM design profiles from a requirement, and `nexus agent list/show/validate` to inspect them. A team may pin saved profiles while still asking the planner to generate additional specialists.
+
+## Tooling
+
+Team workers share the platform tool catalog, filtered by role:
+
+- filesystem read/write/delete/move/restore
+- shell
+- code editing and batch editing
+- Git/CI/PR tooling
+- browser + web search/fetch
+- structured data parsing
+- repository/code intelligence
+- LSP
+- scoped memory
+- MCP tools
+- research evidence/source tools
+- reusable skills
+
+Side-effecting tools remain permission-gated.
+
+## Provider routing
+
+Provider credentials are stored separately from project configuration. Agents may specify a provider, model, fallback chain, and model role. The provider catalog supports common hosted/custom OpenAI-compatible providers, local runtimes, and NVIDIA NIM. Models.dev metadata can be cached for discovery without storing credentials.
+
+## Research evidence gate
+
+Research-mode teams persist source snapshots, exact quotations, claims and verifier records in `<workspace>/.nexus-agent/runtime/research.db`. The selected research depth determines the required independent-verification threshold. Rejected candidate claims do not block completion, but unresolved claims and an evidence gate failure move the team to `needs_review`.
+
+## Storage
+
+Durable workspace runtime data is isolated under:
+
+`.nexus-agent/runtime/`
+
+This contains team/research databases, activity/audit records, generated artifacts, reversible-delete trash and other run state. User-wide credentials and memory live outside the repository workspace under the platform data directory.
+
+## Client parity
+
+The authoritative orchestration runtime is shared. Web, CLI/TUI and native clients are presentation/control surfaces over the same team state, tools, permissions and provider routing. The native desktop client uses the local web runtime rather than duplicating the orchestration implementation.
