@@ -717,7 +717,7 @@ Team protocol:
     ) -> list[str]:
         if config.output_mode not in {"file", "both"}:
             return []
-        artifact_dir = self.data_dir / "teams" / team_id
+        artifact_dir = self.data_dir / "artifacts" / team_id
         artifact_dir.mkdir(parents=True, exist_ok=True)
         content = synthesis or summary
         if config.output_format == "text":
