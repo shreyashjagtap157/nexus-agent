@@ -158,10 +158,21 @@ class TeamRuntime:
     def _tools_for(self, profile: AgentProfile, store: TeamStore, team_id: str) -> list[Any]:
         categories = set(profile.tool_categories)
         selected = [
-            tool for tool in self.tools
+            tool
+            for tool in self.tools
             if self._tool_matches(getattr(tool, "name", ""), categories)
-            and (getattr(tool, "name", "").lower() not in {"write_file", "code_edit", "insert_lines", "batch_edit"} or profile.write_access)
+            and (
+                getattr(tool, "name", "").lower()
+                not in {"write_file", "code_edit", "insert_lines", "batch_edit", "delete_file", "move_file"}
+                or profile.write_access
+            )
         ]
+        if "mcp" in categories:
+            selected.extend(
+                tool
+                for tool in self.tools
+                if tool not in selected and tool.__class__.__name__ == "MCPProxyTool"
+            )
         selected.extend(
             [
                 TeamSendMessageTool(store, team_id, profile.role_id),
