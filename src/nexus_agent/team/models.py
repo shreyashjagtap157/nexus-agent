@@ -75,6 +75,8 @@ class TeamConfig:
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
     research_source_strategy: str = "hybrid"
+    research_max_minutes: int = 10080
+    research_idle_rounds: int = 2
     research_source_urls: list[str] = field(default_factory=list)
     effort_level: str = "medium"
     auto_synthesize: bool = True
@@ -88,6 +90,8 @@ class TeamConfig:
         self.max_agents = max(1, min(int(self.max_agents), 64))
         self.parallelism = max(1, min(int(self.parallelism), self.max_agents))
         self.max_iterations_per_agent = max(1, min(int(self.max_iterations_per_agent), 500))
+        self.research_max_minutes = max(1, min(int(self.research_max_minutes), 525600))
+        self.research_idle_rounds = max(1, min(int(self.research_idle_rounds), 20))
         self.output_mode = self.output_mode if self.output_mode in {"chat", "file", "both"} else "chat"
         self.output_format = self.output_format if self.output_format in {"markdown", "text", "json"} else "markdown"
         self.research_collection = (
