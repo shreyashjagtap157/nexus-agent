@@ -571,13 +571,47 @@ class WebFetchTool(Tool):
                 raise RuntimeError(target_error)
 
         try:
-            with httpx.Client(
-                timeout=self._timeout_s,
-                follow_redirects=True,
-                max_redirects=5,
-                headers=headers,
-            ) as client:
-                resp = client.get(url)
+            if not self._block_private_hosts:
+                with httpx.Client(
+                    timeout=self._timeout_s,
+                    follow_redirects=True,
+                    max_redirects=5,
+                    headers=headers,
+                ) as client:
+                    resp = client.get(url)
+            else:
+                # Autonomous research fetching validates every redirect target
+                # before issuing the next request. Automatic redirect following
+                # would allow an internal target to be contacted before the
+                # final response URL is inspected.
+                current_url = url
+                resp = None
+                with httpx.Client(
+                    timeout=self._timeout_s,
+                    follow_redirects=False,
+                    headers=headers,
+                ) as client:
+                    for _ in range(6):
+                        target_error = _private_target_error(current_url)
+                        if target_error:
+                            raise RuntimeError(target_error)
+                        resp = client.get(current_url)
+                        response_url = str(resp.url)
+                        target_error = _private_target_error(response_url)
+                        if target_error:
+                            raise RuntimeError(target_error)
+                        if resp.status_code not in {301, 302, 303, 307, 308}:
+                            break
+                        location = resp.headers.get("location")
+                        if not location:
+                            raise RuntimeError(
+                                f"Redirect response from {current_url} did not include a Location header."
+                            )
+                        current_url = urljoin(response_url, location)
+                    else:
+                        raise RuntimeError("Too many redirects; refusing to follow more than 5 hops.")
+                if resp is None:
+                    raise RuntimeError("HTTP request did not produce a response.")
         except (httpx.HTTPError, OSError) as e:
             raise RuntimeError(f"HTTP error: {e}") from e
 
