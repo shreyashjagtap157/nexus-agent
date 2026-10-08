@@ -6,14 +6,18 @@ concurrency:
 
 on:
   push:
-    branches: [main, master, multi-agent-platform]
+    branches: ["main"]
   pull_request:
-    branches: [main, master]
+    branches: ["main"]
+
+permissions:
+  contents: read
 
 jobs:
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -22,6 +26,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -29,17 +35,22 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Install development dependencies
         run: |
-          pip install -e ".[all,dev]"
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
 
-      - name: Run tests
+      - name: Compile package
+        run: python -m compileall -q src
+
+      - name: Run complete test suite
         run: |
-          python -m pytest tests/ -v --tb=short -x
+          python -m pytest tests/ -q --tb=short             --cov=src/nexus_agent             --cov-report=term-missing             --cov-report=xml
 
       - name: Upload coverage
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage
-          path: htmlcov/
+          name: coverage-python-3.12
+          path: coverage.xml
