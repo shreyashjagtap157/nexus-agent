@@ -852,16 +852,21 @@ Team protocol:
         effective_mode = infer_mode(goal, cfg.mode)
         cfg.mode = effective_mode
         cfg.normalize()
-        saved_specs = (
-            [
-                spec
-                for spec in self.agent_registry.load()
-                if getattr(spec.scope, "value", spec.scope) != "builtin"
-            ]
-            if cfg.use_saved_agents
-            else []
-        )
-        saved_profiles = [spec.to_team_profile() for spec in saved_specs]\n        if cfg.research_source_urls:
+        saved_specs = []
+        if cfg.use_saved_agents:
+            relevant = self.agent_registry.match_relevant(goal, limit=16)
+            pinned_specs = []
+            for agent_id in cfg.agent_ids:
+                spec = self.agent_registry.get(agent_id)
+                if spec is not None:
+                    pinned_specs.append(spec)
+            seen_saved: set[str] = set()
+            for spec in [*pinned_specs, *relevant]:
+                if spec.id not in seen_saved:
+                    saved_specs.append(spec)
+                    seen_saved.add(spec.id)
+        saved_profiles = [spec.to_team_profile() for spec in saved_specs]
+        if cfg.research_source_urls:
             from nexus_agent.research.sources import ResearchSourceRegistry
             ResearchSourceRegistry(
                 self.workspace / ".nexus-agent" / "research-sources.yaml"
