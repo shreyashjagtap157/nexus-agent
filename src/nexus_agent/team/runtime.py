@@ -123,7 +123,7 @@ def build_workspace_tools(
             tools = [
                 tool
                 for tool in tools
-                if getattr(tool, "name", "") not in {"web_search", "webfetch", "browser"}
+                if getattr(tool, "name", "") not in {"web_search", "web_fetch", "webfetch", "browser"}
             ]
 
     if mcp_tools:
