@@ -311,6 +311,7 @@ class DeleteFileTool(Tool):
         if target.resolve() == self.workspace or any(part == ".git" for part in target.parts):
             return "Error: Refusing to delete the workspace root or .git content."
         try:
+            previous_hash = FileJournal.digest_file(target)
             if target.is_dir():
                 if any(target.iterdir()):
                     return "Error: Refusing to delete a non-empty directory."
