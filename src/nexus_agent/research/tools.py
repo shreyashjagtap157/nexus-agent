@@ -107,3 +107,56 @@ class ResearchVerifyClaimTool(_ResearchTool):
             self.agent_id,
             str(kwargs.get("note") or ""),
         )
+
+class ResearchRecordConflictTool(_ResearchTool):
+    @property
+    def name(self) -> str:
+        return "research_record_conflict"
+
+    @property
+    def description(self) -> str:
+        return "Persist a contradiction or conflict between two claims for independent adjudication."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "claim_a": {"type": "integer", "description": "First claim ID"},
+            "claim_b": {"type": "integer", "description": "Second claim ID"},
+            "conflict_type": {"type": "string", "description": "contradiction, scope_mismatch, temporal_conflict, source_conflict"},
+        }
+
+    def execute(self, claim_a: int, claim_b: int, conflict_type: str = "contradiction", **kwargs: Any) -> Any:
+        return self.store.record_conflict(
+            self.team_id,
+            self.agent_id,
+            int(claim_a),
+            int(claim_b),
+            conflict_type,
+        )
+
+
+class ResearchAdjudicateConflictTool(_ResearchTool):
+    @property
+    def name(self) -> str:
+        return "research_adjudicate_conflict"
+
+    @property
+    def description(self) -> str:
+        return "Adjudicate a recorded research conflict and persist the resolution rationale."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "conflict_id": {"type": "integer", "description": "Conflict ID"},
+            "status": {"type": "string", "description": "adjudicated, accepted_uncertainty, rejected"},
+            "resolution": {"type": "string", "description": "Evidence-based resolution rationale"},
+        }
+
+    def execute(self, conflict_id: int, status: str, resolution: str, **kwargs: Any) -> Any:
+        return self.store.adjudicate_conflict(
+            self.team_id,
+            int(conflict_id),
+            self.agent_id,
+            status,
+            resolution,
+        )
