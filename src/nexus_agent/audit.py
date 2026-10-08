@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import threading
 import time
 import uuid
@@ -15,8 +16,10 @@ from typing import Any
 class AuditRecord:
     sequence: int
     record_id: str
+    scope: str
     run_id: str | None
-    kind: str
+    actor: str
+    event_type: str
     payload: dict[str, Any]
     created_at: float
     previous_hash: str
@@ -26,8 +29,10 @@ class AuditRecord:
         return {
             "sequence": self.sequence,
             "record_id": self.record_id,
+            "scope": self.scope,
             "run_id": self.run_id,
-            "kind": self.kind,
+            "actor": self.actor,
+            "event_type": self.event_type,
             "payload": self.payload,
             "created_at": self.created_at,
             "previous_hash": self.previous_hash,
@@ -45,8 +50,8 @@ def _lock_for(path: Path) -> threading.RLock:
         return _LOCKS.setdefault(key, threading.RLock())
 
 
-class TamperEvidenceLog:
-    """Append-only JSONL audit stream with deterministic hash chaining."""
+class AuditLog:
+    """Append-only JSONL audit stream with SHA-256 hash chaining."""
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
@@ -80,18 +85,25 @@ class TamperEvidenceLog:
     def append(
         self,
         *,
-        kind: str,
-        payload: dict[str, Any] | None = None,
+        scope: str = "runtime",
         run_id: str | None = None,
+        actor: str = "system",
+        event_type: str | None = None,
+        payload: dict[str, Any] | None = None,
+        kind: str | None = None,
     ) -> AuditRecord:
+        event = event_type or kind or "event"
         now = time.time()
+
         with self._lock:
             previous_hash, sequence = self._last_hash_and_sequence()
             record = {
                 "sequence": sequence + 1,
                 "record_id": uuid.uuid4().hex,
+                "scope": str(scope),
                 "run_id": run_id,
-                "kind": str(kind),
+                "actor": str(actor),
+                "event_type": str(event),
                 "payload": dict(payload or {}),
                 "created_at": now,
                 "previous_hash": previous_hash,
@@ -100,10 +112,17 @@ class TamperEvidenceLog:
             record["record_hash"] = record_hash
 
             with self.path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True, default=str) + "\n")
+                handle.write(
+                    json.dumps(
+                        record,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        default=str,
+                    )
+                    + "\n"
+                )
                 handle.flush()
                 try:
-                    import os
                     os.fsync(handle.fileno())
                 except OSError:
                     pass
@@ -111,8 +130,10 @@ class TamperEvidenceLog:
             return AuditRecord(
                 sequence=record["sequence"],
                 record_id=record["record_id"],
+                scope=record["scope"],
                 run_id=run_id,
-                kind=record["kind"],
+                actor=record["actor"],
+                event_type=record["event_type"],
                 payload=record["payload"],
                 created_at=now,
                 previous_hash=previous_hash,
@@ -123,6 +144,7 @@ class TamperEvidenceLog:
         rows: list[AuditRecord] = []
         if not self.path.exists():
             return rows
+
         with self._lock:
             with self.path.open("r", encoding="utf-8") as handle:
                 for line in handle:
@@ -135,8 +157,10 @@ class TamperEvidenceLog:
                         AuditRecord(
                             sequence=int(data["sequence"]),
                             record_id=str(data["record_id"]),
+                            scope=str(data.get("scope", "runtime")),
                             run_id=data.get("run_id"),
-                            kind=str(data["kind"]),
+                            actor=str(data.get("actor", "system")),
+                            event_type=str(data.get("event_type", "event")),
                             payload=data.get("payload") if isinstance(data.get("payload"), dict) else {},
                             created_at=float(data["created_at"]),
                             previous_hash=str(data.get("previous_hash", "")),
@@ -148,9 +172,11 @@ class TamperEvidenceLog:
     def verify(self) -> dict[str, Any]:
         if not self.path.exists():
             return {"valid": True, "records": 0, "last_hash": ""}
+
         previous_hash = ""
         records = 0
         last_hash = ""
+
         with self._lock:
             with self.path.open("r", encoding="utf-8") as handle:
                 for line_number, line in enumerate(handle, 1):
@@ -158,14 +184,14 @@ class TamperEvidenceLog:
                         continue
                     records += 1
                     data = json.loads(line)
-                    expected_previous = str(data.get("previous_hash", ""))
-                    if expected_previous != previous_hash:
+                    if str(data.get("previous_hash", "")) != previous_hash:
                         return {
                             "valid": False,
                             "records": records,
                             "last_hash": last_hash,
                             "error": f"Previous-hash mismatch at line {line_number}.",
                         }
+
                     stored = str(data.get("record_hash", ""))
                     unsigned = dict(data)
                     unsigned.pop("record_hash", None)
@@ -177,6 +203,11 @@ class TamperEvidenceLog:
                             "last_hash": last_hash,
                             "error": f"Record hash mismatch at line {line_number}.",
                         }
+
                     previous_hash = stored
                     last_hash = stored
+
         return {"valid": True, "records": records, "last_hash": last_hash}
+
+
+TamperEvidenceLog = AuditLog
