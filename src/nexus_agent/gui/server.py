@@ -240,8 +240,8 @@ async def get_full_config(request: Request):
 
 @app.put("/api/config/{section}")
 async def update_config_section(section: str, req: GeneralConfigUpdateRequest, request: Request):
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Configuration mutation is restricted to local clients.")
+    """Update one editable user configuration section from a local client."""
+    _require_local_client(request)
     return {"success": True, "section": section, "config": _merge_user_section(section, req.values)}
 
 
@@ -309,8 +309,8 @@ async def get_models(request: Request):
 
 @app.post("/api/models/load")
 async def load_model(req: ModelLoadRequest, request: Request):
-    _require_local_client(request)
     """Load a model using local engine fine-tuning settings & guardrails."""
+    _require_local_client(request)
     try:
         # Check guardrails first
         guardrail_level = state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")
@@ -357,8 +357,8 @@ async def load_model(req: ModelLoadRequest, request: Request):
 
 @app.post("/api/config/update")
 async def update_config(req: ConfigUpdateRequest, request: Request):
-    _require_local_client(request)
     """Update active configuration values dynamically."""
+    _require_local_client(request)
     if req.effort_level is not None:
         state_manager.get("config").setdefault("agent", {})["effort_level"] = req.effort_level
     if req.goal is not None:
@@ -392,8 +392,8 @@ async def list_sessions(request: Request):
 
 @app.post("/api/sessions/create")
 async def create_session(req: SessionCreateRequest, request: Request):
-    _require_local_client(request)
     """Create a new conversation session."""
+    _require_local_client(request)
     sm = state_manager.get("session_manager")
     if not sm:
         raise HTTPException(status_code=500, detail="SessionManager not initialized")
@@ -465,8 +465,8 @@ async def get_nla(session_id: str, request: Request):
 
 @app.post("/api/debate")
 async def trigger_debate(request: Request):
-    _require_local_client(request)
     """Convening parallel code debate reviews."""
+    _require_local_client(request)
     try:
         diff_res = subprocess.run(["git", "diff", "HEAD"], cwd=str(state_manager.get("workspace")), capture_output=True, text=True, timeout=10)
         changes = diff_res.stdout or "Simulated: refactoring core pipeline structures"
@@ -488,8 +488,8 @@ async def trigger_debate(request: Request):
 
 @app.post("/api/verify")
 async def trigger_verify(request: Request):
-    _require_local_client(request)
     """Execute static lint and test framework pipeline validation."""
+    _require_local_client(request)
     pipeline = VerificationPipeline(workspace=state_manager.get("workspace"))
     report = pipeline.run_full_pipeline()
     return {
@@ -508,8 +508,8 @@ async def trigger_verify(request: Request):
 
 @app.post("/api/commit")
 async def trigger_commit(request: Request):
-    _require_local_client(request)
     """Auto-generate conventional commits from staged modifications."""
+    _require_local_client(request)
     tool = SmartCommitTool(workspace=state_manager.get("workspace"), provider=state_manager.get("engine"))
     msg = tool.execute()
     return {"message": msg}
