@@ -46,7 +46,7 @@ main{display:grid;grid-template-columns:minmax(360px,380px) minmax(780px,1fr) mi
 <section>
 <h2>Team Topology</h2>
 <div class="status" id="status"><span class="pill">idle</span></div>
-<div class="metrics"><div class="metric"><b id="ma">0</b><span>agents</span></div><div class="metric"><b id="md">0</b><span>done</span></div><div class="metric"><b id="mm">0</b><span>messages</span></div><div class="metric"><b id="me">0</b><span>events</span></div></div>
+<div class="metrics"><div class="metric"><b id="ma">0</b><span>agents</span></div><div class="metric"><b id="md">0</b><span>done</span></div><div class="metric"><b id="mm">0</b><span>messages</span></div><div class="metric"><b id="me">0</b><span>events</span></div><div class="metric"><b id="mt">0 / —</b><span>coordination turns</span></div><div class="metric"><b id="ms">0</b><span>sources</span></div><div class="metric"><b id="mc">0</b><span>verified claims</span></div></div>
 <div id="agents" class="scroll agents"><div class="empty">No team yet.</div></div>
 </section>
 <section>
@@ -69,7 +69,25 @@ function renderAgents(a){
   $("agents").innerHTML=h||"<div class='empty'>No agents persisted yet.</div>";$("ma").textContent=a.length;$("md").textContent=a.filter(function(x){return x.state==="completed"}).length
 }
 function addEvent(e){
-  if(eventIds[e.event_id])return;eventIds[e.event_id]=1;var p=e.payload||{},d=document.createElement("div");d.className="log";d.innerHTML="<strong>"+esc(new Date((e.created_at||Date.now()/1000)*1000).toLocaleTimeString())+"</strong> "+esc(e.event_type)+(e.agent_id?" • "+esc(e.agent_id):"")+"\\n"+esc(JSON.stringify(p).slice(0,1800));$("events").appendChild(d);$("events").scrollTop=$("events").scrollHeight;$("me").textContent=Object.keys(eventIds).length
+  if(eventIds[e.event_id])return;
+  eventIds[e.event_id]=1;
+  var p=e.payload||{},d=document.createElement("div");
+  if(e.event_type==="coordination_turn_started"){
+    $("mt").textContent=String(p.turn||"0")+" / "+String(p.turn_cap==null?"—":p.turn_cap);
+  }else if(e.event_type==="research_round_completed"){
+    if(p.source_count_after!=null)$("ms").textContent=String(p.source_count_after);
+  }else if(e.event_type==="research_quality_gate"){
+    if(p.verified_claims!=null)$("mc").textContent=String(p.verified_claims);
+  }else if(e.event_type==="workflow_phase"){
+    $("status").dataset.phase=String(p.to||"");
+  }else if(e.event_type==="final_review_started"){
+    $("status").dataset.phase="final-review";
+  }
+  d.className="log";
+  d.innerHTML="<strong>"+esc(new Date((e.created_at||Date.now()/1000)*1000).toLocaleTimeString())+"</strong> "+esc(e.event_type)+(e.agent_id?" • "+esc(e.agent_id):"")+"\n"+esc(JSON.stringify(p).slice(0,1800));
+  $("events").appendChild(d);
+  $("events").scrollTop=$("events").scrollHeight;
+  $("me").textContent=Object.keys(eventIds).length
 }
 function addMessage(m){
   if(messageIds[m.message_id])return;messageIds[m.message_id]=1;var p=m.payload||{},d=document.createElement("div");d.className="msg";d.innerHTML="<div class='meta'>"+esc(m.sender_id)+" → "+esc(m.recipient_id||"TEAM")+" • "+esc(m.message_type)+(m.topic?" • "+esc(m.topic):"")+"</div><div class='body'>"+esc(p.message||JSON.stringify(p))+"</div>";$("messages").appendChild(d);$("messages").scrollTop=$("messages").scrollHeight;$("mm").textContent=Object.keys(messageIds).length
@@ -78,7 +96,7 @@ async function snapshot(){
   if(!jobId)return;var r=await fetch("/api/teams/"+encodeURIComponent(jobId));if(!r.ok)return;var d=await r.json();
   if(d.team_id)teamId=d.team_id;if(d.agents)renderAgents(d.agents);(d.events||[]).forEach(addEvent);(d.messages||[]).forEach(addMessage);
   if(d.result&&d.result.synthesis)$("synthesis").innerHTML="<div style='padding:12px;white-space:pre-wrap'>"+esc(d.result.synthesis)+"</div>";  if(teamId){fetch("/api/teams/"+encodeURIComponent(teamId)+"/artifacts").then(function(r){return r.json()}).then(function(a){var rows=a.artifacts||[];$("artifacts").innerHTML=rows.length?rows.map(function(x){return "<div class='msg'><a href='/api/teams/"+encodeURIComponent(teamId)+"/artifacts/"+encodeURIComponent(x.name)+"' target='_blank'>"+esc(x.name)+"</a><span class='meta'> • "+esc(x.size)+" bytes</span></div>"}).join(""):"<div class='empty'>No artifacts yet.</div>"})}
-  var st=(d.team&&d.team.status)||d.status||"unknown";$("pause").disabled=!teamId||!["running"].includes(st);$("resume").disabled=!teamId||!["paused"].includes(st);$("stop").disabled=!teamId||["completed","failed","cancelled","needs_review"].includes(st);$("start").disabled=!!jobId&&!["completed","failed","cancelled","needs_review"].includes(d.status||"");$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
+  var st=(d.team&&d.team.status)||d.status||"unknown";$("pause").disabled=!teamId||!["running"].includes(st);$("resume").disabled=!teamId||!["paused"].includes(st);$("stop").disabled=!teamId||["completed","failed","cancelled","needs_review"].includes(st);$("start").disabled=!!jobId&&!["completed","failed","cancelled","needs_review"].includes(d.status||"");var phase=$("status").dataset.phase||((st==="completed"||st==="needs_review")?"final-review":st==="running"?"execution":"planning");$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill'>phase "+esc(phase)+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
   if(teamId&&!es){es=new EventSource("/api/teams/"+encodeURIComponent(teamId)+"/stream");es.onmessage=function(ev){try{var x=JSON.parse(ev.data);if(x.type==="terminal"){notice("Team ended: "+x.status);es.close();es=null}else{addEvent(x)}snapshot()}catch(e){}};es.onerror=function(){notice("Live stream reconnecting…")}}
 }
 $("start").onclick=async function(){
