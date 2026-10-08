@@ -59,6 +59,21 @@ class AgentSpec:
             "source_path": self.source_path,
         }
 
+    def to_team_profile(self):
+        from nexus_agent.team.models import AgentProfile
+        return AgentProfile(
+            role_id=self.id,
+            name=self.name,
+            profession=self.profession,
+            mission=self.mission,
+            instructions=self.instructions,
+            tool_categories=list(self.tool_categories),
+            write_access=self.write_access,
+            reviewer=self.reviewer,
+            dependencies=list(self.dependencies),
+            model_role=self.model_role,
+        )
+
     @classmethod
     def from_dict(cls, data: dict[str, Any], scope: AgentScope, source_path: str | None = None) -> "AgentSpec":
         identifier = str(data.get("id") or "").strip().lower()
