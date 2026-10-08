@@ -1,6 +1,6 @@
 # NexusAgent — Detailed Execution Roadmap
 
-> **Version:** 0.1.0  
+> **Version:** 0.2.0-alpha.1  
 > **Status:** Ready for approval  
 > **Total estimated effort:** ~80-100 hours (10-12 days full-time)
 
