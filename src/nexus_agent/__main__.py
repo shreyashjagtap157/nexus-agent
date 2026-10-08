@@ -817,6 +817,47 @@ def backend(
 
 
 @cli.group()
+def mcp() -> None:
+    """Inspect and validate Model Context Protocol server configuration."""
+    pass
+
+
+@mcp.command("list")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def mcp_list(workspace: str) -> None:
+    """List configured MCP servers without starting them."""
+    from nexus_agent.core.config import load_config
+    import json
+    config = load_config(workspace=Path(workspace).resolve())
+    raw = config.get("mcp", {})
+    click.echo(json.dumps({
+        "servers": raw.get("servers", []) if isinstance(raw, dict) else [],
+        "serve": raw.get("serve", {}) if isinstance(raw, dict) else {},
+    }, indent=2, ensure_ascii=False))
+
+
+@mcp.command("validate")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def mcp_validate(workspace: str) -> None:
+    """Validate declarative MCP commands without starting servers."""
+    from nexus_agent.core.config import load_config
+    config = load_config(workspace=Path(workspace).resolve())
+    servers = config.get("mcp", {}).get("servers", [])
+    failures = 0
+    for item in servers if isinstance(servers, list) else []:
+        if not isinstance(item, dict):
+            continue
+        command = str(item.get("command") or "")
+        dangerous = any(token in command for token in (";", "&&", "||", "|", ">", "<", "$"))
+        status = "INVALID" if (not command or dangerous) else "OK"
+        click.echo(f"{status}: {item.get('name') or command}")
+        if status != "OK":
+            failures += 1
+    if failures:
+        raise click.ClickException(f"{failures} MCP definition(s) failed validation.")
+
+
+@cli.group()
 def auth() -> None:
     """Manage LLM provider credentials without storing secrets in project config."""
     pass
