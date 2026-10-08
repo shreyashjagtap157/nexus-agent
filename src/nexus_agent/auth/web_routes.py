@@ -1,9 +1,9 @@
 """Web endpoints for provider catalog and credential lifecycle."""
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
-import time
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
@@ -166,9 +166,8 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
 
     @app.get("/api/providers/models")
-    async def provider_models(provider: str, refresh: bool = False, request: Request | None = None):
-        if request is not None:
-            _local_only(request)
+    async def provider_models(request: Request, provider: str, refresh: bool = False):
+        _local_only(request)
         workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
         catalog = ModelsDevCatalog(
             StorageLayout(workspace).caches / "models-dev.json"
