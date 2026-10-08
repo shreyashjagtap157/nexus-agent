@@ -35,6 +35,7 @@ main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:12px;padding:12p
 <label>Mission</label><textarea id="mission" style="min-height:80px"></textarea>
 <label>Instructions</label><textarea id="instructions" style="min-height:120px"></textarea>
 <label>Tool categories</label><input id="tools" value="read,search,shell,git,code_intel,lsp">
+<label>Reusable skills (comma-separated)</label><input id="skills" placeholder="debug,test_writer,code_review">
 <div class="actions"><button class="btn primary" id="save">Save Manual Agent</button></div>
 </div>
 </section>
@@ -67,7 +68,7 @@ $("generate").onclick=async function(){
 };
 $("save").onclick=async function(){
  const tools=$("tools").value.split(",").map(x=>x.trim()).filter(Boolean);
- const payload={id:$("id").value.trim(),name:$("name").value.trim(),profession:$("profession").value.trim(),description:"",mission:$("mission").value.trim(),instructions:$("instructions").value.trim(),scope:$("scope").value,tool_categories:tools,write_access:tools.includes("write"),reviewer:false,dependencies:[],model_role:"default",enabled:true};
+ const payload={id:$("id").value.trim(),name:$("name").value.trim(),profession:$("profession").value.trim(),description:"",mission:$("mission").value.trim(),instructions:$("instructions").value.trim(),scope:$("scope").value,tool_categories:tools,skill_ids:$("skills").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),write_access:tools.includes("write"),reviewer:false,dependencies:[],model_role:"default",enabled:true};
  if(!payload.id||!payload.name||!payload.profession||!payload.mission||!payload.instructions){notice("Fill all manual-agent fields.",true);return}
  const r=await fetch("/api/agents/"+encodeURIComponent(payload.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok){notice(String(d.detail||"save failed"),true);return}notice("Saved "+payload.id);await load()
 };
