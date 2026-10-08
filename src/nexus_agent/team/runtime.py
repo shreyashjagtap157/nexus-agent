@@ -454,6 +454,8 @@ Team protocol:
                 "reviewer": profile.reviewer,
                 "error": str(exc),
             }
+        finally:
+            scoped_memory.close()
 
     def _write_artifacts(
         self,
