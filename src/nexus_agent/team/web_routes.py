@@ -33,12 +33,18 @@ class WorkflowWriteRequest(BaseModel):
     description: str = Field(default="", max_length=4000)
     mode: TeamMode = TeamMode.AUTO
     default_agents: int = Field(default=4, ge=1, le=64)
+    default_parallelism: int = Field(default=4, ge=1, le=64)
+    default_iterations: int = Field(default=30, ge=1, le=500)
+    effort_level: str = Field(default="medium", max_length=32)
     require_reviewer: bool = True
     auto_synthesize: bool = True
     allow_parallel_writers: bool = False
     output_mode: str = Field(default="chat", pattern="^(chat|file|both)$")
+    output_format: str = Field(default="markdown", pattern="^(markdown|text|json)$")
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    agent_ids: list[str] = Field(default_factory=list)
+    research_source_urls: list[str] = Field(default_factory=list, max_length=200)
     tags: list[str] = Field(default_factory=list)
     controls: dict[str, Any] = Field(default_factory=dict)
     scope: str = Field(default="workspace", pattern="^(user|workspace)$")
