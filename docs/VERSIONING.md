@@ -74,6 +74,20 @@ The protected public compatibility surface includes:
 - persisted team/session schema migrations
 - artifact and storage layout where documented as durable
 
+## Enterprise release gates
+
+The repository treats the following as release gates:
+
+1. canonical version synchronization across every client and lockfile
+2. SemVer/tag validation
+3. full test suite
+4. lint and type checks
+5. native Rust checks
+6. package build and metadata validation
+7. dependency/security audit appropriate to the release
+8. changelog entry
+9. immutable Git tag matching `VERSION`
+
 ## Release gates
 
 A release requires:
