@@ -1124,10 +1124,6 @@ Team protocol:
                         dependency in completed_ids
                         for dependency in profile_by_id[role_id].dependencies
                     )
-                    and all(
-                        dependency in profile_by_id
-                        for dependency in profile_by_id[role_id].dependencies
-                    )
                 ]
 
                 # Unknown dependencies cannot ever unblock. Mark those workers
