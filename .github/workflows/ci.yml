@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   tests:
-    name: Tests ($${{ matrix.os }}, Python ${{ matrix.python-version }})
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -78,7 +78,7 @@ jobs:
         run: python -m mypy src/nexus_agent/
 
   native:
-    name: Native ($${{ matrix.project.name }}, ${{ matrix.os }})
+    name: Native (${{ matrix.project.name }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
