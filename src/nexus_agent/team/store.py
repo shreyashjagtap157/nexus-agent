@@ -98,19 +98,21 @@ class TeamStore:
             )
             self._conn.commit()
 
-    def add_agent(self, team_id: str, profile: dict[str, Any]) -> None:
+    def add_agent(self, team_id: str, profile: dict[str, Any]) -> str:
+        agent_id = f"{team_id}:{profile['role_id']}"
         with self._lock:
             self._conn.execute(
                 """INSERT INTO team_agents(
                     agent_id,team_id,name,profession,mission,instructions,role_json,state,model_role
                 ) VALUES(?,?,?,?,?,?,?,?,?)""",
                 (
-                    profile["role_id"], team_id, profile["name"], profile["profession"],
+                    agent_id, team_id, profile["name"], profile["profession"],
                     profile["mission"], profile["instructions"],
                     json.dumps(profile, default=str), "planned", profile.get("model_role", "default"),
                 ),
             )
             self._conn.commit()
+        return agent_id
 
     def update_agent(self, agent_id: str, **fields: Any) -> None:
         allowed = {"state", "started_at", "ended_at", "result", "error"}
