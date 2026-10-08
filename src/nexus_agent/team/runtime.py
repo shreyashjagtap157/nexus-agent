@@ -23,10 +23,31 @@ PermissionCallback = Callable[[Any], bool]
 ProviderSelector = Callable[[AgentProfile], LLMProvider]
 
 
-def build_workspace_tools(workspace: Path, memory_manager: Any | None = None) -> list[Any]:
+def build_workspace_tools(
+    workspace: Path,
+    memory_manager: Any | None = None,
+    provider: LLMProvider | None = None,
+    agent_loop: Any | None = None,
+    include_advanced: bool = True,
+) -> list[Any]:
+    from nexus_agent.tools.browser import BrowserTool
+    from nexus_agent.tools.boomerang import BoomerangTool
+    from nexus_agent.tools.batch_edit import BatchEditTool
     from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
-    from nexus_agent.tools.file_ops import ListDirectoryTool, ReadFileTool, SearchFilesTool, WriteFileTool
-    from nexus_agent.tools.git_ops import GitTool
+    from nexus_agent.tools.code_intel import CallGraphTool, ImportGraphTool, RenameTool
+    from nexus_agent.tools.council import CouncilTool
+    from nexus_agent.tools.file_ops import (
+        DeleteFileTool,
+        ListDirectoryTool,
+        MoveFileTool,
+        ParseDataTool,
+        ReadFileTool,
+        SearchFilesTool,
+        WriteFileTool,
+    )
+    from nexus_agent.tools.git_ops import CIAnalyzerTool, GitTool, PRGeneratorTool, SmartCommitTool
+    from nexus_agent.tools.lsp_client import LSPClientTool
+    from nexus_agent.tools.rag_search import RepositoryRAGTool
     from nexus_agent.tools.shell import ShellTool
     from nexus_agent.tools.todowrite import TodoWriteTool
     from nexus_agent.tools.web_search import WebSearchTool
@@ -35,22 +56,40 @@ def build_workspace_tools(workspace: Path, memory_manager: Any | None = None) ->
     tools: list[Any] = [
         ReadFileTool(workspace),
         WriteFileTool(workspace),
+        DeleteFileTool(workspace),
+        MoveFileTool(workspace),
+        ParseDataTool(workspace),
         SearchFilesTool(workspace),
         ListDirectoryTool(workspace),
         ShellTool(workspace),
         CodeEditTool(workspace),
         InsertLinesTool(workspace),
+        BatchEditTool(workspace),
         GitTool(workspace),
+        SmartCommitTool(workspace),
+        PRGeneratorTool(workspace),
+        CIAnalyzerTool(workspace),
         WebSearchTool(),
         WebFetchTool(),
-        TodoWriteTool(persist_path=workspace / ".nexus" / "todos.json"),
+        BrowserTool(workspace),
+        ImportGraphTool(workspace),
+        CallGraphTool(workspace),
+        RenameTool(workspace),
+        LSPClientTool(workspace),
+        RepositoryRAGTool(workspace, db_dir=workspace / ".nexus-agent" / "runtime" / "rag"),
+        TodoWriteTool(persist_path=workspace / ".nexus-agent" / "runtime" / "todos.json"),
     ]
     if memory_manager is not None:
         from nexus_agent.tools.memory import MemoryTool
         memory = MemoryTool()
         memory.set_memory(memory_manager)
         tools.append(memory)
+    if include_advanced:
+        boomerang = BoomerangTool(agent_loop)
+        council = CouncilTool(provider)
+        tools.extend([boomerang, council])
     return tools
+
 
 
 class TeamRuntime:
