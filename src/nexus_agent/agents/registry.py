@@ -119,4 +119,16 @@ class AgentRegistry:
             errors.append("tool_categories must contain at least one category.")
         if spec.write_access and "write" not in spec.tool_categories:
             errors.append("write_access=true requires the 'write' tool category.")
+        from nexus_agent.skills.skill_registry import SkillRegistry
+        skills = SkillRegistry(
+            search_dirs=[
+                str(self.roots[AgentScope.USER].parent / "skills"),
+                str(self.workspace / ".nexus-agent" / "skills"),
+            ],
+            workspace=self.workspace,
+        )
+        skills.discover_skills()
+        unknown = [skill for skill in spec.skill_ids if skills.get_skill(skill) is None]
+        if unknown:
+            errors.append("unknown skill IDs: " + ", ".join(sorted(unknown)))
         return errors
