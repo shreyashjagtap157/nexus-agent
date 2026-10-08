@@ -72,9 +72,16 @@ class LiteLLMProvider(LLMProvider):
         result: list[ToolCall] = []
         for item in raw:
             try:
-                function = getattr(item, "function", None)
-                name = getattr(function, "name", None) if function is not None else None
-                arguments = getattr(function, "arguments", None) if function is not None else None
+                if isinstance(item, dict):
+                    function = item.get("function") or {}
+                    name = function.get("name")
+                    arguments = function.get("arguments")
+                    call_id = item.get("id", "")
+                else:
+                    function = getattr(item, "function", None)
+                    name = getattr(function, "name", None) if function is not None else None
+                    arguments = getattr(function, "arguments", None) if function is not None else None
+                    call_id = getattr(item, "id", "")
                 if not isinstance(arguments, str):
                     arguments = "{}" if arguments is None else str(arguments)
                 try:
@@ -84,7 +91,7 @@ class LiteLLMProvider(LLMProvider):
                     parsed = {"raw": arguments}
                 result.append(
                     ToolCall(
-                        id=str(getattr(item, "id", "") or ""),
+                        id=str(call_id or ""),
                         name=str(name or ""),
                         arguments=parsed if isinstance(parsed, dict) else {"value": parsed},
                     )
