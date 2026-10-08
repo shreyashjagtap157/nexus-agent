@@ -50,11 +50,12 @@ logger = logging.getLogger(__name__)
 
 
 class AgentMode(str, Enum):
-    """Agent operating modes (inspired by opencode Plan/Build)."""
+    """Agent operating modes."""
     AUTO = "auto"       # Agent decides when to plan vs execute
     PLAN = "plan"       # Read-only analysis and planning
     BUILD = "build"     # Full read/write execution
     REVIEW = "review"   # Code review mode
+    RESEARCH = "research"  # Evidence-first source gathering and verification
 
 
 class AgentState(str, Enum):
