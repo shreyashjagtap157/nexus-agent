@@ -190,6 +190,18 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
         )
         llm_provider = _create_mock_provider()
 
+    # Replace the legacy minimal tool list with the shared universal catalog.
+    from nexus_agent.mcp.client import load_configured_servers
+    from nexus_agent.team.runtime import build_workspace_tools
+
+    mcp_clients, mcp_tools = load_configured_servers(config)
+    tools = build_workspace_tools(
+        workspace,
+        memory_manager=memory,
+        provider=llm_provider,
+        mcp_tools=mcp_tools,
+    )
+
     # 6. Create agent config (config-only fields — provider/tools are passed separately)
     agent_cfg_obj = AgentLoopConfig(
         workspace=workspace,
@@ -204,8 +216,12 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
 
     # 8. Late-bind agent loop and provider to tools that need them
     agent.memory = memory
-    boomerang_tool.set_agent_loop(agent)
-    council_tool.set_provider(llm_provider)
+    agent.mcp_clients = mcp_clients
+    for tool in tools:
+        if hasattr(tool, "set_agent_loop"):
+            tool.set_agent_loop(agent)
+        if hasattr(tool, "set_provider"):
+            tool.set_provider(llm_provider)
     return agent
 
 
