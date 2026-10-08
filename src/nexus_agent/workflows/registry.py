@@ -19,12 +19,18 @@ class WorkflowSpec:
     description: str
     mode: TeamMode
     default_agents: int = 4
+    default_parallelism: int = 4
+    default_iterations: int = 30
+    effort_level: str = "medium"
     require_reviewer: bool = True
     auto_synthesize: bool = True
     allow_parallel_writers: bool = False
     output_mode: str = "chat"
+    output_format: str = "markdown"
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    agent_ids: tuple[str, ...] = ()
+    research_source_urls: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     controls: dict[str, Any] = field(default_factory=dict)
     source: str = "builtin"
@@ -34,12 +40,18 @@ class WorkflowSpec:
             "mode": self.mode,
             "workflow_id": self.id,
             "max_agents": self.default_agents,
+            "parallelism": self.default_parallelism,
+            "max_iterations_per_agent": self.default_iterations,
+            "effort_level": self.effort_level,
             "require_reviewer": self.require_reviewer,
             "auto_synthesize": self.auto_synthesize,
             "allow_parallel_writers": self.allow_parallel_writers,
             "output_mode": self.output_mode,
+            "output_format": self.output_format,
             "research_depth": self.research_depth,
             "research_collection": self.research_collection,
+            "agent_ids": list(self.agent_ids),
+            "research_source_urls": list(self.research_source_urls),
         }
         values.update({key: value for key, value in overrides.items() if value is not None})
         return TeamConfig(**values).normalize()
@@ -56,12 +68,18 @@ class WorkflowSpec:
             description=str(data.get("description") or "").strip(),
             mode=mode,
             default_agents=max(1, min(int(data.get("default_agents", 4)), 64)),
+            default_parallelism=max(1, min(int(data.get("default_parallelism", 4)), 64)),
+            default_iterations=max(1, min(int(data.get("default_iterations", 30)), 500)),
+            effort_level=str(data.get("effort_level") or "medium"),
             require_reviewer=bool(data.get("require_reviewer", True)),
             auto_synthesize=bool(data.get("auto_synthesize", True)),
             allow_parallel_writers=bool(data.get("allow_parallel_writers", False)),
             output_mode=str(data.get("output_mode") or "chat"),
+            output_format=str(data.get("output_format") or "markdown"),
             research_depth=str(data.get("research_depth") or "detailed"),
             research_collection=str(data.get("research_collection") or "until_saturation"),
+            agent_ids=tuple(str(x).strip().lower() for x in data.get("agent_ids", []) if str(x).strip()),
+            research_source_urls=tuple(str(x).strip() for x in data.get("research_source_urls", []) if str(x).strip()),
             tags=tuple(str(x).strip() for x in data.get("tags", []) if str(x).strip()),
             controls=data.get("controls") if isinstance(data.get("controls"), dict) else {},
             source=source,
@@ -134,12 +152,18 @@ class WorkflowRegistry:
             "description": workflow.description,
             "mode": workflow.mode.value,
             "default_agents": workflow.default_agents,
+            "default_parallelism": workflow.default_parallelism,
+            "default_iterations": workflow.default_iterations,
+            "effort_level": workflow.effort_level,
             "require_reviewer": workflow.require_reviewer,
             "auto_synthesize": workflow.auto_synthesize,
             "allow_parallel_writers": workflow.allow_parallel_writers,
             "output_mode": workflow.output_mode,
+            "output_format": workflow.output_format,
             "research_depth": workflow.research_depth,
             "research_collection": workflow.research_collection,
+            "agent_ids": list(workflow.agent_ids),
+            "research_source_urls": list(workflow.research_source_urls),
             "tags": list(workflow.tags),
             "controls": workflow.controls,
         }
