@@ -158,6 +158,23 @@ class TeamStore:
             self._conn.commit()
         return event_id
 
+    def list_teams(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT team_id,goal,mode,workspace,status,config_json,created_at,completed_at
+                   FROM teams ORDER BY created_at DESC LIMIT ? OFFSET ?""",
+                (max(1, min(limit, 1000)), max(0, offset)),
+            ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["config"] = json.loads(item.pop("config_json") or "{}")
+            except (TypeError, ValueError):
+                item["config"] = {}
+            result.append(item)
+        return result
+
     def team(self, team_id: str) -> dict[str, Any] | None:
         with self._lock:
             row = self._conn.execute("SELECT * FROM teams WHERE team_id=?", (team_id,)).fetchone()
