@@ -1,6 +1,6 @@
 # NexusAgent API Reference
 
-> **Version:** 0.1.0  
+> **Version:** 0.2.0-alpha.1  
 > **Base URL:** `http://127.0.0.1:7860` (local GUI server)
 
 NexusAgent exposes three API surfaces:
@@ -34,7 +34,7 @@ Returns the current status of the agent core.
 ```json
 {
   "app_name": "NexusAgent",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.1",
   "model_loaded": true,
   "model_name": "llama-3.1-8b",
   "runtime": "llama-cpp",
