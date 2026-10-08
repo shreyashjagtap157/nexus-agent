@@ -36,6 +36,9 @@ def build_workspace_tools(
     agent_id: str | None = None,
     team_id: str | None = None,
     session_id: str | None = None,
+    research: bool = False,
+    research_depth: str = "detailed",
+    research_source_strategy: str = "hybrid",
 ) -> list[Any]:
     from nexus_agent.tools.browser import BrowserTool
     from nexus_agent.tools.boomerang import BoomerangTool
@@ -93,6 +96,36 @@ def build_workspace_tools(
         memory = MemoryTool()
         memory.set_memory(memory_manager)
         tools.append(memory)
+
+    if research:
+        run_id = session_id or team_id or "interactive"
+        from nexus_agent.research.configured_source_tool import ResearchConfiguredSourceTool
+        from nexus_agent.research.tools import (
+            ResearchRecordClaimTool,
+            ResearchRecordSourceTool,
+            ResearchVerifyClaimTool,
+        )
+        research_db = StorageLayout(workspace).workspace_runtime / "research.db"
+        tools.extend(
+            [
+                ResearchConfiguredSourceTool(
+                    workspace / ".nexus-agent" / "research-sources.yaml",
+                    research_db,
+                    run_id,
+                    agent_id or "interactive-agent",
+                ),
+                ResearchRecordSourceTool(research_db, run_id, agent_id or "interactive-agent"),
+                ResearchRecordClaimTool(research_db, run_id, agent_id or "interactive-agent"),
+                ResearchVerifyClaimTool(research_db, run_id, agent_id or "interactive-agent"),
+            ]
+        )
+        if research_source_strategy == "user_only":
+            tools = [
+                tool
+                for tool in tools
+                if getattr(tool, "name", "") not in {"web_search", "webfetch", "browser"}
+            ]
+
     if mcp_tools:
         tools.extend(mcp_tools)
     if include_advanced:
