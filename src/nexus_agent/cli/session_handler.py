@@ -173,25 +173,6 @@ class SessionOrchestratorMixin:
         if not self._engine:
             return
 
-        from nexus_agent.tools.boomerang import BoomerangTool
-        from nexus_agent.tools.council import CouncilTool
-        from nexus_agent.tools.batch_edit import BatchEditTool
-        from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
-        from nexus_agent.tools.code_intel import ImportGraphTool
-        from nexus_agent.tools.file_ops import (
-            ListDirectoryTool,
-            ReadFileTool,
-            SearchFilesTool,
-            WriteFileTool,
-        )
-        from nexus_agent.tools.git_ops import GitTool
-        from nexus_agent.tools.memory import MemoryTool
-        from nexus_agent.tools.rag_search import RepositoryRAGTool
-        from nexus_agent.tools.shell import ShellTool
-        from nexus_agent.tools.todowrite import TodoWriteTool
-        from nexus_agent.tools.web_search import WebSearchTool
-        from nexus_agent.tools.webfetch import WebFetchTool
-
         from nexus_agent.team.runtime import build_workspace_tools
 
         tools = build_workspace_tools(
