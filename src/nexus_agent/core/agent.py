@@ -263,6 +263,7 @@ Current workspace: {workspace}
         self.research_collection = cfg.research_collection
         self.research_source_strategy = cfg.research_source_strategy
         self.research_session_id = cfg.research_session_id
+        self._research_nudge_count = 0
         self.usage_tracker = usage_tracker
         self._healer = self_healing_executor or SelfHealingExecutor(max_retries=3)
 
