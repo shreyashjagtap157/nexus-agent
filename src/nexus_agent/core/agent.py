@@ -945,6 +945,8 @@ Current workspace: {workspace}
             "research_record_source",
             "research_record_claim",
             "research_verify_claim",
+            "research_record_conflict",
+            "research_adjudicate_conflict",
         }
         names = {str(getattr(tool, "name", "")) for tool in self.tools}
         if required.issubset(names):
