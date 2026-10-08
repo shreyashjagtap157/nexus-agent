@@ -81,6 +81,16 @@ const Chat = {
         const activeModelDisplay = document.getElementById("active-model-display");
 
         switch (data.type) {
+            case "state_change":
+                if (data.data && data.data.mode) {
+                    const mode = String(data.data.mode).toUpperCase();
+                    this.logActivity("system", `[MODE] Agent execution mode: ${mode}`);
+                    document.querySelectorAll(".mode-tab").forEach(tab => {
+                        tab.classList.toggle("active", tab.dataset.mode === String(data.data.mode));
+                    });
+                }
+                break;
+
             case "thinking":
                 this.logActivity("thinking", `[THINKING] ${data.content}`);
                 break;
