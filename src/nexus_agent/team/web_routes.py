@@ -67,7 +67,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         workspace = _workspace(state_manager)
         memory_manager = state_manager.get("memory_manager")
         config = state_manager.get("config") or {}
-        mcp_clients, mcp_tools = load_configured_servers(config)
+        _, mcp_tools = load_configured_servers(config)
         tools = build_workspace_tools(workspace, memory_manager, provider=provider, mcp_tools=mcp_tools)
         permission_manager = PermissionManager()
         permission_manager.load_from_config(state_manager.get("config") or {})
