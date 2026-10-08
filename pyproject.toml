@@ -138,6 +138,7 @@ dev = [
 
 [project.scripts]
 nexus = "nexus_agent.__main__:main"
+nexus-team = "nexus_agent.team_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/nexus-agent/nexus-agent"
