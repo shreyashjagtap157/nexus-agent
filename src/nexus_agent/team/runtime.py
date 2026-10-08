@@ -108,19 +108,26 @@ def build_workspace_tools(
             ResearchVerifyClaimTool,
         )
         research_db = StorageLayout(workspace).workspace_runtime / "research.db"
-        tools.extend(
-            [
-                ResearchConfiguredSourceTool(
-                    workspace / ".nexus-agent" / "research-sources.yaml",
+        research_tools = [
+            ResearchConfiguredSourceTool(
+                workspace / ".nexus-agent" / "research-sources.yaml",
+                research_db,
+                run_id,
+                agent_id or "interactive-agent",
+            ),
+            ResearchRecordClaimTool(research_db, run_id, agent_id or "interactive-agent"),
+            ResearchVerifyClaimTool(research_db, run_id, agent_id or "interactive-agent"),
+        ]
+        if research_source_strategy != "user_only":
+            research_tools.insert(
+                1,
+                ResearchRecordSourceTool(
                     research_db,
                     run_id,
                     agent_id or "interactive-agent",
                 ),
-                ResearchRecordSourceTool(research_db, run_id, agent_id or "interactive-agent"),
-                ResearchRecordClaimTool(research_db, run_id, agent_id or "interactive-agent"),
-                ResearchVerifyClaimTool(research_db, run_id, agent_id or "interactive-agent"),
-            ]
-        )
+            )
+        tools.extend(research_tools)
         if research_source_strategy == "user_only":
             tools = [
                 tool
