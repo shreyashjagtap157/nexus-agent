@@ -740,6 +740,87 @@ def agent_list(workspace: str) -> None:
     console.print(table)
 
 
+@agent.command("run")
+@click.argument("agent_id")
+@click.argument("goal")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--provider", type=str, default=None)
+@click.option("--model-path", type=click.Path(exists=True), default=None)
+@click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
+@click.option("--yes", is_flag=True, help="Automatically approve all tool requests.")
+@click.pass_context
+def agent_run(
+    ctx: click.Context,
+    agent_id: str,
+    goal: str,
+    workspace: str,
+    provider: str | None,
+    model_path: str | None,
+    effort: str,
+    yes: bool,
+) -> None:
+    """Run one saved agent profile against a goal."""
+    from nexus_agent.agents import AgentRegistry
+    from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.providers.factory import ProviderFactory
+    from nexus_agent.permissions.manager import PermissionManager
+    from nexus_agent.team.providers import make_provider_selector
+    from nexus_agent.team.runtime import build_workspace_tools
+    from nexus_agent.storage.layout import StorageLayout
+    from nexus_agent.memory.memory_manager import MemoryManager
+
+    ws = Path(workspace).resolve()
+    config = load_config(config_path=ctx.obj.get("config_path"), workspace=ws)
+    registry = AgentRegistry(ws)
+    spec = registry.get(agent_id)
+    if spec is None:
+        raise click.ClickException(f"Unknown or disabled agent: {agent_id}")
+
+    base_name = provider or spec.provider or config.get("providers", {}).get("active", "local")
+    base_provider = ProviderFactory.create_provider(base_name, config, model_path or spec.model)
+    if spec.provider or spec.model:
+        role_provider = make_provider_selector(config, base_provider)(spec.to_team_profile())
+    else:
+        role_provider = base_provider
+
+    permissions = PermissionManager(project=str(ws))
+    permissions.load_from_config(config)
+    memory = MemoryManager(data_dir=StorageLayout(ws).user_memory)
+    tools = build_workspace_tools(ws, memory_manager=memory, provider=role_provider)
+    cfg = AgentLoopConfig(
+        mode=AgentMode.BUILD if spec.write_access else AgentMode.REVIEW,
+        workspace=ws,
+        max_iterations=int(config.get("agent", {}).get("max_iterations", 50)),
+        effort_level=effort,
+        permission_callback=lambda tc: True if yes else permissions.check_and_approve(
+            tool_name=tc.name,
+            arguments=tc.arguments,
+            description=f"Agent {spec.id} requesting {tc.name}",
+        ),
+        system_prompt_extra=(
+            f"You are {spec.name}, profession={spec.profession}.\n"
+            f"Mission: {spec.mission}\n\n"
+            f"Persistent agent instructions:\n{spec.instructions}\n\n"
+            "Use the supplied tools for evidence and execution. Stay within your role and report blockers."
+        ),
+    )
+    agent = AgentLoop(provider=role_provider, tools=tools, config=cfg)
+    agent.memory = memory
+    for tool in tools:
+        if hasattr(tool, "set_agent_loop"):
+            tool.set_agent_loop(agent)
+        if hasattr(tool, "set_provider"):
+            tool.set_provider(role_provider)
+    final = ""
+    for event in agent.run(goal):
+        if event.type.value == "content":
+            click.echo(str(event.data))
+            final += str(event.data)
+        elif event.type.value == "error":
+            click.echo(f"ERROR: {event.data}", err=True)
+    click.echo(f"\nAgent {spec.id} complete.")
+
 @agent.command("show")
 @click.argument("agent_id")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
