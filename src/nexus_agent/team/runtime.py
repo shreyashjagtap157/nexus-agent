@@ -369,8 +369,14 @@ class TeamRuntime:
         level = str(getattr(tool, "permission_level", "ask")).lower() if tool else "ask"
         if level in {"dangerous", "ask"}:
             return False
-        if level == "read-write" and not (profile and profile.write_access):
-            return False
+        if level == "read-write":
+            research_write = (
+                profile is not None
+                and "research" in set(profile.tool_categories)
+                and name.startswith("research_")
+            )
+            if not (profile and profile.write_access) and not research_write:
+                return False
 
         # Safe team default: allow read/search/web/git introspection; deny
         # operations that the normal PermissionManager would require approval for.
