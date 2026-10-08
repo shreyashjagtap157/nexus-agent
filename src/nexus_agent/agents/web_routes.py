@@ -56,14 +56,16 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
     router = APIRouter()
 
     @router.get("/api/agents")
-    async def list_agents(include_disabled: bool = False):
+    async def list_agents(request: Request, include_disabled: bool = False):
+        _require_local(request)
         return {
             "roots": _registry(state_manager).roots_info(),
             "agents": [item.to_dict() for item in _registry(state_manager).load(include_disabled=include_disabled)],
         }
 
     @router.get("/api/agents/{agent_id}")
-    async def get_agent(agent_id: str):
+    async def get_agent(agent_id: str, request: Request):
+        _require_local(request)
         spec = _registry(state_manager).get(agent_id)
         if spec is None:
             raise HTTPException(status_code=404, detail="Unknown or disabled agent")
