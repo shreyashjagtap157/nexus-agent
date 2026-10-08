@@ -64,12 +64,13 @@ def main() -> None:
 @click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
 @click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
 @click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
+@click.option("--source", "research_source_urls", multiple=True, help="Seed a research source URL. Repeat for multiple sources.")
 @click.option("--agent", "agent_ids", multiple=True, help="Pin a saved agent profile by ID. Repeat for multiple profiles.")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
+def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, research_source_urls: tuple[str, ...], agent_ids: tuple[str, ...], workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Run a dynamically assembled peer team."""
     console = Console()
     runtime, _provider = _make_runtime(workspace.resolve(), provider, model_path, yes)
@@ -86,6 +87,7 @@ def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallel
     config.output_format = output_format
     config.research_depth = research_depth
     config.research_collection = research_collection
+    config.research_source_urls = list(research_source_urls)
     config.agent_ids = list(agent_ids)
     config.use_saved_agents = True
     config.auto_approve_tools = yes
