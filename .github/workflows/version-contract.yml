@@ -1,5 +1,9 @@
 name: Version Contract
 
+concurrency:
+  group: nexus-agent-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["master", "multi-agent-platform"]
