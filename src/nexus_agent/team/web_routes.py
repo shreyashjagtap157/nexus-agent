@@ -27,6 +27,23 @@ from nexus_agent.workflows import WorkflowRegistry
 from .store import TeamStore
 
 
+class WorkflowWriteRequest(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=4000)
+    mode: TeamMode = TeamMode.AUTO
+    default_agents: int = Field(default=4, ge=1, le=64)
+    require_reviewer: bool = True
+    auto_synthesize: bool = True
+    allow_parallel_writers: bool = False
+    output_mode: str = Field(default="chat", pattern="^(chat|file|both)$")
+    research_depth: str = "detailed"
+    research_collection: str = "until_saturation"
+    tags: list[str] = Field(default_factory=list)
+    controls: dict[str, Any] = Field(default_factory=dict)
+    scope: str = Field(default="workspace", pattern="^(user|workspace)$")
+
+
 class TeamControlRequest(BaseModel):
     action: str = Field(pattern="^(pause|resume|stop)$")
 
