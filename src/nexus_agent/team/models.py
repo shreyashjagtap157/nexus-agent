@@ -72,6 +72,8 @@ class TeamConfig:
     require_reviewer: bool = True
     allow_parallel_writers: bool = False
     auto_approve_tools: bool = False
+    agent_ids: list[str] = field(default_factory=list)
+    use_saved_agents: bool = True
 
     def normalize(self) -> "TeamConfig":
         self.max_agents = max(1, min(int(self.max_agents), 64))
