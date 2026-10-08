@@ -64,6 +64,7 @@ class TeamConfig:
     max_iterations_per_agent: int = 30
     workspace: str = "."
     output_mode: str = "chat"
+    output_format: str = "markdown"
     effort_level: str = "medium"
     auto_synthesize: bool = True
     require_reviewer: bool = True
@@ -86,3 +87,4 @@ class TeamRunResult:
     agents: list[dict[str, Any]] = field(default_factory=list)
     synthesis: str = ""
     failures: list[str] = field(default_factory=list)
+    artifact_paths: list[str] = field(default_factory=list)
