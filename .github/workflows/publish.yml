@@ -5,9 +5,62 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
+  release-gate:
+    name: Release Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Validate canonical version
+        run: python scripts/check_version.py --tag "$GITHUB_REF_NAME"
+
+      - name: Install Python release/test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Syntax compile
+        run: python -m compileall -q src
+
+      - name: Full test suite
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Ruff
+        run: |
+          python -m ruff check src/
+          python -m ruff format --check src/
+
+      - name: MyPy
+        run: python -m mypy src/nexus_agent/
+
+      - name: Check native Rust CLI
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust formatting
+        run: cargo fmt --manifest-path nexus-rs/Cargo.toml -- --check
+
+      - name: Rust check
+        run: cargo check --manifest-path nexus-rs/Cargo.toml
+
+      - name: Desktop formatting
+        run: cargo fmt --manifest-path nexus-desktop/Cargo.toml -- --check
+
+      - name: Desktop check
+        run: cargo check --manifest-path nexus-desktop/Cargo.toml
+
   publish:
-    name: Publish to PyPI
+    name: Build and Publish to PyPI
+    needs: release-gate
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -22,17 +75,13 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-
       - name: Validate release version
-        run: |
-          python scripts/check_version.py --tag "$GITHUB_REF_NAME"
+        run: python scripts/check_version.py --tag "$GITHUB_REF_NAME"
 
       - name: Build package
         run: |
+          python -m pip install --upgrade pip
+          pip install build twine
           python -m build
           twine check dist/*
 
