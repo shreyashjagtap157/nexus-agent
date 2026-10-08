@@ -371,6 +371,9 @@ class ResearchStore:
             "team_id": team_id,
             "sources": self.sources(team_id),
             "claims": self.claims(team_id),
+            "verified_claims": self.verified_claims(team_id),
+            "conflicts": self.conflicts(team_id),
+            "unresolved_conflicts": self.unresolved_conflicts(team_id),
         }
 
     def coverage(self, team_id: str, required_verification_passes: int) -> dict[str, Any]:
