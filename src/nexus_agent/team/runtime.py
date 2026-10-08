@@ -236,15 +236,37 @@ class TeamRuntime:
                 ]
         return selected
 
-    def _permission(self, tool_call: Any, config: TeamConfig) -> bool:
+    def _permission(
+        self,
+        tool_call: Any,
+        config: TeamConfig,
+        profile: AgentProfile | None = None,
+    ) -> bool:
         if config.auto_approve_tools:
             return True
         if self.permission_callback is not None:
             return bool(self.permission_callback(tool_call))
+
+        name = str(getattr(tool_call, "name", "")).lower()
+        tool = next(
+            (candidate for candidate in self.tools if getattr(candidate, "name", "").lower() == name),
+            None,
+        )
+        if tool is None and profile is not None and name in {item.lower() for item in profile.skill_ids}:
+            tool = self.skill_registry.get_skill(name)
+
+        level = str(getattr(tool, "permission_level", "ask")).lower() if tool else "ask"
+        if level in {"dangerous", "ask"}:
+            return False
+        if level == "read-write" and not (profile and profile.write_access):
+            return False
+
         # Safe team default: allow read/search/web/git introspection; deny
         # operations that the normal PermissionManager would require approval for.
-        name = str(getattr(tool_call, "name", "")).lower()
-        return not any(token in name for token in ("write", "edit", "insert", "shell", "commit", "push", "delete"))
+        return not any(
+            token in name
+            for token in ("write", "edit", "insert", "shell", "commit", "push", "delete")
+        )
 
     def _system_extra(self, goal: str, profile: AgentProfile, team_id: str, config: TeamConfig) -> str:
         research_protocol = ""
@@ -376,7 +398,7 @@ Team protocol:
             provider=worker_provider,
             tools=worker_tools,
             config=cfg,
-            permission_callback=lambda tc: self._permission(tc, config),
+            permission_callback=lambda tc: self._permission(tc, config, profile),
         )
         for tool in worker_tools:
             if hasattr(tool, "set_agent_loop"):
