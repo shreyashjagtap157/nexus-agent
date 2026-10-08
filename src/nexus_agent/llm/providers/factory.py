@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import logging
+import os
 import threading
 from collections.abc import Iterator
 from typing import Any
@@ -198,8 +199,10 @@ class ProviderFactory:
         provider_config = dict(config.get("providers", {}).get(name, {}) or {})
         descriptor = get_provider_descriptor(name)
         auth_key = AuthStore().get(name)
-        if auth_key and not provider_config.get("api_key"):
-            provider_config["api_key"] = auth_key
+        env_key = descriptor.env_key if descriptor is not None else None
+        env_value = os.environ.get(env_key) if env_key else None
+        if not provider_config.get("api_key"):
+            provider_config["api_key"] = auth_key or env_value or provider_config.get("api_key")
         if name not in _PROVIDER_MAP and descriptor is not None and descriptor.protocol == "openai_compatible":
             provider_config.setdefault("api_url", descriptor.base_url or "")
             provider_config.setdefault("model", "custom-model")
