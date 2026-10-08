@@ -131,7 +131,8 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         return {"provider": provider_name, "model": new_engine.model_name, "active": True}
 
     @app.get("/api/provider-config")
-    async def provider_config():
+    async def provider_config(request: Request):
+        _local_only(request)
         workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
         config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
         providers = config.get("providers", {})
@@ -165,7 +166,9 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
 
     @app.get("/api/providers/models")
-    async def provider_models(provider: str, refresh: bool = False):
+    async def provider_models(provider: str, refresh: bool = False, request: Request | None = None):
+        if request is not None:
+            _local_only(request)
         workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
         catalog = ModelsDevCatalog(
             StorageLayout(workspace).caches / "models-dev.json"
@@ -176,7 +179,8 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         }
 
     @app.get("/api/auth")
-    async def auth_list():
+    async def auth_list(request: Request):
+        _local_only(request)
         return {"credentials": AuthStore().list()}
 
     @app.put("/api/auth/{provider}")
