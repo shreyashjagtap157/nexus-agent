@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from nexus_agent.core.config import load_config
 from nexus_agent.permissions.manager import PermissionManager
+from nexus_agent.research.store import ResearchStore
 
 from .models import TeamConfig, TeamMode
 from .runtime import TeamRuntime, build_workspace_tools
@@ -137,6 +138,11 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             return store.messages(team_id, recipient_id=recipient_id)
         finally:
             store.close()
+
+    @router.get("/api/teams/{team_id}/research")
+    async def team_research(team_id: str):
+        research = ResearchStore(_workspace(state_manager) / ".nexus" / "research.db")
+        return research.export(team_id)
 
     @router.get("/api/teams/{team_id}/stream")
     async def team_stream(team_id: str):
