@@ -232,8 +232,9 @@ def _merge_user_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
 
 
 @app.get("/api/config/full")
-async def get_full_config():
+async def get_full_config(request: Request):
     """Return effective configuration with credentials and private keys stripped."""
+    _require_local_client(request)
     return _strip_secrets(state_manager.get("config") or {})
 
 
@@ -284,8 +285,9 @@ async def get_status():
 
 
 @app.get("/api/models")
-async def get_models():
+async def get_models(request: Request):
     """List discovered models in standard GGUF and ONNX formats."""
+    _require_local_client(request)
     local_config = state_manager.get("config").get("local_model", {})
     mgr = ModelManager(models_dir=local_config.get("models_dir"))
     models = mgr.discover_models()
@@ -366,7 +368,8 @@ async def update_config(req: ConfigUpdateRequest, request: Request):
 
 
 @app.get("/api/activity/files")
-async def file_activity(limit: int = 250):
+async def file_activity(request: Request, limit: int = 250):
+    _require_local_client(request)
     from nexus_agent.storage.journal import FileJournal
     workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
     journal = FileJournal(StorageLayout(workspace).workspace_runtime / "file-journal.db")
@@ -377,8 +380,9 @@ async def file_activity(limit: int = 250):
 
 
 @app.get("/api/sessions")
-async def list_sessions():
+async def list_sessions(request: Request):
     """List saved conversation sessions."""
+    _require_local_client(request)
     sm = state_manager.get("session_manager")
     if not sm:
         return []
@@ -412,8 +416,9 @@ async def create_session(req: SessionCreateRequest, request: Request):
 
 
 @app.get("/api/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str, request: Request):
     """Get history of a conversation session."""
+    _require_local_client(request)
     sm = state_manager.get("session_manager")
     if not sm:
         raise HTTPException(status_code=500, detail="SessionManager not initialized")
@@ -426,8 +431,9 @@ async def get_session(session_id: str):
 
 
 @app.get("/api/tasks")
-async def get_tasks():
+async def get_tasks(request: Request):
     """Get the current state of the hierarchical task graph."""
+    _require_local_client(request)
     session_id = state_manager.get("active_session_id")
     if not session_id:
         return {"error": "No active session"}
@@ -444,8 +450,9 @@ async def get_tasks():
 
 
 @app.get("/api/nla/{session_id}")
-async def get_nla(session_id: str):
+async def get_nla(session_id: str, request: Request):
     """Retrieve NLA reasoning logs and autoencoder telemetry summary."""
+    _require_local_client(request)
     nla = NLATelemetry(session_id=session_id, workspace=state_manager.get("workspace"))
     records = nla.load_records()
     return {
