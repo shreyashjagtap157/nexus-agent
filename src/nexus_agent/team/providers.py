@@ -26,25 +26,27 @@ def make_provider_selector(
         specs = {}
 
     def select(profile: AgentProfile) -> LLMProvider:
-        if profile.provider:
-            if profile.fallbacks:
-                return ProviderFactory.create_with_fallback(
-                    profile.provider,
-                    profile.fallbacks,
-                    config,
-                    profile.model,
-                )
-            return ProviderFactory.create_provider(profile.provider, config, profile.model)
         spec = specs.get(profile.model_role) or specs.get(profile.role_id) or {}
         if not isinstance(spec, dict):
             spec = {}
-        provider_name = (profile.provider or str(spec.get("provider") or "")).strip()
+
+        # Agent-local routing has highest precedence, followed by the
+        # workflow/team role map, followed by the shared default provider.
+        provider_name = str(profile.provider or spec.get("provider") or "").strip()
         model = profile.model or spec.get("model")
+        model_override = str(model).strip() if model is not None else None
+
+        fallbacks = list(profile.fallbacks or [])
+        if not fallbacks:
+            fallbacks = [
+                str(item).strip()
+                for item in spec.get("fallbacks", [])
+                if str(item).strip()
+            ]
+
         if not provider_name:
             return default_provider
-        model_override = str(model).strip() if model is not None else None
-        configured_fallbacks = profile.fallbacks or spec.get("fallbacks", [])
-        fallbacks = [str(item).strip() for item in configured_fallbacks if str(item).strip()]
+
         if fallbacks:
             return ProviderFactory.create_with_fallback(
                 provider_name,
@@ -52,10 +54,12 @@ def make_provider_selector(
                 config,
                 model_override,
             )
+
         return ProviderFactory.create_provider(
             provider_name,
             config,
             model_override,
         )
+
 
     return select
