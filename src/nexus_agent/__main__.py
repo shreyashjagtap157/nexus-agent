@@ -309,7 +309,7 @@ def workflow_show(workflow_id: str) -> None:
     import json
     from nexus_agent.workflows import WorkflowRegistry
 
-    item = WorkflowRegistry().get(workflow_id)
+    item = WorkflowRegistry(ws).get(workflow_id)
     click.echo(json.dumps(item.__dict__, indent=2, ensure_ascii=False, default=str))
 
 
