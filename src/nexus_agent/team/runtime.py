@@ -235,15 +235,11 @@ class TeamRuntime:
                 ResearchVerifyClaimTool,
             )
             research_db = self.data_dir / "research.db"
-            from nexus_agent.research.source_tool import ResearchSourceTool
             selected.extend(
                 [
                     ResearchRecordSourceTool(research_db, team_id, profile.role_id),
                     ResearchRecordClaimTool(research_db, team_id, profile.role_id),
                     ResearchVerifyClaimTool(research_db, team_id, profile.role_id),
-                    ResearchSourceTool(
-                        self.workspace / ".nexus-agent" / "research-sources.yaml"
-                    ),
                 ]
             )
             if config is not None and config.research_source_strategy == "user_only":
