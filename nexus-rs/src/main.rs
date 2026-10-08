@@ -108,6 +108,10 @@ enum Commands {
         #[arg(long, default_value = "until_saturation")]
         collection: String,
 
+        /// Seed research source URL; repeat as needed.
+        #[arg(long = "source", action = clap::ArgAction::Append)]
+        sources: Vec<String>,
+
         /// Named workflow policy.
         #[arg(long)]
         workflow: Option<String>,
@@ -180,6 +184,7 @@ async fn main() {
             format,
             depth,
             collection,
+            sources,
             workflow,
             agents,
             provider,
@@ -198,6 +203,7 @@ async fn main() {
                 &format,
                 &depth,
                 &collection,
+                &sources,
                 workflow.as_deref(),
                 &agents,
                 provider.as_deref(),
@@ -492,6 +498,7 @@ async fn run_team(
     format: &str,
     depth: &str,
     collection: &str,
+    sources: &[String],
     workflow: Option<&str>,
     agents: &[String],
     provider: Option<&str>,
@@ -520,6 +527,10 @@ async fn run_team(
         .args(["--depth", depth])
         .args(["--collection", collection])
         .args(["--workspace", workspace]);
+
+    for source in sources {
+        command.args(["--source", source]);
+    }
 
     if let Some(workflow_id) = workflow {
         command.args(["--workflow", workflow_id]);
