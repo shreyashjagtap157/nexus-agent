@@ -74,6 +74,8 @@ class TeamStartRequest(BaseModel):
     research_collection: str = "until_saturation"
     research_source_strategy: str = Field(default="hybrid", pattern="^(user_only|hybrid|autonomous)$")
     research_source_urls: list[str] = Field(default_factory=list, max_length=200)
+    research_max_minutes: int = Field(default=10080, ge=1, le=525600)
+    research_idle_rounds: int = Field(default=2, ge=1, le=20)
     agent_ids: list[str] = Field(default_factory=list)
     use_saved_agents: bool = True
 
