@@ -13,6 +13,7 @@ from nexus_agent.agents.registry import AgentRegistry
 from nexus_agent.core.agent import AgentEvent, AgentEventType, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.llm.base import LLMProvider, Message, Role
 from nexus_agent.skills.skill_registry import SkillRegistry
+from nexus_agent.storage.layout import StorageLayout
 
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
 from .control import register as register_team_control, unregister as unregister_team_control
