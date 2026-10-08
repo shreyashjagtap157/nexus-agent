@@ -207,6 +207,49 @@ def provider_auth_status() -> None:
 
 
 @cli.group()
+def workflow() -> None:
+    """Discover named orchestration workflows."""
+    pass
+
+
+@workflow.command("list")
+def workflow_list() -> None:
+    """List reusable orchestration workflows."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.workflows import WorkflowRegistry
+
+    table = Table(title="NexusAgent Workflows")
+    table.add_column("ID")
+    table.add_column("Name")
+    table.add_column("Mode")
+    table.add_column("Agents")
+    table.add_column("Reviewer")
+    table.add_column("Tags")
+    for item in WorkflowRegistry().list():
+        table.add_row(
+            item.id,
+            item.name,
+            item.mode.value,
+            str(item.default_agents),
+            "yes" if item.require_reviewer else "no",
+            ", ".join(item.tags),
+        )
+    Console().print(table)
+
+
+@workflow.command("show")
+@click.argument("workflow_id")
+def workflow_show(workflow_id: str) -> None:
+    """Show a workflow's policy."""
+    import json
+    from nexus_agent.workflows import WorkflowRegistry
+
+    item = WorkflowRegistry().get(workflow_id)
+    click.echo(json.dumps(item.__dict__, indent=2, ensure_ascii=False, default=str))
+
+
+@cli.group()
 def model() -> None:
     """Manage local LLM models."""
     pass
