@@ -689,6 +689,12 @@ Current workspace: {workspace}
             logger.debug(f"UsageTracker.record failed: {e}")
 
     def run(self, user_input: str) -> Iterator[AgentEvent]:
+        if self.mode == AgentMode.AUTO and self._is_research_request(user_input):
+            self.mode = AgentMode.RESEARCH
+            self._ensure_research_tools()
+            yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
+        elif self.mode == AgentMode.RESEARCH:
+            self._ensure_research_tools()
         truncated_input = self._init_conversation(user_input)
         yield self._emit_event("state_change", AgentState.THINKING)
 
@@ -782,6 +788,12 @@ Current workspace: {workspace}
             self._record_usage_dict(final_usage)
 
     def run_stream(self, user_input: str) -> Iterator[AgentEvent]:
+        if self.mode == AgentMode.AUTO and self._is_research_request(user_input):
+            self.mode = AgentMode.RESEARCH
+            self._ensure_research_tools()
+            yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
+        elif self.mode == AgentMode.RESEARCH:
+            self._ensure_research_tools()
         truncated_input = self._init_conversation(user_input)
         yield self._emit_event("state_change", AgentState.THINKING)
 
@@ -881,6 +893,53 @@ Current workspace: {workspace}
         })
         self._flush_trace_buffer()
 
+    @staticmethod
+    def _is_research_request(user_input: str) -> bool:
+        text = user_input.lower()
+        terms = (
+            "research", "literature review", "survey", "investigate", "investigation",
+            "evidence", "sources", "citations", "cite", "papers", "compare sources",
+            "fact check", "fact-check", "verify claims", "authoritative sources",
+            "specification analysis", "what does the literature say",
+        )
+        return any(term in text for term in terms)
+
+    def _ensure_research_tools(self) -> None:
+        """Attach evidence-ledger tools once for interactive research sessions."""
+        required = {
+            "research_configured_source",
+            "research_record_source",
+            "research_record_claim",
+            "research_verify_claim",
+        }
+        names = {str(getattr(tool, "name", "")) for tool in self.tools}
+        if required.issubset(names):
+            return
+        from nexus_agent.team.runtime import build_workspace_tools
+        catalog = build_workspace_tools(
+            self.workspace,
+            provider=self.provider,
+            session_id=self.research_session_id or self.session_id,
+            research=True,
+            research_depth=self.research_depth,
+            research_source_strategy=self.research_source_strategy,
+        )
+        existing = {str(getattr(tool, "name", "")) for tool in self.tools}
+        for tool in catalog:
+            name = str(getattr(tool, "name", ""))
+            if name in required and name not in existing:
+                self.tools.append(tool)
+                self._tool_map[name] = tool
+                existing.add(name)
+        self._tool_definitions = [
+            ToolDefinition(
+                name=tool.name,
+                description=tool.description,
+                parameters=tool.parameters,
+                required_params=tool.required_params,
+            )
+            for tool in self.tools
+        ]
     def add_context(self, content: str, label: str = "context") -> None:
         """Add additional context to the conversation.
 
