@@ -72,6 +72,7 @@ class DoctorReport:
     system: list[HealthMetric] = field(default_factory=list)
     python_env: list[HealthMetric] = field(default_factory=list)
     key_packages: list[HealthMetric] = field(default_factory=list)
+    platform: list[HealthMetric] = field(default_factory=list)
     benchmarks: BenchmarkResult | None = None
 
 
@@ -209,6 +210,80 @@ def _detect_gpu() -> str | None:
             pass
 
     return None
+
+
+def check_platform_services(workspace: Path | None = None) -> list[HealthMetric]:
+    """Check NexusAgent platform registries, storage and audit integrity."""
+    from nexus_agent.agents import AgentRegistry
+    from nexus_agent.audit import AuditLog
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.providers.catalog import all_providers
+    from nexus_agent.skills import SkillRegistry
+    from nexus_agent.storage.layout import StorageLayout
+    from nexus_agent.workflows import WorkflowRegistry
+
+    ws = (workspace or Path.cwd()).resolve()
+    metrics: list[HealthMetric] = []
+    layout = StorageLayout(ws)
+    try:
+        layout.ensure()
+        metrics.append(HealthMetric.ok("Storage layout", str(layout.workspace_runtime)))
+    except OSError as exc:
+        metrics.append(HealthMetric.error("Storage layout", str(exc)))
+
+    try:
+        agents = AgentRegistry(ws).load()
+        invalid = []
+        registry = AgentRegistry(ws)
+        for spec in agents:
+            errors = registry.validate(spec)
+            if errors:
+                invalid.append(spec.id)
+        value = f"{len(agents)} loaded"
+        metrics.append(HealthMetric.ok("Agent registry", value) if not invalid else HealthMetric.error("Agent registry", f"{invalid}"))
+    except (OSError, ValueError, RuntimeError) as exc:
+        metrics.append(HealthMetric.error("Agent registry", str(exc)))
+
+    try:
+        skills = SkillRegistry(
+            search_dirs=[str(ws / ".nexus-agent" / "skills")],
+            workspace=ws,
+        ).discover_skills()
+        metrics.append(HealthMetric.ok("Skill registry", f"{len(skills)} loaded"))
+    except (OSError, ValueError, RuntimeError) as exc:
+        metrics.append(HealthMetric.warn("Skill registry", str(exc)))
+
+    try:
+        workflows = WorkflowRegistry(ws).list()
+        metrics.append(HealthMetric.ok("Workflow registry", f"{len(workflows)} available"))
+    except (OSError, ValueError, RuntimeError) as exc:
+        metrics.append(HealthMetric.error("Workflow registry", str(exc)))
+
+    try:
+        provider_ids = [item.id for item in all_providers()]
+        active = load_config(workspace=ws).get("providers", {}).get("active", "local")
+        metrics.append(HealthMetric.ok("Provider catalog", f"{len(provider_ids)} providers; active={active}"))
+    except (OSError, ValueError, RuntimeError) as exc:
+        metrics.append(HealthMetric.error("Provider catalog", str(exc)))
+
+    try:
+        audit = AuditLog(layout.workspace_runtime / "audit.jsonl")
+        result = audit.verify()
+        if result["valid"]:
+            metrics.append(HealthMetric.ok("Audit chain", f"{result['records']} records"))
+        else:
+            metrics.append(HealthMetric.error("Audit chain", f"invalid at line {result.get('line')} ({result.get('reason')})"))
+    except (OSError, ValueError, RuntimeError) as exc:
+        metrics.append(HealthMetric.error("Audit chain", str(exc)))
+
+    try:
+        config = load_config(workspace=ws)
+        mcp_servers = config.get("mcp", {}).get("servers", [])
+        metrics.append(HealthMetric.info("MCP configuration", f"{len(mcp_servers) if isinstance(mcp_servers, list) else 0} configured servers"))
+    except (OSError, ValueError, RuntimeError) as exc:
+        metrics.append(HealthMetric.error("MCP configuration", str(exc)))
+
+    return metrics
 
 
 def check_python_env() -> list[HealthMetric]:
@@ -480,6 +555,20 @@ def print_report(report: DoctorReport) -> None:
     console.print(py_table)
     console.print()
 
+    # ── NexusAgent Platform ──
+    platform_table = Table(title="NexusAgent Platform", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+    platform_table.add_column("Component", style="cyan", width=22)
+    platform_table.add_column("Status / Value", style="white")
+    platform_table.add_column("Status", width=8)
+    for metric in report.platform:
+        platform_table.add_row(
+            metric.name,
+            str(metric.value) + (f" {metric.unit}" if metric.unit else ""),
+            _status_icon(metric),
+        )
+    console.print(platform_table)
+    console.print()
+
     # ── Benchmarks ──
     bench = report.benchmarks
     if bench:
@@ -575,6 +664,7 @@ def run_doctor(
     report = DoctorReport()
     report.system = check_system()
     report.python_env = check_python_env()
+    report.platform = check_platform_services(Path.cwd())
 
     if run_benchmarks:
         runner = BenchmarkRunner()
