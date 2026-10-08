@@ -159,3 +159,6 @@ The evidence ledger records source text fetched by the source tool itself; worke
 Dependency scheduling validates all declared dependencies before constructing a ready wave. Unknown dependencies fail closed and cannot execute accidentally. Provider routing also fails over when a configured primary provider cannot be initialized.
 
 Artifact-serving API routes resolve team artifact roots beneath the canonical runtime artifact directory and reject traversal outside that boundary.
+
+
+Autonomous source capture also rejects credential-bearing URLs and common loopback, localhost, link-local, private, reserved and multicast IP targets to prevent research tools from becoming an SSRF primitive. Explicitly configured `user_only` sources remain under the user's explicit source policy.
