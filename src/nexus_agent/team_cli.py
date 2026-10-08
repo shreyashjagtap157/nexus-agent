@@ -21,6 +21,7 @@ from .team.runtime import TeamRuntime, build_workspace_tools
 from .team.providers import make_provider_selector
 from .team.research import RESEARCH_DEPTHS
 from .team.store import TeamStore
+from nexus_agent.workflows import WorkflowRegistry
 
 
 def _make_runtime(workspace: Path, provider_name: str | None, model_path: str | None, auto_approve: bool):
@@ -52,6 +53,7 @@ def main() -> None:
 
 @main.command("run")
 @click.argument("goal")
+@click.option("--workflow", "workflow_id", type=str, default=None, help="Named workflow policy to use.")
 @click.option("--mode", type=click.Choice([x.value for x in TeamMode]), default="auto", show_default=True)
 @click.option("--max-agents", type=int, default=6, show_default=True)
 @click.option("--parallelism", type=int, default=4, show_default=True)
@@ -66,25 +68,27 @@ def main() -> None:
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
+def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Run a dynamically assembled peer team."""
     console = Console()
     runtime, _provider = _make_runtime(workspace.resolve(), provider, model_path, yes)
-    config = TeamConfig(
-        mode=TeamMode(mode),
-        max_agents=max_agents,
-        parallelism=parallelism,
-        max_iterations_per_agent=max_iterations,
-        workspace=str(workspace.resolve()),
-        effort_level=effort,
-        output_mode=output_mode,
-        output_format=output_format,
-        research_depth=research_depth,
-        research_collection=research_collection,
-        agent_ids=list(agent_ids),
-        use_saved_agents=True,
-        auto_approve_tools=yes,
-    )
+    workflow = WorkflowRegistry().get(workflow_id) if workflow_id else None
+    config = (workflow.configure() if workflow else TeamConfig(mode=TeamMode(mode))).normalize()
+    config.workflow_id = workflow_id or ""
+    config.mode = TeamMode(mode) if not workflow_id else config.mode
+    config.max_agents = max_agents
+    config.parallelism = parallelism
+    config.max_iterations_per_agent = max_iterations
+    config.workspace = str(workspace.resolve())
+    config.effort_level = effort
+    config.output_mode = output_mode
+    config.output_format = output_format
+    config.research_depth = research_depth
+    config.research_collection = research_collection
+    config.agent_ids = list(agent_ids)
+    config.use_saved_agents = True
+    config.auto_approve_tools = yes
+    config.normalize()
     final = None
     with Live(Panel.fit("Starting team…"), console=console, refresh_per_second=10):
         for event in runtime.run(goal, config):
