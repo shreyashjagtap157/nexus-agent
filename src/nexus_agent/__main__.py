@@ -1042,6 +1042,7 @@ def team() -> None:
 @team.command("run")
 @click.argument("goal", type=str)
 @click.option("--mode", type=click.Choice(["auto", "code", "research", "review", "analysis", "plan", "automation"]), default="auto")
+@click.option("--workflow", "workflow_id", type=str, default=None, help="Named workflow policy to use.")
 @click.option("--max-agents", type=int, default=6, show_default=True)
 @click.option("--parallelism", type=int, default=4, show_default=True)
 @click.option("--max-iterations", type=int, default=30, show_default=True)
@@ -1056,7 +1057,7 @@ def team() -> None:
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], no_saved_agents: bool, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], no_saved_agents: bool, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Execute a dynamically assembled peer team."""
     from rich.console import Console
     from rich.table import Table
@@ -1085,21 +1086,25 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
         ),
         provider_selector=make_provider_selector(config, llm),
     )
-    team_config = TeamConfig(
-        mode=TeamMode(mode),
-        max_agents=max_agents,
-        parallelism=parallelism,
-        max_iterations_per_agent=max_iterations,
-        workspace=str(ws),
-        effort_level=effort,
-        output_mode=output_mode,
-        output_format=output_format,
-        research_depth=research_depth,
-        research_collection=research_collection,
-        agent_ids=list(agent_ids),
-        use_saved_agents=not no_saved_agents,
-        auto_approve_tools=yes,
-    )
+    workflow = None
+    if workflow_id:
+        from nexus_agent.workflows import WorkflowRegistry
+        workflow = WorkflowRegistry().get(workflow_id)
+    team_config = (workflow.configure() if workflow else TeamConfig(mode=TeamMode(mode))).normalize()
+    team_config.workflow_id = workflow_id or ""
+    team_config.mode = TeamMode(mode) if not workflow_id else team_config.mode
+    team_config.max_agents = max_agents
+    team_config.parallelism = parallelism
+    team_config.max_iterations_per_agent = max_iterations
+    team_config.workspace = str(ws)
+    team_config.effort_level = effort
+    team_config.output_mode = output_mode
+    team_config.output_format = output_format
+    team_config.research_depth = research_depth
+    team_config.research_collection = research_collection
+    team_config.agent_ids = list(agent_ids)
+    team_config.use_saved_agents = not no_saved_agents
+    team_config.auto_approve_tools = yes
     final = None
     for event in runtime.run(goal, team_config):
         if event.type.value == "state_change":
