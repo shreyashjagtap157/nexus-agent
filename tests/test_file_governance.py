@@ -10,7 +10,7 @@ def test_file_mutations_are_reversible_and_journaled(tmp_path: Path):
     deleter = DeleteFileTool(tmp_path)
     result = deleter.execute("demo.txt")
     assert "NexusAgent trash:" in result
-    trash_name = result.rsplit("/", 1)[-1]
+    trash_name = Path(result.split("trash:", 1)[1].strip()).name
     restorer = RestoreFileTool(tmp_path)
     restored = restorer.execute("restore", trash_name, "demo-restored.txt")
     assert "Restored" in restored
