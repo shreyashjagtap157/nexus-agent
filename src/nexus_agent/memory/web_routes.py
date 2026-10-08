@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from nexus_agent.memory.scoped import MemoryScope, ScopedMemory
@@ -39,15 +39,22 @@ def _memory(state_manager: Any, payload: MemoryStoreRequest | MemorySearchReques
     )
 
 
+def _require_local(request: Request) -> None:
+    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Scoped memory access is restricted to local clients.")
+
+
 def register_memory_routes(app: Any, state_manager: Any) -> None:
     router = APIRouter()
 
     @router.get("/api/memory/scoped/search")
     async def scoped_search(
+        request: Request,
         scope: MemoryScope = MemoryScope.USER,
         query: str = "",
         limit: int = 20,
     ):
+        _require_local(request)
         class Payload:
             agent_id = None
             team_id = None
@@ -59,7 +66,8 @@ def register_memory_routes(app: Any, state_manager: Any) -> None:
             memory.close()
 
     @router.post("/api/memory/scoped/search")
-    async def scoped_search_post(payload: MemorySearchRequest):
+    async def scoped_search_post(request: Request, payload: MemorySearchRequest):
+        _require_local(request)
         memory = _memory(state_manager, payload)
         try:
             return {
@@ -74,7 +82,8 @@ def register_memory_routes(app: Any, state_manager: Any) -> None:
             memory.close()
 
     @router.post("/api/memory/scoped/store")
-    async def scoped_store(payload: MemoryStoreRequest):
+    async def scoped_store(request: Request, payload: MemoryStoreRequest):
+        _require_local(request)
         memory = _memory(state_manager, payload)
         try:
             entry_id = memory.store(
@@ -87,7 +96,8 @@ def register_memory_routes(app: Any, state_manager: Any) -> None:
             memory.close()
 
     @router.get("/api/memory/scoped/stats")
-    async def scoped_stats():
+    async def scoped_stats(request: Request):
+        _require_local(request)
         class Payload:
             agent_id = None
             team_id = None
