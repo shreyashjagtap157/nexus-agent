@@ -96,6 +96,8 @@ state_manager = StateManager({
     "permission_manager": None,
     "active_session_id": None,
     "engine": None,
+    "web_agent_threads": {},
+    "web_agent_lock": threading.RLock(),
 })
 
 
@@ -470,7 +472,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Wait for user input prompt
-            data_str = await websocket.receive_text(max_size=65536)
+            data_str = await websocket.receive_text()
+            if len(data_str) > 65536:
+                await websocket.send_json({"type": "error", "content": "Message exceeds 64 KiB limit."})
+                continue
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
             mode_str = data.get("mode", "auto").lower()
