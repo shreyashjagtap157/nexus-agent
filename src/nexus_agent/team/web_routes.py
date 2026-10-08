@@ -206,33 +206,35 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             jobs[job_id] = {"status": "queued", "team_id": None, "result": None, "error": None}
 
         def worker():
-            runtime = build_runtime()
-            workflow = WorkflowRegistry(_workspace(state_manager)).get(req.workflow_id) if req.workflow_id else None
-            cfg = (workflow.configure() if workflow else TeamConfig(mode=req.mode)).normalize()
-            cfg.workflow_id = req.workflow_id or ""
-            cfg.mode = req.mode if not req.workflow_id else cfg.mode
-            cfg.max_agents = req.max_agents
-            cfg.parallelism = req.parallelism
-            cfg.max_iterations_per_agent = req.max_iterations_per_agent
-            cfg.workspace = str(_workspace(state_manager))
-            cfg.effort_level = req.effort_level
-            cfg.output_mode = req.output_mode
-            cfg.output_format = req.output_format
-            cfg.auto_synthesize = req.auto_synthesize
-            cfg.require_reviewer = req.require_reviewer
-            cfg.auto_approve_tools = req.auto_approve_tools
-            cfg.research_depth = req.research_depth
-            cfg.research_collection = req.research_collection
-            cfg.research_source_strategy = req.research_source_strategy
-            cfg.research_max_minutes = req.research_max_minutes
-            cfg.research_idle_rounds = req.research_idle_rounds
-            cfg.research_source_urls = req.research_source_urls
-            cfg.agent_ids = req.agent_ids
-            cfg.use_saved_agents = req.use_saved_agents
-            cfg.normalize()
+            runtime = None
             with lock:
                 jobs[job_id]["status"] = "running"
             try:
+                runtime = build_runtime()
+                workflow = WorkflowRegistry(_workspace(state_manager)).get(req.workflow_id) if req.workflow_id else None
+                cfg = (workflow.configure() if workflow else TeamConfig(mode=req.mode)).normalize()
+                cfg.workflow_id = req.workflow_id or ""
+                cfg.mode = req.mode if not req.workflow_id else cfg.mode
+                cfg.max_agents = req.max_agents
+                cfg.parallelism = req.parallelism
+                cfg.max_iterations_per_agent = req.max_iterations_per_agent
+                cfg.workspace = str(_workspace(state_manager))
+                cfg.effort_level = req.effort_level
+                cfg.output_mode = req.output_mode
+                cfg.output_format = req.output_format
+                cfg.auto_synthesize = req.auto_synthesize
+                cfg.require_reviewer = req.require_reviewer
+                cfg.auto_approve_tools = req.auto_approve_tools
+                cfg.research_depth = req.research_depth
+                cfg.research_collection = req.research_collection
+                cfg.research_source_strategy = req.research_source_strategy
+                cfg.research_max_minutes = req.research_max_minutes
+                cfg.research_idle_rounds = req.research_idle_rounds
+                cfg.research_source_urls = req.research_source_urls
+                cfg.agent_ids = req.agent_ids
+                cfg.use_saved_agents = req.use_saved_agents
+                cfg.normalize()
+
                 result = runtime.run_collect(req.goal, cfg)
                 with lock:
                     jobs[job_id].update({
@@ -240,11 +242,13 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                         "team_id": result.team_id,
                         "result": result.__dict__,
                     })
-            except Exception as exc:
+            except (RuntimeError, ValueError, OSError, TypeError, KeyError) as exc:
+                logger.exception("Team job failed before completion")
                 with lock:
                     jobs[job_id].update({"status": "failed", "error": str(exc)})
             finally:
-                runtime.close()
+                if runtime is not None:
+                    runtime.close()
 
         threading.Thread(target=worker, name=job_id, daemon=True).start()
         return {"job_id": job_id}
