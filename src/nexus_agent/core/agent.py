@@ -732,6 +732,26 @@ Current workspace: {workspace}
                 yield from self._process_tool_calls(response.tool_calls)
                 continue
 
+            if self.mode == AgentMode.RESEARCH:
+                coverage = self._research_coverage()
+                source_count = int((coverage or {}).get("source_count", 0))
+                if source_count == 0 and self._research_nudge_count < 2:
+                    self._research_nudge_count += 1
+                    yield self._emit_event(
+                        "thinking",
+                        "Research quality guard: no source evidence recorded; gathering sources before completion.",
+                    )
+                    with self._lock:
+                        self.messages.append(Message(
+                            role=Role.USER,
+                            content=(
+                                "Do not finish this research task yet. You have not recorded any source evidence. "
+                                "Use web/source tools, record exact source snapshots and supporting quotations in the "
+                                "research ledger, verify the resulting claims, then answer."
+                            ),
+                        ))
+                    continue
+
             rework_needed, reflection_events = self._handle_reflection(truncated_input, response)
             yield from reflection_events
             if rework_needed:
@@ -739,10 +759,13 @@ Current workspace: {workspace}
 
             with self._lock:
                 self.state = AgentState.DONE
-            yield self._emit_event("done", {
+            done_payload = {
                 "iterations": self.iteration_count,
                 "finish_reason": response.finish_reason,
-            })
+            }
+            if self.mode == AgentMode.RESEARCH:
+                done_payload["research_quality"] = self._research_coverage()
+            yield self._emit_event("done", done_payload)
             self._flush_trace_buffer()
             return
 
@@ -941,6 +964,20 @@ Current workspace: {workspace}
             )
             for tool in self.tools
         ]
+    def _research_coverage(self) -> dict[str, Any] | None:
+        if self.mode != AgentMode.RESEARCH:
+            return None
+        try:
+            from nexus_agent.research.store import ResearchStore
+            from nexus_agent.storage.layout import StorageLayout
+            from nexus_agent.team.research import policy as research_policy
+            store = ResearchStore(StorageLayout(self.workspace).workspace_runtime / "research.db")
+            return store.coverage(
+                self.research_session_id or self.session_id,
+                research_policy(self.research_depth)["verification_passes"],
+            )
+        except (ImportError, OSError, ValueError, RuntimeError):
+            return None
     def add_context(self, content: str, label: str = "context") -> None:
         """Add additional context to the conversation.
 
