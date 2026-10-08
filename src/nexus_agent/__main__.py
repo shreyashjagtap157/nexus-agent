@@ -1168,6 +1168,7 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
     from nexus_agent.team.providers import make_provider_selector
     from nexus_agent.team.research import RESEARCH_DEPTHS
     from nexus_agent.llm.providers.factory import ProviderFactory
+    from nexus_agent.mcp.client import load_configured_servers
 
     console = Console()
     ws = Path(workspace).resolve()
@@ -1176,9 +1177,10 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
     llm = ProviderFactory.create_provider(provider_name, config, model_path)
     permissions = PermissionManager(project=str(ws))
     permissions.load_from_config(config)
+    mcp_clients, mcp_tools = load_configured_servers(config)
     runtime = TeamRuntime(
         llm,
-        build_workspace_tools(ws),
+        build_workspace_tools(ws, mcp_tools=mcp_tools),
         workspace=ws,
         permission_callback=lambda tc: permissions.check_and_approve(
             tool_name=tc.name,
@@ -1186,6 +1188,7 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
             description=f"Team worker requesting {tc.name}",
         ),
         provider_selector=make_provider_selector(config, llm),
+        mcp_clients=mcp_clients,
     )
     workflow = None
     if workflow_id:
