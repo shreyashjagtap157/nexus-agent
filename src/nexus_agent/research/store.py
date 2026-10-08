@@ -362,6 +362,11 @@ class ResearchStore:
             "source_count": source_count,
             "claim_count": total_claims,
             "verified_claims": verified_claims,
+            "verified_claim_ids": [
+                int(row["claim_id"])
+                for row in claim_rows
+                if row["status"] == "verified"
+            ],
             "rejected_claims": rejected_claims,
             "unresolved_claims": unresolved_claims,
             "claims_meeting_verification_threshold": threshold_claims,
