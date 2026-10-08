@@ -84,6 +84,16 @@ def _workspace(state_manager: Any) -> Path:
     return Path(state_manager.get("workspace") or Path.cwd()).resolve()
 
 
+def _artifact_root(state_manager: Any, team_id: str) -> Path:
+    base = StorageLayout(_workspace(state_manager)).artifacts.resolve()
+    root = (base / team_id).resolve()
+    try:
+        root.relative_to(base)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid team identifier") from exc
+    return root
+
+
 def register_team_routes(app: Any, state_manager: Any) -> None:
     router = APIRouter()
     jobs: dict[str, dict[str, Any]] = {}
@@ -302,7 +312,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.get("/api/teams/{team_id}/report")
     async def team_report(team_id: str, format: str = "markdown"):
-        root = (StorageLayout(_workspace(state_manager)).artifacts / team_id).resolve()
+        root = _artifact_root(state_manager, team_id)
         if format not in {"markdown", "text", "json"}:
             raise HTTPException(status_code=400, detail="format must be markdown, text or json")
 
