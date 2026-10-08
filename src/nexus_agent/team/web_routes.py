@@ -73,6 +73,14 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             ),
         )
 
+    @router.get("/api/teams")
+    async def list_teams(limit: int = 100, offset: int = 0):
+        store = store_for()
+        try:
+            return store.list_teams(limit=limit, offset=offset)
+        finally:
+            store.close()
+
     @router.post("/api/teams")
     async def start_team(req: TeamStartRequest):
         build_runtime()
@@ -111,6 +119,22 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
         threading.Thread(target=worker, name=job_id, daemon=True).start()
         return {"job_id": job_id}
+
+    @router.get("/api/team-history/{team_id}")
+    async def team_history(team_id: str):
+        store = store_for()
+        try:
+            team = store.team(team_id)
+            if team is None:
+                raise HTTPException(status_code=404, detail="Unknown team")
+            return {
+                "team": team,
+                "agents": store.agents(team_id),
+                "messages": store.messages(team_id),
+                "events": store.events(team_id, limit=5000),
+            }
+        finally:
+            store.close()
 
     @router.get("/api/teams/{job_id}")
     async def team_status(job_id: str):
