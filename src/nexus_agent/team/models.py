@@ -59,6 +59,7 @@ class AgentProfile:
 @dataclass
 class TeamConfig:
     mode: TeamMode = TeamMode.AUTO
+    workflow_id: str = ""
     max_agents: int = 6
     parallelism: int = 4
     max_iterations_per_agent: int = 30
