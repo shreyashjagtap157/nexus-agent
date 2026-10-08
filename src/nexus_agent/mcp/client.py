@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-import subprocess
 import os
+import subprocess
 import threading
 import uuid
 from pathlib import Path
@@ -141,9 +141,19 @@ class MCPClient:
             "TEMP", "TMP", "USERNAME", "USERPROFILE", "LOGNAME", "PWD"
         }
         sanitized_env = {}
+        allowed_secret_env = {
+            str(name).strip()
+            for name in (allowed_secret_env or [])
+            if str(name).strip()
+        }
         if env:
             for k, v in env.items():
-                if k.upper() in allowed_env_keys or k.upper().startswith("NEXUS_") or k.upper().startswith("MCP_"):
+                if (
+                    k.upper() in allowed_env_keys
+                    or k.upper().startswith("NEXUS_")
+                    or k.upper().startswith("MCP_")
+                    or k in allowed_secret_env
+                ):
                     sanitized_env[k] = v
         self.env = sanitized_env or None
 
