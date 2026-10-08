@@ -46,6 +46,7 @@ def build_workspace_tools(
     from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
     from nexus_agent.tools.code_intel import CallGraphTool, ImportGraphTool, RenameTool
     from nexus_agent.tools.council import CouncilTool
+    from nexus_agent.tools.formal import FormalCheckTool
     from nexus_agent.tools.file_ops import (
         DeleteFileTool,
         ListDirectoryTool,
@@ -90,6 +91,7 @@ def build_workspace_tools(
         LSPClientTool(workspace),
         RepositoryRAGTool(workspace, db_dir=workspace / ".nexus-agent" / "runtime" / "rag"),
         TodoWriteTool(persist_path=workspace / ".nexus-agent" / "runtime" / "todos.json"),
+        FormalCheckTool(workspace),
     ]
     if memory_manager is not None:
         from nexus_agent.tools.memory import MemoryTool
@@ -203,6 +205,8 @@ class TeamRuntime:
         if "git" in categories and ("git" in lowered or lowered in {"ci_analyzer", "pr_generator", "smart_commit"}):
             return True
         if "parse" in categories and lowered == "parse_data":
+            return True
+        if "formal" in categories and lowered == "formal_check":
             return True
         if "code_intel" in categories and lowered in {"import_graph", "call_graph", "rename_symbol"}:
             return True
