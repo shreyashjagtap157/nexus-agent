@@ -87,3 +87,33 @@ def test_user_only_research_does_not_expose_untrusted_source_recorder(tmp_path: 
         assert not names.intersection({"web_search", "web_fetch", "webfetch", "browser"})
     finally:
         store.close()
+
+
+def test_worker_permission_lookup_uses_dynamically_injected_tools(tmp_path: Path):
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    from nexus_agent.team.store import TeamStore
+
+    store = TeamStore(tmp_path / "teams.db")
+    try:
+        profile = AgentProfile(
+            role_id="researcher",
+            name="Researcher",
+            profession="Researcher",
+            mission="Research",
+            instructions="Research",
+            tool_categories=["read", "research"],
+        )
+        tools = runtime._tools_for(
+            profile,
+            store,
+            "team-1",
+            TeamConfig(
+                mode=TeamMode.RESEARCH,
+                research_source_strategy="hybrid",
+                auto_approve_tools=False,
+            ),
+        )
+        call = type("ToolCall", (), {"name": "research_record_source"})()
+        assert runtime._permission(call, TeamConfig(mode=TeamMode.RESEARCH), profile, tools) is True
+    finally:
+        store.close()
