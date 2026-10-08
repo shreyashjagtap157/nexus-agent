@@ -33,6 +33,7 @@ class AgentSpec:
     model: str | None = None
     fallbacks: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+    skill_ids: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     source_path: str | None = None
 
@@ -55,6 +56,7 @@ class AgentSpec:
             "model": self.model,
             "fallbacks": list(self.fallbacks),
             "tags": list(self.tags),
+            "skill_ids": list(self.skill_ids),
             "metadata": dict(self.metadata),
             "source_path": self.source_path,
         }
@@ -102,6 +104,7 @@ class AgentSpec:
             model=str(data["model"]).strip() if data.get("model") else None,
             fallbacks=[str(x).strip() for x in data.get("fallbacks", []) if str(x).strip()],
             tags=[str(x).strip() for x in data.get("tags", []) if str(x).strip()],
+            skill_ids=[str(x).strip().lower() for x in data.get("skill_ids", []) if str(x).strip()],
             metadata=data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
             source_path=source_path,
         )
