@@ -46,6 +46,7 @@ dependencies = [
     "tree-sitter>=0.22.0",
     "psutil>=5.9.0",
     "platformdirs>=4.0.0",
+    "filelock>=4.0.12,<4.1",
 ]
 
 [project.optional-dependencies]
