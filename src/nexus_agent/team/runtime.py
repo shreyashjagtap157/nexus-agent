@@ -829,9 +829,7 @@ Team protocol:
         effective_mode = infer_mode(goal, cfg.mode)
         cfg.mode = effective_mode
         cfg.normalize()
-        saved_specs = self.agent_registry.load() if cfg.use_saved_agents else []
-        saved_profiles = [spec.to_team_profile() for spec in saved_specs]
-        if cfg.research_source_urls:
+        saved_specs = (\n            [\n                spec\n                for spec in self.agent_registry.load()\n                if getattr(spec.scope, "value", spec.scope) != "builtin"\n            ]\n            if cfg.use_saved_agents\n            else []\n        )\n        saved_profiles = [spec.to_team_profile() for spec in saved_specs]\n        if cfg.research_source_urls:
             from nexus_agent.research.sources import ResearchSourceRegistry
             ResearchSourceRegistry(
                 self.workspace / ".nexus-agent" / "research-sources.yaml"
@@ -840,10 +838,14 @@ Team protocol:
         pinned: list[AgentProfile] = []
         pinned_ids: set[str] = set()
         for agent_id in cfg.agent_ids:
+            normalized_id = agent_id.strip().lower()
             profile = next(
-                (item for item in saved_profiles if item.role_id == agent_id.strip().lower()),
+                (item for item in saved_profiles if item.role_id == normalized_id),
                 None,
             )
+            if profile is None:
+                built_in = self.agent_registry.get(normalized_id)
+                profile = built_in.to_team_profile() if built_in is not None else None
             if profile is not None and profile.role_id not in pinned_ids:
                 pinned.append(profile)
                 pinned_ids.add(profile.role_id)
