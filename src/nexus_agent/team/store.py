@@ -62,6 +62,12 @@ class TeamStore:
     CREATE INDEX IF NOT EXISTS idx_team_agents_team ON team_agents(team_id);
     CREATE INDEX IF NOT EXISTS idx_team_messages_team_time ON team_messages(team_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_team_events_team_time ON team_events(team_id, created_at);
+    CREATE TABLE IF NOT EXISTS team_controls (
+        team_id TEXT PRIMARY KEY,
+        action TEXT NOT NULL,
+        requested_at REAL NOT NULL,
+        FOREIGN KEY(team_id) REFERENCES teams(team_id)
+    );
     """
 
     def __init__(self, db_path: str | Path):
@@ -217,6 +223,40 @@ class TeamStore:
             )
             self._conn.commit()
         return event_id
+
+    def request_control(self, team_id: str, action: str) -> bool:
+        action = action.strip().lower()
+        if action not in {"pause", "resume", "stop"}:
+            return False
+        with self._lock:
+            team = self._conn.execute(
+                "SELECT status FROM teams WHERE team_id=?",
+                (team_id,),
+            ).fetchone()
+            if team is None:
+                return False
+            if team["status"] in {"completed", "needs_review", "failed", "cancelled"}:
+                return False
+            self._conn.execute(
+                """INSERT INTO team_controls(team_id,action,requested_at)
+                   VALUES(?,?,?)
+                   ON CONFLICT(team_id) DO UPDATE SET action=excluded.action, requested_at=excluded.requested_at""",
+                (team_id, action, time.time()),
+            )
+            self._conn.commit()
+        return True
+
+    def pop_control(self, team_id: str) -> str | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT action FROM team_controls WHERE team_id=?",
+                (team_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            self._conn.execute("DELETE FROM team_controls WHERE team_id=?", (team_id,))
+            self._conn.commit()
+        return str(row["action"])
 
     def list_teams(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         with self._lock:
