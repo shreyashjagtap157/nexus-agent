@@ -68,6 +68,8 @@ def load_configured_servers(config: dict[str, Any]) -> tuple[list[MCPClient], li
     for item in servers:
         if not isinstance(item, dict):
             continue
+        if item.get("enabled", True) is False:
+            continue
         command = item.get("command")
         if not command:
             continue
