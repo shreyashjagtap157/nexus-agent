@@ -483,10 +483,22 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             if not prompt:
                 continue
 
+            with state_manager.get("web_agent_lock"):
+                active_threads = state_manager.get("web_agent_threads")
+                running_thread = active_threads.get(session_id)
+                if running_thread is not None and running_thread.is_alive():
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "A response is already running for this session. Wait for completion before sending another prompt.",
+                    })
+                    continue
+                active_threads[session_id] = None
+
             # Auto-title session if first message
             sm = state_manager.get("session_manager")
             if sm:
                 sm.auto_title(prompt)
+                sm.save_message("user", content=prompt, type="user")
 
             # Check model loading
             engine = state_manager.get("engine")
