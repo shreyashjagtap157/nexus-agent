@@ -158,8 +158,9 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
     @app.get("/api/providers/models")
     async def provider_models(provider: str, refresh: bool = False):
+        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
         catalog = ModelsDevCatalog(
-            StorageLayout(Path.cwd()).caches / "models-dev.json"
+            StorageLayout(workspace).caches / "models-dev.json"
         )
         return {
             "provider": provider,
