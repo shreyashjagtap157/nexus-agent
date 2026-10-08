@@ -363,7 +363,7 @@ class TestWebFetchTool(unittest.TestCase):
             )
             ctx.__enter__.return_value.get.return_value = response
             MockClient.return_value = ctx
-            out = tool.execute("https://public.example/")
+            out = tool.execute("https://93.184.216.34/")
         self.assertIn("Private/local hosts are blocked", out)
 
     def test_relative_url_resolution(self):
