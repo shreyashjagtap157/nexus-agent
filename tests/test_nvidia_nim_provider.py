@@ -89,3 +89,34 @@ def test_nim_provider_rejects_202_without_request_id(monkeypatch):
         assert "requestId" in str(exc)
     else:
         raise AssertionError("Expected missing requestId failure")
+
+def test_nim_provider_preserves_tool_calls(monkeypatch):
+    client = FakeClient([
+        FakeResponse(200, {
+            "choices": [{
+                "message": {
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "call-1",
+                        "type": "function",
+                        "function": {
+                            "name": "read_file",
+                            "arguments": "{\"path\":\"README.md\"}",
+                        },
+                    }],
+                },
+                "finish_reason": "tool_calls",
+            }],
+        }),
+    ])
+    monkeypatch.setattr(
+        "nexus_agent.llm.providers.nvidia_nim_provider.httpx.Client",
+        lambda **kwargs: client,
+    )
+
+    provider = NvidiaNIMProvider({"api_key": "test-key"})
+    result = provider.chat_completion([Message(role=Role.USER, content="inspect")])
+
+    assert result.tool_calls is not None
+    assert result.tool_calls[0].name == "read_file"
+    assert result.tool_calls[0].arguments == {"path": "README.md"}
