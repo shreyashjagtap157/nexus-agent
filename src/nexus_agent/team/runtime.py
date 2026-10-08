@@ -66,9 +66,9 @@ def build_workspace_tools(
         InsertLinesTool(workspace),
         BatchEditTool(workspace),
         GitTool(workspace),
-        SmartCommitTool(workspace),
-        PRGeneratorTool(workspace),
-        CIAnalyzerTool(workspace),
+        SmartCommitTool(workspace, provider),
+        PRGeneratorTool(workspace, provider),
+        CIAnalyzerTool(provider),
         WebSearchTool(),
         WebFetchTool(),
         BrowserTool(workspace),
@@ -254,12 +254,18 @@ Team protocol:
             {"provider": worker_provider.name, "model": worker_provider.model_name},
             profile.role_id,
         )
+        worker_tools = self._tools_for(profile, store, team_id)
         agent = AgentLoop(
             provider=worker_provider,
-            tools=self._tools_for(profile, store, team_id),
+            tools=worker_tools,
             config=cfg,
             permission_callback=lambda tc: self._permission(tc, config),
         )
+        for tool in worker_tools:
+            if hasattr(tool, "set_agent_loop"):
+                tool.set_agent_loop(agent)
+            if hasattr(tool, "set_provider"):
+                tool.set_provider(worker_provider)
 
         chunks: list[str] = []
         had_agent_error = False
