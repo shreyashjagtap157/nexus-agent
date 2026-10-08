@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent Team Console</title>
+<style>
+:root{color-scheme:dark;--bg:#070b12;--p:#0d1522;--p2:#111c2c;--l:#22314a;--t:#e8eef8;--m:#90a0b8;--a:#7dd3fc;--g:#86efac;--w:#fde68a;--r:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#15263d 0,#070b12 48%,#04060a 100%);color:var(--t);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(7,11,18,.94);border-bottom:1px solid var(--l);backdrop-filter:blur(12px)}h1{margin:0;font-size:18px}.sub{color:var(--m);font-size:12px}.btn{display:inline-block;border:1px solid var(--l);background:var(--p2);color:var(--t);border-radius:8px;padding:8px 12px;text-decoration:none;cursor:pointer}.primary{border-color:#286c8f;background:#0b3143}.btn:disabled{opacity:.5;cursor:not-allowed}
+main{display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:12px;padding:12px;min-height:calc(100vh - 60px)}section{background:rgba(13,21,34,.9);border:1px solid var(--l);border-radius:12px;overflow:hidden;min-width:0}section h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--l);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--m)}
+.controls{padding:12px}.controls label{display:block;margin:9px 0 5px;color:var(--m);font-size:11px}.controls textarea,.controls input,.controls select{width:100%;background:#08101b;border:1px solid var(--l);border-radius:8px;color:var(--t);padding:9px;font:inherit}.controls textarea{min-height:150px;resize:vertical}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.check{display:flex!important;align-items:center;gap:7px}.check input{width:auto}.actions{display:flex;gap:7px;margin-top:12px}.actions .btn{flex:1}
+.status{padding:10px;border-bottom:1px solid var(--l);display:flex;gap:6px;flex-wrap:wrap}.pill{padding:3px 7px;border:1px solid var(--l);border-radius:999px;color:var(--m);font-size:10px}.good{color:var(--g);border-color:#23563c}.warn{color:var(--w);border-color:#5e501d}.bad{color:var(--r);border-color:#6b2c31}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px}.metric{padding:7px;background:#09111d;border:1px solid var(--l);border-radius:8px}.metric b{font-size:16px;display:block}.metric span{font-size:10px;color:var(--m)}
+.scroll{overflow:auto}.agents{height:calc(100vh - 225px)}.agent{padding:10px 12px;border-bottom:1px solid #18243a}.agenttop{display:flex;justify-content:space-between;gap:10px}.name{font-weight:600}.prof{font-size:11px;color:var(--m)}.mission{font-size:11px;color:#b9c7d9;margin-top:6px}.state{font-size:9px;border:1px solid var(--l);padding:3px 6px;border-radius:999px;height:max-content}.running{color:var(--a)}.completed{color:var(--g)}.failed{color:var(--r)}
+.log{padding:7px 9px;border-bottom:1px solid #17243a;font:10px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;word-break:break-word}.log strong{color:var(--a)}.msg{padding:8px 10px;border-bottom:1px solid #17243a}.meta{font-size:10px;color:var(--m)}.body{font-size:12px;margin-top:3px}.box{max-height:calc(50vh - 66px);overflow:auto}.empty{padding:24px;text-align:center;color:var(--m)}
+@media(max-width:1100px){main{grid-template-columns:1fr}.agents,.box{height:auto;max-height:460px}}
+</style>
+</head>
+<body>
+<header><div><h1>NexusAgent / Multi-Agent Team Console</h1><div class="sub">Dynamic roles • peer workers • shared blackboard • live telemetry</div></div><a class="btn" href="/">Workspace</a></header>
+<main>
+<section>
+<h2>Task Control</h2>
+<div class="controls">
+<label>Goal</label><textarea id="goal" placeholder="Describe the job to be handled by a dynamically assembled team."></textarea>
+<div class="grid">
+<div><label>Mode</label><select id="mode"><option>auto</option><option>code</option><option>research</option><option>review</option><option>analysis</option><option>plan</option><option>automation</option></select></div>
+<div><label>Effort</label><select id="effort"><option>low</option><option selected>medium</option><option>high</option><option>xhigh</option><option>max</option></select></div>
+<div><label>Max agents</label><input id="max_agents" type="number" min="1" max="64" value="6"></div>
+<div><label>Parallelism</label><input id="parallelism" type="number" min="1" max="32" value="4"></div>
+<div><label>Iterations / agent</label><input id="iterations" type="number" min="1" max="500" value="30"></div>
+</div>
+<label class="check"><input id="reviewer" type="checkbox" checked> Require independent reviewer</label>
+<label class="check"><input id="synthesis" type="checkbox" checked> Generate team synthesis</label>
+<label class="check"><input id="approve" type="checkbox"> Auto-approve tool calls</label>
+<div class="actions"><button id="start" class="btn primary">Assemble & Start</button><button id="refresh" class="btn">Refresh</button></div>
+<div id="notice" class="sub" style="margin-top:10px"></div>
+</div>
+</section>
+<section>
+<h2>Team Topology</h2>
+<div class="status" id="status"><span class="pill">idle</span></div>
+<div class="metrics"><div class="metric"><b id="ma">0</b><span>agents</span></div><div class="metric"><b id="md">0</b><span>done</span></div><div class="metric"><b id="mm">0</b><span>messages</span></div><div class="metric"><b id="me">0</b><span>events</span></div></div>
+<div id="agents" class="scroll agents"><div class="empty">No team yet.</div></div>
+</section>
+<section>
+<h2>Integrated Synthesis</h2>
+<div id="synthesis" class="box"><div class="empty">Waiting for team completion.</div></div>
+<h2>Peer Messages</h2>
+<div id="messages" class="box"><div class="empty">No messages.</div></div>
+<h2>Activity</h2>
+<div id="events" class="box"><div class="empty">No events.</div></div>
+</section>
+</main>
+<script>
+var jobId=null,teamId=null,es=null,eventIds={},messageIds={};
+function $(id){return document.getElementById(id)}
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function notice(t,bad){$("notice").textContent=t;$("notice").style.color=bad?"#fca5a5":"#90a0b8"}
+function renderAgents(a){
+  var h="";
+  for(var i=0;i<a.length;i++){var x=a[i],s=x.state||"planned";h+="<div class='agent'><div class='agenttop'><div><div class='name'>"+esc(x.name)+"</div><div class='prof'>"+esc(x.profession)+" • "+esc(x.model_role||"default")+"</div></div><span class='state "+esc(s)+"'>"+esc(s)+"</span></div><div class='mission'>"+esc(x.mission||"")+"</div></div>"}
+  $("agents").innerHTML=h||"<div class='empty'>No agents persisted yet.</div>";$("ma").textContent=a.length;$("md").textContent=a.filter(function(x){return x.state==="completed"}).length
+}
+function addEvent(e){
+  if(eventIds[e.event_id])return;eventIds[e.event_id]=1;var p=e.payload||{},d=document.createElement("div");d.className="log";d.innerHTML="<strong>"+esc(new Date((e.created_at||Date.now()/1000)*1000).toLocaleTimeString())+"</strong> "+esc(e.event_type)+(e.agent_id?" • "+esc(e.agent_id):"")+"\\n"+esc(JSON.stringify(p).slice(0,1800));$("events").appendChild(d);$("events").scrollTop=$("events").scrollHeight;$("me").textContent=Object.keys(eventIds).length
+}
+function addMessage(m){
+  if(messageIds[m.message_id])return;messageIds[m.message_id]=1;var p=m.payload||{},d=document.createElement("div");d.className="msg";d.innerHTML="<div class='meta'>"+esc(m.sender_id)+" → "+esc(m.recipient_id||"TEAM")+" • "+esc(m.message_type)+(m.topic?" • "+esc(m.topic):"")+"</div><div class='body'>"+esc(p.message||JSON.stringify(p))+"</div>";$("messages").appendChild(d);$("messages").scrollTop=$("messages").scrollHeight;$("mm").textContent=Object.keys(messageIds).length
+}
+async function snapshot(){
+  if(!jobId)return;var r=await fetch("/api/teams/"+encodeURIComponent(jobId));if(!r.ok)return;var d=await r.json();
+  if(d.team_id)teamId=d.team_id;if(d.agents)renderAgents(d.agents);(d.events||[]).forEach(addEvent);(d.messages||[]).forEach(addMessage);
+  if(d.result&&d.result.synthesis)$("synthesis").innerHTML="<div style='padding:12px;white-space:pre-wrap'>"+esc(d.result.synthesis)+"</div>";
+  var st=(d.team&&d.team.status)||d.status||"unknown";$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
+  if(teamId&&!es){es=new EventSource("/api/teams/"+encodeURIComponent(teamId)+"/stream");es.onmessage=function(ev){try{var x=JSON.parse(ev.data);if(x.type==="terminal"){notice("Team ended: "+x.status);es.close();es=null}else{addEvent(x)}snapshot()}catch(e){}};es.onerror=function(){notice("Live stream reconnecting…")}}
+}
+$("start").onclick=async function(){
+  var goal=$("goal").value.trim();if(!goal){notice("Enter a goal first.",true);return}$("start").disabled=true;notice("Assembling team…");
+  $("agents").innerHTML="<div class='empty'>Planner is generating professional roles…</div>";$("events").innerHTML="";$("messages").innerHTML="";$("synthesis").innerHTML="<div class='empty'>Waiting…</div>";eventIds={};messageIds={};if(es){es.close();es=null}teamId=null;
+  try{var payload={goal:goal,mode:$("mode").value,max_agents:+$("max_agents").value,parallelism:+$("parallelism").value,max_iterations_per_agent:+$("iterations").value,effort_level:$("effort").value,require_reviewer:$("reviewer").checked,auto_synthesize:$("synthesis").checked,auto_approve_tools:$("approve").checked};var r=await fetch("/api/teams",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});var d=await r.json();if(!r.ok)throw new Error(d.detail||"start failed");jobId=d.job_id;notice("Queued "+jobId);snapshot()
+  }catch(e){notice(e.message||String(e),true);$("start").disabled=false}
+}
+$("refresh").onclick=snapshot;setInterval(snapshot,3000)
+</script>
+</body>
+</html>
