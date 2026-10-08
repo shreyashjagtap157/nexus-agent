@@ -854,7 +854,7 @@ def agent_run(
     permissions = PermissionManager(project=str(ws))
     permissions.load_from_config(config)
     memory = MemoryManager(data_dir=StorageLayout(ws).user_memory)
-    tools = build_workspace_tools(ws, memory_manager=memory, provider=role_provider)
+    tools = build_workspace_tools(ws, memory_manager=memory, provider=role_provider, agent_id=spec.id)
     cfg = AgentLoopConfig(
         mode=AgentMode.BUILD if spec.write_access else AgentMode.REVIEW,
         workspace=ws,
