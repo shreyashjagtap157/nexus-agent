@@ -74,6 +74,8 @@ FALLBACKS: dict[TeamMode, list[AgentProfile]] = {
         AgentProfile("source-metadata", "Source Metadata Specialist", "Source Metadata and Archival Specialist", "Preserve source identity.", "Record titles, dates, versions, URLs and stable identifiers for every material source.", ["read", "web", "research"], False, False, ["bibliography"]),
         AgentProfile("citation", "Citation Specialist", "Citation and Bibliographic Verification Specialist", "Validate citation integrity.", "Check that referenced source identifiers, quotations and URLs remain aligned.", ["read", "web", "research"], False, True, ["claim-auditor"]),
         AgentProfile("upgrade", "Upgrade Analyst", "Technology Upgrade Path Specialist", "Evaluate future upgrades.", "Assess migration paths, compatibility risks and technology replacement boundaries.", ["read", "web", "research"], False, False, ["future-tech"]),
+        AgentProfile("scalability", "Scalability Analyst", "Systems Scalability and Performance Specialist", "Assess scalability limits.", "Analyze throughput, latency, resource scaling, benchmarking and bottlenecks across the proposed system.", ["read", "search", "formal"], False, False, ["complexity"]),
+        AgentProfile("portability", "Portability Analyst", "Cross-Platform Portability Specialist", "Assess deployment portability.", "Analyze operating-system, architecture, toolchain and platform compatibility constraints.", ["read", "search", "research"], False, False, ["interoperability", "os"]),
     ],
     TeamMode.REVIEW: [
         AgentProfile("reviewer-a", "Reviewer A", "Independent Reviewer", "Review the target from a correctness perspective.", "Inspect requirements, behavior and implementation quality.", ["read", "search"], False, True),
@@ -212,6 +214,12 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
             resolved = aliases.get(_slug(dependency))
             if resolved and resolved != profile.role_id and resolved not in normalized:
                 normalized.append(resolved)
+            elif not resolved:
+                # Preserve unresolved dependencies so the scheduler can fail closed
+                # instead of silently turning a dependent worker into an independent one.
+                unresolved = _slug(dependency)
+                if unresolved and unresolved != profile.role_id and unresolved not in normalized:
+                    normalized.append(unresolved)
         profile.dependencies = normalized
 
     return profiles[:max_agents]
