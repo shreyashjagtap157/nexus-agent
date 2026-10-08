@@ -6,8 +6,6 @@ from typing import Any
 import time
 
 from fastapi import HTTPException, Request
-
-from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
 
 from nexus_agent.auth import AuthStore
@@ -15,7 +13,7 @@ from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.providers.catalog import all_providers
 from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
 from nexus_agent.storage.layout import StorageLayout
-from nexus_agent.core.config import save_user_config
+from nexus_agent.core.config import _strip_secrets, load_config, save_user_config
 
 
 class CredentialRequest(BaseModel):
@@ -52,10 +50,10 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
     @app.post("/api/providers/{provider}/test")
     async def test_provider(provider: str, request: Request, payload: ProviderTestRequest):
         _local_only(request)
-        from nexus_agent.core.config import load_config
         from nexus_agent.llm.providers.factory import ProviderFactory
 
-        config = load_config()
+        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
+        config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
         try:
             started = time.perf_counter()
             engine = ProviderFactory.create_provider(provider, config, payload.model)
@@ -133,8 +131,8 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
     @app.get("/api/provider-config")
     async def provider_config():
-        from nexus_agent.core.config import load_config
-        config = load_config()
+        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
+        config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
         providers = config.get("providers", {})
         output = {}
         if isinstance(providers, dict):
@@ -146,15 +144,23 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
                     for key in ("model", "base_url", "api_url", "context_size", "max_tokens", "reasoning_budget", "top_p", "timeout_seconds", "pending_poll_seconds", "pending_max_wait_seconds")
                     if key in value
                 }
-        return {"providers": output}
+        return {
+            "active": providers.get("active", "local"),
+            "providers": output,
+        }
 
     @app.put("/api/provider-config/{provider}")
     async def update_provider_config(provider: str, request: Request, payload: ProviderConfigRequest):
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
             raise HTTPException(status_code=403, detail="Provider configuration mutation is restricted to local clients.")
         values = payload.model_dump(exclude_none=True)
-        save_user_config({"providers": {provider.lower(): values}})
-        return {"provider": provider.lower(), "config": values}
+        provider_id = provider.lower()
+        save_user_config({"providers": {provider_id: _strip_secrets(values)}})
+        if state_manager is not None:
+            config = state_manager.get("config") or {}
+            config.setdefault("providers", {}).setdefault(provider_id, {}).update(values)
+            state_manager.set("config", config)
+        return {"provider": provider_id, "config": _strip_secrets(values)}
 
 
     @app.get("/api/providers/models")
