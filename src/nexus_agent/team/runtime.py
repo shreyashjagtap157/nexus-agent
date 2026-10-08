@@ -1043,6 +1043,11 @@ Team protocol:
         completed_ids: set[str] = set()
         failed_ids: set[str] = set()
         active: dict[Any, AgentProfile] = {}
+        coordination_turn = 0
+        coordination_turn_cap = None
+        if mode == TeamMode.RESEARCH:
+            from .research import policy as research_policy
+            coordination_turn_cap = int(research_policy(cfg.research_depth)["coordination_turns"])
 
         with ThreadPoolExecutor(
             max_workers=cfg.parallelism,
@@ -1087,7 +1092,10 @@ Team protocol:
                     store.set_status(team_id, "running")
                     yield AgentEvent(AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "running"})
 
-                ready = [
+                # Active workers constitute one coordination wave. Do not replenish
+                # the wave until every member finishes; this makes the 5-10
+                # post-deployment coordination-turn guarantee observable and testable.
+                ready = [] if active else [
                     profile_by_id[role_id]
                     for role_id in sorted(pending)
                     if all(
@@ -1123,6 +1131,45 @@ Team protocol:
                             {"unknown_dependencies": unknown},
                             role_id,
                         )
+
+                if ready and coordination_turn_cap is not None and coordination_turn >= coordination_turn_cap:
+                    store.event(
+                        team_id,
+                        "coordination_turn_cap_reached",
+                        {
+                            "turns_used": coordination_turn,
+                            "turn_cap": coordination_turn_cap,
+                            "remaining_agents": sorted(pending),
+                        },
+                    )
+                    for role_id in sorted(pending):
+                        store.update_agent(
+                            agent_storage_ids[role_id],
+                            state=TeamAgentState.FAILED.value,
+                            ended_at=time.time(),
+                            error="Research coordination-turn cap reached before deployment.",
+                        )
+                        store.event(
+                            team_id,
+                            "agent_not_deployed",
+                            {"reason": "coordination_turn_cap_reached"},
+                            role_id,
+                        )
+                    failed_ids.update(pending)
+                    pending.clear()
+                    ready = []
+
+                if ready:
+                    coordination_turn += 1
+                    store.event(
+                        team_id,
+                        "coordination_turn_started",
+                        {
+                            "turn": coordination_turn,
+                            "turn_cap": coordination_turn_cap,
+                            "ready_agents": [profile.role_id for profile in ready],
+                        },
+                    )
 
                 capacity = max(0, cfg.parallelism - len(active))
                 for profile in ready[:capacity]:
