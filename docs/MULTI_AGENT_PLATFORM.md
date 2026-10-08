@@ -142,3 +142,20 @@ This contains team/research databases, activity/audit records, generated artifac
 ## Client parity
 
 The authoritative orchestration runtime is shared. Web, CLI/TUI and native clients are presentation/control surfaces over the same team state, tools, permissions and provider routing. The native desktop client uses the local web runtime rather than duplicating the orchestration implementation.
+
+
+## Runtime hardening
+
+Worker tool authorization is resolved against the worker-local tool graph, so dynamically injected tools such as research evidence operations are evaluated using their actual permission metadata rather than the parent runtime catalog.
+
+Research source policy is enforced at tool exposure time:
+
+- `user_only` exposes configured-source retrieval and removes arbitrary web discovery/source-fetch tools.
+- `hybrid` uses configured sources first and permits autonomous expansion.
+- `autonomous` permits general source discovery.
+
+The evidence ledger records source text fetched by the source tool itself; worker-supplied source snapshots are not treated as authoritative evidence.
+
+Dependency scheduling validates all declared dependencies before constructing a ready wave. Unknown dependencies fail closed and cannot execute accidentally. Provider routing also fails over when a configured primary provider cannot be initialized.
+
+Artifact-serving API routes resolve team artifact roots beneath the canonical runtime artifact directory and reject traversal outside that boundary.
