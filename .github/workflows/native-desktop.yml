@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "nexus-desktop/**"
+      - "nexus-rs/**"
 
 concurrency:
   group: nexus-agent-native-desktop-${{ github.ref }}
