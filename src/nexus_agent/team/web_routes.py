@@ -46,6 +46,8 @@ class TeamStartRequest(BaseModel):
     auto_approve_tools: bool = False
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    agent_ids: list[str] = Field(default_factory=list)
+    use_saved_agents: bool = True
 
 
 def _workspace(state_manager: Any) -> Path:
