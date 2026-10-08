@@ -63,6 +63,18 @@ A release is eligible only when all are satisfied:
 9. The Git tag is exactly `v<version>`.
 10. The tag and release are immutable after publication.
 
+## Maintainer workflow
+
+Preview a release bump without changing files:
+
+`python scripts/set_version.py 0.3.0-alpha.4 --dry-run`
+
+Apply the bump:
+
+`python scripts/set_version.py 0.3.0-alpha.4`
+
+The utility updates only the synchronized release manifests. Changelog edits remain explicit so release notes describe the actual changes. No tag is created automatically.
+
 ## Tag policy
 
 Tags MUST use:
