@@ -35,3 +35,8 @@ Default model:
 nvidia/nemotron-3.5-lightning-30b-a3b
 
 NIM credentials can come from NVIDIA_NIM_API_KEY or NexusAgent AuthStore.
+
+
+## Provider Vault
+
+The local web Provider Vault at `/providers.html` manages non-secret model/endpoint configuration and local credential lifecycle. API keys are masked in UI responses and stored separately through AuthStore.
