@@ -378,9 +378,23 @@ class TeamRuntime:
                 if config.research_source_strategy == "autonomous"
                 else "Use user-configured sources first and expand autonomously when useful."
             )
+            role_text = f"{profile.role_id} {profile.name} {profile.profession}".lower()
+            if any(term in role_text for term in ("researcher", "source", "bibliography", "metadata", "academic", "historian")):
+                budget_line = f"Own the source-breadth budget: seek at least {depth['sources_per_round']} distinct source(s) in each turn and preserve provenance."
+            elif any(term in role_text for term in ("verifier", "evidence", "citation", "claim-auditor")):
+                budget_line = f"Own the verification budget: complete {depth['verification_passes']} verification pass(es) over high-value claims."
+            elif any(term in role_text for term in ("skeptic", "contradiction", "conflict")):
+                budget_line = f"Own the contradiction budget: perform {depth['contradiction_passes']} contradiction/counterevidence pass(es)."
+            elif "formal" in role_text or "proof" in role_text or "model-check" in role_text:
+                budget_line = f"Own the formal budget: attempt {depth['formal_passes']} formal-analysis/proof-check pass(es)."
+            elif any(term in role_text for term in ("reviewer", "auditor")):
+                budget_line = f"Own the review budget: perform {depth['review_passes']} independent review pass(es)."
+            else:
+                budget_line = "Integrate findings from peers and close evidence gaps within your professional specialization."
             research_protocol = (
-                f"8. Research depth policy: {depth['label']}; target verifier passes={depth['verification_passes']}."
-                f" Collection strategy: {config.research_collection}. {source_line} "
+                f"8. Research depth policy: {depth['label']}. "
+                f"Team coordination is bounded; your role-specific depth budget is explicit. {budget_line} "
+                f"Collection strategy: {config.research_collection}. {source_line} "
                 f"Seed URLs: {', '.join(config.research_source_urls[:20]) or 'none'}."
                 " Preserve exact source text with research_record_source, record factual claims "
                 "with exact quotations using research_record_claim, and use research_verify_claim "
