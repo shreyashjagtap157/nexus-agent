@@ -306,3 +306,25 @@ CLI, web, native and team workers share filesystem mutation/recovery, shell, Git
 ## 19. Runtime Storage and File Governance
 
 Persistent user state, project configuration and workspace runtime state are deliberately separated. File mutations are journaled with hashes where applicable; deletes default to reversible runtime trash. Git metadata paths and workspace escapes are explicitly rejected by file mutation tools.
+
+
+## 20. Formal Verification Plane
+
+The shared tool plane includes `formal_check`, which invokes explicitly supported local
+verifiers without a shell. Supported adapters include Z3, Lean, Lake/Lean, Rocq/Coq,
+Dafny, TLC, Apalache, Alloy and K Framework when their executables are installed.
+
+Formal verification results are runtime evidence. Missing verifier executables are reported
+as unavailable; informal LLM reasoning is never relabeled as a machine-checked proof.
+
+## 21. Research Coordination Contract
+
+Research planning is a one-time deployment phase. After the specialist team is deployed,
+the execution scheduler uses 5–10 dependency-aware coordination waves according to the
+selected research depth. Deeper levels increase source breadth, verification, contradiction,
+formal-analysis and review budgets within those waves rather than creating unbounded planning
+iterations.
+
+The final research synthesis is evidence-bound: it consumes verified ledger claims, requires
+valid `[claim:N]` provenance markers and is withheld when the evidence or contradiction gates
+do not pass.
