@@ -74,6 +74,7 @@ class TeamConfig:
     output_format: str = "markdown"
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    research_source_strategy: str = "hybrid"
     research_source_urls: list[str] = field(default_factory=list)
     effort_level: str = "medium"
     auto_synthesize: bool = True
@@ -89,7 +90,20 @@ class TeamConfig:
         self.max_iterations_per_agent = max(1, min(int(self.max_iterations_per_agent), 500))
         self.output_mode = self.output_mode if self.output_mode in {"chat", "file", "both"} else "chat"
         self.output_format = self.output_format if self.output_format in {"markdown", "text", "json"} else "markdown"
-        self.research_collection = self.research_collection if self.research_collection in {"bounded", "until_saturation", "continuous"} else "until_saturation"
+        self.research_collection = (
+            self.research_collection
+            if self.research_collection in {"bounded", "until_saturation", "continuous"}
+            else "until_saturation"
+        )
+        self.research_source_strategy = (
+            self.research_source_strategy
+            if self.research_source_strategy in {"user_only", "hybrid", "autonomous"}
+            else "hybrid"
+        )
+        if self.mode == TeamMode.RESEARCH:
+            from .research import policy as research_policy
+            depth = research_policy(self.research_depth)
+            self.max_agents = max(self.max_agents, min(int(depth["role_floor"]), 64))
         return self
 
 
