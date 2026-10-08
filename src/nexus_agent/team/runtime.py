@@ -1356,15 +1356,6 @@ Team protocol:
         if cfg.require_reviewer:
             summary += f"; reviewer={'present' if reviewers else 'missing'}"
 
-        store.event(
-            team_id,
-            "final_review_started",
-            {
-                "workflow": "post-deployment-final-review",
-                "workers_completed": len([item for item in results if item.get("status") == TeamAgentState.COMPLETED.value]),
-                "reviewers_completed": len(reviewers),
-            },
-        )
         preliminary_quality = evaluate_team(
             results=results,
             config=cfg,
