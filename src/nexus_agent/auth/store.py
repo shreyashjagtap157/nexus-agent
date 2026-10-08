@@ -23,6 +23,7 @@ class AuthStore:
 
     def __init__(self, path: Path | None = None):
         self.path = path or StorageLayout(Path.cwd()).auth_file
+        self._use_keyring = keyring is not None and path is None
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
 
@@ -62,7 +63,7 @@ class AuthStore:
             raise ValueError("Provider and credential key are required.")
         with self._lock:
             data = self._read()
-            if keyring is not None:
+            if self._use_keyring:
                 try:
                     keyring.set_password(self._KEYRING_SERVICE, provider_id, key)
                     data[provider_id] = {"type": "keyring", "metadata": metadata or {}}
@@ -78,7 +79,7 @@ class AuthStore:
         with self._lock:
             item = self._read().get(provider_id)
         if isinstance(item, dict) and item.get("type") == "keyring":
-            if keyring is None:
+            if not self._use_keyring or keyring is None:
                 return None
             try:
                 return keyring.get_password(self._KEYRING_SERVICE, provider_id)
