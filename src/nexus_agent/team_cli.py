@@ -74,7 +74,7 @@ def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallel
     """Run a dynamically assembled peer team."""
     console = Console()
     runtime, _provider = _make_runtime(workspace.resolve(), provider, model_path, yes)
-    workflow = WorkflowRegistry().get(workflow_id) if workflow_id else None
+    workflow = WorkflowRegistry(workspace.resolve()).get(workflow_id) if workflow_id else None
     config = (workflow.configure() if workflow else TeamConfig(mode=TeamMode(mode))).normalize()
     config.workflow_id = workflow_id or ""
     config.mode = TeamMode(mode) if not workflow_id else config.mode
