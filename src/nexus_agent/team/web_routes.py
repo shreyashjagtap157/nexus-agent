@@ -23,6 +23,7 @@ from .control import control as control_team_request
 from .providers import make_provider_selector
 from .research import all_policies
 from .runtime import TeamRuntime, build_workspace_tools
+from nexus_agent.workflows import WorkflowRegistry
 from .store import TeamStore
 
 
@@ -32,6 +33,7 @@ class TeamControlRequest(BaseModel):
 
 class TeamStartRequest(BaseModel):
     goal: str = Field(min_length=1, max_length=100000)
+    workflow_id: str | None = None
     mode: TeamMode = TeamMode.AUTO
     max_agents: int = Field(default=6, ge=1, le=64)
     parallelism: int = Field(default=4, ge=1, le=32)
@@ -85,6 +87,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             ),
         )
 
+    @router.get("/api/workflows")
+    async def workflows():
+        return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry().list()]}
+
     @router.get("/api/research-depths")
     async def research_depths():
         return {"depths": all_policies()}
@@ -106,23 +112,25 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
         def worker():
             runtime = build_runtime()
-            cfg = TeamConfig(
-                mode=req.mode,
-                max_agents=req.max_agents,
-                parallelism=req.parallelism,
-                max_iterations_per_agent=req.max_iterations_per_agent,
-                workspace=str(_workspace(state_manager)),
-                effort_level=req.effort_level,
-                output_mode=req.output_mode,
-                output_format=req.output_format,
-                research_depth=req.research_depth,
-                research_collection=req.research_collection,
-                agent_ids=req.agent_ids,
-                use_saved_agents=req.use_saved_agents,
-                auto_synthesize=req.auto_synthesize,
-                require_reviewer=req.require_reviewer,
-                auto_approve_tools=req.auto_approve_tools,
-            )
+            workflow = WorkflowRegistry().get(req.workflow_id) if req.workflow_id else None
+            cfg = (workflow.configure() if workflow else TeamConfig(mode=req.mode)).normalize()
+            cfg.workflow_id = req.workflow_id or ""
+            cfg.mode = req.mode if not req.workflow_id else cfg.mode
+            cfg.max_agents = req.max_agents
+            cfg.parallelism = req.parallelism
+            cfg.max_iterations_per_agent = req.max_iterations_per_agent
+            cfg.workspace = str(_workspace(state_manager))
+            cfg.effort_level = req.effort_level
+            cfg.output_mode = req.output_mode
+            cfg.output_format = req.output_format
+            cfg.auto_synthesize = req.auto_synthesize
+            cfg.require_reviewer = req.require_reviewer
+            cfg.auto_approve_tools = req.auto_approve_tools
+            cfg.research_depth = req.research_depth
+            cfg.research_collection = req.research_collection
+            cfg.agent_ids = req.agent_ids
+            cfg.use_saved_agents = req.use_saved_agents
+            cfg.normalize()
             with lock:
                 jobs[job_id]["status"] = "running"
             try:
