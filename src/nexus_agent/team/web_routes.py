@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import threading
 import time
 from pathlib import Path
@@ -25,6 +26,9 @@ from .research import all_policies
 from .runtime import TeamRuntime, build_workspace_tools
 from nexus_agent.workflows import WorkflowRegistry
 from .store import TeamStore
+
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowWriteRequest(BaseModel):
@@ -242,7 +246,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                         "team_id": result.team_id,
                         "result": result.__dict__,
                     })
-            except (RuntimeError, ValueError, OSError, TypeError, KeyError) as exc:
+            except (RuntimeError, ValueError, OSError, TypeError, KeyError, AttributeError) as exc:
                 logger.exception("Team job failed before completion")
                 with lock:
                     jobs[job_id].update({"status": "failed", "error": str(exc)})
