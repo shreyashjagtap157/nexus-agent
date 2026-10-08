@@ -102,6 +102,7 @@ def build_workspace_tools(
     if research:
         run_id = session_id or team_id or "interactive"
         from nexus_agent.research.configured_source_tool import ResearchConfiguredSourceTool
+        from nexus_agent.storage.layout import StorageLayout
         from nexus_agent.research.tools import (
             ResearchRecordClaimTool,
             ResearchRecordSourceTool,
