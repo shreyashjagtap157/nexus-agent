@@ -133,6 +133,28 @@ def chat(
     app.run()
 
 
+@cli.command("serve")
+@click.option("--host", "-h", type=str, default=None, help="Host to bind the local agent API")
+@click.option("--port", type=int, default=None, help="Port for the local agent API")
+@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--provider", "-p", type=str, default=None, help="LLM provider")
+@click.option("--model-path", type=click.Path(exists=True), default=None, help="Local model path")
+@click.pass_context
+def serve(ctx: click.Context, host: str | None, port: int | None, workspace: str, provider: str | None, model_path: str | None) -> None:
+    """Run the NexusAgent local API/web server without opening a browser."""
+    from nexus_agent.gui.server import start_gui_server
+    start_gui_server(
+        model_path=model_path or ctx.obj.get("model"),
+        provider=provider or ctx.obj.get("provider"),
+        workspace=Path(workspace).resolve(),
+        config_path=ctx.obj.get("config_path"),
+        data_dir=ctx.obj.get("data_dir"),
+        host=host,
+        port=port,
+        open_browser=False,
+    )
+
+
 @cli.command()
 @click.option("--host", "-h", type=str, default=None, help="Host to bind to")
 @click.option("--port", type=int, default=None, help="Port to bind to")
