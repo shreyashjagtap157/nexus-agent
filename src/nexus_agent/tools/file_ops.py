@@ -69,7 +69,6 @@ class ReadFileTool(Tool):
 
     def __init__(self, workspace: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
-        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
@@ -181,10 +180,11 @@ class ReadFileTool(Tool):
 
 
 class WriteFileTool(Tool):
-    """Write content to a file."""
+    """Write content atomically and record an auditable file-change event."""
 
     def __init__(self, workspace: Path | None = None):
-        self.workspace = workspace or Path.cwd()
+        self.workspace = (workspace or Path.cwd()).resolve()
+        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
@@ -243,7 +243,29 @@ class WriteFileTool(Tool):
                     except OSError:
                         pass
                 return "Error: Directory creation would escape the workspace."
-            file_path.write_text(content, encoding="utf-8")
+            previous_hash = FileJournal.digest_file(file_path)
+            import os
+            import tempfile
+            fd, tmp = tempfile.mkstemp(prefix=".nexus-write-", dir=file_path.parent)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                    handle.write(content)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(tmp, file_path)
+            finally:
+                if os.path.exists(tmp):
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
+            new_hash = FileJournal.digest_file(file_path)
+            self._journal.record(
+                "write",
+                str(file_path.relative_to(self.workspace)),
+                previous_hash,
+                new_hash,
+            )
             return f"Successfully wrote {len(content)} characters to {path}"
         except OSError as e:
             logger.error("Error writing file %s: %s", path, e, exc_info=True)
