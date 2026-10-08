@@ -108,6 +108,18 @@ enum Commands {
         #[arg(long, default_value = "until_saturation")]
         collection: String,
 
+        /// Research source strategy: user_only, hybrid or autonomous.
+        #[arg(long, default_value = "hybrid")]
+        source_strategy: String,
+
+        /// Continuous-mode safety deadline in minutes.
+        #[arg(long, default_value_t = 10080)]
+        research_max_minutes: u32,
+
+        /// No-growth research rounds before saturation stop.
+        #[arg(long, default_value_t = 2)]
+        research_idle_rounds: u32,
+
         /// Seed research source URL; repeat as needed.
         #[arg(long = "source", action = clap::ArgAction::Append)]
         sources: Vec<String>,
@@ -184,6 +196,9 @@ async fn main() {
             format,
             depth,
             collection,
+            source_strategy,
+            research_max_minutes,
+            research_idle_rounds,
             sources,
             workflow,
             agents,
@@ -498,6 +513,9 @@ async fn run_team(
     format: &str,
     depth: &str,
     collection: &str,
+    source_strategy: &str,
+    research_max_minutes: u32,
+    research_idle_rounds: u32,
     sources: &[String],
     workflow: Option<&str>,
     agents: &[String],
@@ -526,6 +544,9 @@ async fn run_team(
         .args(["--format", format])
         .args(["--depth", depth])
         .args(["--collection", collection])
+        .args(["--source-strategy", source_strategy])
+        .args(["--research-max-minutes", &research_max_minutes.to_string()])
+        .args(["--research-idle-rounds", &research_idle_rounds.to_string()])
         .args(["--workspace", workspace]);
 
     for source in sources {
