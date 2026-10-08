@@ -49,6 +49,8 @@ def render_agent_file(spec: AgentSpec) -> str:
         payload["fallbacks"] = spec.fallbacks
     if spec.tags:
         payload["tags"] = spec.tags
+    if spec.skill_ids:
+        payload["skill_ids"] = spec.skill_ids
     if spec.metadata:
         payload["metadata"] = spec.metadata
     return "---\n" + yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip() + "\n---\n\n" + spec.instructions.rstrip() + "\n"
