@@ -125,19 +125,25 @@ Flags:
 Test args: ``-q --tb=short -W error::ResourceWarning`` (promotes unclosed
 resource warnings to errors).
 
-## CI Workflow (`.github/workflows/test-and-audit.yml`)
+## CI Workflow (.github/workflows/ci.yml)
+
+The authoritative pull-request validation workflow is a single CI run with a deterministic Required aggregation job.
 
 | Detail | Value |
 |--------|-------|
-| Name | ``Test & Audit`` |
-| Triggers | ``push`` to ``main``, ``pull_request`` to ``main``, ``workflow_dispatch`` |
-| Runner | ``ubuntu-latest`` (Python 3.12) |
+| Name | CI |
+| Triggers | push to main, pull_request to main, workflow_dispatch |
+| Required merge gate | Required |
 
-Steps:
-1. Checkout with full git history (``fetch-depth: 0``).
-2. Install dependencies via ``pip install -e ".[dev]"``.
-3. **Run the complete test suite** — ``python -m pytest tests/ -q --tb=short > pytest_output.txt``.
-4. **Generate audit reports** — runs the pre-commit hook in CI mode without modifying the repository.
-5. **Upload evidence** — pytest output plus generated audit documents are retained as workflow artifacts.
+Validation includes:
 
-The workflow is intentionally read-only: protected-branch CI must not mutate ``main` or create bot commits.
+1. Complete Python tests on Ubuntu, Windows and macOS for Python 3.10–3.13.
+2. Ruff formatting/linting and MyPy.
+3. Rust formatting and compilation for both native clients on all supported operating systems.
+4. Repository version-contract validation.
+5. Canonical pytest evidence and read-only audit artifacts.
+6. A final Required job that fails unless every CI component succeeds.
+
+The separate .github/workflows/security.yml workflow provides CodeQL, dependency auditing and dependency review.
+
+CI workflows are intentionally read-only and never push commits to protected integration branches.
