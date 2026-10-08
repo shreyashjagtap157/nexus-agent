@@ -143,15 +143,12 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.post("/api/teams/{team_id}/control")
     async def control_team(team_id: str, req: TeamControlRequest):
-        if not control_team_request(team_id, req.action):
-            raise HTTPException(status_code=409, detail="Team is not currently running or control window expired")
         store = store_for()
         try:
-            status = "paused" if req.action == "pause" else "running" if req.action == "resume" else "stopping"
-            if req.action in {"pause", "resume"}:
-                store.set_status(team_id, status)
-            else:
-                store.set_status(team_id, "stopping")
+            accepted = store.request_control(team_id, req.action)
+            if not accepted:
+                raise HTTPException(status_code=409, detail="Team is terminal or unknown")
+            control_team_request(team_id, req.action)
             store.event(team_id, "team_control", {"action": req.action})
             return {"team_id": team_id, "action": req.action, "accepted": True}
         finally:
