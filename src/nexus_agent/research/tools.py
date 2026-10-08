@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.tools.webfetch import WebFetchTool
 
 from .store import ResearchStore
 
@@ -16,31 +17,43 @@ class _ResearchTool(Tool):
 
 
 class ResearchRecordSourceTool(_ResearchTool):
+    def __init__(self, db_path, team_id: str, agent_id: str):
+        super().__init__(db_path, team_id, agent_id)
+        self.fetcher = WebFetchTool()
+
     @property
     def name(self) -> str:
         return "research_record_source"
 
     @property
     def description(self) -> str:
-        return "Persist a fetched source and its exact content into the research evidence ledger."
+        return (
+            "Fetch a URL and persist the exact fetched text into the research evidence ledger. "
+            "The content argument from the caller is never trusted as source evidence."
+        )
 
     @property
     def parameters(self) -> dict[str, Any]:
         return {
-            "url": {"type": "string", "description": "Source URL"},
-            "title": {"type": "string", "description": "Source title"},
-            "content": {"type": "string", "description": "Exact fetched source text"},
-            "provider": {"type": "string", "description": "Discovery/fetch provider"},
+            "url": {"type": "string", "description": "Absolute HTTP(S) source URL"},
+            "title": {"type": "string", "description": "Optional human-readable source title"},
+            "provider": {"type": "string", "description": "Discovery provider label", "required": False},
         }
 
     def execute(self, **kwargs: Any) -> Any:
+        url = str(kwargs.get("url") or "").strip()
+        if not url:
+            return "Error: URL is required."
+        fetched = self.fetcher.execute(url)
+        if fetched.startswith("Error:"):
+            return fetched
         return self.store.record_source(
             self.team_id,
             self.agent_id,
-            str(kwargs.get("url") or ""),
-            str(kwargs.get("title") or ""),
-            str(kwargs.get("content") or ""),
-            str(kwargs.get("provider") or ""),
+            url,
+            str(kwargs.get("title") or url),
+            fetched,
+            str(kwargs.get("provider") or "web_fetch"),
         )
 
 
