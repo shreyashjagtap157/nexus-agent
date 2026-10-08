@@ -39,12 +39,15 @@ pre{white-space:pre-wrap;word-break:break-word;margin:0;max-height:560px;overflo
 <div class="section">
 <label>Research depth</label><select id="depth"></select>
 <div class="grid3"><div><label>Collection</label><select id="collection"><option>bounded</option><option>until_saturation</option><option>continuous</option></select></div><div><label>Source strategy</label><select id="source"><option>user_only</option><option>hybrid</option><option>autonomous</option></select></div><div><label>Idle rounds</label><input id="idle" type="number" min="1" max="20"></div></div>
+<div class="grid3"><div><label>Maximum research minutes</label><input id="researchMinutes" type="number" min="1" max="525600"></div><div><label>Maximum coordination turns</label><input id="turns" value="derived: 5–10" disabled></div><div><label>Evidence strategy</label><select id="evidence"><option selected>verified-claims-only</option></select></div></div>
 <div id="depthSummary" class="notice"></div>
 </div>
 <div class="section">
 <label>Team limits</label>
 <div class="grid3"><div><label>Max agents</label><input id="maxAgents" type="number" min="1" max="64"></div><div><label>Parallelism</label><input id="parallel" type="number" min="1" max="64"></div><div><label>Iterations / worker</label><input id="workerIterations" type="number" min="1" max="500"></div></div>
 <div class="grid"><div><label>Output mode</label><select id="output"><option>chat</option><option>file</option><option>both</option></select></div><div><label>Output format</label><select id="format"><option>markdown</option><option>text</option><option>json</option></select></div></div>
+<div class="grid"><div><label>Require independent reviewer</label><select id="reviewer"><option value="true">yes</option><option value="false">no</option></select></div><div><label>Auto-synthesize</label><select id="synthesis"><option value="true">yes</option><option value="false">no</option></select></div></div>
+<div class="grid"><div><label>Auto-approve tools</label><select id="approve"><option value="false">no</option><option value="true">yes</option></select></div><div><label>Parallel writers</label><select id="writers"><option value="false">no</option><option value="true">yes</option></select></div></div>
 </div>
 <div class="section">
 <label>Security</label>
@@ -78,8 +81,8 @@ async function load(){
  cfg=await cr.json();const dd=await dr.json();depths=dd.depths||[];const st=await sr.json();
  $("depth").innerHTML=depths.map(x=>"<option value='"+x.name+"'>"+x.label+"</option>").join("");
  set("default_mode",path(cfg,"agent.default_mode","auto"));set("effort",path(cfg,"agent.effort_level","medium"));set("iterations",path(cfg,"agent.max_iterations",50));set("tokens",path(cfg,"agent.max_tokens",4096));set("temperature",path(cfg,"agent.temperature",.1));
- set("depth",path(cfg,"research.depth","detailed"));set("collection",path(cfg,"research.collection","until_saturation"));set("source",path(cfg,"research.source_strategy","hybrid"));set("idle",path(cfg,"research.idle_rounds",2));
- set("maxAgents",path(cfg,"team.max_agents",6));set("parallel",path(cfg,"team.parallelism",4));set("workerIterations",path(cfg,"team.max_iterations_per_agent",30));set("output",path(cfg,"team.output_mode","chat"));set("format",path(cfg,"team.output_format","markdown"));
+ set("depth",path(cfg,"research.depth","detailed"));set("collection",path(cfg,"research.collection","until_saturation"));set("source",path(cfg,"research.source_strategy","hybrid"));set("idle",path(cfg,"research.idle_rounds",2));set("researchMinutes",path(cfg,"research.max_minutes",10080));
+ set("maxAgents",path(cfg,"team.max_agents",6));set("parallel",path(cfg,"team.parallelism",4));set("workerIterations",path(cfg,"team.max_iterations_per_agent",30));set("output",path(cfg,"team.output_mode","chat"));set("format",path(cfg,"team.output_format","markdown"));set("reviewer",String(path(cfg,"team.require_reviewer",true)));set("synthesis",String(path(cfg,"team.auto_synthesize",true)));set("approve",String(path(cfg,"team.auto_approve_tools",false)));set("writers",String(path(cfg,"team.allow_parallel_writers",false)));
  set("permission",path(cfg,"permissions.mode","ask"));set("compact",path(cfg,"agent.context_compact_threshold",.85));set("host",path(cfg,"gui.host","127.0.0.1"));set("port",path(cfg,"gui.port",7860));
  $("version").textContent=st.version||"—";$("provider").textContent=(cfg.providers&&cfg.providers.active)||"local";$("workspace").textContent=st.workspace||"—";$("status").textContent=st.model_loaded?"ONLINE":"READY";$("status").className="status "+(st.model_loaded?"ok":"warn");
  $("json").textContent=JSON.stringify(cfg,null,2);renderDepth()
@@ -87,8 +90,8 @@ async function load(){
 $("depth").onchange=renderDepth;
 $("save").onclick=async()=>{
  const updates={agent:{default_mode:$("default_mode").value,effort_level:$("effort").value,max_iterations:+$("iterations").value,max_tokens:+$("tokens").value,temperature:+$("temperature").value,context_compact_threshold:+$("compact").value},
- research:{depth:$("depth").value,collection:$("collection").value,source_strategy:$("source").value,idle_rounds:+$("idle").value},
- team:{max_agents:+$("maxAgents").value,parallelism:+$("parallel").value,max_iterations_per_agent:+$("workerIterations").value,output_mode:$("output").value,output_format:$("format").value},
+ research:{depth:$("depth").value,collection:$("collection").value,source_strategy:$("source").value,idle_rounds:+$("idle").value,max_minutes:+$("researchMinutes").value},
+ team:{max_agents:+$("maxAgents").value,parallelism:+$("parallel").value,max_iterations_per_agent:+$("workerIterations").value,output_mode:$("output").value,output_format:$("format").value,require_reviewer:$("reviewer").value==="true",auto_synthesize:$("synthesis").value==="true",auto_approve_tools:$("approve").value==="true",allow_parallel_writers:$("writers").value==="true"},
  permissions:{mode:$("permission").value},gui:{host:$("host").value.trim(),port:+$("port").value}};
  for(const [section,values] of Object.entries(updates)){const r=await fetch("/api/config/"+section,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({values})});if(!r.ok){const d=await r.json();notice(section+": "+String(d.detail||"save failed"),true);return}}
  notice("Settings saved to user configuration.");load();
