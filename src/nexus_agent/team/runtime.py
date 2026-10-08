@@ -82,7 +82,7 @@ class TeamRuntime:
             return True
         if "shell" in categories and lowered == "shell":
             return True
-        if "web" in categories and lowered in {"web_search", "web_fetch", "browser"}:
+        if "web" in categories and lowered in {"web_search", "web_fetch", "webfetch", "browser"}:
             return True
         if "git" in categories and ("git" in lowered or lowered in {"ci_analyzer", "pr_generator"}):
             return True
@@ -101,6 +101,20 @@ class TeamRuntime:
                 TeamReadMessagesTool(store, team_id, profile.role_id),
             ]
         )
+        if "research" in categories:
+            from nexus_agent.research.tools import (
+                ResearchRecordClaimTool,
+                ResearchRecordSourceTool,
+                ResearchVerifyClaimTool,
+            )
+            research_db = self.data_dir / "research.db"
+            selected.extend(
+                [
+                    ResearchRecordSourceTool(research_db, team_id, profile.role_id),
+                    ResearchRecordClaimTool(research_db, team_id, profile.role_id),
+                    ResearchVerifyClaimTool(research_db, team_id, profile.role_id),
+                ]
+            )
         return selected
 
     def _permission(self, tool_call: Any, config: TeamConfig) -> bool:
@@ -114,6 +128,13 @@ class TeamRuntime:
         return not any(token in name for token in ("write", "edit", "insert", "shell", "commit", "push", "delete"))
 
     def _system_extra(self, goal: str, profile: AgentProfile, team_id: str) -> str:
+        research_protocol = ""
+        if "research" in profile.tool_categories:
+            research_protocol = (
+                "8. For research findings, preserve exact source text with research_record_source, "
+                "record factual claims with exact quotations using research_record_claim, and use "
+                "research_verify_claim before treating quotation-backed evidence as deterministically verified."
+            )
         return f"""
 You are {profile.name}, a specialist worker in NexusAgent team {team_id}.
 Profession: {profile.profession}
@@ -133,6 +154,7 @@ Team protocol:
 5. Record concrete evidence: file paths, commands, tests, source URLs, or artifact identifiers.
 6. Stay within your profession and report blockers early.
 7. Complete your own task cleanly even when other workers fail.
+{research_protocol}
 """
 
     def _worker(
