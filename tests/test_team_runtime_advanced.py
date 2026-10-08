@@ -336,3 +336,36 @@ def test_read_only_team_specialist_cannot_mutate_git(tmp_path: Path):
         profile,
         [tool],
     ) is False
+
+
+def test_read_only_team_specialist_cannot_mutate_git_remote(tmp_path: Path):
+    from nexus_agent.llm.base import ToolCall
+
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    profile = AgentProfile(
+        role_id="analyst",
+        name="Analyst",
+        profession="Analyst",
+        mission="Analyze",
+        instructions="Analyze",
+        tool_categories=["read", "git"],
+        write_access=False,
+    )
+    config = TeamConfig(mode=TeamMode.ANALYSIS)
+    tool = type(
+        "Tool",
+        (),
+        {"name": "git", "permission_level": "read-write"},
+    )()
+    assert runtime._permission(
+        ToolCall(id="test", name="git", arguments={"subcommand": "remote", "args": "set-url origin https://example.test"}),
+        config,
+        profile,
+        [tool],
+    ) is False
+    assert runtime._permission(
+        ToolCall(id="test", name="git", arguments={"subcommand": "remote", "args": "-v"}),
+        config,
+        profile,
+        [tool],
+    ) is True
