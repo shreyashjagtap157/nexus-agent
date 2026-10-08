@@ -85,3 +85,30 @@ def test_agent_profiles_support_distinct_provider_selector(tmp_path: Path):
         provider_selector=lambda p: alternate if p.model_role == "alternate" else primary,
     )
     assert runtime._provider_for(profile) is alternate
+
+
+def test_mcp_tools_are_exposed_to_mcp_roles(tmp_path):
+    from nexus_agent.team.store import TeamStore
+    from nexus_agent.team.runtime import TeamRuntime
+
+    class ExternalTool:
+        name = "calendar_search"
+        is_mcp = True
+
+    store = TeamStore(tmp_path / "teams.db")
+    runtime = TeamRuntime(
+        FakeProvider(),
+        [ExternalTool()],
+        workspace=tmp_path,
+    )
+    profile = AgentProfile(
+        role_id="researcher",
+        name="Researcher",
+        profession="Researcher",
+        mission="Research",
+        instructions="Research",
+        tool_categories=["read", "mcp"],
+    )
+    tools = runtime._tools_for(profile, store, "team-1")
+    assert any(getattr(tool, "is_mcp", False) for tool in tools)
+    store.close()
