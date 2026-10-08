@@ -65,6 +65,8 @@ class TeamConfig:
     workspace: str = "."
     output_mode: str = "chat"
     output_format: str = "markdown"
+    research_depth: str = "detailed"
+    research_collection: str = "until_saturation"
     effort_level: str = "medium"
     auto_synthesize: bool = True
     require_reviewer: bool = True
@@ -77,6 +79,7 @@ class TeamConfig:
         self.max_iterations_per_agent = max(1, min(int(self.max_iterations_per_agent), 500))
         self.output_mode = self.output_mode if self.output_mode in {"chat", "file", "both"} else "chat"
         self.output_format = self.output_format if self.output_format in {"markdown", "text", "json"} else "markdown"
+        self.research_collection = self.research_collection if self.research_collection in {"bounded", "until_saturation", "continuous"} else "until_saturation"
         return self
 
 
