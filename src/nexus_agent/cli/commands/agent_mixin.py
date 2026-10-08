@@ -24,7 +24,7 @@ class AgentCommandsMixin:
                     self._agent.mode = mode
                 self.r.system_message(f"Mode: {mode.value.upper()}")
             except ValueError:
-                self.r.error(f"Invalid mode: {args} (auto|plan|build|review)")
+                self.r.error(f"Invalid mode: {args} (auto|plan|build|review|research)")
         else:
             self.r.system_message(f"Mode: {self._current_mode.value.upper()}")
 
