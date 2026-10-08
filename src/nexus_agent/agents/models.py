@@ -72,6 +72,9 @@ class AgentSpec:
             reviewer=self.reviewer,
             dependencies=list(self.dependencies),
             model_role=self.model_role,
+            provider=self.provider,
+            model=self.model,
+            fallbacks=list(self.fallbacks),
         )
 
     @classmethod
