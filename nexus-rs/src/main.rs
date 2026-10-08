@@ -108,6 +108,22 @@ enum Commands {
         #[arg(long, default_value = "until_saturation")]
         collection: String,
 
+        /// Named workflow policy.
+        #[arg(long)]
+        workflow: Option<String>,
+
+        /// Saved agent profiles to pin; repeat as needed.
+        #[arg(long = "agent", action = clap::ArgAction::Append)]
+        agents: Vec<String>,
+
+        /// LLM provider override.
+        #[arg(long)]
+        provider: Option<String>,
+
+        /// LLM model override.
+        #[arg(long)]
+        model: Option<String>,
+
         /// Workspace directory.
         #[arg(long, default_value = ".")]
         workspace: String,
