@@ -18,8 +18,11 @@ class MCPServer:
     Claude Desktop) over stdio streams using JSON-RPC 2.0.
     """
 
-    def __init__(self, tools: list[Any], permission_callback=None):
-        """Initialize MCP server with an optional permission callback."""
+    def __init__(self, tools: list[Any], permission_callback=None, protocol_version: str = "2025-11-25"):
+        """Initialize MCP server with optional permission and legacy protocol settings."""
+        if protocol_version not in {"2024-10-07", "2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}:
+            raise ValueError(f"Unsupported legacy MCP protocol version: {protocol_version}")
+        self.protocol_version = protocol_version
         self.tools = tools
         self._tool_map = {t.name: t for t in tools}
         self._permission_callback = permission_callback
@@ -46,7 +49,7 @@ class MCPServer:
         try:
             if method == "initialize":
                 result = {
-                    "protocolVersion": "2024-11-05",
+                    "protocolVersion": self.protocol_version,
                     "capabilities": {
                         "tools": {},
                     },
