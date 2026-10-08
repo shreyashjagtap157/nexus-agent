@@ -80,7 +80,7 @@ class TeamStore:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(self.SCHEMA)
         self._conn.commit()
-        self._audit = AuditLog(self.db_path.parent / "activity.jsonl")
+        self._audit = AuditLog(self.db_path.parent / "audit.jsonl")
 
     def close(self) -> None:
         with self._lock:
