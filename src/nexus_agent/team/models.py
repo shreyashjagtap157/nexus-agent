@@ -127,3 +127,4 @@ class TeamRunResult:
     synthesis: str = ""
     failures: list[str] = field(default_factory=list)
     artifact_paths: list[str] = field(default_factory=list)
+    quality: dict[str, Any] = field(default_factory=dict)
