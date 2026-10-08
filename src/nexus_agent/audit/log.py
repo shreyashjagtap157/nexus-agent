@@ -10,7 +10,9 @@ import time
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable, TextIO
+from typing import Any, TextIO
+
+from filelock import FileLock
 
 
 _SECRET_PATTERNS = (
@@ -60,6 +62,7 @@ class AuditLog:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._file_lock = FileLock(str(self.path) + ".lock", timeout=30)
 
     @staticmethod
     def _canonical(record: dict[str, Any]) -> str:
@@ -92,7 +95,7 @@ class AuditLog:
         event_type: str,
         payload: dict[str, Any] | None = None,
     ) -> AuditRecord:
-        with self._lock:
+        with self._lock, self._file_lock:
             timestamp = time.time()
             previous = self._last_hash()
             body = {
