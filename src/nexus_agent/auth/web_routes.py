@@ -104,7 +104,8 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         from nexus_agent.core.config import load_config, save_user_config
         from nexus_agent.llm.providers.factory import ProviderFactory
 
-        config = load_config()
+        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
+        config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
         provider_name = provider.strip().lower()
         requested_model = payload.model if payload is not None else None
         try:
