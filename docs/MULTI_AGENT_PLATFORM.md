@@ -162,3 +162,8 @@ Artifact-serving API routes resolve team artifact roots beneath the canonical ru
 
 
 Autonomous source capture also rejects credential-bearing URLs and common loopback, localhost, link-local, private, reserved and multicast IP targets to prevent research tools from becoming an SSRF primitive. Explicitly configured `user_only` sources remain under the user's explicit source policy.
+
+
+## API data boundary
+
+Team control and persisted team-data endpoints are loopback-only. Remote clients are rejected from team history, status, messages, events, reports, artifacts, audit records, research exports and live team streams. This prevents the multi-agent runtime from becoming an unauthenticated remote data-exfiltration surface when the web service is exposed beyond localhost.
