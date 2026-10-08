@@ -75,6 +75,8 @@ class TeamConfig:
         self.max_agents = max(1, min(int(self.max_agents), 64))
         self.parallelism = max(1, min(int(self.parallelism), self.max_agents))
         self.max_iterations_per_agent = max(1, min(int(self.max_iterations_per_agent), 500))
+        self.output_mode = self.output_mode if self.output_mode in {"chat", "file", "both"} else "chat"
+        self.output_format = self.output_format if self.output_format in {"markdown", "text", "json"} else "markdown"
         return self
 
 
