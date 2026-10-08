@@ -117,3 +117,17 @@ def test_worker_permission_lookup_uses_dynamically_injected_tools(tmp_path: Path
         assert runtime._permission(call, TeamConfig(mode=TeamMode.RESEARCH), profile, tools) is True
     finally:
         store.close()
+
+
+def test_interactive_user_only_policy_excludes_arbitrary_source_fetch(tmp_path: Path):
+    from nexus_agent.team.runtime import build_workspace_tools
+
+    tools = build_workspace_tools(
+        tmp_path,
+        research=True,
+        research_source_strategy="user_only",
+    )
+    names = {getattr(tool, "name", "") for tool in tools}
+    assert "research_configured_source" in names
+    assert "research_record_source" not in names
+    assert not names.intersection({"web_search", "web_fetch", "webfetch", "browser"})
