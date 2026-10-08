@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import pytest
@@ -39,7 +38,6 @@ def test_team_data_access_rejects_non_local_clients():
 def test_team_data_access_accepts_loopback_clients():
     request = type("Request", (), {"client": type("Client", (), {"host": "127.0.0.1"})()})()
     _require_local_client(request)
-
 
 
 class RouteState:
