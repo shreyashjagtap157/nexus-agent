@@ -116,6 +116,7 @@ def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallel
                 final = event.data
 
     if final is None:
+        runtime.close()
         raise click.ClickException("Team runtime ended without a result.")
 
     console.print(Panel(final.get("synthesis") or final.get("summary", ""), title="Team Result"))
@@ -128,6 +129,7 @@ def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallel
     for agent in final.get("agents", []):
         table.add_row(str(agent.get("name")), str(agent.get("profession")), str(agent.get("status")))
     console.print(table)
+    runtime.close()
 
 
 @main.command("list")
