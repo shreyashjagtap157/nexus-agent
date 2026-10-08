@@ -1,0 +1,23 @@
+name: Version Contract
+
+on:
+  push:
+    branches: ["master", "multi-agent-platform"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
+jobs:
+  version-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check synchronized versions
+        run: python scripts/check_version.py
+      - name: Check Git tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python scripts/check_version.py --tag "$GITHUB_REF_NAME"
