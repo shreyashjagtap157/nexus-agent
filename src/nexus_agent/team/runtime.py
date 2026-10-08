@@ -883,6 +883,10 @@ Team protocol:
             },
         )
 
+        research_deadline = None
+        if cfg.mode == TeamMode.RESEARCH and cfg.research_max_minutes > 0:
+            research_deadline = time.time() + (cfg.research_max_minutes * 60)
+
         # Dependency-aware scheduler: independent agents run concurrently;
         # dependent agents are released only after their prerequisites complete.
         profile_by_id = {profile.role_id: profile for profile in profiles}
@@ -896,6 +900,9 @@ Team protocol:
             thread_name_prefix=f"nexus-team-{team_id}",
         ) as pool:
             while pending or active:
+                if research_deadline is not None and time.time() >= research_deadline:
+                    store.event(team_id, "research_deadline_reached", {"max_minutes": cfg.research_max_minutes})
+                    control_state.stop_requested.set()
                 persisted_control = store.pop_control(team_id)
                 if persisted_control == "pause":
                     control_state.pause_requested.set()
