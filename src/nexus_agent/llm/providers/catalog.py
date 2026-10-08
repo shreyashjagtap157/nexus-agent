@@ -33,6 +33,7 @@ PROVIDERS = {
     "openrouter": ProviderDescriptor("openrouter", "OpenRouter", "openai_compatible", "https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY"),
     "nvidia_nim": ProviderDescriptor("nvidia_nim", "NVIDIA NIM", "openai_compatible", "https://integrate.api.nvidia.com/v1/chat/completions", "NVIDIA_NIM_API_KEY"),
     "huggingface": ProviderDescriptor("huggingface", "Hugging Face Inference", "openai_compatible", "https://router.huggingface.co/v1/chat/completions", "HF_TOKEN"),
+    "litellm": ProviderDescriptor("litellm", "LiteLLM Compatibility Layer", "litellm", None, None),
     "custom": ProviderDescriptor("custom", "Custom OpenAI-compatible", "openai_compatible", None, None),
 }
 
