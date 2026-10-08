@@ -44,7 +44,6 @@ from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.nla_telemetry import NLATelemetry
 from nexus_agent.core.task_graph import TaskGraph
 from nexus_agent.core.usage import UsageTracker
-from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.local_engine import LocalEngine
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.providers.factory import ProviderFactory
