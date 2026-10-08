@@ -282,7 +282,6 @@ class DeleteFileTool(Tool):
         self.workspace = (workspace or Path.cwd()).resolve()
         self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
         self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
-        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
@@ -358,6 +357,7 @@ class RestoreFileTool(Tool):
     def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
         self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
