@@ -35,6 +35,7 @@ _PROVIDER_MAP: dict[str, tuple[str, str]] = {
     "bedrock": ("nexus_agent.llm.providers.aws_bedrock_provider", "AWSBedrockProvider"),
     "custom": ("nexus_agent.llm.providers.custom_openai_provider", "CustomOpenAIProvider"),
     "nvidia_nim": ("nexus_agent.llm.providers.nvidia_nim_provider", "NvidiaNIMProvider"),
+    "litellm": ("nexus_agent.llm.providers.litellm_provider", "LiteLLMProvider"),
 }
 
 
