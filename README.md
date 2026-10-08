@@ -13,7 +13,7 @@ Unlike traditional coding agents that force reliance on external cloud APIs, Nex
 
 ## ✨ Key Capabilities
 
-* **🔌 100% Offline Local Model Hosting**: Directly loads GGUF models via high-performance `llama-cpp-python` and ONNX configurations optimized for Windows NPUs using `onnxruntime-genai`.
+* **🔌 Local-first + provider-agnostic inference**: Run local GGUF/ONNX models directly on your machine or route individual agents to hosted/custom OpenAI-compatible providers.
 * **⚡ Premium TUI & Glassmorphic GUI**: Choose between a full-featured Textual terminal dashboard with an interactive workspace explorer, syntax-highlighted diff visualizer, and permission gating overlays, or a gorgeous glassmorphic web GUI.
 * **🧠 Database-Backed Stateful Memory**: Employs MemGPT-inspired multi-tier memory (working LRU, long-term SQLite FTS5 recall, session episodies, and user preference profile learning).
 * **💾 Dynamic Prompt Caching**: Dynamic caching of system configurations, large file fragments, and custom tools schemas to minimize processing latency.
@@ -71,7 +71,8 @@ Web team console:
 | Team CLI | `nexus-team` | Dynamic multi-agent teams |
 | Web GUI | `nexus gui` | Browser workspace and single-agent chat |
 | Team Console | `/team.html` | Live team topology, messages and telemetry |
-| Native client | `nexus-rs/` | Native Rust CLI/TUI over the agent backend |
+| Native CLI/TUI | `nexus-rs/` | Native Rust CLI/TUI front end over the shared backend |
+| Native desktop | `nexus-desktop/` | eframe desktop client for the same local server/team runtime |
 ## 🏗️ Technical Architecture
 
 ```
@@ -155,7 +156,7 @@ nexus auth list
 nexus agent list
 nexus agent init security-reviewer --scope workspace
 nexus agent generate "Create a security auditor and a dependency analyst"
-nexus agent run security-reviewer "Audit this repository"
+nexus team run "Audit this repository with the saved security-reviewer profile." --mode review --max-agents 4
 ```
 
 ### Running the Agent
@@ -272,7 +273,7 @@ NexusAgent sandboxes all shell commands via `subprocess.run(shell=False)` and re
 
 ## 📝 License
 
-NexusAgent is open-source under the **MIT License**. See [LICENSE](LICENSE) or [Apache 2.0](NOTICE) for details.
+NexusAgent is open-source under the **MIT License**. See [LICENSE](LICENSE) for the authoritative license.
 
 ---
 
