@@ -20,6 +20,7 @@ const App = {
 
         // Sync local stats and check preloaded models
         await this.syncStatus();
+        await this.loadFileActivity();
 
         // Load sessions list
         await this.loadSessions();
@@ -124,6 +125,29 @@ const App = {
 
         } catch (e) {
             console.error("Failed to sync status: ", e);
+        }
+    },
+
+    async loadFileActivity() {
+        const panel = document.getElementById("agent-activity-log");
+        if (!panel) return;
+        try {
+            const res = await fetch("/api/activity/files?limit=120");
+            if (!res.ok) return;
+            const data = await res.json();
+            const changes = data.changes || [];
+            for (const item of changes.slice().reverse()) {
+                const entry = document.createElement("div");
+                entry.className = "log-entry system";
+                const when = new Date((item.created_at || 0) * 1000).toLocaleTimeString();
+                entry.textContent =
+                    "[" + when + "] [FILE " + item.operation.toUpperCase() + "] " +
+                    item.path + (item.actor ? " • " + item.actor : "");
+                panel.appendChild(entry);
+            }
+            panel.scrollTop = panel.scrollHeight;
+        } catch (e) {
+            console.debug("Failed to load durable file activity:", e);
         }
     },
 
