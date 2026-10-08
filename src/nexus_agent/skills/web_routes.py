@@ -20,7 +20,8 @@ def register_skill_routes(app: Any, state_manager: Any) -> None:
 
     @app.get("/api/skills")
     async def list_skills(request: Request):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+        host = request.client.host if request.client else None
+        if host not in {"127.0.0.1", "::1", "localhost"}:
             raise HTTPException(status_code=403, detail="Workspace skill access is restricted to local clients.")
         skills = registry.discover_skills()
         return {
