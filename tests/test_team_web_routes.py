@@ -1,10 +1,11 @@
+import os
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
 
-from fastapi import HTTPException
-
-from nexus_agent.team.web_routes import _artifact_root, _require_local_client
+from nexus_agent.team.web_routes import _artifact_root, _require_local_client, register_team_routes
 
 
 class State:
@@ -38,3 +39,31 @@ def test_team_data_access_rejects_non_local_clients():
 def test_team_data_access_accepts_loopback_clients():
     request = type("Request", (), {"client": type("Client", (), {"host": "127.0.0.1"})()})()
     _require_local_client(request)
+
+
+
+class RouteState:
+    def __init__(self, workspace: Path):
+        self.workspace = str(workspace)
+
+    def get(self, key, default=None):
+        if key == "workspace":
+            return self.workspace
+        return default
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/workflows",
+        "/api/research-depths",
+        "/api/research-sources",
+        "/api/teams/team-1/artifacts",
+        "/api/teams/team-1/artifacts/example.txt",
+    ],
+)
+def test_sensitive_team_read_routes_reject_remote_clients(tmp_path: Path, path: str):
+    app = FastAPI()
+    register_team_routes(app, RouteState(tmp_path))
+    response = TestClient(app).get(path)
+    assert response.status_code == 403
