@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -113,7 +113,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry(_workspace(state_manager)).list()]}
 
     @router.put("/api/workflows/{workflow_id}")
-    async def save_workflow(workflow_id: str, req: WorkflowWriteRequest):
+    async def save_workflow(workflow_id: str, request: Request, req: WorkflowWriteRequest):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Workflow mutation is restricted to local clients.")
         if workflow_id.strip().lower() != req.id.strip().lower():
             raise HTTPException(status_code=400, detail="Path workflow ID and body ID must match")
         from nexus_agent.workflows.registry import WorkflowSpec
@@ -123,7 +125,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return {"workflow": candidate.__dict__, "path": str(path)}
 
     @router.delete("/api/workflows/{workflow_id}")
-    async def delete_workflow(workflow_id: str, scope: str = "workspace"):
+    async def delete_workflow(workflow_id: str, request: Request, scope: str = "workspace"):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Workflow mutation is restricted to local clients.")
         registry = WorkflowRegistry(_workspace(state_manager))
         if not registry.delete(workflow_id, scope):
             raise HTTPException(status_code=404, detail="Custom workflow not found")
