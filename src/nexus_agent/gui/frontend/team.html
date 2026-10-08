@@ -35,7 +35,7 @@ main{display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:12px;paddi
 <label class="check"><input id="reviewer" type="checkbox" checked> Require independent reviewer</label>
 <label class="check"><input id="synthesis" type="checkbox" checked> Generate team synthesis</label>
 <label class="check"><input id="approve" type="checkbox"> Auto-approve tool calls</label>
-<div class="actions"><button id="start" class="btn primary">Assemble & Start</button><button id="refresh" class="btn">Refresh</button></div>
+<div class="actions"><button id="start" class="btn primary">Assemble & Start</button><button id="pause" class="btn" disabled>Pause</button><button id="resume" class="btn" disabled>Resume</button><button id="stop" class="btn" disabled>Stop</button></div><div class="actions"><button id="refresh" class="btn">Refresh</button></div>
 <div id="notice" class="sub" style="margin-top:10px"></div>
 </div>
 </section>
@@ -74,7 +74,7 @@ async function snapshot(){
   if(!jobId)return;var r=await fetch("/api/teams/"+encodeURIComponent(jobId));if(!r.ok)return;var d=await r.json();
   if(d.team_id)teamId=d.team_id;if(d.agents)renderAgents(d.agents);(d.events||[]).forEach(addEvent);(d.messages||[]).forEach(addMessage);
   if(d.result&&d.result.synthesis)$("synthesis").innerHTML="<div style='padding:12px;white-space:pre-wrap'>"+esc(d.result.synthesis)+"</div>";
-  var st=(d.team&&d.team.status)||d.status||"unknown";$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
+  var st=(d.team&&d.team.status)||d.status||"unknown";$("pause").disabled=!teamId||!["running"].includes(st);$("resume").disabled=!teamId||!["paused"].includes(st);$("stop").disabled=!teamId||["completed","failed","cancelled","needs_review"].includes(st);$("start").disabled=!!jobId&&!["completed","failed","cancelled","needs_review"].includes(d.status||"");$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
   if(teamId&&!es){es=new EventSource("/api/teams/"+encodeURIComponent(teamId)+"/stream");es.onmessage=function(ev){try{var x=JSON.parse(ev.data);if(x.type==="terminal"){notice("Team ended: "+x.status);es.close();es=null}else{addEvent(x)}snapshot()}catch(e){}};es.onerror=function(){notice("Live stream reconnecting…")}}
 }
 $("start").onclick=async function(){
@@ -83,7 +83,7 @@ $("start").onclick=async function(){
   try{var payload={goal:goal,mode:$("mode").value,max_agents:+$("max_agents").value,parallelism:+$("parallelism").value,max_iterations_per_agent:+$("iterations").value,effort_level:$("effort").value,output_mode:$("output").value,output_format:$("format").value,require_reviewer:$("reviewer").checked,auto_synthesize:$("synthesis").checked,auto_approve_tools:$("approve").checked};var r=await fetch("/api/teams",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});var d=await r.json();if(!r.ok)throw new Error(d.detail||"start failed");jobId=d.job_id;notice("Queued "+jobId);snapshot()
   }catch(e){notice(e.message||String(e),true);$("start").disabled=false}
 }
-$("refresh").onclick=snapshot;setInterval(snapshot,3000)
+async function control(action){if(!teamId)return;var r=await fetch("/api/teams/"+encodeURIComponent(teamId)+"/control",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:action})});var d=await r.json();notice(d.accepted?("Control accepted: "+action):(d.detail||"Control failed"),!d.accepted);snapshot()}$("pause").onclick=function(){control("pause")};$("resume").onclick=function(){control("resume")};$("stop").onclick=function(){control("stop")};$("refresh").onclick=snapshot;setInterval(snapshot,3000)
 </script>
 </body>
 </html>
