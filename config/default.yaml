@@ -380,8 +380,16 @@ skills:
   builtin_enabled: true
 
 mcp:
-  # MCP servers to connect to
+  # MCP servers to connect to. Secret variables should be named explicitly
+  # under env_passthrough rather than stored as plaintext in this file.
   servers: []
+  # Example:
+  # - name: github
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-github"]
+  #   env_passthrough: ["GITHUB_TOKEN"]
+  #   startup_timeout: 20
+  #   enabled: true
 
   # Expose agent as MCP server
   serve:
