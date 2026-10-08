@@ -68,3 +68,34 @@ def test_agent_profile_roundtrip_preserves_provider_routing(tmp_path: Path):
     assert loaded.provider == "nvidia_nim"
     assert loaded.model == "nvidia/nemotron-3.5-lightning-30b-a3b"
     assert loaded.fallbacks == ["openrouter"]
+
+
+def test_agent_skill_roundtrip_and_team_profile_binding(tmp_path):
+    from nexus_agent.agents.models import AgentScope, AgentSpec
+    from nexus_agent.agents.registry import AgentRegistry
+
+    registry = AgentRegistry(tmp_path, user_root=tmp_path / "user-agents")
+    skill_dir = tmp_path / ".nexus-agent" / "skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "example.md").write_text(
+        "---\nname: example\ndescription: Example skill\nparameters: {}\n---\nDo the thing.\n",
+        encoding="utf-8",
+    )
+    spec = AgentSpec(
+        id="skilled-worker",
+        name="Skilled Worker",
+        profession="Worker",
+        description="",
+        mission="Use a reusable skill.",
+        instructions="Execute the assigned work.",
+        scope=AgentScope.WORKSPACE,
+        tool_categories=["read"],
+        skill_ids=["example"],
+    )
+    assert registry.validate(spec) == []
+    saved = registry.save(spec, AgentScope.WORKSPACE)
+    assert saved.exists()
+    loaded = registry.get("skilled-worker")
+    assert loaded is not None
+    assert loaded.skill_ids == ["example"]
+    assert loaded.to_team_profile().skill_ids == ["example"]
