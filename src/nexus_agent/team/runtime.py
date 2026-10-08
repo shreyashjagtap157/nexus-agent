@@ -771,7 +771,7 @@ Team protocol:
                 "",
                 "## Evidence Quality Gate",
                 "",
-                json_dump(quality or {}),
+                json.dumps(quality or {}, ensure_ascii=False, indent=2),
                 "",
                 "## Workers",
                 "",
