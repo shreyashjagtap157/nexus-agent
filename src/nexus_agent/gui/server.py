@@ -101,6 +101,12 @@ state_manager = StateManager({
 })
 
 
+def _require_local_client(request: Request) -> None:
+    host = request.client.host if request.client else None
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="State-changing GUI access is restricted to local clients.")
+
+
 def get_free_port() -> int:
     """Get a free port on localhost."""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -295,7 +301,8 @@ async def get_models():
 
 
 @app.post("/api/models/load")
-async def load_model(req: ModelLoadRequest):
+async def load_model(req: ModelLoadRequest, request: Request):
+    _require_local_client(request)
     """Load a model using local engine fine-tuning settings & guardrails."""
     try:
         # Check guardrails first
@@ -342,7 +349,8 @@ async def load_model(req: ModelLoadRequest):
 
 
 @app.post("/api/config/update")
-async def update_config(req: ConfigUpdateRequest):
+async def update_config(req: ConfigUpdateRequest, request: Request):
+    _require_local_client(request)
     """Update active configuration values dynamically."""
     if req.effort_level is not None:
         state_manager.get("config").setdefault("agent", {})["effort_level"] = req.effort_level
@@ -374,7 +382,8 @@ async def list_sessions():
 
 
 @app.post("/api/sessions/create")
-async def create_session(req: SessionCreateRequest):
+async def create_session(req: SessionCreateRequest, request: Request):
+    _require_local_client(request)
     """Create a new conversation session."""
     sm = state_manager.get("session_manager")
     if not sm:
@@ -443,7 +452,8 @@ async def get_nla(session_id: str):
 
 
 @app.post("/api/debate")
-async def trigger_debate():
+async def trigger_debate(request: Request):
+    _require_local_client(request)
     """Convening parallel code debate reviews."""
     try:
         diff_res = subprocess.run(["git", "diff", "HEAD"], cwd=str(state_manager.get("workspace")), capture_output=True, text=True, timeout=10)
@@ -465,7 +475,8 @@ async def trigger_debate():
 
 
 @app.post("/api/verify")
-async def trigger_verify():
+async def trigger_verify(request: Request):
+    _require_local_client(request)
     """Execute static lint and test framework pipeline validation."""
     pipeline = VerificationPipeline(workspace=state_manager.get("workspace"))
     report = pipeline.run_full_pipeline()
@@ -484,7 +495,8 @@ async def trigger_verify():
 
 
 @app.post("/api/commit")
-async def trigger_commit():
+async def trigger_commit(request: Request):
+    _require_local_client(request)
     """Auto-generate conventional commits from staged modifications."""
     tool = SmartCommitTool(workspace=state_manager.get("workspace"), provider=state_manager.get("engine"))
     msg = tool.execute()
@@ -496,6 +508,10 @@ async def trigger_commit():
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
+    host = websocket.client.host if websocket.client else None
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        await websocket.close(code=1008, reason="Agent WebSocket access is restricted to local clients.")
+        return
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
     state_manager.set("active_session_id", session_id)
