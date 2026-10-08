@@ -44,6 +44,8 @@ class WorkflowWriteRequest(BaseModel):
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
     research_source_strategy: str = Field(default="hybrid", pattern="^(user_only|hybrid|autonomous)$")
+    research_max_minutes: int = Field(default=10080, ge=1, le=525600)
+    research_idle_rounds: int = Field(default=2, ge=1, le=20)
     agent_ids: list[str] = Field(default_factory=list)
     research_source_urls: list[str] = Field(default_factory=list, max_length=200)
     tags: list[str] = Field(default_factory=list)
@@ -200,6 +202,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             cfg.research_depth = req.research_depth
             cfg.research_collection = req.research_collection
             cfg.research_source_strategy = req.research_source_strategy
+            cfg.research_max_minutes = req.research_max_minutes
+            cfg.research_idle_rounds = req.research_idle_rounds
             cfg.research_source_urls = req.research_source_urls
             cfg.agent_ids = req.agent_ids
             cfg.use_saved_agents = req.use_saved_agents
