@@ -41,6 +41,12 @@ class AgentGenerateRequest(BaseModel):
     model: str | None = None
 
 
+
+def _require_local(request: Request) -> None:
+    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Agent mutation is restricted to local clients.")
+
+
 def _registry(state_manager: Any) -> AgentRegistry:
     workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
     return AgentRegistry(workspace)
@@ -81,6 +87,7 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
     async def delete_agent(agent_id: str, request: Request, scope: AgentScope | None = None):
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
             raise HTTPException(status_code=403, detail="Agent mutation is restricted to local clients.")
+        _require_local(request)
         removed = _registry(state_manager).delete(agent_id, scope)
         if not removed:
             raise HTTPException(status_code=404, detail="No persisted definition found")
@@ -90,6 +97,7 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
     async def generate_agents(request: Request, payload: AgentGenerateRequest):
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
             raise HTTPException(status_code=403, detail="Agent mutation is restricted to local clients.")
+        _require_local(http_request)
         provider = state_manager.get("engine")
         workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
         config = state_manager.get("config") or load_config(workspace=workspace)
