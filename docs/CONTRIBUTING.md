@@ -39,7 +39,7 @@ nexus hardware
 python -m pytest tests/ -v
 
 # Run specific test file
-python -m pytest tests/nexus_agent/memory/test_memory.py -v
+python -m pytest tests/test_memory.py -v
 
 # Run with coverage
 python -m pytest tests/ --cov=src/nexus_agent --cov-report=html
@@ -50,16 +50,22 @@ python -m pytest tests/ --cov=src/nexus_agent --cov-report=html
 ## Project Structure
 
 ```
-src/nexus_agent/       # All source code (installed as package)
-tests/                 # Test suite
-docs/                  # Documentation
-config/                # Default YAML configuration
+src/nexus_agent/       # Python runtime, agent core, tools, teams, research and services
+nexus-rs/              # Native Rust CLI/TUI client
+nexus-desktop/         # Native egui desktop client
+tests/                 # Python regression and integration tests
+docs/                  # Architecture, operations and contributor documentation
+config/                # Default configuration
+scripts/               # Versioning and release utilities
 ```
 
 **Key rules:**
-- All source code lives under `src/nexus_agent/`
-- Tests mirror the source tree under `tests/nexus_agent/`
-- No TypeScript, Go, or Rust (Python only unless approved)
+- Python runtime code lives under `src/nexus_agent/`.
+- Native client code lives under `nexus-rs/` and `nexus-desktop/`.
+- Tests live under `tests/` and should cover the public behavior they exercise.
+- Cross-surface behavior must remain coherent: CLI, web, team runtime and native clients consume the shared protocol/runtime rather than introducing divergent implementations.
+- Provider credentials must never be committed to repository configuration.
+- Changes to public APIs, persistence formats, provider configuration, tool contracts or team protocol require corresponding documentation and tests.
 
 ---
 
@@ -258,3 +264,49 @@ test(providers): add Google Gemini provider tests
 ## Code of Conduct
 
 Be respectful. We follow the [Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
+
+## Multi-Agent Development
+
+NexusAgent can generate reusable professional agents and assemble concurrent teams. When changing team behavior:
+
+1. Preserve deterministic agent-profile scope precedence.
+2. Keep team state, peer messages and lifecycle events persisted.
+3. Maintain dependency-aware scheduling semantics.
+4. Preserve per-agent provider/model routing and permission boundaries.
+5. Exercise the affected CLI, web API and native-client contracts where applicable.
+6. Update `docs/MULTI_AGENT_PLATFORM.md`, `docs/ORCHESTRATION.md` or related product documentation when behavior changes.
+
+## Versioning
+
+The repository-root `VERSION` file is canonical. Use the versioning utility rather than manually changing manifests:
+
+```bash
+python scripts/set_version.py 0.3.0-alpha.5 --dry-run
+python scripts/set_version.py 0.3.0-alpha.5
+python scripts/check_version.py
+```
+
+Do not reuse or rewrite an existing release tag. See `docs/VERSIONING.md` for the complete release contract.
+
+## Security and Credentials
+
+Use the credential lifecycle:
+
+```bash
+nexus auth login --provider <provider>
+nexus auth list
+nexus auth logout <provider>
+```
+
+Keep API keys out of YAML, Markdown agent profiles, source code, tests and Git history. The credential store may use the OS keychain when the security extra is installed.
+
+## Native Validation
+
+For Rust client changes:
+
+```bash
+cargo fmt --manifest-path nexus-rs/Cargo.toml -- --check
+cargo check --manifest-path nexus-rs/Cargo.toml
+cargo fmt --manifest-path nexus-desktop/Cargo.toml -- --check
+cargo check --manifest-path nexus-desktop/Cargo.toml
+```
