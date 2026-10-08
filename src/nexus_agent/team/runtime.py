@@ -191,7 +191,8 @@ class TeamRuntime:
             if allowed:
                 selected.append(tool)
 
-        selected.extend(
+        if "mcp" in categories:
+            selected.extend(
                 tool
                 for tool in self.tools
                 if tool not in selected and tool.__class__.__name__ == "MCPProxyTool"
