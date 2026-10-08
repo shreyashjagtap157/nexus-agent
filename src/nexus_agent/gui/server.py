@@ -205,6 +205,10 @@ class ConfigUpdateRequest(BaseModel):
     guardrails: Annotated[str | None, Field(max_length=256)] = None
 
 
+class GeneralConfigUpdateRequest(BaseModel):
+    values: dict[str, Any] = Field(default_factory=dict)
+
+
 class SessionCreateRequest(BaseModel):
     title: Annotated[str | None, Field(max_length=256)] = None
 
