@@ -3,14 +3,14 @@
 <title>NexusAgent — Provider Vault</title>
 <style>
 :root{color-scheme:dark;--bg:#050a10;--panel:#0c1521;--line:#20324b;--text:#e9f1fb;--muted:#8da0b8}*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(circle at 15% 0,#18314c 0,#050a10 50%,#02050a 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+html{font-size:16px}body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 0,#183b58 0,#050a10 50%,#02050a 100%);color:var(--text);font:clamp(15px,.95vw,18px)/1.45 system-ui,-apple-system,Segoe UI,sans-serif;overflow:auto}
 header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#07101bdf;backdrop-filter:blur(10px);z-index:3}
 h1{font-size:18px;margin:0}.sub{font-size:11px;color:var(--muted)}a,.btn{color:var(--text)}.btn{border:1px solid var(--line);background:#101b2a;padding:8px 12px;border-radius:8px;cursor:pointer}
-main{padding:12px;display:grid;grid-template-columns:1.1fr 1fr;gap:12px}.panel{border:1px solid var(--line);background:rgba(12,21,33,.93);border-radius:12px;overflow:hidden}
+main{padding:18px;display:grid;grid-template-columns:minmax(520px,1.05fr) minmax(620px,1fr);gap:16px;max-width:2100px;margin:0 auto}.panel{border:1px solid var(--line);background:rgba(12,21,33,.93);border-radius:12px;overflow:hidden}
 .panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.body{padding:12px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #17253a;padding:8px;font-size:12px}th{color:var(--muted);font-size:10px;text-transform:uppercase}.provider{cursor:pointer}.provider:hover{background:#101a2a}
-label{display:block;color:var(--muted);font-size:11px;margin:10px 0 4px}input,select{width:100%;padding:9px;background:#08111d;border:1px solid var(--line);border-radius:8px;color:var(--text)}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;margin-top:12px}.primary{flex:1;background:#0b3144;border-color:#2b7194}.notice{margin-top:10px;color:var(--muted);font-size:11px}.key{font-family:ui-monospace,monospace}
-@media(max-width:900px){main{grid-template-columns:1fr}}
+label{display:block;color:var(--muted);font-size:.76rem;margin:12px 0 5px}input,select{width:100%;padding:11px;background:#08111d;border:1px solid var(--line);border-radius:8px;color:var(--text)}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;margin-top:12px}.primary{flex:1;background:#0b3144;border-color:#2b7194}.notice{margin-top:10px;color:var(--muted);font-size:11px}.key{font-family:ui-monospace,monospace}
+@media(min-width:1800px){main{padding:24px;gap:20px}.body{padding:18px}th,td{padding:11px;font-size:.82rem}}@media(max-width:1180px){main{grid-template-columns:1fr}}
 </style></head>
 <body>
 <header><div><h1>NexusAgent / Provider Vault</h1><div class="sub">Credentials are separated from model and endpoint configuration.</div></div><div><a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/activity.html">Activity</a> <a class="btn" href="/mcp.html">MCP</a> <a class="btn" href="/">Workspace</a></div></header>
