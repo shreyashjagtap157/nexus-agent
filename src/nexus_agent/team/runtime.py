@@ -171,7 +171,7 @@ class TeamRuntime:
             return True
         return False
 
-    def _tools_for(self, profile: AgentProfile, store: TeamStore, team_id: str) -> list[Any]:
+    def _tools_for(self, profile: AgentProfile, store: TeamStore, team_id: str, config: TeamConfig | None = None) -> list[Any]:
         categories = set(profile.tool_categories)
         from nexus_agent.memory.scoped import ScopedMemory
         from nexus_agent.storage.layout import StorageLayout
@@ -230,6 +230,11 @@ class TeamRuntime:
                     ),
                 ]
             )
+            if config is not None and config.research_source_strategy == "user_only":
+                selected = [
+                    tool for tool in selected
+                    if getattr(tool, "name", "") not in {"web_search", "browser"}
+                ]
         return selected
 
     def _permission(self, tool_call: Any, config: TeamConfig) -> bool:
@@ -242,13 +247,25 @@ class TeamRuntime:
         name = str(getattr(tool_call, "name", "")).lower()
         return not any(token in name for token in ("write", "edit", "insert", "shell", "commit", "push", "delete"))
 
-    def _system_extra(self, goal: str, profile: AgentProfile, team_id: str) -> str:
+    def _system_extra(self, goal: str, profile: AgentProfile, team_id: str, config: TeamConfig) -> str:
         research_protocol = ""
         if "research" in profile.tool_categories:
+            from .research import policy as research_policy
+            depth = research_policy(config.research_depth)
+            source_line = (
+                "Only use the user-configured/seeded sources; autonomous discovery is disabled."
+                if config.research_source_strategy == "user_only"
+                else "You may discover new sources autonomously."
+                if config.research_source_strategy == "autonomous"
+                else "Use user-configured sources first and expand autonomously when useful."
+            )
             research_protocol = (
-                "8. For research findings, preserve exact source text with research_record_source, "
-                "record factual claims with exact quotations using research_record_claim, and use "
-                "research_verify_claim before treating quotation-backed evidence as deterministically verified."
+                f"8. Research depth policy: {depth['label']}; target verifier passes={depth['verification_passes']}."
+                f" Collection strategy: {config.research_collection}. {source_line} "
+                f"Seed URLs: {', '.join(config.research_source_urls[:20]) or 'none'}."
+                " Preserve exact source text with research_record_source, record factual claims "
+                "with exact quotations using research_record_claim, and use research_verify_claim "
+                "before treating quotation-backed evidence as deterministically verified."
             )
         return f"""
 You are {profile.name}, a specialist worker in NexusAgent team {team_id}.
@@ -341,7 +358,7 @@ Team protocol:
             mode=AgentMode.BUILD if profile.write_access else AgentMode.REVIEW,
             workspace=self.workspace,
             max_iterations=config.max_iterations_per_agent,
-            system_prompt_extra=self._system_extra(goal, profile, team_id) + memory_context,
+            system_prompt_extra=self._system_extra(goal, profile, team_id, config) + memory_context,
             effort_level=config.effort_level,
         )
         worker_provider = self._provider_for(profile)
@@ -351,7 +368,7 @@ Team protocol:
             {"provider": worker_provider.name, "model": worker_provider.model_name},
             profile.role_id,
         )
-        worker_tools = self._tools_for(profile, store, team_id)
+        worker_tools = self._tools_for(profile, store, team_id, config)
         agent = AgentLoop(
             provider=worker_provider,
             tools=worker_tools,
