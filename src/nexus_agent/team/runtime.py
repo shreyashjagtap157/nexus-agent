@@ -793,6 +793,7 @@ Team protocol:
                     agents=list(event.data.get("agents", [])),
                     synthesis=str(event.data.get("synthesis", "")),
                     failures=list(event.data.get("failures", [])),
+                    artifact_paths=list(event.data.get("artifact_paths", [])),
                 )
         if final is None:
             raise RuntimeError("Team runtime ended without a final result.")
