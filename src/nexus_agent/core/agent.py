@@ -690,7 +690,8 @@ Current workspace: {workspace}
             logger.debug(f"UsageTracker.record failed: {e}")
 
     def run(self, user_input: str) -> Iterator[AgentEvent]:
-        if self.mode == AgentMode.AUTO and self._is_research_request(user_input):
+        promoted_from_auto = self.mode == AgentMode.AUTO and self._is_research_request(user_input)
+        if promoted_from_auto:
             self.mode = AgentMode.RESEARCH
             self._ensure_research_tools()
             yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
@@ -766,9 +767,13 @@ Current workspace: {workspace}
             if self.mode == AgentMode.RESEARCH:
                 done_payload["research_quality"] = self._research_coverage()
             yield self._emit_event("done", done_payload)
+            if promoted_from_auto:
+                self.mode = AgentMode.AUTO
             self._flush_trace_buffer()
             return
 
+        if promoted_from_auto:
+            self.mode = AgentMode.AUTO
         with self._lock:
             self.state = AgentState.DONE
         yield self._emit_event("done", {
@@ -812,7 +817,8 @@ Current workspace: {workspace}
             self._record_usage_dict(final_usage)
 
     def run_stream(self, user_input: str) -> Iterator[AgentEvent]:
-        if self.mode == AgentMode.AUTO and self._is_research_request(user_input):
+        promoted_from_auto = self.mode == AgentMode.AUTO and self._is_research_request(user_input)
+        if promoted_from_auto:
             self.mode = AgentMode.RESEARCH
             self._ensure_research_tools()
             yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
@@ -907,9 +913,13 @@ Current workspace: {workspace}
             yield self._emit_event("done", {
                 "iterations": self.iteration_count,
             })
+            if promoted_from_auto:
+                self.mode = AgentMode.AUTO
             self._flush_trace_buffer()
             return
 
+        if promoted_from_auto:
+            self.mode = AgentMode.AUTO
         self.state = AgentState.DONE
         yield self._emit_event("done", {
             "iterations": self.iteration_count,
