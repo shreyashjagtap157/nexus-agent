@@ -1,8 +1,21 @@
 """Deterministic team quality evaluation."""
 from __future__ import annotations
 
-from typing import Any
 import re
+from typing import Any
+
+
+def _claim_id_set(value: Any) -> set[int]:
+    if isinstance(value, (list, tuple, set, frozenset)):
+        raw_items = value
+    else:
+        raw_items = str(value or "").split(",")
+    claim_ids: set[int] = set()
+    for item in raw_items:
+        text = str(item).strip()
+        if text.isdigit():
+            claim_ids.add(int(text))
+    return claim_ids
 
 
 def evaluate_team(
@@ -51,17 +64,7 @@ def evaluate_team(
 
     if research_summary is not None:
         checks["research_evidence"] = research_summary
-        verified_claim_ids = {
-            int(item)
-            for item in str(research_summary.get("verified_claim_ids", "")).split(",")
-            if str(item).strip().isdigit()
-        }
-        if research_summary.get("claim_ids"):
-            verified_claim_ids = {
-                int(item)
-                for item in research_summary.get("verified_claim_ids", [])
-                if str(item).strip().isdigit()
-            }
+        verified_claim_ids = _claim_id_set(research_summary.get("verified_claim_ids"))
         markers = [
             int(match)
             for match in re.findall(r"\[claim:(\d+)\]", research_synthesis or "")
