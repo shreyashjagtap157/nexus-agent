@@ -26,6 +26,15 @@ def make_provider_selector(
         specs = {}
 
     def select(profile: AgentProfile) -> LLMProvider:
+        if profile.provider:
+            if profile.fallbacks:
+                return ProviderFactory.create_with_fallback(
+                    profile.provider,
+                    profile.fallbacks,
+                    config,
+                    profile.model,
+                )
+            return ProviderFactory.create_provider(profile.provider, config, profile.model)
         spec = specs.get(profile.model_role) or specs.get(profile.role_id) or {}
         if not isinstance(spec, dict):
             return default_provider
