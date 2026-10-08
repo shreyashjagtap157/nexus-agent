@@ -235,6 +235,55 @@ def provider_catalog_refresh() -> None:
     click.echo(f"Models.dev catalog refreshed: {len(providers)} providers")
 
 
+
+@provider.command("test")
+@click.argument("provider_id")
+@click.option("--model", type=str, default=None)
+@click.option("--prompt", type=str, default="Respond with exactly: NexusAgent provider test OK")
+@click.option("--max-tokens", type=int, default=64, show_default=True)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.pass_context
+def provider_test(
+    ctx: click.Context,
+    provider_id: str,
+    model: str | None,
+    prompt: str,
+    max_tokens: int,
+    workspace: str,
+) -> None:
+    """Run a real provider connectivity test without exposing credentials."""
+    import time
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.base import Message, Role
+    from nexus_agent.llm.providers.factory import ProviderFactory
+
+    ws = Path(workspace).resolve()
+    config = load_config(config_path=(ctx.obj or {}).get("config_path"), workspace=ws)
+    try:
+        provider = ProviderFactory.create_provider(provider_id, config, model)
+        started = time.perf_counter()
+        response = provider.chat_completion(
+            [
+                Message(
+                    role=Role.SYSTEM,
+                    content="You are performing a connectivity test. Never reveal secrets.",
+                ),
+                Message(role=Role.USER, content=prompt),
+            ],
+            temperature=0.0,
+            max_tokens=max(1, min(max_tokens, 512)),
+        )
+        latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    except (ImportError, RuntimeError, ValueError, OSError, TimeoutError, ConnectionError) as exc:
+        raise click.ClickException(f"Provider test failed: {exc}") from exc
+
+    click.echo(f"Provider: {provider.name}")
+    click.echo(f"Model: {provider.model_name}")
+    click.echo(f"Latency: {latency_ms} ms")
+    click.echo(f"Response: {(response.content or '').strip()[:4000]}")
+    click.echo("Credentials: not displayed.")
+
+
 @provider.command("auth-status")
 def provider_auth_status() -> None:
     """Show which provider credentials are stored, without revealing them."""
