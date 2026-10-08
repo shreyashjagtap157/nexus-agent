@@ -343,6 +343,7 @@ class TeamRuntime:
         tool_call: Any,
         config: TeamConfig,
         profile: AgentProfile | None = None,
+        tool_catalog: list[Any] | None = None,
     ) -> bool:
         if config.auto_approve_tools:
             return True
@@ -350,8 +351,9 @@ class TeamRuntime:
             return bool(self.permission_callback(tool_call))
 
         name = str(getattr(tool_call, "name", "")).lower()
+        catalog = tool_catalog if tool_catalog is not None else self.tools
         tool = next(
-            (candidate for candidate in self.tools if getattr(candidate, "name", "").lower() == name),
+            (candidate for candidate in catalog if getattr(candidate, "name", "").lower() == name),
             None,
         )
         if tool is None and profile is not None and name in {item.lower() for item in profile.skill_ids}:
@@ -522,7 +524,12 @@ Team protocol:
             provider=worker_provider,
             tools=worker_tools,
             config=cfg,
-            permission_callback=lambda tc: self._permission(tc, config, profile),
+            permission_callback=lambda tc: self._permission(
+                tc,
+                config,
+                profile,
+                worker_tools,
+            ),
         )
         for tool in worker_tools:
             if hasattr(tool, "set_agent_loop"):
