@@ -194,9 +194,16 @@ jobs:
           mkdir -p flattened
           find release-assets -type f -exec cp {} flattened/ \;
 
+      - name: Download Python package
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release
         with:
+          packages-dir: dist/
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Publish GitHub release
