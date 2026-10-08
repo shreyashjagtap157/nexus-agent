@@ -350,6 +350,66 @@ class DeleteFileTool(Tool):
             return f"Error: delete failed: {exc}"
 
 
+class RestoreFileTool(Tool):
+    """Restore files from the NexusAgent runtime trash directory."""
+
+    def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
+        self.workspace = (workspace or Path.cwd()).resolve()
+        self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+
+    @property
+    def name(self) -> str:
+        return "restore_file"
+
+    @property
+    def description(self) -> str:
+        return "List trashed files or restore a trashed file to an explicit workspace destination."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "action": {"type": "string", "description": "list or restore"},
+            "trash_name": {"type": "string", "description": "Filename inside the runtime trash directory.", "required": False},
+            "destination": {"type": "string", "description": "Workspace-relative destination for restore.", "required": False},
+        }
+
+    @property
+    def permission_level(self) -> str:
+        return "read-write"
+
+    def execute(self, action: str, trash_name: str = "", destination: str = "", **kwargs: Any) -> str:
+        self.trash_dir.mkdir(parents=True, exist_ok=True)
+        action = action.strip().lower()
+        if action == "list":
+            items = [p.name for p in sorted(self.trash_dir.iterdir(), key=lambda p: p.name) if p.is_file()]
+            return "\n".join(items) or "Trash is empty."
+        if action != "restore":
+            return "Error: action must be list or restore."
+        if not trash_name or not destination:
+            return "Error: trash_name and destination are required for restore."
+        item = (self.trash_dir / Path(trash_name).name).resolve()
+        try:
+            item.relative_to(self.trash_dir)
+        except ValueError:
+            return "Error: invalid trash item."
+        if not item.is_file():
+            return "Error: trash item not found."
+        try:
+            target = Tool.resolve_workspace_path(self.workspace, destination)
+        except (ValueError, ToolError):
+            return "Error: invalid destination."
+        if target.exists():
+            return "Error: destination already exists."
+        if any(part == ".git" for part in target.parts):
+            return "Error: refusing to restore into .git."
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            item.rename(target)
+            return f"Restored {destination}."
+        except OSError as exc:
+            return f"Error: restore failed: {exc}"
+
+
 class MoveFileTool(Tool):
     """Move or rename a workspace file or empty directory."""
 
