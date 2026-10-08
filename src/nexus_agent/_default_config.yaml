@@ -6,7 +6,7 @@
 agent:
   # Name shown in UI
   name: "NexusAgent"
-  version: "0.1.0"
+  version: "0.2.0-alpha.1"
 
   # Default operating mode: plan, build, auto
   default_mode: "auto"
