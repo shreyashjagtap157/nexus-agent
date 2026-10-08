@@ -90,6 +90,10 @@ class TeamConfig:
 
     def normalize(self) -> "TeamConfig":
         self.max_agents = max(1, min(int(self.max_agents), 64))
+        self.agent_ids = list(dict.fromkeys(
+            str(item).strip().lower() for item in self.agent_ids if str(item).strip()
+        ))[:64]
+        self.max_agents = max(self.max_agents, len(self.agent_ids))
         self.parallelism = max(1, min(int(self.parallelism), self.max_agents))
         self.max_iterations_per_agent = max(1, min(int(self.max_iterations_per_agent), 500))
         self.research_max_minutes = max(1, min(int(self.research_max_minutes), 525600))
