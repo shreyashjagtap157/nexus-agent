@@ -248,8 +248,9 @@ async def update_config_section(section: str, req: GeneralConfigUpdateRequest, r
 # --- API ENDPOINTS ---
 
 @app.get("/api/status")
-async def get_status():
+async def get_status(request: Request):
     """Get status of the agent core."""
+    _require_local_client(request)
     engine = state_manager.get("engine")
     model_name = engine.model_name if (engine and engine.is_loaded) else "No model loaded"
     runtime = state_manager.get("config").get("local_model", {}).get("runtime", "auto")
