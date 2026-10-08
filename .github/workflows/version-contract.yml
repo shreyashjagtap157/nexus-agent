@@ -6,22 +6,32 @@ concurrency:
 
 on:
   push:
-    branches: ["master", "multi-agent-platform"]
+    branches: ["main"]
     tags: ["v*"]
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   version-contract:
+    name: Version synchronization
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Check synchronized versions
         run: python scripts/check_version.py
+
       - name: Check Git tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(${{ github.ref }}, 'refs/tags/v')
         run: python scripts/check_version.py --tag "$GITHUB_REF_NAME"
