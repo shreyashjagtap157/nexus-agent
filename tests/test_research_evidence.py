@@ -45,3 +45,51 @@ def test_research_evidence_ledger_rejects_wrong_quote(tmp_path: Path):
     )
     verdict = store.verify_claim("team-2", claim["claim_id"], "verifier")
     assert verdict["verdict"] == "rejected"
+
+def test_research_conflicts_block_coverage_until_adjudicated(tmp_path: Path):
+    store = ResearchStore(tmp_path / "research.db")
+    source = store.record_source(
+        "team-3",
+        "researcher",
+        "https://example.test/spec",
+        "Example Spec",
+        "Claim one. Claim two.",
+        "test",
+    )
+    claim_a = store.record_claim(
+        "team-3",
+        "researcher",
+        "Claim one.",
+        "fact",
+        source["source_id"],
+        "Claim one.",
+    )
+    claim_b = store.record_claim(
+        "team-3",
+        "researcher",
+        "Claim two.",
+        "fact",
+        source["source_id"],
+        "Claim two.",
+    )
+    store.verify_claim("team-3", claim_a["claim_id"], "verifier")
+    store.verify_claim("team-3", claim_b["claim_id"], "verifier")
+    conflict = store.record_conflict(
+        "team-3",
+        "skeptic",
+        claim_a["claim_id"],
+        claim_b["claim_id"],
+    )
+    coverage = store.coverage("team-3", required_verification_passes=1)
+    assert coverage["unresolved_conflicts"] == 1
+    assert coverage["passed"] is False
+
+    store.adjudicate_conflict(
+        "team-3",
+        conflict["conflict_id"],
+        "adjudicator",
+        "accepted_uncertainty",
+        "The claims address different operating conditions and are therefore not mutually exclusive.",
+    )
+    coverage_after = store.coverage("team-3", required_verification_passes=1)
+    assert coverage_after["unresolved_conflicts"] == 0
