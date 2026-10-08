@@ -19,6 +19,7 @@ from nexus_agent.research.store import ResearchStore
 from .models import TeamConfig, TeamMode
 from .control import control as control_team_request
 from .providers import make_provider_selector
+from .research import all_policies
 from .runtime import TeamRuntime, build_workspace_tools
 from .store import TeamStore
 
@@ -39,6 +40,8 @@ class TeamStartRequest(BaseModel):
     auto_synthesize: bool = True
     require_reviewer: bool = True
     auto_approve_tools: bool = False
+    research_depth: str = "detailed"
+    research_collection: str = "until_saturation"
 
 
 def _workspace(state_manager: Any) -> Path:
@@ -78,6 +81,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             ),
         )
 
+    @router.get("/api/research-depths")
+    async def research_depths():
+        return {"depths": all_policies()}
+
     @router.get("/api/teams")
     async def list_teams(limit: int = 100, offset: int = 0):
         store = store_for()
@@ -104,6 +111,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 effort_level=req.effort_level,
                 output_mode=req.output_mode,
                 output_format=req.output_format,
+                research_depth=req.research_depth,
+                research_collection=req.research_collection,
                 auto_synthesize=req.auto_synthesize,
                 require_reviewer=req.require_reviewer,
                 auto_approve_tools=req.auto_approve_tools,
