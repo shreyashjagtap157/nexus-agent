@@ -1,6 +1,5 @@
 from fastapi import HTTPException
 
-
 from nexus_agent.gui.server import _require_local_client
 
 
