@@ -22,7 +22,8 @@ class TeamStore:
         config_json TEXT NOT NULL DEFAULT '{}',
         status TEXT NOT NULL,
         created_at REAL NOT NULL,
-        completed_at REAL
+        completed_at REAL,
+        quality_json TEXT NOT NULL DEFAULT '{}'
     );
     CREATE TABLE IF NOT EXISTS team_agents (
         agent_id TEXT PRIMARY KEY,
@@ -79,6 +80,7 @@ class TeamStore:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(self.SCHEMA)
+        self._ensure_migrations()
         self._conn.commit()
         self._audit = AuditLog(self.db_path.parent / "audit.jsonl")
 
@@ -98,6 +100,17 @@ class TeamStore:
                     "ALTER TABLE teams ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'"
                 )
             self._conn.commit()
+
+    def _ensure_migrations(self) -> None:
+        columns = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(teams)").fetchall()
+        }
+        if "quality_json" not in columns:
+            self._conn.execute(
+                "ALTER TABLE teams ADD COLUMN quality_json TEXT NOT NULL DEFAULT '{}'"
+            )
+        self._conn.commit()
 
     def create_team(
         self,
@@ -130,11 +143,21 @@ class TeamStore:
             )
             self._conn.commit()
 
-    def finish_team(self, team_id: str, status: str) -> None:
+    def finish_team(
+        self,
+        team_id: str,
+        status: str,
+        quality: dict[str, Any] | None = None,
+    ) -> None:
         with self._lock:
             self._conn.execute(
-                "UPDATE teams SET status=?, completed_at=? WHERE team_id=?",
-                (status, time.time(), team_id),
+                "UPDATE teams SET status=?, completed_at=?, quality_json=? WHERE team_id=?",
+                (
+                    status,
+                    time.time(),
+                    json.dumps(quality or {}, ensure_ascii=False, default=str),
+                    team_id,
+                ),
             )
             self._conn.commit()
 
@@ -285,7 +308,7 @@ class TeamStore:
     def list_teams(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         with self._lock:
             rows = self._conn.execute(
-                """SELECT team_id,goal,mode,workspace,status,config_json,created_at,completed_at
+                """SELECT team_id,goal,mode,workspace,status,config_json,quality_json,created_at,completed_at
                    FROM teams ORDER BY created_at DESC LIMIT ? OFFSET ?""",
                 (max(1, min(limit, 1000)), max(0, offset)),
             ).fetchall()
@@ -296,6 +319,10 @@ class TeamStore:
                 item["config"] = json.loads(item.pop("config_json") or "{}")
             except (TypeError, ValueError):
                 item["config"] = {}
+            try:
+                item["quality"] = json.loads(item.pop("quality_json") or "{}")
+            except (TypeError, ValueError):
+                item["quality"] = {}
             result.append(item)
         return result
 
@@ -305,7 +332,18 @@ class TeamStore:
                 "SELECT * FROM teams WHERE team_id=?",
                 (team_id,),
             ).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        item = dict(row)
+        try:
+            item["config"] = json.loads(item.get("config_json") or "{}")
+        except (TypeError, ValueError):
+            item["config"] = {}
+        try:
+            item["quality"] = json.loads(item.get("quality_json") or "{}")
+        except (TypeError, ValueError):
+            item["quality"] = {}
+        return item
 
     def agents(self, team_id: str) -> list[dict[str, Any]]:
         with self._lock:
