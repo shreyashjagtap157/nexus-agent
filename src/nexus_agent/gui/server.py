@@ -634,11 +634,6 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
             case "error":
                 await ws.send_json({"type": "error", "content": str(event.data)})
             case "done":
-                # Save to sessions
-                sm = state_manager.get("session_manager")
-                if sm:
-                    # Capture history
-                    sm.save_message("user", content=event.data.get("prompt", ""))
                 await ws.send_json({
                     "type": "done",
                     "iterations": event.data.get("iterations", 0),
