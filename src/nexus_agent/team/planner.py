@@ -115,6 +115,7 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
                 provider=str(item.get("provider")) if item.get("provider") else None,
                 model=str(item.get("model")) if item.get("model") else None,
                 fallbacks=[str(x) for x in item.get("fallbacks", []) if x],
+                skill_ids=[str(x).strip().lower() for x in item.get("skill_ids", []) if str(x).strip()],
             )
         )
         if len(profiles) >= max_agents:
@@ -176,7 +177,7 @@ Saved agent profiles available for reuse:
 Create a distinct professional team. Reuse relevant saved profiles instead of recreating
 them. Do not remove or weaken pinned roles; the runtime will preserve pinned roles.
 Return JSON only:
-{{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default"}}]}}
+{{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default","skill_ids":[]}}]}}
 """
     try:
         response = provider.chat_completion(
