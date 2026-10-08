@@ -286,24 +286,8 @@ To support all hardware processors (CPU, GPU, NPU, TPU), we support three local 
 - [x] `__main__.py` — CLI with subcommands: `nexus chat`, `gui`, `model list/info`, `session list/resume`, `config`, `hardware`
 
 ### Phase 2: Tools & Memory ✅ COMPLETE
-- [x] `tools/base.py` — Abstract `Tool` class with name, description, parameters, permission_level, execute()
-- [x] `tools/file_ops.py` — `ReadFileTool`, `WriteFileTool`, `SearchFilesTool`, `ListDirectoryTool`
-- [x] `tools/shell.py` — `ShellTool` wrapping `Sandbox`
-- [x] `tools/code_edit.py` — `CodeEditTool` (search-replace with diff), `InsertLinesTool`
-- [x] `tools/git_ops.py` — `GitTool` with safety checks on dangerous operations
-- [x] `tools/web_search.py` — `WebSearchTool` using DuckDuckGo API
-- [x] `tools/lsp_client.py` — `LSPClientTool` (placeholder, needs language server integration)
-- [x] `tools/browser.py` — `BrowserTool` (placeholder, needs playwright)
-- [x] `memory/memory_manager.py` — `MemoryManager` orchestrating all subsystems
-- [x] `memory/working_memory.py` — `WorkingMemory` (in-memory LRU scratchpad)
-- [x] `memory/long_term.py` — `LongTermMemory` (SQLite FTS5)
-- [x] `memory/episodic.py` — `EpisodicMemory` (session history with FTS5)
-- [x] `memory/user_profile.py` — `UserProfile` (YAML-backed preference learning)
-- [x] `permissions/manager.py` — Permission evaluation engine
-- [x] `permissions/rules.py` — Rule definitions
-- [x] `session/manager.py` — Session lifecycle management
-- [x] `session/storage.py` — SQLite session storage
-- [x] `session/checkpoint.py` — Checkpoint/rollback system
+
+The original Phase 2 checklist has been completed and superseded by the current multi-agent platform architecture. File, execution, web, code-intelligence, memory, research and permission surfaces are maintained through the current tests and CI gates.
 
 ### Phase 3: CLI Interface ✅ COMPLETE
 All core files in `src/nexus_agent/cli/` have been successfully created, styled, and validated:
@@ -395,43 +379,17 @@ The local FastAPI-based web server and the premium responsive glassmorphic front
 
 ---
 
-## 6. CONTINUATION PROMPT FOR OTHER LLM AGENTS
+## 6. CONTINUATION GUIDANCE
 
-Use the following prompt to continue development of this project:
+For further development, treat the following artifacts as authoritative:
 
----
+1. `README.md` for the current product surface.
+2. `docs/ARCHITECTURE.md` for system boundaries and data flow.
+3. `docs/MULTI_AGENT_PLATFORM.md` for team/research architecture.
+4. `docs/ORCHESTRATION.md` for scheduling and fail-closed guarantees.
+5. `docs/VERSIONING.md` for release compatibility policy.
+6. `.github/workflows/ci.yml` and `.github/workflows/security.yml` for repository validation gates.
 
-**CONTINUATION PROMPT:**
+The repository is at `0.3.0-alpha.4` and remains an unreleased prerelease. New work should prioritize correctness, security, cross-client compatibility, persistence/recovery, provider reliability, evidence quality and end-to-end qualification over speculative feature expansion.
 
-```
-You are continuing development of NexusAgent, an offline-first LLM coding agent located at D:/Project/nexus-agent/.
-
-READ THESE FILES FIRST:
-1. D:/Project/nexus-agent/docs/CONTEXT.md — Full project context, architecture, status
-2. D:/Project/nexus-agent/docs/MEMORY.md — Detailed implementation memory log
-
-PROJECT STATE: Phase 2 is ~70% complete. The remaining Phase 2 items are:
-- permissions/manager.py and permissions/rules.py
-- session/manager.py, session/storage.py, session/checkpoint.py
-
-After Phase 2, continue with:
-- Phase 3: CLI TUI interface (Textual-based, files in src/nexus_agent/cli/)
-- Phase 4: GUI web interface (FastAPI + HTML/CSS/JS, files in src/nexus_agent/gui/)
-- Phase 5: Advanced features (orchestrator, planner, executor, skills, MCP, cloud providers)
-- Phase 6: Polish, README, tests, docs
-
-KEY RULES:
-1. The project uses Python 3.10+, no TypeScript/Go/Rust
-2. Local LLM hosting via llama-cpp-python is the DEFAULT and PRIMARY mode
-3. All LLM providers implement the LLMProvider interface in llm/base.py
-4. The agent loop is in core/agent.py — do not restructure it
-5. Memory uses SQLite FTS5 — do not add vector databases
-6. CLI uses Textual framework, GUI uses FastAPI + vanilla HTML/CSS/JS
-7. Follow the existing code patterns in implemented files
-8. Update docs/MEMORY.md after every significant implementation step
-9. Update docs/CONTEXT.md section 2.2 (directory status) and section 4 (phase status) as you work
-
-CURRENT pyproject.toml entry point: nexus = "nexus_agent.__main__:main"
-```
-
----
+Before declaring a milestone complete, update the relevant documentation and require the current `main` head to qualify through the authoritative CI/Security workflows.
