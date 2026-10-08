@@ -190,5 +190,4 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
             raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
         return {"provider": provider.lower(), "removed": AuthStore().remove(provider)}
