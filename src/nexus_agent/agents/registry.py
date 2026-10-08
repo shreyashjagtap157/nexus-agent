@@ -132,7 +132,7 @@ class AgentRegistry:
     def resolve_tool_categories(self, agent: AgentSpec) -> set[str]:
         allowed = {
             "read", "write", "shell", "web", "git", "mcp",
-            "browser", "code_intel", "lsp", "memory", "research",
+            "browser", "code_intel", "lsp", "memory", "research", "formal",
         }
         requested = set(agent.tool_categories)
         return requested & allowed
