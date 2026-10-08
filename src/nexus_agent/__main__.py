@@ -207,6 +207,70 @@ def provider_auth_status() -> None:
 
 
 @cli.group()
+def research() -> None:
+    """Manage persistent research source policies."""
+    pass
+
+
+@research.command("sources")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def research_sources(workspace: str) -> None:
+    """List persistent workspace research sources."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.research.sources import ResearchSourceRegistry
+
+    registry = ResearchSourceRegistry(
+        Path(workspace).resolve() / ".nexus-agent" / "research-sources.yaml"
+    )
+    table = Table(title="Research Sources")
+    table.add_column("ID")
+    table.add_column("Priority")
+    table.add_column("Type")
+    table.add_column("URL")
+    for source in registry.list():
+        table.add_row(source.id, str(source.priority), source.source_type, source.url)
+    Console().print(table)
+
+
+@research.command("seed")
+@click.argument("urls", nargs=-1)
+@click.option("--file", "file_path", type=click.Path(exists=True, dir_okay=False), default=None)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def research_seed(urls: tuple[str, ...], file_path: str | None, workspace: str) -> None:
+    """Persist trusted source URLs for future research teams."""
+    from nexus_agent.research.sources import ResearchSourceRegistry
+
+    values = list(urls)
+    if file_path:
+        values.extend(
+            line.strip()
+            for line in Path(file_path).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
+    registry = ResearchSourceRegistry(
+        Path(workspace).resolve() / ".nexus-agent" / "research-sources.yaml"
+    )
+    count = registry.seed_urls(values)
+    click.echo(f"Seeded {count} research source URL(s).")
+
+
+@research.command("remove-source")
+@click.argument("source_id")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def research_remove_source(source_id: str, workspace: str) -> None:
+    """Remove one persistent research source."""
+    from nexus_agent.research.sources import ResearchSourceRegistry
+
+    registry = ResearchSourceRegistry(
+        Path(workspace).resolve() / ".nexus-agent" / "research-sources.yaml"
+    )
+    if not registry.remove(source_id):
+        raise click.ClickException(f"Unknown research source: {source_id}")
+    click.echo(f"Removed research source: {source_id}")
+
+
+@cli.group()
 def workflow() -> None:
     """Discover named orchestration workflows."""
     pass
