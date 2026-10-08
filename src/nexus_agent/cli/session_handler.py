@@ -192,51 +192,19 @@ class SessionOrchestratorMixin:
         from nexus_agent.tools.web_search import WebSearchTool
         from nexus_agent.tools.webfetch import WebFetchTool
 
-        tools = [
-            ReadFileTool(self.workspace),
-            WriteFileTool(self.workspace),
-            SearchFilesTool(self.workspace),
-            ListDirectoryTool(self.workspace),
-            ShellTool(self.workspace),
-            CodeEditTool(self.workspace),
-            InsertLinesTool(self.workspace),
-            GitTool(self.workspace),
-            WebSearchTool(),
-            WebFetchTool(),
-            RepositoryRAGTool(self.workspace),
-            BatchEditTool(self.workspace),
-            ImportGraphTool(self.workspace),
-            TodoWriteTool(persist_path=self.workspace / ".nexus" / "todos.json"),
-            BoomerangTool(),
-            CouncilTool(),
-        ]
+        from nexus_agent.team.runtime import build_workspace_tools
+
+        tools = build_workspace_tools(
+            self.workspace,
+            memory_manager=self._memory,
+            provider=self._engine,
+            mcp_tools=getattr(self, "_mcp_tools", []),
+        )
         # Load plugin tools
         plugin_manager = getattr(self, "_plugin_manager", None)
         if plugin_manager:
             for info in plugin_manager.plugins.values():
                 tools.extend(info.tools)
-        # MemoryTool needs the MemoryManager to be constructed first, so
-        # it's bound after the tools list is built.
-        memory_tool = MemoryTool()
-        if self._memory is not None:
-            memory_tool.set_memory(self._memory)
-        tools.append(memory_tool)
-
-        mcp_tools = getattr(self, "_mcp_tools", [])
-        if mcp_tools:
-            tools.extend(mcp_tools)
-
-        try:
-            from nexus_agent.tools.browser import BrowserTool
-            tools.append(BrowserTool())
-        except ImportError as e:
-            logger.debug(f"Browser tool not available: {e}")
-
-        try:
-            from nexus_agent.tools.lsp_client import LSPClientTool
-            tools.append(LSPClientTool(self.workspace))
-        except ImportError as e:
-            logger.debug(f"LSP tool not available: {e}")
 
         memory_context = ""
         if self._memory:
