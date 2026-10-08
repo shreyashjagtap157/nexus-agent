@@ -65,7 +65,7 @@ function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){retur
 function notice(t,bad){$("notice").textContent=t;$("notice").style.color=bad?"#fca5a5":"#90a0b8"}
 function renderAgents(a){
   var h="";
-  for(var i=0;i<a.length;i++){var x=a[i],s=x.state||"planned";h+="<div class='agent'><div class='agenttop'><div><div class='name'>"+esc(x.name)+"</div><div class='prof'>"+esc(x.profession)+" • "+esc(x.model_role||"default")+"</div></div><span class='state "+esc(s)+"'>"+esc(s)+"</span></div><div class='mission'>"+esc(x.mission||"")+"</div></div>"}
+  for(var i=0;i<a.length;i++){var x=a[i],s=x.state||"planned";h+="<div class='agent'><div class='agenttop'><div><div class='name'>"+esc(x.name)+"</div><div class='prof'>"+esc(x.profession)+" • "+esc(x.model_role||"default")+"</div><div class='meta'>deps="+esc((x.dependencies||[]).join(",")||"none")+" • tools="+esc((x.tool_categories||[]).join(",")||"none")+"</div></div><span class='state "+esc(s)+"'>"+esc(s)+"</span></div><div class='mission'>"+esc(x.mission||"")+"</div></div>"}
   $("agents").innerHTML=h||"<div class='empty'>No agents persisted yet.</div>";$("ma").textContent=a.length;$("md").textContent=a.filter(function(x){return x.state==="completed"}).length
 }
 function addEvent(e){
