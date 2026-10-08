@@ -35,7 +35,7 @@ class NvidiaNIMProvider(OpenAIProvider):
             supports_streaming=True,
             supports_system_message=True,
             supports_parallel_tool_calls=False,
-            max_context_length=int(self._config.get("context_size", 128000)),
+            max_context_length=int(self._config.get("context_size", 1_000_000)),
             max_output_tokens=int(self._config.get("max_tokens", 16384)),
         )
 
