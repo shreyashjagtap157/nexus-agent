@@ -108,7 +108,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.post("/api/teams")
     async def start_team(req: TeamStartRequest):
-        build_runtime()
+        if state_manager.get("engine") is None:
+            raise HTTPException(status_code=503, detail="No LLM provider is loaded")
         job_id = f"team-{int(time.time() * 1000)}"
         with lock:
             jobs[job_id] = {"status": "queued", "team_id": None, "result": None, "error": None}
@@ -242,7 +243,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                         yield f"data: {json.dumps(event, default=str)}\n\n"
                 else:
                     idle += 1
-                if team and team.get("status") in {"completed", "needs_review", "failed"}:
+                if team and team.get("status") in {"completed", "needs_review", "failed", "cancelled"}:
                     yield f"data: {json.dumps({'type': 'terminal', 'status': team['status']})}\n\n"
                     return
                 await asyncio.sleep(0.5)
