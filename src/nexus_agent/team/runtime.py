@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
+from nexus_agent.agents.registry import AgentRegistry
 from nexus_agent.core.agent import AgentEvent, AgentEventType, AgentLoop, AgentLoopConfig, AgentMode
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
@@ -101,6 +102,7 @@ class TeamRuntime:
         data_dir: Path | None = None,
         permission_callback: PermissionCallback | None = None,
         provider_selector: ProviderSelector | None = None,
+        agent_registry: AgentRegistry | None = None,
     ):
         self.provider = provider
         self.tools = list(tools)
@@ -109,6 +111,7 @@ class TeamRuntime:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.permission_callback = permission_callback
         self.provider_selector = provider_selector
+        self.agent_registry = agent_registry or AgentRegistry(self.workspace)
 
     def _make_store(self) -> TeamStore:
         return TeamStore(self.data_dir / "teams.db")
@@ -116,18 +119,32 @@ class TeamRuntime:
     @staticmethod
     def _tool_matches(name: str, categories: set[str]) -> bool:
         lowered = name.lower()
-        if "read" in categories:
-            if lowered in {"read_file", "list_directory", "search_files", "repository_rag", "memory"}:
+        if "read" in categories or "search" in categories:
+            if lowered in {"read_file", "list_directory", "search_files", "repository_rag", "memory", "memory_scoped"}:
                 return True
             if any(token in lowered for token in ("graph", "intel", "todo", "search")):
                 return True
-        if "write" in categories and lowered in {"write_file", "code_edit", "insert_lines", "batch_edit"}:
+        if "write" in categories and lowered in {"write_file", "code_edit", "insert_lines", "batch_edit", "delete_file", "move_file"}:
             return True
         if "shell" in categories and lowered == "shell":
             return True
         if "web" in categories and lowered in {"web_search", "web_fetch", "webfetch", "browser"}:
             return True
-        if "git" in categories and ("git" in lowered or lowered in {"ci_analyzer", "pr_generator"}):
+        if "git" in categories and ("git" in lowered or lowered in {"ci_analyzer", "pr_generator", "smart_commit"}):
+            return True
+        if "parse" in categories and lowered == "parse_data":
+            return True
+        if "code_intel" in categories and lowered in {"import_graph", "call_graph", "rename_symbol"}:
+            return True
+        if "lsp" in categories and lowered == "lsp_query":
+            return True
+        if "browser" in categories and lowered == "browser":
+            return True
+        if "delegate" in categories and lowered == "boomerang":
+            return True
+        if "council" in categories and lowered == "council":
+            return True
+        if "mcp" in categories and lowered.startswith("mcp."):
             return True
         return False
 
@@ -467,7 +484,18 @@ Team protocol:
     def run(self, goal: str, config: TeamConfig | None = None) -> Iterator[AgentEvent]:
         cfg = (config or TeamConfig()).normalize()
         cfg.workspace = str(self.workspace)
-        mode, profiles = generate_team(self.provider, goal, cfg)
+        saved_specs = self.agent_registry.load() if cfg.use_saved_agents else []
+        saved_profiles = [spec.to_team_profile() for spec in saved_specs]
+        mode, profiles = generate_team(self.provider, goal, cfg, saved_agents=saved_profiles)
+        pinned: list[AgentProfile] = []
+        for agent_id in cfg.agent_ids:
+            profile = next((item for item in saved_profiles if item.role_id == agent_id.strip().lower()), None)
+            if profile is not None:
+                pinned.append(profile)
+        if pinned:
+            pinned_ids = {item.role_id for item in pinned}
+            remainder = [item for item in profiles if item.role_id not in pinned_ids]
+            profiles = (pinned + remainder)[: cfg.max_agents]
 
         team_id = uuid.uuid4().hex[:12]
         store = self._make_store()
