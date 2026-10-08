@@ -30,6 +30,8 @@ class WorkflowSpec:
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
     research_source_strategy: str = "hybrid"
+    research_max_minutes: int = 10080
+    research_idle_rounds: int = 2
     agent_ids: tuple[str, ...] = ()
     research_source_urls: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
@@ -52,6 +54,8 @@ class WorkflowSpec:
             "research_depth": self.research_depth,
             "research_collection": self.research_collection,
             "research_source_strategy": self.research_source_strategy,
+            "research_max_minutes": self.research_max_minutes,
+            "research_idle_rounds": self.research_idle_rounds,
             "agent_ids": list(self.agent_ids),
             "research_source_urls": list(self.research_source_urls),
         }
@@ -81,6 +85,8 @@ class WorkflowSpec:
             research_depth=str(data.get("research_depth") or "detailed"),
             research_collection=str(data.get("research_collection") or "until_saturation"),
             research_source_strategy=str(data.get("research_source_strategy") or "hybrid"),
+            research_max_minutes=max(1, min(int(data.get("research_max_minutes", 10080)), 525600)),
+            research_idle_rounds=max(1, min(int(data.get("research_idle_rounds", 2)), 20)),
             agent_ids=tuple(str(x).strip().lower() for x in data.get("agent_ids", []) if str(x).strip()),
             research_source_urls=tuple(str(x).strip() for x in data.get("research_source_urls", []) if str(x).strip()),
             tags=tuple(str(x).strip() for x in data.get("tags", []) if str(x).strip()),
@@ -166,6 +172,8 @@ class WorkflowRegistry:
             "research_depth": workflow.research_depth,
             "research_collection": workflow.research_collection,
             "research_source_strategy": workflow.research_source_strategy,
+            "research_max_minutes": workflow.research_max_minutes,
+            "research_idle_rounds": workflow.research_idle_rounds,
             "agent_ids": list(workflow.agent_ids),
             "research_source_urls": list(workflow.research_source_urls),
             "tags": list(workflow.tags),
