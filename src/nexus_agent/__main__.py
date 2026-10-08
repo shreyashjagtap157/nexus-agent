@@ -653,6 +653,7 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
     from nexus_agent.permissions.manager import PermissionManager
     from nexus_agent.core.config import load_config
     from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime, build_workspace_tools
+    from nexus_agent.team.providers import make_provider_selector
     from nexus_agent.llm.providers.factory import ProviderFactory
 
     console = Console()
@@ -671,6 +672,7 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
             arguments=tc.arguments,
             description=f"Team worker requesting {tc.name}",
         ),
+        provider_selector=make_provider_selector(config, llm),
     )
     team_config = TeamConfig(
         mode=TeamMode(mode),
