@@ -207,3 +207,70 @@ def test_unknown_dependency_is_failed_before_worker_submission(tmp_path, monkeyp
     assert blocked["status"] == "failed"
     assert "Unknown dependency: missing" in blocked["error"]
     assert result.success is False
+
+
+def test_read_only_specialists_can_coordinate_and_read_safe_state(tmp_path: Path):
+    from nexus_agent.llm.base import ToolCall
+
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    profile = AgentProfile(
+        role_id="researcher",
+        name="Researcher",
+        profession="Researcher",
+        mission="Research",
+        instructions="Research",
+        tool_categories=["read"],
+        write_access=False,
+    )
+    config = TeamConfig(mode=TeamMode.ANALYSIS)
+    for name, arguments in (
+        ("team_send_message", {"message": "finding"}),
+        ("team_read_messages", {}),
+        ("memory_scoped", {"action": "search"}),
+        ("memory_scoped", {"action": "stats"}),
+        ("todowrite", {"action": "list"}),
+        ("todowrite", {"action": "get", "todo_id": "x"}),
+    ):
+        call = ToolCall(id="test", name=name, arguments=arguments)
+        assert runtime._permission(call, config, profile, []) is True
+
+
+def test_read_only_specialists_cannot_mutate_stateful_tools(tmp_path: Path):
+    from nexus_agent.llm.base import ToolCall
+
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    profile = AgentProfile(
+        role_id="researcher",
+        name="Researcher",
+        profession="Researcher",
+        mission="Research",
+        instructions="Research",
+        tool_categories=["read"],
+        write_access=False,
+    )
+    config = TeamConfig(mode=TeamMode.ANALYSIS)
+    for name, arguments in (
+        ("memory_scoped", {"action": "store", "content": "x"}),
+        ("memory_scoped", {"action": "forget", "entry_id": "x"}),
+        ("todowrite", {"action": "add", "content": "x"}),
+        ("todowrite", {"action": "clear_all"}),
+    ):
+        call = ToolCall(id="test", name=name, arguments=arguments)
+        assert runtime._permission(call, config, profile, []) is False
+
+
+def test_delegate_category_enables_boomerang_without_code_write_access(tmp_path: Path):
+    from nexus_agent.llm.base import ToolCall
+
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    profile = AgentProfile(
+        role_id="delegator",
+        name="Delegator",
+        profession="Coordinator",
+        mission="Delegate",
+        instructions="Delegate",
+        tool_categories=["read", "delegate"],
+        write_access=False,
+    )
+    call = ToolCall(id="test", name="boomerang", arguments={"action": "list_tasks"})
+    assert runtime._permission(call, TeamConfig(mode=TeamMode.ANALYSIS), profile, []) is True
