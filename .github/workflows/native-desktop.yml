@@ -1,0 +1,28 @@
+name: Native Desktop
+
+on:
+  push:
+    branches: ["master", "multi-agent-platform"]
+    paths:
+      - "nexus-desktop/**"
+  pull_request:
+    paths:
+      - "nexus-desktop/**"
+
+concurrency:
+  group: nexus-agent-native-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-check:
+    name: Desktop check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo fmt --manifest-path nexus-desktop/Cargo.toml -- --check
+      - run: cargo check --manifest-path nexus-desktop/Cargo.toml
