@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool, ToolError
+from nexus_agent.storage.journal import FileJournal
 from nexus_agent.utils.fs import iter_files
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,8 @@ class ReadFileTool(Tool):
     """Read the contents of a file."""
 
     def __init__(self, workspace: Path | None = None):
-        self.workspace = workspace or Path.cwd()
+        self.workspace = (workspace or Path.cwd()).resolve()
+        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
