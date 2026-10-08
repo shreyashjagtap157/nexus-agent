@@ -53,6 +53,21 @@ class ResearchStore:
     );
     CREATE INDEX IF NOT EXISTS idx_research_sources_team ON research_sources(team_id);
     CREATE INDEX IF NOT EXISTS idx_research_claims_team ON research_claims(team_id);
+    CREATE TABLE IF NOT EXISTS research_conflicts (
+        conflict_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        team_id TEXT NOT NULL,
+        claim_a INTEGER NOT NULL,
+        claim_b INTEGER NOT NULL,
+        conflict_type TEXT NOT NULL DEFAULT 'contradiction',
+        detected_by TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'unresolved',
+        resolution TEXT NOT NULL DEFAULT '',
+        created_at REAL NOT NULL,
+        resolved_at REAL,
+        FOREIGN KEY(claim_a) REFERENCES research_claims(claim_id),
+        FOREIGN KEY(claim_b) REFERENCES research_claims(claim_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_research_conflicts_team ON research_conflicts(team_id);
     """
 
     def __init__(self, db_path: str | Path):
@@ -245,6 +260,80 @@ class ResearchStore:
             conn.commit()
             return {"claim_id": claim_id, "verdict": verdict, "evidence_count": len(evidence), "source_ids": source_ids}
 
+    def record_conflict(
+        self,
+        team_id: str,
+        agent_id: str,
+        claim_a: int,
+        claim_b: int,
+        conflict_type: str = "contradiction",
+    ) -> dict[str, Any]:
+        if claim_a == claim_b:
+            raise ValueError("A claim cannot conflict with itself.")
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT claim_id FROM research_claims
+                   WHERE team_id=? AND claim_id IN (?, ?)""",
+                (team_id, claim_a, claim_b),
+            ).fetchall()
+            if len(rows) != 2:
+                raise ValueError("Both conflict claims must belong to this research team.")
+            cur = conn.execute(
+                """INSERT INTO research_conflicts(
+                    team_id,claim_a,claim_b,conflict_type,detected_by,created_at
+                ) VALUES(?,?,?,?,?,?)""",
+                (team_id, claim_a, claim_b, conflict_type, agent_id, time.time()),
+            )
+            conn.commit()
+            return {
+                "conflict_id": int(cur.lastrowid),
+                "status": "unresolved",
+            }
+
+    def adjudicate_conflict(
+        self,
+        team_id: str,
+        conflict_id: int,
+        adjudicator_id: str,
+        status: str,
+        resolution: str,
+    ) -> dict[str, Any]:
+        normalized = status.strip().lower()
+        if normalized not in {"adjudicated", "accepted_uncertainty", "rejected"}:
+            raise ValueError("Conflict status must be adjudicated, accepted_uncertainty or rejected.")
+        if not resolution.strip():
+            raise ValueError("A conflict resolution explanation is required.")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT conflict_id FROM research_conflicts WHERE team_id=? AND conflict_id=?",
+                (team_id, conflict_id),
+            ).fetchone()
+            if row is None:
+                raise ValueError("Unknown research conflict.")
+            conn.execute(
+                """UPDATE research_conflicts
+                   SET status=?, resolution=?, detected_by=?, resolved_at=?
+                   WHERE conflict_id=? AND team_id=?""",
+                (normalized, resolution.strip(), adjudicator_id, time.time(), conflict_id, team_id),
+            )
+            conn.commit()
+        return {"conflict_id": conflict_id, "status": normalized}
+
+    def conflicts(self, team_id: str) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT * FROM research_conflicts
+                   WHERE team_id=? ORDER BY conflict_id""",
+                (team_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def unresolved_conflicts(self, team_id: str) -> list[dict[str, Any]]:
+        return [
+            item for item in self.conflicts(team_id)
+            if item["status"] == "unresolved"
+        ]
+
     def verified_claims(self, team_id: str) -> list[dict[str, Any]]:
         """Return only claims that passed the persisted verification gate, with provenance."""
         with self._connect() as conn:
@@ -252,7 +341,7 @@ class ResearchStore:
                 """SELECT c.claim_id, c.statement, c.claim_type, c.created_by, c.status,
                           e.source_id, e.quote, s.url, s.title, s.content_hash
                    FROM research_claims c
-                   JOIN research_claim_evidence e ON e.claim_id=c.claim_id
+                   JOIN research_claim_evidence e ON e.claim_id=e.claim_id
                    JOIN research_sources s ON s.source_id=e.source_id
                    WHERE c.team_id=? AND c.status='verified'
                    ORDER BY c.claim_id, e.source_id""",
