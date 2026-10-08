@@ -181,8 +181,11 @@ Research policy:
 Saved agent profiles available for reuse:
 {json.dumps([p.__dict__ for p in saved], ensure_ascii=False)}
 
-Create a distinct professional team. Reuse relevant saved profiles instead of recreating
-them. Do not remove or weaken pinned roles; the runtime will preserve pinned roles.
+Create a distinct professional team. This is the one-time deployment/planning phase.
+After deployment, workers execute their missions and review evidence; they must not recursively
+re-plan or regenerate the team unless the user explicitly requests a new plan.
+Prefer specialist workers over coordinator duplicates. Reuse relevant saved profiles instead of
+recreating them. Do not remove or weaken pinned roles; the runtime will preserve pinned roles.
 Return JSON only:
 {{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default","skill_ids":[]}}]}}
 """
