@@ -272,31 +272,33 @@ def research_remove_source(source_id: str, workspace: str) -> None:
 
 @cli.group()
 def workflow() -> None:
-    """Discover named orchestration workflows."""
+    """Discover and manage named orchestration workflows."""
     pass
 
 
 @workflow.command("list")
-def workflow_list() -> None:
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_list(workspace: str) -> None:
     """List reusable orchestration workflows."""
     from rich.console import Console
     from rich.table import Table
     from nexus_agent.workflows import WorkflowRegistry
 
+    registry = WorkflowRegistry(Path(workspace).resolve())
     table = Table(title="NexusAgent Workflows")
     table.add_column("ID")
     table.add_column("Name")
     table.add_column("Mode")
     table.add_column("Agents")
-    table.add_column("Reviewer")
+    table.add_column("Source")
     table.add_column("Tags")
-    for item in WorkflowRegistry().list():
+    for item in registry.list():
         table.add_row(
             item.id,
             item.name,
             item.mode.value,
             str(item.default_agents),
-            "yes" if item.require_reviewer else "no",
+            item.source,
             ", ".join(item.tags),
         )
     Console().print(table)
@@ -304,13 +306,47 @@ def workflow_list() -> None:
 
 @workflow.command("show")
 @click.argument("workflow_id")
-def workflow_show(workflow_id: str) -> None:
-    """Show a workflow's policy."""
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_show(workflow_id: str, workspace: str) -> None:
+    """Show a workflow policy."""
     import json
     from nexus_agent.workflows import WorkflowRegistry
 
-    item = WorkflowRegistry(ws).get(workflow_id)
+    item = WorkflowRegistry(Path(workspace).resolve()).get(workflow_id)
     click.echo(json.dumps(item.__dict__, indent=2, ensure_ascii=False, default=str))
+
+
+@workflow.command("init")
+@click.argument("workflow_id")
+@click.option("--scope", type=click.Choice(["user", "workspace"]), default="workspace", show_default=True)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_init(workflow_id: str, scope: str, workspace: str) -> None:
+    """Create an editable workflow template."""
+    from nexus_agent.workflows import WorkflowRegistry, WorkflowSpec
+
+    spec = WorkflowSpec(
+        id=workflow_id.strip().lower(),
+        name=workflow_id.replace("-", " ").replace("_", " ").title(),
+        description="Describe the orchestration policy and the quality gate it provides.",
+        mode=TeamMode.AUTO,
+        default_agents=4,
+        tags=("custom",),
+    )
+    path = WorkflowRegistry(Path(workspace).resolve()).save(spec, scope)
+    click.echo(f"Created workflow: {path}")
+
+
+@workflow.command("delete")
+@click.argument("workflow_id")
+@click.option("--scope", type=click.Choice(["user", "workspace"]), default="workspace", show_default=True)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_delete(workflow_id: str, scope: str, workspace: str) -> None:
+    """Delete a custom workflow definition."""
+    from nexus_agent.workflows import WorkflowRegistry
+
+    if not WorkflowRegistry(Path(workspace).resolve()).delete(workflow_id, scope):
+        raise click.ClickException(f"Custom workflow not found: {workflow_id}")
+    click.echo(f"Deleted workflow: {workflow_id}")
 
 
 @cli.group()
