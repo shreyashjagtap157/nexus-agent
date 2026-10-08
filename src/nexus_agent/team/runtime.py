@@ -114,7 +114,7 @@ class TeamRuntime:
         self.provider = provider
         self.tools = list(tools)
         self.workspace = (workspace or Path.cwd()).resolve()
-        self.data_dir = data_dir or (self.workspace / ".nexus")
+        self.data_dir = data_dir or StorageLayout(self.workspace).workspace_runtime
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.permission_callback = permission_callback
         self.provider_selector = provider_selector
