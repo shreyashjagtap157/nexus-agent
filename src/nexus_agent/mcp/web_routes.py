@@ -15,6 +15,7 @@ class MCPServerDefinition(BaseModel):
     command: str = Field(min_length=1, max_length=4096)
     args: list[str] = Field(default_factory=list, max_length=128)
     env: dict[str, str] = Field(default_factory=dict)
+    env_passthrough: list[str] = Field(default_factory=list, max_length=64)
     startup_timeout: float = Field(default=15.0, ge=1.0, le=300.0)
     enabled: bool = True
 
