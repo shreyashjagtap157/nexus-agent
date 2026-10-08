@@ -100,6 +100,14 @@ enum Commands {
         #[arg(long, default_value = "markdown")]
         format: String,
 
+        /// Research depth (used by research mode).
+        #[arg(long, default_value = "detailed")]
+        depth: String,
+
+        /// Research source collection policy.
+        #[arg(long, default_value = "until_saturation")]
+        collection: String,
+
         /// Workspace directory.
         #[arg(long, default_value = ".")]
         workspace: String,
@@ -154,6 +162,8 @@ async fn main() {
             effort,
             output,
             format,
+            depth,
+            collection,
             workspace,
             yes,
         } => {
@@ -166,6 +176,8 @@ async fn main() {
                 &effort,
                 &output,
                 &format,
+                &depth,
+                &collection,
                 &workspace,
                 yes,
             )
@@ -454,6 +466,8 @@ async fn run_team(
     effort: &str,
     output: &str,
     format: &str,
+    depth: &str,
+    collection: &str,
     workspace: &str,
     yes: bool,
 ) {
@@ -475,6 +489,8 @@ async fn run_team(
         .args(["--effort", effort])
         .args(["--output", output])
         .args(["--format", format])
+        .args(["--depth", depth])
+        .args(["--collection", collection])
         .args(["--workspace", workspace]);
 
     if yes {
