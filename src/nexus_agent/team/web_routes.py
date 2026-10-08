@@ -93,7 +93,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.get("/api/workflows")
     async def workflows():
-        return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry().list()]}
+        return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry(_workspace(state_manager)).list()]}
 
     @router.get("/api/research-depths")
     async def research_depths():
@@ -137,7 +137,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
         def worker():
             runtime = build_runtime()
-            workflow = WorkflowRegistry().get(req.workflow_id) if req.workflow_id else None
+            workflow = WorkflowRegistry(_workspace(state_manager)).get(req.workflow_id) if req.workflow_id else None
             cfg = (workflow.configure() if workflow else TeamConfig(mode=req.mode)).normalize()
             cfg.workflow_id = req.workflow_id or ""
             cfg.mode = req.mode if not req.workflow_id else cfg.mode
