@@ -39,3 +39,8 @@ Agent file tools refuse .git mutation and reject workspace escapes.
 Provider credentials are separate from normal project configuration. AuthStore uses an optional OS keychain when available and a permission-restricted file fallback otherwise.
 
 Never commit API keys, OAuth tokens, passwords or other secrets.
+
+
+## Memory Workbench
+
+The local Memory Workbench at `/memory.html` exposes scoped persistent memory without requiring direct database manipulation. The same scopes are available through the scoped memory tool and web API.
