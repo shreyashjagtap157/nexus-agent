@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from nexus_agent.core.config import load_config
 from nexus_agent.permissions.manager import PermissionManager
+from nexus_agent.storage.layout import StorageLayout
 from nexus_agent.research.store import ResearchStore
 
 from .models import TeamConfig, TeamMode
@@ -54,7 +55,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
     lock = threading.RLock()
 
     def store_for() -> TeamStore:
-        return TeamStore(_workspace(state_manager) / ".nexus" / "teams.db")
+        return TeamStore(StorageLayout(_workspace(state_manager)).team_db)
 
     def build_runtime() -> TeamRuntime:
         provider = state_manager.get("engine")
@@ -69,7 +70,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             provider,
             tools,
             workspace=workspace,
-            data_dir=workspace / ".nexus",
+            data_dir=StorageLayout(workspace).workspace_runtime,
             permission_callback=lambda tc: permission_manager.check_and_approve(
                 tool_name=tc.name,
                 arguments=tc.arguments,
@@ -201,7 +202,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.get("/api/teams/{team_id}/research")
     async def team_research(team_id: str):
-        research = ResearchStore(_workspace(state_manager) / ".nexus" / "research.db")
+        research = ResearchStore(StorageLayout(_workspace(state_manager)).research_db)
         return research.export(team_id)
 
     @router.get("/api/teams/{team_id}/stream")
@@ -212,7 +213,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             offset = 0
             idle = 0
             while idle < 2400:
-                store = TeamStore(workspace / ".nexus" / "teams.db")
+                store = TeamStore(StorageLayout(workspace).team_db)
                 try:
                     batch = store.events(team_id, limit=250, offset=offset)
                     team = store.team(team_id)
