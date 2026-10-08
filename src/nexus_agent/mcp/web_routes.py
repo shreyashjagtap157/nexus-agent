@@ -28,11 +28,16 @@ class MCPServerDefinition(BaseModel):
     enabled: bool = True
 
 
+def _require_local(request: Request) -> None:
+    host = request.client.host if request.client else None
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="MCP configuration is restricted to local clients.")
+
+
 def register_mcp_routes(app: Any, state_manager: Any) -> None:
     @app.get("/api/mcp")
     async def mcp_config_get(request: Request):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="MCP configuration is restricted to local clients.")
+        _require_local(request)
         config = load_config(
             workspace=Path(state_manager.get("workspace") or Path.cwd())
         )
