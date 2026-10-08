@@ -1,3 +1,4 @@
+- Workspace-sensitive GUI, team, memory, agent-profile, research-source, MCP, skill and credential metadata APIs are restricted to loopback clients; public provider catalog/status endpoints remain read-only.
 # Security Policy
 
 > **Last Updated:** 2026-05-31  
