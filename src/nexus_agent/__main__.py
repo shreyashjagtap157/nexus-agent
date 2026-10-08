@@ -1159,7 +1159,7 @@ def team() -> None:
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, research_source_urls: tuple[str, ...], agent_ids: tuple[str, ...], no_saved_agents: bool, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, research_source_strategy: str, research_source_urls: tuple[str, ...], agent_ids: tuple[str, ...], no_saved_agents: bool, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Execute a dynamically assembled peer team."""
     from rich.console import Console
     from rich.table import Table
@@ -1194,7 +1194,7 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
     workflow = None
     if workflow_id:
         from nexus_agent.workflows import WorkflowRegistry
-        workflow = WorkflowRegistry().get(workflow_id)
+        workflow = WorkflowRegistry(ws).get(workflow_id)
     team_config = (workflow.configure() if workflow else TeamConfig(mode=TeamMode(mode))).normalize()
     team_config.workflow_id = workflow_id or ""
     team_config.mode = TeamMode(mode) if not workflow_id else team_config.mode
@@ -1207,6 +1207,7 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
     team_config.output_format = output_format
     team_config.research_depth = research_depth
     team_config.research_collection = research_collection
+    team_config.research_source_strategy = research_source_strategy
     team_config.research_source_urls = list(research_source_urls)
     team_config.agent_ids = list(agent_ids)
     team_config.use_saved_agents = not no_saved_agents
