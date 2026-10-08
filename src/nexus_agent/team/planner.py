@@ -140,6 +140,11 @@ def generate_team(
     saved_agents: list[AgentProfile] | None = None,
 ) -> tuple[TeamMode, list[AgentProfile]]:
     mode = infer_mode(goal, config.mode)
+    if mode == TeamMode.RESEARCH:
+        from .research import policy as research_policy
+        depth_floor = int(research_policy(config.research_depth)["role_floor"])
+        config.max_agents = max(config.max_agents, min(depth_floor, 64))
+        config.parallelism = min(config.parallelism, config.max_agents)
     depth_data = (
         research_policy(config.research_depth)
         if mode == TeamMode.RESEARCH
