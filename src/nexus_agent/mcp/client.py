@@ -53,6 +53,30 @@ class MCPProxyTool(Tool):
         return self._client.call_tool(self._name, kwargs)
 
 
+def load_configured_servers(config: dict[str, Any]) -> tuple[list[MCPClient], list[Tool]]:
+    """Start configured MCP servers and return retained clients plus proxy tools."""
+    clients: list[MCPClient] = []
+    tools: list[Tool] = []
+    servers = config.get("mcp", {}).get("servers", [])
+    if not isinstance(servers, list):
+        return clients, tools
+    for item in servers:
+        if not isinstance(item, dict):
+            continue
+        command = item.get("command")
+        if not command:
+            continue
+        try:
+            command_list = [str(command)] + [str(arg) for arg in item.get("args", [])]
+            client = MCPClient(command=command_list, env=item.get("env"))
+            if client.start(startup_timeout=float(item.get("startup_timeout", 15))):
+                clients.append(client)
+                tools.extend(client.discovered_tools)
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return clients, tools
+
+
 class MCPClient:
     """Model Context Protocol (MCP) Client.
 
