@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from nexus_agent.core.config import load_config
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.storage.layout import StorageLayout
+from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.research.store import ResearchStore
 
 from .models import TeamConfig, TeamMode
@@ -63,7 +64,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             raise HTTPException(status_code=503, detail="No LLM provider is loaded")
         workspace = _workspace(state_manager)
         memory_manager = state_manager.get("memory_manager")
-        tools = build_workspace_tools(workspace, memory_manager)
+        config = state_manager.get("config") or {}
+        mcp_clients, mcp_tools = load_configured_servers(config)
+        tools = build_workspace_tools(workspace, memory_manager, provider=provider, mcp_tools=mcp_tools)
         permission_manager = PermissionManager()
         permission_manager.load_from_config(state_manager.get("config") or {})
         return TeamRuntime(
@@ -114,6 +117,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 output_format=req.output_format,
                 research_depth=req.research_depth,
                 research_collection=req.research_collection,
+                agent_ids=req.agent_ids,
+                use_saved_agents=req.use_saved_agents,
                 auto_synthesize=req.auto_synthesize,
                 require_reviewer=req.require_reviewer,
                 auto_approve_tools=req.auto_approve_tools,
