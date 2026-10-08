@@ -30,6 +30,7 @@ class AgentWriteRequest(BaseModel):
     model: str | None = None
     fallbacks: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    skill_ids: list[str] = Field(default_factory=list)
 
 
 class AgentGenerateRequest(BaseModel):
