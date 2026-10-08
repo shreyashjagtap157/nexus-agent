@@ -82,17 +82,19 @@ class AgentRegistry:
         return next((spec for spec in self.load(include_disabled=True) if spec.id == normalized and spec.enabled), None)
 
     def save(self, spec: AgentSpec, scope: AgentScope) -> Path:
-        if scope in {AgentScope.BUILTIN, AgentScope.GLOBAL}:
-            root = self.roots[scope]
-        else:
-            root = self.roots[scope]
+        if scope == AgentScope.BUILTIN:
+            raise ValueError("Built-in agent profiles are immutable.")
+        root = self.roots[scope]
         spec.scope = scope
         path = root / f"{spec.id}.md"
         return write_agent_file(path, spec)
 
     def delete(self, agent_id: str, scope: AgentScope | None = None) -> list[str]:
         removed: list[str] = []
-        scopes = [scope] if scope else list(reversed(_PRECEDENCE))
+        mutable_scopes = [AgentScope.GLOBAL, AgentScope.USER, AgentScope.PROJECT, AgentScope.WORKSPACE]
+        scopes = [scope] if scope is not None else list(reversed(mutable_scopes))
+        if scope == AgentScope.BUILTIN:
+            raise ValueError("Built-in agent profiles are immutable.")
         for item_scope in scopes:
             path = self.roots[item_scope] / f"{agent_id.strip().lower()}.md"
             try:
