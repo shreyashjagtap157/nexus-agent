@@ -132,17 +132,18 @@ class AuditLog:
         if not self.path.exists():
             return []
         records: list[AuditRecord] = []
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                if not line.strip():
+        with self._lock, self._file_lock:
+            with self.path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    if not line.strip():
                     continue
-                try:
-                    data = json.loads(line)
-                    if run_id and str(data.get("run_id")) != run_id:
+                    try:
+                        data = json.loads(line)
+                        if run_id and str(data.get("run_id")) != run_id:
+                            continue
+                        records.append(AuditRecord(**data))
+                    except (json.JSONDecodeError, TypeError):
                         continue
-                    records.append(AuditRecord(**data))
-                except (json.JSONDecodeError, TypeError):
-                    continue
         if limit is not None:
             return records[-max(0, limit):]
         return records
