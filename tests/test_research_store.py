@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 
-
 from nexus_agent.research.store import ResearchStore
 
 
