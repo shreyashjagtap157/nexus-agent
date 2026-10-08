@@ -112,20 +112,26 @@ class ResearchStore:
         content = content[:5_000_000]
         digest = hashlib.sha256(content.encode("utf-8", errors="replace")).hexdigest()
         with self._connect() as conn:
-            existing = conn.execute(
-                "SELECT source_id FROM research_sources WHERE team_id=? AND content_hash=?",
-                (team_id, digest),
-            ).fetchone()
-            if existing:
-                return {"source_id": int(existing["source_id"]), "duplicate": True, "content_hash": digest}
             cur = conn.execute(
                 """INSERT INTO research_sources(
                     team_id,agent_id,url,title,provider,content_hash,content,created_at
-                ) VALUES(?,?,?,?,?,?,?,?)""",
+                ) VALUES(?,?,?,?,?,?,?,?)
+                ON CONFLICT(team_id, content_hash) DO NOTHING""",
                 (team_id, agent_id, url, title, provider, digest, content, time.time()),
             )
             conn.commit()
-            return {"source_id": int(cur.lastrowid), "duplicate": False, "content_hash": digest}
+            inserted = cur.rowcount == 1
+            row = conn.execute(
+                "SELECT source_id FROM research_sources WHERE team_id=? AND content_hash=?",
+                (team_id, digest),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("Research source insert completed without a persisted source row.")
+            return {
+                "source_id": int(row["source_id"]),
+                "duplicate": not inserted,
+                "content_hash": digest,
+            }
 
     def record_claim(
         self,
