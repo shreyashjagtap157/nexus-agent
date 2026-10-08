@@ -44,7 +44,7 @@ def _reject_private_target(url: str) -> str | None:
 class ResearchRecordSourceTool(_ResearchTool):
     def __init__(self, db_path, team_id: str, agent_id: str):
         super().__init__(db_path, team_id, agent_id)
-        self.fetcher = WebFetchTool()
+        self.fetcher = WebFetchTool(block_private_hosts=True)
 
     @property
     def name(self) -> str:
