@@ -198,6 +198,43 @@ def provider_list() -> None:
         click.echo(f"{item.id:16} {item.name:28} {item.protocol:18} env={env} endpoint={endpoint}")
 
 
+@provider.command("models")
+@click.argument("provider_id")
+@click.option("--refresh", is_flag=True, help="Refresh the cached Models.dev catalog.")
+def provider_models(provider_id: str, refresh: bool) -> None:
+    """List model entries for a provider from the cached Models.dev catalog."""
+    from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
+    from nexus_agent.storage.layout import StorageLayout
+
+    catalog = ModelsDevCatalog(
+        StorageLayout(Path.cwd()).caches / "models-dev.json"
+    )
+    try:
+        rows = catalog.models(provider_id, refresh=refresh)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise click.ClickException(f"Models.dev catalog unavailable: {exc}") from exc
+    if not rows:
+        click.echo(f"No cached Models.dev models found for {provider_id}.")
+        return
+    for row in rows:
+        label = str(row.get("name") or row.get("id"))
+        click.echo(f"{row.get('id')}	{label}")
+
+
+@provider.command("catalog-refresh")
+def provider_catalog_refresh() -> None:
+    """Refresh the cached Models.dev provider catalog."""
+    from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
+    from nexus_agent.storage.layout import StorageLayout
+
+    catalog = ModelsDevCatalog(StorageLayout(Path.cwd()).caches / "models-dev.json")
+    try:
+        providers = catalog.providers(refresh=True)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise click.ClickException(f"Models.dev catalog refresh failed: {exc}") from exc
+    click.echo(f"Models.dev catalog refreshed: {len(providers)} providers")
+
+
 @provider.command("auth-status")
 def provider_auth_status() -> None:
     """Show which provider credentials are stored, without revealing them."""
