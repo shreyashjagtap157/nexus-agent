@@ -1151,6 +1151,7 @@ def team() -> None:
 @click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
 @click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
 @click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
+@click.option("--source-strategy", "research_source_strategy", type=click.Choice(["user_only", "hybrid", "autonomous"]), default="hybrid", show_default=True)
 @click.option("--source", "research_source_urls", multiple=True, help="Seed a research source URL. Repeat for multiple sources.")
 @click.option("--agent", "agent_ids", multiple=True, help="Pin a saved agent profile by ID. Repeat for multiple profiles.")
 @click.option("--no-saved-agents", is_flag=True, help="Do not load saved agent profiles when assembling the team.")
