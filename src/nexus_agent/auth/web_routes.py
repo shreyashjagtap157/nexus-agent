@@ -46,7 +46,7 @@ class ProviderConfigRequest(BaseModel):
     pending_max_wait_seconds: float | None = Field(default=None, ge=1.0, le=86400.0)
 
 
-def register_auth_routes(app: Any) -> None:
+def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
     @app.post("/api/providers/{provider}/test")
     async def test_provider(provider: str, request: Request, payload: ProviderTestRequest):
@@ -98,6 +98,37 @@ def register_auth_routes(app: Any) -> None:
                 for item in all_providers()
             ]
         }
+
+    @app.post("/api/providers/{provider}/activate")
+    async def activate_provider(provider: str, request: Request, payload: ProviderTestRequest | None = None):
+        _local_only(request)
+        from nexus_agent.core.config import load_config, save_user_config
+        from nexus_agent.llm.providers.factory import ProviderFactory
+
+        config = load_config()
+        provider_name = provider.strip().lower()
+        requested_model = payload.model if payload is not None else None
+        try:
+            new_engine = ProviderFactory.create_provider(provider_name, config, requested_model)
+        except (ImportError, RuntimeError, ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=f"Unable to activate provider {provider_name}: {exc}") from exc
+
+        if state_manager is not None:
+            old_engine = state_manager.get("engine")
+            state_manager.set("engine", new_engine)
+            active_config = state_manager.get("config") or {}
+            active_config.setdefault("providers", {})["active"] = provider_name
+            state_manager.set("config", active_config)
+            save_user_config({"providers": {"active": provider_name}})
+            if old_engine is not None and old_engine is not new_engine:
+                try:
+                    old_engine.close()
+                except (OSError, RuntimeError):
+                    pass
+        else:
+            save_user_config({"providers": {"active": provider_name}})
+
+        return {"provider": provider_name, "model": new_engine.model_name, "active": True}
 
     @app.get("/api/provider-config")
     async def provider_config():
