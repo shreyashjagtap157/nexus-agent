@@ -3,7 +3,12 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from nexus_agent.agents.web_routes import _require_local as require_agent_local
+from nexus_agent.auth.web_routes import _local_only as require_auth_local
 from nexus_agent.gui.server import _require_local_client, app
+from nexus_agent.mcp.web_routes import _require_local as require_mcp_local
+from nexus_agent.memory.web_routes import _require_local as require_memory_local
+from nexus_agent.research.web_routes import _require_local as require_research_local
 
 
 def test_gui_mutation_access_rejects_remote_clients():
@@ -48,3 +53,20 @@ def test_gui_agent_websocket_rejects_remote_clients():
         with client.websocket_connect("/api/ws/test-session"):
             pass
     assert exc.value.code == 1008
+
+@pytest.mark.parametrize(
+    "guard",
+    [
+        require_agent_local,
+        require_auth_local,
+        require_memory_local,
+        require_mcp_local,
+        require_research_local,
+        _require_local_client,
+    ],
+)
+def test_sensitive_guards_fail_closed_when_client_address_is_missing(guard):
+    request = type("Request", (), {"client": None})()
+    with pytest.raises(HTTPException) as exc:
+        guard(request)
+    assert exc.value.status_code == 403
