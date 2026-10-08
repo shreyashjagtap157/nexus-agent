@@ -612,6 +612,8 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
     """Helper to translate AgentEvent into WebSocket JSON messages."""
     try:
         match event.type:
+            case "state_change":
+                await ws.send_json({"type": "state_change", "data": event.data})
             case "thinking":
                 await ws.send_json({"type": "thinking", "content": event.data})
             case "content":
