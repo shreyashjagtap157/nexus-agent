@@ -272,6 +272,11 @@ providers:
     api_key: ""
     max_tokens: 8192
     context_size: 1000000
+    reasoning_budget: 16384
+    top_p: 0.95
+    timeout_seconds: 120
+    pending_poll_seconds: 1.0
+    pending_max_wait_seconds: 300
 
 # Multi-agent team defaults. Role routing is intentionally opt-in.
 team:
