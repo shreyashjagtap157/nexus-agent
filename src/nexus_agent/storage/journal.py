@@ -5,6 +5,7 @@ import hashlib
 import sqlite3
 import time
 import uuid
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +29,8 @@ class FileJournal:
     def __init__(self, db_path: str | Path):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.db_path), timeout=30)
+        self._lock = threading.RLock()
+        self._conn = sqlite3.connect(str(self.db_path), timeout=30, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=30000")
         self._conn.executescript(self.SCHEMA)
@@ -93,4 +95,13 @@ class FileJournal:
         ]
 
     def close(self) -> None:
-        self._conn.close()
+        try:
+            self._conn.close()
+        except sqlite3.Error:
+            pass
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
