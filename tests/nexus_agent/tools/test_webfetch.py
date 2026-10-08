@@ -366,6 +366,51 @@ class TestWebFetchTool(unittest.TestCase):
             out = tool.execute("https://93.184.216.34/")
         self.assertIn("Private/local hosts are blocked", out)
 
+    def test_block_private_host_rejects_private_intermediate_redirect(self):
+        tool = WebFetchTool(cache_ttl_s=0, block_private_hosts=True)
+        with patch("httpx.Client") as MockClient:
+            ctx = MagicMock()
+            public_response = self._mock_response(
+                "",
+                status=302,
+                url="https://93.184.216.34/",
+            )
+            public_response.headers = {
+                "content-type": "text/html; charset=utf-8",
+                "location": "http://127.0.0.1:8080/private",
+            }
+            ctx.__enter__.return_value.get.return_value = public_response
+            MockClient.return_value = ctx
+
+            out = tool.execute("https://93.184.216.34/")
+
+            self.assertIn("Private/local hosts are blocked", out)
+            self.assertEqual(ctx.__enter__.return_value.get.call_count, 1)
+
+    def test_block_private_host_limits_redirect_hops(self):
+        tool = WebFetchTool(cache_ttl_s=0, block_private_hosts=True)
+        with patch("httpx.Client") as MockClient:
+            ctx = MagicMock()
+            responses = []
+            for index in range(6):
+                response = self._mock_response(
+                    "",
+                    status=302,
+                    url=f"https://93.184.216.{34 + index}/",
+                )
+                response.headers = {
+                    "content-type": "text/html; charset=utf-8",
+                    "location": f"https://93.184.216.{35 + index}/",
+                }
+                responses.append(response)
+            ctx.__enter__.return_value.get.side_effect = responses
+            MockClient.return_value = ctx
+
+            out = tool.execute("https://93.184.216.34/")
+
+            self.assertIn("Too many redirects", out)
+            self.assertEqual(ctx.__enter__.return_value.get.call_count, 6)
+
     def test_relative_url_resolution(self):
         tool = WebFetchTool(cache_ttl_s=0)
         with patch("httpx.Client") as MockClient:
