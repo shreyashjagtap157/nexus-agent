@@ -979,7 +979,7 @@ def agent_run(
     from nexus_agent.memory.memory_manager import MemoryManager
 
     ws = Path(workspace).resolve()
-    config = load_config(config_path=ctx.obj.get("config_path"), workspace=ws)
+    config = load_config(config_path=(ctx.obj or {}).get("config_path"), workspace=ws)
     registry = AgentRegistry(ws)
     spec = registry.get(agent_id)
     if spec is None:
