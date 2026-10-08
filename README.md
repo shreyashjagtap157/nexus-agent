@@ -25,6 +25,24 @@ Unlike traditional coding agents that force reliance on external cloud APIs, Nex
 
 ---
 
+## 🖥️ Native Desktop Client
+
+NexusAgent has a native Rust desktop surface under `nexus-desktop/`. It is a presentation/control client over the same local HTTP runtime used by the web UI; it does not duplicate orchestration or provider logic.
+
+Build/run:
+
+```bash
+cargo run --manifest-path nexus-desktop/Cargo.toml
+```
+
+The desktop client can start a multi-agent team, display team/agent state, and verify the shared tamper-evident audit chain.
+
+The project therefore has three complementary client surfaces:
+
+- `nexus` — CLI/TUI
+- local web app — full workspace/team/agent/memory/provider consoles
+- `nexus-desktop` — native desktop control surface
+
 ## 👥 Multi-Agent Teams
 
 A task can run as one agent or as a dynamically assembled team. The team architect generates professional roles from the task and operating mode, then runs eligible workers concurrently with role-specific tool access.
