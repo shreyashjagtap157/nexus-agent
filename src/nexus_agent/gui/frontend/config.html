@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NexusAgent — Control Center</title>
+<style>
+:root{color-scheme:dark;--bg:#050914;--panel:rgba(10,19,34,.9);--panel2:#0d1a2c;--line:#23405f;--text:#edf5ff;--muted:#8fa6bf;--a:#6ed8ff;--g:#7af2b2;--w:#f9d774;--r:#ff9ca8}
+*{box-sizing:border-box}html{font-size:16px}body{margin:0;min-height:100vh;background:
+radial-gradient(circle at 10% 0,rgba(55,122,165,.24),transparent 32rem),
+radial-gradient(circle at 90% 20%,rgba(84,44,126,.20),transparent 30rem),
+linear-gradient(180deg,#050914,#030711 70%,#02040a);
+color:var(--text);font:clamp(15px,1.0vw,18px)/1.45 system-ui,-apple-system,Segoe UI,sans-serif;overflow:auto}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(110,216,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(110,216,255,.05) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(180deg,#000,transparent 78%);animation:gridDrift 28s linear infinite}
+@keyframes gridDrift{to{background-position:42px 42px}}@keyframes float{50%{transform:translateY(-8px)}}@keyframes pulse{50%{box-shadow:0 0 28px rgba(110,216,255,.25)}}
+header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px clamp(16px,2vw,34px);background:rgba(4,8,16,.84);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+h1{margin:0;font-size:clamp(1.2rem,1.7vw,1.9rem)}.sub{color:var(--muted);font-size:.78rem}.btn{border:1px solid var(--line);background:#0c1828;color:var(--text);padding:10px 14px;border-radius:10px;text-decoration:none;cursor:pointer;transition:.2s transform,.2s border-color,.2s background}.btn:hover{transform:translateY(-1px);border-color:var(--a);background:#102237}.primary{background:#0b3046;border-color:#2b789e}
+main{display:grid;grid-template-columns:minmax(340px,.85fr) minmax(720px,1.6fr);gap:16px;padding:16px;max-width:2200px;margin:0 auto}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.24)}.panel h2{margin:0;padding:15px 17px;border-bottom:1px solid var(--line);font-size:.76rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.body{padding:16px}.section{padding:16px;border:1px solid #1a3049;border-radius:12px;background:rgba(7,14,25,.62);margin-bottom:12px;transition:.2s transform,.2s border-color}.section:hover{transform:translateY(-1px);border-color:#2d587a}
+label{display:block;color:var(--muted);font-size:.76rem;margin:9px 0 5px}input,select,textarea{width:100%;border:1px solid var(--line);background:#07111e;color:var(--text);border-radius:9px;padding:10px 11px;font:inherit;min-height:42px}textarea{min-height:100px;resize:vertical}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.notice{min-height:24px;margin-top:10px;color:var(--muted);font-size:.78rem}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.metric{padding:12px;border:1px solid var(--line);border-radius:10px;background:#081322}.metric b{display:block;font-size:1.2rem}.metric span{color:var(--muted);font-size:.68rem}
+pre{white-space:pre-wrap;word-break:break-word;margin:0;max-height:560px;overflow:auto;background:#06101d;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:.72rem;color:#cfe6f6}.status{padding:9px;border-radius:999px;border:1px solid var(--line);display:inline-flex;font-size:.72rem;color:var(--muted)}.ok{color:var(--g);border-color:#24553e}.warn{color:var(--w);border-color:#584c22}
+@media(max-width:1500px){main{grid-template-columns:320px minmax(0,1fr)}}@media(max-width:1100px){main{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}}@media(max-width:700px){.grid,.grid3,.metric-grid{grid-template-columns:1fr}.actions .btn{width:100%}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+<div><h1>NexusAgent / Control Center</h1><div class="sub">Provider routing, research depth, team defaults, local runtime and permission controls.</div></div>
+<div class="actions" style="margin:0"><a class="btn" href="/">Workspace</a><a class="btn" href="/providers.html">Providers</a><a class="btn" href="/team.html">Teams</a></div>
+</header>
+<main>
+<section class="panel">
+<h2>Core Controls</h2>
+<div class="body">
+<div class="section">
+<label>Default operation mode</label><select id="default_mode"><option>auto</option><option>plan</option><option>build</option><option>review</option><option>research</option></select>
+<div class="grid"><div><label>Reasoning effort</label><select id="effort"><option>low</option><option selected>medium</option><option>high</option><option>xhigh</option><option>max</option></select></div><div><label>Max agent-loop iterations</label><input id="iterations" type="number" min="1" max="500"></div></div>
+<div class="grid"><div><label>Max output tokens</label><input id="tokens" type="number" min="1"></div><div><label>Temperature</label><input id="temperature" type="number" min="0" max="2" step=".01"></div></div>
+</div>
+<div class="section">
+<label>Research depth</label><select id="depth"></select>
+<div class="grid3"><div><label>Collection</label><select id="collection"><option>bounded</option><option>until_saturation</option><option>continuous</option></select></div><div><label>Source strategy</label><select id="source"><option>user_only</option><option>hybrid</option><option>autonomous</option></select></div><div><label>Idle rounds</label><input id="idle" type="number" min="1" max="20"></div></div>
+<div id="depthSummary" class="notice"></div>
+</div>
+<div class="section">
+<label>Team limits</label>
+<div class="grid3"><div><label>Max agents</label><input id="maxAgents" type="number" min="1" max="64"></div><div><label>Parallelism</label><input id="parallel" type="number" min="1" max="64"></div><div><label>Iterations / worker</label><input id="workerIterations" type="number" min="1" max="500"></div></div>
+<div class="grid"><div><label>Output mode</label><select id="output"><option>chat</option><option>file</option><option>both</option></select></div><div><label>Output format</label><select id="format"><option>markdown</option><option>text</option><option>json</option></select></div></div>
+</div>
+<div class="section">
+<label>Security</label>
+<div class="grid"><div><label>Permission mode</label><select id="permission"><option>ask</option><option>suggest</option><option>auto</option></select></div><div><label>Context compaction threshold</label><input id="compact" type="number" min=".1" max=".99" step=".01"></div></div>
+</div>
+<div class="section">
+<label>GUI binding</label><div class="grid"><input id="host" placeholder="127.0.0.1"><input id="port" type="number" min="1" max="65535"></div>
+</div>
+<div class="actions"><button class="btn primary" id="save">Save settings</button><button class="btn" id="reload">Reload</button></div><div id="notice" class="notice"></div>
+</div>
+</section>
+<section class="panel">
+<h2>Effective Configuration</h2>
+<div class="body">
+<div class="metric-grid"><div class="metric"><b id="version">—</b><span>version</span></div><div class="metric"><b id="provider">—</b><span>active provider</span></div><div class="metric"><b id="workspace">—</b><span>workspace</span></div><div class="metric"><b id="status" class="status">loading</b><span>state</span></div></div>
+<div class="actions"><a class="btn" href="/providers.html">Configure LLM providers</a><a class="btn" href="/agents.html">Configure agents</a><a class="btn" href="/workflows.html">Configure workflows</a><a class="btn" href="/sources.html">Configure sources</a><a class="btn" href="/memory.html">Configure memory</a><a class="btn" href="/mcp.html">Configure MCP</a></div>
+<h2 style="margin:18px -16px 0">Effective non-secret configuration</h2>
+<pre id="json">Loading…</pre>
+</div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function notice(t,bad){$("notice").textContent=t;$("notice").style.color=bad?"#ff9ca8":"#8fa6bf"}
+let cfg={},depths=[];
+function path(o,p,d){let x=o;for(const k of p.split("."))x=x&&x[k];return x===undefined?d:x}
+function set(id,v){$(id).value=v==null?"":v}
+function renderDepth(){const d=depths.find(x=>x.name==$("depth").value);if(!d)return;$("depthSummary").textContent=d.label+" • coordination turns "+d.coordination_turns+" • "+d.sources_per_round+" sources/turn • "+d.verification_passes+" verification • "+d.contradiction_passes+" contradiction • "+d.formal_passes+" formal • "+d.review_passes+" review • minimum independent sources "+d.min_independent_sources}
+async function load(){
+ const [cr,dr,sr]=await Promise.all([fetch("/api/config/full"),fetch("/api/research-depths"),fetch("/api/status")]);
+ cfg=await cr.json();const dd=await dr.json();depths=dd.depths||[];const st=await sr.json();
+ $("depth").innerHTML=depths.map(x=>"<option value='"+x.name+"'>"+x.label+"</option>").join("");
+ set("default_mode",path(cfg,"agent.default_mode","auto"));set("effort",path(cfg,"agent.effort_level","medium"));set("iterations",path(cfg,"agent.max_iterations",50));set("tokens",path(cfg,"agent.max_tokens",4096));set("temperature",path(cfg,"agent.temperature",.1));
+ set("depth",path(cfg,"research.depth","detailed"));set("collection",path(cfg,"research.collection","until_saturation"));set("source",path(cfg,"research.source_strategy","hybrid"));set("idle",path(cfg,"research.idle_rounds",2));
+ set("maxAgents",path(cfg,"team.max_agents",6));set("parallel",path(cfg,"team.parallelism",4));set("workerIterations",path(cfg,"team.max_iterations_per_agent",30));set("output",path(cfg,"team.output_mode","chat"));set("format",path(cfg,"team.output_format","markdown"));
+ set("permission",path(cfg,"permissions.mode","ask"));set("compact",path(cfg,"agent.context_compact_threshold",.85));set("host",path(cfg,"gui.host","127.0.0.1"));set("port",path(cfg,"gui.port",7860));
+ $("version").textContent=st.version||"—";$("provider").textContent=(cfg.providers&&cfg.providers.active)||"local";$("workspace").textContent=st.workspace||"—";$("status").textContent=st.model_loaded?"ONLINE":"READY";$("status").className="status "+(st.model_loaded?"ok":"warn");
+ $("json").textContent=JSON.stringify(cfg,null,2);renderDepth()
+}
+$("depth").onchange=renderDepth;
+$("save").onclick=async()=>{
+ const updates={agent:{default_mode:$("default_mode").value,effort_level:$("effort").value,max_iterations:+$("iterations").value,max_tokens:+$("tokens").value,temperature:+$("temperature").value,context_compact_threshold:+$("compact").value},
+ research:{depth:$("depth").value,collection:$("collection").value,source_strategy:$("source").value,idle_rounds:+$("idle").value},
+ team:{max_agents:+$("maxAgents").value,parallelism:+$("parallel").value,max_iterations_per_agent:+$("workerIterations").value,output_mode:$("output").value,output_format:$("format").value},
+ permissions:{mode:$("permission").value},gui:{host:$("host").value.trim(),port:+$("port").value}};
+ for(const [section,values] of Object.entries(updates)){const r=await fetch("/api/config/"+section,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({values})});if(!r.ok){const d=await r.json();notice(section+": "+String(d.detail||"save failed"),true);return}}
+ notice("Settings saved to user configuration.");load();
+};
+$("reload").onclick=load;load();
+</script>
+</body>
+</html>
