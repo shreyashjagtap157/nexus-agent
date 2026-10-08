@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+import re
 
 
 def evaluate_team(
@@ -10,6 +11,7 @@ def evaluate_team(
     config: Any,
     artifacts: list[str],
     research_summary: dict[str, Any] | None = None,
+    research_synthesis: str = "",
 ) -> dict[str, Any]:
     total = len(results)
     completed = sum(item.get("status") == "completed" for item in results)
@@ -49,6 +51,32 @@ def evaluate_team(
 
     if research_summary is not None:
         checks["research_evidence"] = research_summary
+        verified_claim_ids = {
+            int(item)
+            for item in str(research_summary.get("verified_claim_ids", "")).split(",")
+            if str(item).strip().isdigit()
+        }
+        if research_summary.get("claim_ids"):
+            verified_claim_ids = {
+                int(item)
+                for item in research_summary.get("verified_claim_ids", [])
+                if str(item).strip().isdigit()
+            }
+        markers = [
+            int(match)
+            for match in re.findall(r"\[claim:(\d+)\]", research_synthesis or "")
+        ]
+        checks["research_synthesis_evidence"] = {
+            "passed": not bool(research_synthesis.strip())
+            or (
+                bool(verified_claim_ids)
+                and bool(markers)
+                and all(marker in verified_claim_ids for marker in markers)
+            ),
+            "marker_count": len(markers),
+            "invalid_markers": sorted(set(markers) - verified_claim_ids),
+            "verified_claim_ids": sorted(verified_claim_ids),
+        }
 
     passed = all(bool(value.get("passed")) for value in checks.values())
     return {
