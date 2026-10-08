@@ -306,7 +306,9 @@ class TeamRuntime:
         if "research" in categories:
             from nexus_agent.research.configured_source_tool import ResearchConfiguredSourceTool
             from nexus_agent.research.tools import (
+                ResearchAdjudicateConflictTool,
                 ResearchRecordClaimTool,
+                ResearchRecordConflictTool,
                 ResearchRecordSourceTool,
                 ResearchVerifyClaimTool,
             )
@@ -322,6 +324,8 @@ class TeamRuntime:
                     ResearchRecordSourceTool(research_db, team_id, profile.role_id),
                     ResearchRecordClaimTool(research_db, team_id, profile.role_id),
                     ResearchVerifyClaimTool(research_db, team_id, profile.role_id),
+                    ResearchRecordConflictTool(research_db, team_id, profile.role_id),
+                    ResearchAdjudicateConflictTool(research_db, team_id, profile.role_id),
                 ]
             )
             if config is not None and config.research_source_strategy == "user_only":
