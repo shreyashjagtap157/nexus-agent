@@ -42,6 +42,8 @@ def test_gui_mutation_access_accepts_loopback_clients():
         "/api/mcp",
         "/api/skills",
         "/api/auth",
+        "/api/audit/verify",
+        "/api/audit/records",
         "/api/research/sources",
         "/api/workflows",
         "/api/provider-config",
