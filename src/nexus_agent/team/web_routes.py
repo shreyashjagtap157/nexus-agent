@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from nexus_agent.core.config import load_config
@@ -295,6 +295,33 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             return store.messages(team_id, recipient_id=recipient_id)
         finally:
             store.close()
+
+    @router.get("/api/teams/{team_id}/artifacts")
+    async def team_artifacts(team_id: str):
+        root = (StorageLayout(_workspace(state_manager)).artifacts / team_id).resolve()
+        if not root.exists():
+            return {"artifacts": []}
+        artifacts = []
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                artifacts.append({
+                    "name": str(path.relative_to(root)),
+                    "size": path.stat().st_size,
+                    "path": str(path),
+                })
+        return {"team_id": team_id, "artifacts": artifacts}
+
+    @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
+    async def download_team_artifact(team_id: str, artifact_path: str):
+        root = (StorageLayout(_workspace(state_manager)).artifacts / team_id).resolve()
+        target = (root / artifact_path).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid artifact path")
+        if not target.is_file():
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        return FileResponse(target, filename=target.name)
 
     @router.get("/api/teams/{team_id}/audit")
     async def team_audit(team_id: str):
