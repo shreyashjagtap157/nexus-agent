@@ -97,8 +97,7 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
     async def generate_agents(request: Request, payload: AgentGenerateRequest):
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
             raise HTTPException(status_code=403, detail="Agent mutation is restricted to local clients.")
-        _require_local(http_request)
-        provider = state_manager.get("engine")
+            provider = state_manager.get("engine")
         workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
         config = state_manager.get("config") or load_config(workspace=workspace)
         if provider is None:
