@@ -61,11 +61,12 @@ def main() -> None:
 @click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
 @click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
 @click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
+@click.option("--agent", "agent_ids", multiple=True, help="Pin a saved agent profile by ID. Repeat for multiple profiles.")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
+def run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, agent_ids: tuple[str, ...], workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Run a dynamically assembled peer team."""
     console = Console()
     runtime, _provider = _make_runtime(workspace.resolve(), provider, model_path, yes)
@@ -80,6 +81,8 @@ def run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations:
         output_format=output_format,
         research_depth=research_depth,
         research_collection=research_collection,
+        agent_ids=list(agent_ids),
+        use_saved_agents=True,
         auto_approve_tools=yes,
     )
     final = None
@@ -150,7 +153,7 @@ def list_teams(workspace: Path, limit: int) -> None:
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
 def control_team(team_id: str, action: str, workspace: Path) -> None:
     """Request pause, resume or stop for a running team."""
-    store = TeamStore(workspace.resolve() / ".nexus" / "teams.db")
+    store = TeamStore(StorageLayout(workspace.resolve()).team_db)
     try:
         if not store.request_control(team_id, action):
             raise click.ClickException("Unknown or terminal team.")
