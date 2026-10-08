@@ -341,7 +341,7 @@ class ResearchStore:
                 """SELECT c.claim_id, c.statement, c.claim_type, c.created_by, c.status,
                           e.source_id, e.quote, s.url, s.title, s.content_hash
                    FROM research_claims c
-                   JOIN research_claim_evidence e ON e.claim_id=e.claim_id
+                   JOIN research_claim_evidence e ON e.claim_id=c.claim_id
                    JOIN research_sources s ON s.source_id=e.source_id
                    WHERE c.team_id=? AND c.status='verified'
                    ORDER BY c.claim_id, e.source_id""",
@@ -445,6 +445,7 @@ class ResearchStore:
             and unresolved_claims == 0
             and threshold_claims == verified_claims
         )
+        unresolved_conflicts = self.unresolved_conflicts(team_id)
         return {
             "team_id": team_id,
             "required_verification_passes": required,
@@ -459,6 +460,8 @@ class ResearchStore:
             "rejected_claims": rejected_claims,
             "unresolved_claims": unresolved_claims,
             "claims_meeting_verification_threshold": threshold_claims,
-            "passed": passed,
+            "unresolved_conflicts": len(unresolved_conflicts),
+            "conflicts": unresolved_conflicts,
+            "passed": passed and not unresolved_conflicts,
         }
 
