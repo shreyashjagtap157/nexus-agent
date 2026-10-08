@@ -77,6 +77,7 @@ class AgentSpec:
             provider=self.provider,
             model=self.model,
             fallbacks=list(self.fallbacks),
+            skill_ids=list(self.skill_ids),
         )
 
     @classmethod
