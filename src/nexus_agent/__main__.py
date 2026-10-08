@@ -1306,6 +1306,7 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
         elif event.type.value == "done" and isinstance(event.data, dict):
             final = event.data
     if final is None:
+        runtime.close()
         raise click.ClickException("Team runtime ended without a result.")
     console.print(f"[bold green]{final.get('summary', '')}[/bold green]")
     if final.get("synthesis"):
@@ -1319,6 +1320,7 @@ def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, par
     for agent in final.get("agents", []):
         table.add_row(str(agent.get("name")), str(agent.get("profession")), str(agent.get("status")))
     console.print(table)
+    runtime.close()
 
 
 @team.command("show")
