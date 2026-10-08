@@ -970,11 +970,29 @@ Team protocol:
             agent_storage_ids[profile.role_id] = store.add_agent(team_id, profile.to_dict())
             store.event(team_id, "agent_planned", {"profile": profile.to_dict()}, profile.role_id)
 
+        if mode == TeamMode.RESEARCH:
+            from .research import policy as research_policy
+            deployment_policy = research_policy(cfg.research_depth)
+            store.event(
+                team_id,
+                "team_deployed",
+                {
+                    "agent_count": len(profiles),
+                    "planning_phase": "complete",
+                    "post_deployment_coordination_turn_cap": deployment_policy["coordination_turns"],
+                    "research_depth": cfg.research_depth,
+                },
+            )
+            store.event(
+                team_id,
+                "workflow_phase",
+                {"from": "planning", "to": "execution", "reason": "professional team deployed"},
+            )
         yield AgentEvent(
             AgentEventType.STATE_CHANGE,
             {
                 "team_id": team_id,
-                "state": "planned",
+                "state": "running",
                 "mode": mode.value,
                 "agent_count": len(profiles),
             },
@@ -1195,6 +1213,15 @@ Team protocol:
         if cfg.require_reviewer:
             summary += f"; reviewer={'present' if reviewers else 'missing'}"
 
+        store.event(
+            team_id,
+            "final_review_started",
+            {
+                "workflow": "post-deployment-final-review",
+                "workers_completed": len([item for item in results if item.get("status") == TeamAgentState.COMPLETED.value]),
+                "reviewers_completed": len(reviewers),
+            },
+        )
         preliminary_quality = evaluate_team(
             results=results,
             config=cfg,
