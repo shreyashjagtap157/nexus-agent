@@ -44,3 +44,10 @@ def test_mcp_loader_skips_disabled_servers(monkeypatch):
         }
     })
     assert len(started) == 1
+
+
+def test_mcp_secret_like_env_keys_are_detected():
+    from nexus_agent.mcp.web_routes import _secret_env_keys
+
+    assert _secret_env_keys({"GITHUB_TOKEN": "x", "PORT": "1"}) == ["GITHUB_TOKEN"]
+    assert _secret_env_keys({"MCP_MODE": "stdio", "USERNAME": "x"}) == []
