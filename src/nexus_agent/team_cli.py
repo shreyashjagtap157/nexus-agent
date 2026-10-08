@@ -172,7 +172,7 @@ def control_team(team_id: str, action: str, workspace: Path) -> None:
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
 def show(team_id: str, workspace: Path) -> None:
     """Inspect a persisted team run."""
-    store = TeamStore(workspace.resolve() / ".nexus" / "teams.db")
+    store = TeamStore(StorageLayout(workspace.resolve()).team_db)
     try:
         team = store.team(team_id)
         if team is None:
