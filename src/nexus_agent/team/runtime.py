@@ -88,10 +88,6 @@ def build_workspace_tools(
         memory = MemoryTool()
         memory.set_memory(memory_manager)
         tools.append(memory)
-    from nexus_agent.memory.scoped import ScopedMemory
-    from nexus_agent.storage.layout import StorageLayout
-    from nexus_agent.tools.scoped_memory import ScopedMemoryTool
-    tools.append(ScopedMemoryTool(ScopedMemory(StorageLayout(workspace))))
     if mcp_tools:
         tools.extend(mcp_tools)
     if include_advanced:
@@ -161,6 +157,9 @@ class TeamRuntime:
 
     def _tools_for(self, profile: AgentProfile, store: TeamStore, team_id: str) -> list[Any]:
         categories = set(profile.tool_categories)
+        from nexus_agent.memory.scoped import ScopedMemory
+        from nexus_agent.storage.layout import StorageLayout
+        from nexus_agent.tools.scoped_memory import ScopedMemoryTool
         selected = [
             tool
             for tool in self.tools
@@ -177,6 +176,15 @@ class TeamRuntime:
                 for tool in self.tools
                 if tool not in selected and tool.__class__.__name__ == "MCPProxyTool"
             )
+        selected.append(
+            ScopedMemoryTool(
+                ScopedMemory(
+                    StorageLayout(self.workspace),
+                    agent_id=profile.role_id,
+                    team_id=team_id,
+                )
+            )
+        )
         selected.extend(
             [
                 TeamSendMessageTool(store, team_id, profile.role_id),
