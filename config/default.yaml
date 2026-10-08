@@ -266,6 +266,36 @@ providers:
     model: ""
     api_key: ""
 
+  nvidia_nim:
+    api_url: "https://integrate.api.nvidia.com/v1/chat/completions"
+    model: "nvidia/nemotron-3.5-lightning-30b-a3b"
+    api_key: ""
+    max_tokens: 8192
+    context_size: 128000
+
+# Multi-agent team defaults. Role entries may override provider/model independently.
+team:
+  max_agents: 6
+  parallelism: 4
+  max_iterations_per_agent: 30
+  output_mode: "chat"       # chat, file, both
+  output_format: "markdown" # markdown, text, json
+  require_reviewer: true
+  auto_synthesize: true
+
+  # Example NVIDIA NIM role routing. Keep the API key in NVIDIA_NIM_API_KEY;
+  # do not put live credentials in this file or commit them.
+  roles:
+    verifier:
+      provider: "nvidia_nim"
+      model: "nvidia/nemotron-3.5-lightning-30b-a3b"
+      fallbacks: []
+    auditor:
+      provider: "nvidia_nim"
+      model: "nvidia/nemotron-3.5-lightning-30b-a3b"
+      fallbacks: []
+
+
 memory:
   # Enable persistent memory across sessions
   enabled: true
