@@ -46,7 +46,7 @@ main{display:grid;grid-template-columns:minmax(360px,380px) minmax(780px,1fr) mi
 <section>
 <h2>Team Topology</h2>
 <div class="status" id="status"><span class="pill">idle</span></div>
-<div class="metrics"><div class="metric"><b id="ma">0</b><span>agents</span></div><div class="metric"><b id="md">0</b><span>done</span></div><div class="metric"><b id="mm">0</b><span>messages</span></div><div class="metric"><b id="me">0</b><span>events</span></div><div class="metric"><b id="mt">0 / —</b><span>coordination turns</span></div><div class="metric"><b id="ms">0</b><span>sources</span></div><div class="metric"><b id="mc">0</b><span>verified claims</span></div></div>
+<div class="metrics"><div class="metric"><b id="ma">0</b><span>agents</span></div><div class="metric"><b id="md">0</b><span>done</span></div><div class="metric"><b id="mm">0</b><span>messages</span></div><div class="metric"><b id="me">0</b><span>events</span></div><div class="metric"><b id="mt">0 / —</b><span>coordination turns</span></div><div class="metric"><b id="ms">0</b><span>sources</span></div><div class="metric"><b id="mc">0</b><span>verified claims</span></div><div class="metric"><b id="mx">0</b><span>unresolved conflicts</span></div></div>
 <div id="agents" class="scroll agents"><div class="empty">No team yet.</div></div>
 </section>
 <section>
@@ -95,6 +95,13 @@ function addMessage(m){
 async function snapshot(){
   if(!jobId)return;var r=await fetch("/api/teams/"+encodeURIComponent(jobId));if(!r.ok)return;var d=await r.json();
   if(d.team_id)teamId=d.team_id;if(d.agents)renderAgents(d.agents);(d.events||[]).forEach(addEvent);(d.messages||[]).forEach(addMessage);
+  if(teamId && (d.team&&d.team.mode==="research")) {
+    fetch("/api/teams/"+encodeURIComponent(teamId)+"/research").then(function(r){return r.json()}).then(function(rd){
+      $("ms").textContent=String((rd.sources||[]).length);
+      $("mc").textContent=String((rd.verified_claims||[]).length);
+      $("mx").textContent=String((rd.unresolved_conflicts||[]).length);
+    }).catch(function(){});
+  }
   if(d.result&&d.result.synthesis)$("synthesis").innerHTML="<div style='padding:12px;white-space:pre-wrap'>"+esc(d.result.synthesis)+"</div>";  if(teamId){fetch("/api/teams/"+encodeURIComponent(teamId)+"/artifacts").then(function(r){return r.json()}).then(function(a){var rows=a.artifacts||[];$("artifacts").innerHTML=rows.length?rows.map(function(x){return "<div class='msg'><a href='/api/teams/"+encodeURIComponent(teamId)+"/artifacts/"+encodeURIComponent(x.name)+"' target='_blank'>"+esc(x.name)+"</a><span class='meta'> • "+esc(x.size)+" bytes</span></div>"}).join(""):"<div class='empty'>No artifacts yet.</div>"})}
   var st=(d.team&&d.team.status)||d.status||"unknown";$("pause").disabled=!teamId||!["running"].includes(st);$("resume").disabled=!teamId||!["paused"].includes(st);$("stop").disabled=!teamId||["completed","failed","cancelled","needs_review"].includes(st);$("start").disabled=!!jobId&&!["completed","failed","cancelled","needs_review"].includes(d.status||"");var phase=$("status").dataset.phase||((st==="completed"||st==="needs_review")?"final-review":st==="running"?"execution":"planning");$("status").innerHTML="<span class='pill'>job "+esc(d.status||"?")+"</span><span class='pill'>phase "+esc(phase)+"</span><span class='pill "+(st==="completed"?"good":st==="needs_review"?"warn":st==="failed"?"bad":"")+"'>team "+esc(st)+"</span>"
   if(teamId&&!es){es=new EventSource("/api/teams/"+encodeURIComponent(teamId)+"/stream");es.onmessage=function(ev){try{var x=JSON.parse(ev.data);if(x.type==="terminal"){notice("Team ended: "+x.status);es.close();es=null}else{addEvent(x)}snapshot()}catch(e){}};es.onerror=function(){notice("Live stream reconnecting…")}}
