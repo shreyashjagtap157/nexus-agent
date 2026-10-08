@@ -46,6 +46,7 @@ class TeamStartRequest(BaseModel):
     auto_approve_tools: bool = False
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    research_source_urls: list[str] = Field(default_factory=list, max_length=200)
     agent_ids: list[str] = Field(default_factory=list)
     use_saved_agents: bool = True
 
@@ -132,6 +133,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             cfg.auto_approve_tools = req.auto_approve_tools
             cfg.research_depth = req.research_depth
             cfg.research_collection = req.research_collection
+            cfg.research_source_urls = req.research_source_urls
             cfg.agent_ids = req.agent_ids
             cfg.use_saved_agents = req.use_saved_agents
             cfg.normalize()
