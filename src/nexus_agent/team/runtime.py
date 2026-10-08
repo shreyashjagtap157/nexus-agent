@@ -224,7 +224,8 @@ Team protocol:
         chunks: list[str] = []
         had_agent_error = False
         try:
-            for event in agent.run(goal):
+            worker_goal = f"{goal}\n\nYour specific assignment: {profile.mission}\n\nRole instructions:\n{profile.instructions}"
+            for event in agent.run(worker_goal):
                 store.event(
                     team_id,
                     "agent_event",
@@ -448,34 +449,123 @@ Team protocol:
             },
         )
 
+        # Dependency-aware scheduler: independent agents run concurrently;
+        # dependent agents are released only after their prerequisites complete.
+        profile_by_id = {profile.role_id: profile for profile in profiles}
+        pending = set(profile_by_id)
+        completed_ids: set[str] = set()
+        failed_ids: set[str] = set()
+        active: dict[Any, AgentProfile] = {}
+
         with ThreadPoolExecutor(
             max_workers=cfg.parallelism,
             thread_name_prefix=f"nexus-team-{team_id}",
         ) as pool:
-            futures = [
-                pool.submit(
-                    self._worker,
-                    profile,
-                    agent_storage_ids[profile.role_id],
-                    team_id,
-                    goal,
-                    cfg,
-                    store,
-                    events,
-                )
-                for profile in profiles
-            ]
-            for future in as_completed(futures):
+            while pending or active:
+                ready = [
+                    profile_by_id[role_id]
+                    for role_id in sorted(pending)
+                    if all(
+                        dependency in completed_ids
+                        for dependency in profile_by_id[role_id].dependencies
+                    )
+                    and all(
+                        dependency in profile_by_id
+                        for dependency in profile_by_id[role_id].dependencies
+                    )
+                ]
+
+                # Unknown dependencies cannot ever unblock. Mark those workers
+                # as failed/review-required instead of deadlocking the team.
+                for role_id in sorted(pending):
+                    profile = profile_by_id[role_id]
+                    unknown = [
+                        dep for dep in profile.dependencies
+                        if dep not in profile_by_id
+                    ]
+                    if unknown:
+                        store.update_agent(
+                            agent_storage_ids[role_id],
+                            state=TeamAgentState.FAILED.value,
+                            ended_at=time.time(),
+                            error=f"Unknown dependency: {', '.join(unknown)}",
+                        )
+                        failed_ids.add(role_id)
+                        pending.remove(role_id)
+                        store.event(
+                            team_id,
+                            "agent_dependency_error",
+                            {"unknown_dependencies": unknown},
+                            role_id,
+                        )
+
+                capacity = max(0, cfg.parallelism - len(active))
+                for profile in ready[:capacity]:
+                    if profile.role_id not in pending:
+                        continue
+                    pending.remove(profile.role_id)
+                    future = pool.submit(
+                        self._worker,
+                        profile,
+                        agent_storage_ids[profile.role_id],
+                        team_id,
+                        goal,
+                        cfg,
+                        store,
+                        events,
+                    )
+                    active[future] = profile
+
+                if not active:
+                    # Remaining pending work is blocked by a failed prerequisite
+                    # or a dependency cycle. Surface this explicitly.
+                    if pending:
+                        for role_id in sorted(pending):
+                            store.update_agent(
+                                agent_storage_ids[role_id],
+                                state=TeamAgentState.FAILED.value,
+                                ended_at=time.time(),
+                                error="Dependency cycle or failed prerequisite blocked this agent.",
+                            )
+                            store.event(
+                                team_id,
+                                "agent_dependency_blocked",
+                                {"dependencies": profile_by_id[role_id].dependencies},
+                                role_id,
+                            )
+                        failed_ids.update(pending)
+                        pending.clear()
+                    break
+
+                done_future = next(as_completed(active))
+                profile = active.pop(done_future)
                 try:
-                    result = future.result()
+                    result = done_future.result()
                 except (RuntimeError, ValueError, OSError, TypeError) as exc:
-                    result = {"status": "failed", "error": str(exc)}
+                    result = {
+                        "agent_id": profile.role_id,
+                        "name": profile.name,
+                        "profession": profile.profession,
+                        "status": TeamAgentState.FAILED.value,
+                        "result": "",
+                        "reviewer": profile.reviewer,
+                        "error": str(exc),
+                    }
+                    failed_ids.add(profile.role_id)
+                else:
+                    if result.get("status") == TeamAgentState.COMPLETED.value:
+                        completed_ids.add(profile.role_id)
+                    else:
+                        failed_ids.add(profile.role_id)
+
                 while True:
                     try:
                         yield events.get_nowait()
                     except queue.Empty:
                         break
                 yield AgentEvent(AgentEventType.CONTENT, result)
+
+            # Drain any late telemetry queued by completed workers.
 
         while True:
             try:
