@@ -1,7 +1,7 @@
 # NexusAgent Architecture
 
-> **Version:** 0.2.0  
-> **Status:** Active Alpha / integration hardening  
+> **Version:** 0.3.0-alpha.4  
+> **Status:** Active Alpha / multi-agent platform integration hardening  
 
 ---
 
@@ -328,3 +328,12 @@ iterations.
 The final research synthesis is evidence-bound: it consumes verified ledger claims, requires
 valid `[claim:N]` provenance markers and is withheld when the evidence or contradiction gates
 do not pass.
+
+
+## 22. Engineering and CI Governance
+
+The repository treats main as the canonical integration branch. Runtime changes, research behavior, native clients and release infrastructure are validated through GitHub Actions rather than depending on a local validation result.
+
+The merge-quality surface consists of the complete Python test matrix, Ruff/MyPy checks, native Rust/desktop checks, version synchronization, audit evidence generation, CodeQL and dependency security checks. Release tags are independently verified to point into main history before publication.
+
+Branch protection policy is maintained in .github/BRANCH_PROTECTION.md and is enforced at the GitHub repository-administration layer.
