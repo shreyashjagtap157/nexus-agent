@@ -17,7 +17,7 @@ SLASH_COMMANDS = [
     {"name": "/autonomous", "description": "Full autonomous goal execution"},
     {"name": "/review", "description": "Multi-agent code review on git diff"},
     {"name": "/model", "description": "Manage, show, switch, or unload models"},
-    {"name": "/mode", "description": "Set agent mode (auto|plan|build|review)"},
+    {"name": "/mode", "description": "Set agent mode (auto|plan|build|review|research)"},
     {"name": "/effort", "description": "Set reasoning effort (low|medium|high|xhigh|max)"},
     {"name": "/goal", "description": "Set active coding objective"},
     {"name": "/sandbox", "description": "View/set sandbox execution mode"},
