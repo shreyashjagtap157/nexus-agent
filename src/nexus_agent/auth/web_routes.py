@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi import HTTPException, Request
+
 from pydantic import BaseModel, Field
 
 from nexus_agent.auth import AuthStore
@@ -35,10 +37,14 @@ def register_auth_routes(app: Any) -> None:
         return {"credentials": AuthStore().list()}
 
     @app.put("/api/auth/{provider}")
-    async def auth_set(provider: str, request: CredentialRequest):
-        AuthStore().set(provider, request.api_key)
+    async def auth_set(provider: str, request: Request, payload: CredentialRequest):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
+        AuthStore().set(provider, payload.api_key)
         return {"provider": provider.lower(), "stored": True}
 
     @app.delete("/api/auth/{provider}")
-    async def auth_delete(provider: str):
+    async def auth_delete(provider: str, request: Request):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
         return {"provider": provider.lower(), "removed": AuthStore().remove(provider)}
