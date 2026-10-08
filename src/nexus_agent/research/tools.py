@@ -1,7 +1,9 @@
 """Research evidence tools exposed to research-mode team workers."""
 from __future__ import annotations
 
+import ipaddress
 from typing import Any
+from urllib.parse import urlparse
 
 from nexus_agent.tools.base import Tool
 from nexus_agent.tools.webfetch import WebFetchTool
@@ -19,6 +21,24 @@ class _ResearchTool(Tool):
     def permission_level(self) -> str:
         """Research ledger writes are scoped to the isolated evidence store."""
         return "read-write"
+
+
+def _reject_private_target(url: str) -> str | None:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return "Error: source URL must use http or https with a valid host."
+    if parsed.username or parsed.password:
+        return "Error: source URL credentials are not permitted."
+    host = parsed.hostname.strip().lower().rstrip(".")
+    if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
+        return "Error: private/local source targets are blocked by the autonomous research fetch policy."
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return None
+    if address.is_private or address.is_loopback or address.is_link_local or address.is_reserved or address.is_multicast or address.is_unspecified:
+        return "Error: private/local source targets are blocked by the autonomous research fetch policy."
+    return None
 
 
 class ResearchRecordSourceTool(_ResearchTool):
@@ -49,6 +69,9 @@ class ResearchRecordSourceTool(_ResearchTool):
         url = str(kwargs.get("url") or "").strip()
         if not url:
             return "Error: URL is required."
+        target_error = _reject_private_target(url)
+        if target_error:
+            return target_error
         fetched = self.fetcher.execute(url)
         if fetched.startswith("Error:"):
             return fetched
