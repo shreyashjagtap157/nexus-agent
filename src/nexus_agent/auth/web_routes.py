@@ -28,7 +28,7 @@ class ProviderTestRequest(BaseModel):
 
 def _local_only(request: Any) -> None:
     client = getattr(request, "client", None)
-    if client is not None and client.host not in {"127.0.0.1", "::1", "localhost"}:
+    if client is None or client.host not in {"127.0.0.1", "::1", "localhost"}:
         raise HTTPException(status_code=403, detail="Provider configuration is restricted to local clients.")
 
 
@@ -153,8 +153,7 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
     @app.put("/api/provider-config/{provider}")
     async def update_provider_config(provider: str, request: Request, payload: ProviderConfigRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Provider configuration mutation is restricted to local clients.")
+        _local_only(request)
         values = payload.model_dump(exclude_none=True)
         provider_id = provider.lower()
         save_user_config({"providers": {provider_id: _strip_secrets(values)}})
@@ -184,8 +183,7 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
     @app.put("/api/auth/{provider}")
     async def auth_set(provider: str, request: Request, payload: CredentialRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
+        _local_only(request)
         AuthStore().set(provider, payload.api_key)
         return {"provider": provider.lower(), "stored": True}
 
