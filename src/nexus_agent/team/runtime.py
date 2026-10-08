@@ -17,6 +17,7 @@ from nexus_agent.skills.skill_registry import SkillRegistry
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
 from .control import register as register_team_control, unregister as unregister_team_control
 from .planner import generate_team, infer_mode
+from .quality import evaluate_team
 from .store import TeamStore
 from .tools import TeamReadMessagesTool, TeamSendMessageTool
 
@@ -1118,51 +1119,44 @@ Team protocol:
             if item.get("reviewer") and item.get("status") == TeamAgentState.COMPLETED.value
         ]
 
-        quality: dict[str, Any] = {}
+        research_quality: dict[str, Any] | None = None
         if mode == TeamMode.RESEARCH:
             from .research import policy as research_policy
             from nexus_agent.research.store import ResearchStore
 
             research_store = ResearchStore(self.data_dir / "research.db")
             try:
-                quality = research_store.coverage(
+                research_quality = research_store.coverage(
                     team_id,
                     research_policy(cfg.research_depth)["verification_passes"],
                 )
             finally:
                 research_store.close()
-            store.event(team_id, "research_quality_gate", quality)
-            if not quality.get("passed", False):
-                failures.append(
-                    "Research evidence quality gate failed: "
-                    f"sources={quality.get('source_count', 0)}, "
-                    f"claims={quality.get('claim_count', 0)}, "
-                    f"verified={quality.get('verified_claims', 0)}, "
-                    f"unresolved={quality.get('unresolved_claims', 0)}, "
-                    f"required_passes={quality.get('required_verification_passes', 0)}."
-                )
-
-        success = not failures and (not cfg.require_reviewer or bool(reviewers))
+            store.event(team_id, "research_quality_gate", research_quality)
 
         synthesis = ""
-        if cfg.auto_synthesize:
-            try:
-                synthesis = self._synthesize(team_id, goal, results, store)
-            except (RuntimeError, ValueError, OSError, TypeError) as exc:
-                store.event(team_id, "team_synthesis_failed", {"error": str(exc)})
-                if not failures:
-                    failures.append(f"Team synthesis failed: {exc}")
-                    success = False
-
         summary = (
             f"{len([r for r in results if r['status'] == TeamAgentState.COMPLETED.value])}/"
             f"{len(results)} team workers completed"
         )
         if cfg.require_reviewer:
             summary += f"; reviewer={'present' if reviewers else 'missing'}"
-        store.message(team_id, "orchestrator", "TEAM_COMPLETE", {"success": success, "summary": summary})
-        terminal_status = "cancelled" if control_state.stop_requested.is_set() else ("completed" if success else "needs_review")
-        store.finish_team(team_id, terminal_status)
+
+        preliminary_quality = evaluate_team(
+            results=results,
+            config=cfg,
+            artifacts=[],
+            research_summary=research_quality,
+        )
+        if not preliminary_quality["passed"]:
+            store.event(team_id, "team_quality_precheck_failed", preliminary_quality)
+
+        if cfg.auto_synthesize:
+            try:
+                synthesis = self._synthesize(team_id, goal, results, store)
+            except (RuntimeError, ValueError, OSError, TypeError) as exc:
+                store.event(team_id, "team_synthesis_failed", {"error": str(exc)})
+                failures.append(f"Team synthesis failed: {exc}")
 
         artifact_paths = self._write_artifacts(
             team_id,
@@ -1171,10 +1165,31 @@ Team protocol:
             synthesis,
             results,
             cfg,
-            quality,
+            preliminary_quality,
         )
+        final_quality = evaluate_team(
+            results=results,
+            config=cfg,
+            artifacts=artifact_paths,
+            research_summary=research_quality,
+        )
+        success = bool(final_quality["passed"]) and not failures
+        if failures:
+            final_quality["passed"] = False
+            final_quality["failure_reasons"] = list(failures)
+
         if artifact_paths:
             store.event(team_id, "artifacts_written", {"paths": artifact_paths})
+        store.event(team_id, "team_quality_gate", final_quality)
+        terminal_status = "cancelled" if control_state.stop_requested.is_set() else ("completed" if success else "needs_review")
+        store.message(
+            team_id,
+            "orchestrator",
+            "TEAM_COMPLETE",
+            {"success": success, "status": terminal_status, "summary": summary},
+        )
+        store.finish_team(team_id, terminal_status, final_quality)
+
         result = TeamRunResult(
             team_id,
             goal,
@@ -1184,7 +1199,7 @@ Team protocol:
             synthesis,
             failures,
             artifact_paths,
-            quality,
+            final_quality,
         )
         yield AgentEvent(AgentEventType.CONTENT_COMPLETE, synthesis or summary)
         yield AgentEvent(AgentEventType.DONE, result.__dict__)
