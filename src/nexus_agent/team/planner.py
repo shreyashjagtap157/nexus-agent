@@ -7,6 +7,7 @@ import uuid
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
 from .models import AgentProfile, TeamConfig, TeamMode
+from .research import policy as research_policy
 
 
 SYSTEM_PROMPT = """You are NexusAgent's team architect.
@@ -130,6 +131,14 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
 
 def generate_team(provider: LLMProvider, goal: str, config: TeamConfig) -> tuple[TeamMode, list[AgentProfile]]:
     mode = infer_mode(goal, config.mode)
+    depth_data = research_policy(config.research_depth) if mode == TeamMode.RESEARCH else {
+        "name": "not_applicable",
+        "label": "Not applicable",
+        "role_floor": config.max_agents,
+        "query_rounds": 0,
+        "sources_per_query": 0,
+        "verification_passes": 0,
+    }
     prompt = f"""Task:
 {goal}
 
@@ -139,10 +148,21 @@ Mode:
 Maximum team size:
 {config.max_agents}
 
+Research depth:
+{config.research_depth if mode == TeamMode.RESEARCH else "not_applicable"}
+
+Research collection policy:
+{config.research_collection}
+
+Research policy:
+{json.dumps(depth_data, ensure_ascii=False)}
+
 Return JSON:
 {{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default"}}]}}
 """
     try:
+        response = provider.chat_completion(
+   try:
         response = provider.chat_completion(
             [
                 Message(role=Role.SYSTEM, content=SYSTEM_PROMPT),
