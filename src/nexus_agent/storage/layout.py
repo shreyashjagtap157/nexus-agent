@@ -26,7 +26,13 @@ class StorageLayout:
 
     @property
     def project(self) -> Path:
-        return (self.project_root or self.workspace).resolve()
+        if self.project_root is not None:
+            return self.project_root.resolve()
+        current = self.workspace.resolve()
+        for candidate in (current, *current.parents):
+            if (candidate / ".git").exists() or (candidate / "pyproject.toml").exists():
+                return candidate
+        return current
 
     @property
     def workspace_root(self) -> Path:
