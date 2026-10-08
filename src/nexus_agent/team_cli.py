@@ -106,6 +106,36 @@ def run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations:
     console.print(table)
 
 
+@main.command("list")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
+@click.option("--limit", type=int, default=50, show_default=True)
+def list_teams(workspace: Path, limit: int) -> None:
+    """List persisted multi-agent team runs."""
+    store = TeamStore(workspace.resolve() / ".nexus" / "teams.db")
+    try:
+        rows = store.list_teams(limit=max(1, min(limit, 1000)))
+        if not rows:
+            console.print("[yellow]No team runs found.[/yellow]")
+            return
+        table = Table(title="NexusAgent Teams")
+        table.add_column("Team ID")
+        table.add_column("Mode")
+        table.add_column("Status")
+        table.add_column("Created")
+        table.add_column("Goal")
+        for row in rows:
+            table.add_row(
+                str(row["team_id"]),
+                str(row["mode"]),
+                str(row["status"]),
+                str(row["created_at"]),
+                str(row["goal"])[:100],
+            )
+        console.print(table)
+    finally:
+        store.close()
+
+
 @main.command("show")
 @click.argument("team_id")
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
