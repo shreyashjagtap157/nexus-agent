@@ -83,7 +83,7 @@ Tags MUST use:
 
 Examples:
 
-`v0.3.0-alpha.3`
+`v0.3.0-alpha.4`
 `v0.3.0-beta.1`
 `v0.3.0-rc.1`
 `v0.3.0`
@@ -93,4 +93,4 @@ Never force-push or rewrite a published tag.
 
 ## Current repository state
 
-The current development snapshot is `0.3.0-alpha.3`. It is an unreleased prerelease and MUST NOT be represented as a stable `0.3.0` release or tag.
+The current development snapshot is `0.3.0-alpha.4`. It is an unreleased prerelease and MUST NOT be represented as a stable `0.3.0` release or tag.
