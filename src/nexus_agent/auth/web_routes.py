@@ -22,6 +22,11 @@ class ProviderConfigRequest(BaseModel):
     api_url: str | None = Field(default=None, max_length=4000)
     context_size: int | None = Field(default=None, ge=256, le=2_000_000)
     max_tokens: int | None = Field(default=None, ge=1, le=1_000_000)
+    reasoning_budget: int | None = Field(default=None, ge=1, le=2_000_000)
+    top_p: float | None = Field(default=None, ge=0.0, le=1.0)
+    timeout_seconds: float | None = Field(default=None, ge=1.0, le=3600.0)
+    pending_poll_seconds: float | None = Field(default=None, ge=0.1, le=60.0)
+    pending_max_wait_seconds: float | None = Field(default=None, ge=1.0, le=86400.0)
 
 
 def register_auth_routes(app: Any) -> None:
