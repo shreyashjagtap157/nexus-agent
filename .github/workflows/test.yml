@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, multi-agent-platform]
   pull_request:
     branches: [main, master]
 
