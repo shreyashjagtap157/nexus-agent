@@ -11,6 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from nexus_agent.core.config import load_config
+from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.llm.providers.factory import ProviderFactory
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.storage.layout import StorageLayout
@@ -28,7 +29,8 @@ def _make_runtime(workspace: Path, provider_name: str | None, model_path: str | 
     provider = ProviderFactory.create_provider(name, config, model_path)
     permissions = PermissionManager(project=str(workspace))
     permissions.load_from_config(config)
-    tools = build_workspace_tools(workspace)
+    mcp_clients, mcp_tools = load_configured_servers(config)
+    tools = build_workspace_tools(workspace, mcp_tools=mcp_tools)
     runtime = TeamRuntime(
         provider,
         tools,
