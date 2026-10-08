@@ -28,6 +28,8 @@ class TeamStartRequest(BaseModel):
     parallelism: int = Field(default=4, ge=1, le=32)
     max_iterations_per_agent: int = Field(default=30, ge=1, le=500)
     effort_level: str = Field(default="medium", max_length=32)
+    output_mode: str = Field(default="chat", pattern="^(chat|file|both)$")
+    output_format: str = Field(default="markdown", pattern="^(markdown|text|json)$")
     auto_synthesize: bool = True
     require_reviewer: bool = True
     auto_approve_tools: bool = False
@@ -82,6 +84,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 max_iterations_per_agent=req.max_iterations_per_agent,
                 workspace=str(_workspace(state_manager)),
                 effort_level=req.effort_level,
+                output_mode=req.output_mode,
+                output_format=req.output_format,
                 auto_synthesize=req.auto_synthesize,
                 require_reviewer=req.require_reviewer,
                 auto_approve_tools=req.auto_approve_tools,
