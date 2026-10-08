@@ -2,8 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/test.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/test.yml)
-[![Lint](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/lint.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/lint.yml)
+[![CI](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/ci.yml)
 [![Security](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml)
 [![Version](https://img.shields.io/badge/version-0.3.0--alpha.4-orange.svg)](VERSION)
 [![Versioning Policy](https://img.shields.io/badge/versioning-SemVer-8A2BE2.svg)](docs/VERSIONING.md)
@@ -503,7 +502,7 @@ Validate the repository-wide version contract:
 python scripts/check_version.py
 ```
 
-The CI matrix covers multiple Python versions and operating systems, plus native client checks. Security analysis and dependency auditing run in GitHub Actions as part of the repository quality gates.
+The authoritative CI workflow covers multiple Python versions and operating systems, native client checks, lint/type checking, version synchronization, and audit evidence. Security analysis and dependency auditing run in GitHub Actions as part of the repository quality gates.
 
 ### Enterprise engineering governance
 
