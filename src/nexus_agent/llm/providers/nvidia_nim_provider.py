@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from nexus_agent.llm.base import LLMResponse
+from nexus_agent.llm.base import LLMResponse, ToolCall
 from nexus_agent.llm.providers.openai_provider import OpenAIProvider
 
 
@@ -80,9 +80,16 @@ class NvidiaNIMProvider(OpenAIProvider):
     def _extract_response(self, payload: dict[str, Any]) -> LLMResponse:
         choice = (payload.get("choices") or [{}])[0]
         message = choice.get("message", {}) or {}
+        raw_tool_calls = message.get("tool_calls") or []
+        tool_calls = None
+        if raw_tool_calls:
+            tool_calls = [
+                ToolCall.from_openai_format(item)
+                for item in raw_tool_calls
+            ]
         return LLMResponse(
             content=message.get("content"),
-            tool_calls=None,
+            tool_calls=tool_calls,
             finish_reason=choice.get("finish_reason"),
             usage=payload.get("usage"),
             model=self._model_name,
