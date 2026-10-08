@@ -4,6 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/shreyashjagtap157/nexus-agent/workflows/Tests/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions)
 [![Lint](https://github.com/shreyashjagtap157/nexus-agent/workflows/Lint/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions)
+[![Version](https://img.shields.io/badge/version-0.2.0--alpha.1-orange.svg)](VERSION) [Versioning policy](docs/VERSIONING.md)
 
 NexusAgent is a local-first agent runtime and workbench for software engineering, research, analysis, automation and other tool-driven tasks. It supports the familiar single-agent workflow of modern coding agents while adding dynamically assembled multi-agent teams with concurrent specialist workers, a shared blackboard, explicit permissions and persistent telemetry.
 
