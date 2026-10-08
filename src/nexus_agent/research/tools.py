@@ -15,6 +15,11 @@ class _ResearchTool(Tool):
         self.team_id = team_id
         self.agent_id = agent_id
 
+    @property
+    def permission_level(self) -> str:
+        """Research ledger writes are scoped to the isolated evidence store."""
+        return "read-write"
+
 
 class ResearchRecordSourceTool(_ResearchTool):
     def __init__(self, db_path, team_id: str, agent_id: str):
