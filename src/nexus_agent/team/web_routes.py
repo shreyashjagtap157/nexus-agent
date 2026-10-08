@@ -156,7 +156,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return {"sources": [item.to_dict() for item in registry.list()]}
 
     @router.post("/api/research-sources/seed")
-    async def seed_research_sources(payload: dict[str, Any]):
+    async def seed_research_sources(request: Request, payload: dict[str, Any]):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Research source mutation is restricted to local clients.")
         from nexus_agent.research.sources import ResearchSourceRegistry
         urls = payload.get("urls") if isinstance(payload, dict) else []
         if not isinstance(urls, list):
@@ -176,7 +178,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.post("/api/teams")
-    async def start_team(req: TeamStartRequest):
+    async def start_team(request: Request, req: TeamStartRequest):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Team execution is restricted to local clients.")
         if state_manager.get("engine") is None:
             raise HTTPException(status_code=503, detail="No LLM provider is loaded")
         job_id = f"team-{int(time.time() * 1000)}"
@@ -242,7 +246,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.post("/api/teams/{team_id}/control")
-    async def control_team(team_id: str, req: TeamControlRequest):
+    async def control_team(team_id: str, request: Request, req: TeamControlRequest):
+        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+            raise HTTPException(status_code=403, detail="Team control is restricted to local clients.")
         store = store_for()
         try:
             accepted = store.request_control(team_id, req.action)
