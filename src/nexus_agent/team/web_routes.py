@@ -6,6 +6,7 @@ import json
 import logging
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -205,7 +206,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         _require_local_client(request)
         if state_manager.get("engine") is None:
             raise HTTPException(status_code=503, detail="No LLM provider is loaded")
-        job_id = f"team-{int(time.time() * 1000)}"
+        job_id = f"team-{uuid.uuid4().hex}"
         with lock:
             jobs[job_id] = {"status": "queued", "team_id": None, "result": None, "error": None}
 
