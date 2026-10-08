@@ -274,3 +274,65 @@ def test_delegate_category_enables_boomerang_without_code_write_access(tmp_path:
     )
     call = ToolCall(id="test", name="boomerang", arguments={"action": "list_tasks"})
     assert runtime._permission(call, TeamConfig(mode=TeamMode.ANALYSIS), profile, []) is True
+
+
+def test_read_only_tools_remain_available_to_team_specialists(tmp_path: Path):
+    from nexus_agent.llm.base import ToolCall
+    from nexus_agent.tools.git_ops import SmartCommitTool
+
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    profile = AgentProfile(
+        role_id="analyst",
+        name="Analyst",
+        profession="Analyst",
+        mission="Analyze",
+        instructions="Analyze",
+        tool_categories=["read", "git"],
+        write_access=False,
+    )
+    config = TeamConfig(mode=TeamMode.ANALYSIS)
+
+    for name, arguments in (
+        ("smart_commit", {}),
+        ("git", {"subcommand": "status"}),
+        ("git", {"subcommand": "diff"}),
+        ("git", {"subcommand": "log"}),
+    ):
+        tool = SmartCommitTool(tmp_path) if name == "smart_commit" else type(
+            "Tool",
+            (),
+            {"name": name, "permission_level": "read-only" if name == "smart_commit" else "read-write"},
+        )()
+        assert runtime._permission(
+            ToolCall(id="test", name=name, arguments=arguments),
+            config,
+            profile,
+            [tool],
+        ) is True
+
+
+def test_read_only_team_specialist_cannot_mutate_git(tmp_path: Path):
+    from nexus_agent.llm.base import ToolCall
+
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    profile = AgentProfile(
+        role_id="analyst",
+        name="Analyst",
+        profession="Analyst",
+        mission="Analyze",
+        instructions="Analyze",
+        tool_categories=["read", "git"],
+        write_access=False,
+    )
+    config = TeamConfig(mode=TeamMode.ANALYSIS)
+    tool = type(
+        "Tool",
+        (),
+        {"name": "git", "permission_level": "read-write"},
+    )()
+    assert runtime._permission(
+        ToolCall(id="test", name="git", arguments={"subcommand": "commit"}),
+        config,
+        profile,
+        [tool],
+    ) is False
