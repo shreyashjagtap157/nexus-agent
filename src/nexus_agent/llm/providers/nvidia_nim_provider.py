@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
-import time
 import httpx
 
 from nexus_agent.llm.base import ProviderCapabilities
