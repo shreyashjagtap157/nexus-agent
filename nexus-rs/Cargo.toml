@@ -4,7 +4,7 @@ version = "0.2.0-alpha.1"
 edition = "2021"
 description = "Offline-first AI coding agent — CLI core (Rust/Python hybrid)"
 authors = ["NexusAgent Team"]
-repository = "https://github.com/nexus-agent/nexus-agent"
+repository = "https://github.com/shreyashjagtap157/nexus-agent"
 license = "MIT"
 
 [[bin]]
