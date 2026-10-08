@@ -4,6 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/test.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/test.yml)
 [![Lint](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/lint.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/lint.yml)
+[![Security](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml)
 [![Version](https://img.shields.io/badge/version-0.3.0--alpha.4-orange.svg)](VERSION)
 [![Versioning Policy](https://img.shields.io/badge/versioning-SemVer-8A2BE2.svg)](docs/VERSIONING.md)
 
@@ -502,7 +503,26 @@ Validate the repository-wide version contract:
 python scripts/check_version.py
 ```
 
-The CI matrix covers multiple Python versions and operating systems, plus native desktop checks.
+The CI matrix covers multiple Python versions and operating systems, plus native client checks. Security analysis and dependency auditing run in GitHub Actions as part of the repository quality gates.
+
+### Enterprise engineering governance
+
+main is the canonical integration branch. Changes are expected to arrive through pull requests and pass the repository CI/security gates before merge.
+
+The GitHub validation surface includes:
+
+- complete Python regression testing across supported Python versions and Ubuntu, Windows and macOS
+- Ruff formatting/linting and strict MyPy checks
+- Rust formatting and compilation for both native clients across supported operating systems
+- version-contract validation
+- repeatable test/audit evidence artifacts
+- CodeQL and dependency security checks
+- automated dependency update pull requests through Dependabot
+
+The expected GitHub-side protection policy for main is documented in [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md). The policy requires pull-request review, Code Owner review, required status checks, conversation resolution, no force-pushes, and administrator enforcement.
+
+All release tags are validated against main history before release publication. Release artifacts are built and provenance-attested in GitHub Actions.
+
 
 ---
 
