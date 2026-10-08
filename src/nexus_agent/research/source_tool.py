@@ -36,7 +36,10 @@ class ResearchSourceTool(Tool):
 
     @property
     def permission_level(self) -> str:
-        return "read-write"
+        return "ask"
+
+    def is_mutating(self, action: str) -> bool:
+        return action.strip().lower() in {"add", "remove", "seed"}
 
     def execute(
         self,
