@@ -25,9 +25,9 @@ While the public API is still evolving, use \`0.y.z\` versions. This follows Sem
 
 Use:
 
-- \`0.2.0-alpha.N\` for feature-complete development snapshots
-- \`0.2.0-beta.N\` for stabilization and integration hardening
-- \`0.2.0-rc.N\` for release candidates
+- \`0.3.0-alpha.N\` for feature-complete development snapshots
+- \`0.3.0-beta.N\` for stabilization and integration hardening
+- \`0.3.0-rc.N\` for release candidates
 
 Prereleases are ordered by SemVer precedence and MUST NOT be relabeled after publication.
 
@@ -35,7 +35,7 @@ Prereleases are ordered by SemVer precedence and MUST NOT be relabeled after pub
 
 Use:
 
-- \`0.2.0\` for a backward-compatible pre-1.0 release
+- \`0.3.0\` for a backward-compatible pre-1.0 release
 - \`1.0.0\` when the documented public API, protocol, configuration, client behavior and compatibility guarantees are declared stable
 
 After \`1.0.0\`:
@@ -52,9 +52,9 @@ Tags MUST use:
 
 Examples:
 
-\`v0.2.0-alpha.1\`
+\`v0.3.0-alpha.1\`
 
-\`v0.2.0\`
+\`v0.3.0\`
 
 Never reuse a published tag and never modify an immutable release.
 
