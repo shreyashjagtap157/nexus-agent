@@ -14,7 +14,7 @@ from nexus_agent.core.agent import AgentEvent, AgentEventType, AgentLoop, AgentL
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
-from .control import control as control_team_request, register as register_team_control, unregister as unregister_team_control
+from .control import register as register_team_control, unregister as unregister_team_control
 from .planner import generate_team
 from .store import TeamStore
 from .tools import TeamReadMessagesTool, TeamSendMessageTool
