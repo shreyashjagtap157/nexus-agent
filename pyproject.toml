@@ -149,7 +149,7 @@ Repository = "https://github.com/shreyashjagtap157/nexus-agent"
 where = ["src"]
 
 [tool.setuptools.package-data]
-nexus_agent = ["gui/frontend/**/*", "py.typed", "_default_config.yaml"]
+nexus_agent = ["gui/frontend/**/*", "py.typed", "_default_config.yaml", "agents/builtin/*.md"]
 
 [tool.ruff]
 line-length = 100
