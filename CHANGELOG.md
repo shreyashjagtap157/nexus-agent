@@ -28,9 +28,19 @@ Changes not yet assigned to a release.
 - NexusAgent is positioned as a general-purpose local multi-agent development and research workbench; research is a first-class workload rather than the sole product scope.
 - Provider credentials are separated from normal project configuration, following the same architectural principle used by modern agent CLIs.
 
+### Hardened
+
+- Consolidated enterprise CI and security quality gates around the canonical `CI / Required` and `Security / Required` checks.
+- Hardened team dependency scheduling, worker-local permissions and research-ledger write boundaries.
+- Added authoritative research source capture with private-target and redirect protections.
+- Restricted sensitive team data/control APIs to loopback clients and contained generated artifact paths.
+- Added provider initialization failover and expanded high-depth research specialist coverage.
+- Documented the canonical `main` branch governance policy and release qualification requirements.
+- Corrected the current CI workflow expression syntax before integrating the platform into `main`.
+
 ### Release status
 
-Alpha.3 is an unreleased development snapshot. Public CLI, HTTP, MCP, tool, provider, storage and native protocol compatibility remain provisional.
+Alpha.4 is an unreleased development snapshot. Public CLI, HTTP, MCP, tool, provider, storage and native protocol compatibility remain provisional.
 
 ## [0.3.0-alpha.2]
 

@@ -1,3 +1,9 @@
+> **Historical snapshot — superseded by the current alpha.4 implementation.**
+>
+> This document records an earlier codebase audit and should be used for historical context only. It was not continuously maintained as the multi-agent platform evolved. In particular, feature statuses, line counts, security findings and architecture gaps in this snapshot may no longer describe the current repository.
+>
+> Current implementation status is defined by `README.md`, `docs/ARCHITECTURE.md`, `docs/MULTI_AGENT_PLATFORM.md`, `docs/ORCHESTRATION.md`, the test suite and the authoritative GitHub CI/Security workflows.
+>
 # Codebase Reality Audit — NexusAgent
 
 > **Date:** June 8, 2026
