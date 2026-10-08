@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import logging
 import socket
 import subprocess
@@ -28,8 +29,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from nexus_agent import __app_name__, __version__
+from nexus_agent.agents.web_routes import register_agent_routes
+from nexus_agent.audit.web_routes import register_audit_routes
+from nexus_agent.mcp.web_routes import register_mcp_routes
+from nexus_agent.mcp.client import load_configured_servers
+from nexus_agent.skills.web_routes import register_skill_routes
+from nexus_agent.auth.web_routes import register_auth_routes
+from nexus_agent.research.web_routes import register_research_source_routes
+from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
-from nexus_agent.core.config import load_config
+from nexus_agent.core.config import load_config, save_user_config, _strip_secrets
 from nexus_agent.core.debate import DebateEngine
 from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.nla_telemetry import NLATelemetry
@@ -42,6 +51,7 @@ from nexus_agent.llm.runtime_manager import RuntimeManager
 from nexus_agent.memory.memory_manager import MemoryManager
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.session.manager import SessionManager
+from nexus_agent.storage.layout import StorageLayout
 from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
 from nexus_agent.tools.file_ops import (
     ListDirectoryTool,
@@ -55,6 +65,7 @@ from nexus_agent.tools.shell import ShellTool
 from nexus_agent.tools.todowrite import TodoWriteTool
 from nexus_agent.tools.web_search import WebSearchTool
 from nexus_agent.tools.webfetch import WebFetchTool
+from nexus_agent.team.web_routes import register_team_routes
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +96,8 @@ state_manager = StateManager({
     "permission_manager": None,
     "active_session_id": None,
     "engine": None,
+    "web_agent_threads": {},
+    "web_agent_lock": threading.RLock(),
 })
 
 
@@ -102,6 +115,16 @@ app = FastAPI(
     description="Offline-First LLM Coding Agent Web Interface",
     version=__version__,
 )
+
+# Unified multi-agent team API shares the existing provider, workspace and permission state.
+register_team_routes(app, state_manager)
+register_agent_routes(app, state_manager)
+register_audit_routes(app, state_manager)
+register_mcp_routes(app, state_manager)
+register_skill_routes(app, state_manager)
+register_auth_routes(app, state_manager)
+register_research_source_routes(app, state_manager)
+register_memory_routes(app, state_manager)
 
 # Rate limiting store
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
@@ -178,6 +201,37 @@ class ConfigUpdateRequest(BaseModel):
 
 class SessionCreateRequest(BaseModel):
     title: Annotated[str | None, Field(max_length=256)] = None
+
+
+
+def _merge_user_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
+    allowed_sections = {
+        "agent", "research", "team", "local_model", "permissions", "gui", "session",
+        "skills", "mcp", "cli", "memory",
+    }
+    if section not in allowed_sections:
+        raise HTTPException(status_code=400, detail="Configuration section is not editable from the web UI.")
+    clean = _strip_secrets(values)
+    if section in {"agent", "research", "team", "local_model", "permissions", "gui", "session", "skills", "mcp", "cli", "memory"}:
+        save_user_config({section: clean})
+        cfg = state_manager.get("config")
+        cfg[section] = {**cfg.get(section, {}), **clean}
+        state_manager.set("config", cfg)
+        return cfg[section]
+    raise HTTPException(status_code=400, detail="Unsupported configuration section.")
+
+
+@app.get("/api/config/full")
+async def get_full_config():
+    """Return effective configuration with credentials and private keys stripped."""
+    return _strip_secrets(state_manager.get("config") or {})
+
+
+@app.put("/api/config/{section}")
+async def update_config_section(section: str, req: GeneralConfigUpdateRequest, request: Request):
+    if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Configuration mutation is restricted to local clients.")
+    return {"success": True, "section": section, "config": _merge_user_section(section, req.values)}
 
 
 # --- API ENDPOINTS ---
@@ -297,6 +351,17 @@ async def update_config(req: ConfigUpdateRequest):
     if req.guardrails is not None:
         state_manager.get("config").setdefault("local_model", {})["guardrails"] = req.guardrails
     return {"success": True, "config": state_manager.get("config")}
+
+
+@app.get("/api/activity/files")
+async def file_activity(limit: int = 250):
+    from nexus_agent.storage.journal import FileJournal
+    workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
+    journal = FileJournal(StorageLayout(workspace).workspace_runtime / "file-journal.db")
+    try:
+        return {"changes": journal.recent(limit)}
+    finally:
+        journal.close()
 
 
 @app.get("/api/sessions")
@@ -438,7 +503,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         while True:
             # Wait for user input prompt
-            data_str = await websocket.receive_text(max_size=65536)
+            data_str = await websocket.receive_text()
+            if len(data_str) > 65536:
+                await websocket.send_json({"type": "error", "content": "Message exceeds 64 KiB limit."})
+                continue
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
             mode_str = data.get("mode", "auto").lower()
@@ -446,10 +514,22 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             if not prompt:
                 continue
 
+            with state_manager.get("web_agent_lock"):
+                active_threads = state_manager.get("web_agent_threads")
+                running_thread = active_threads.get(session_id)
+                if running_thread is not None and running_thread.is_alive():
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": "A response is already running for this session. Wait for completion before sending another prompt.",
+                    })
+                    continue
+                active_threads[session_id] = None
+
             # Auto-title session if first message
             sm = state_manager.get("session_manager")
             if sm:
                 sm.auto_title(prompt)
+                sm.save_message("user", content=prompt, type="user")
 
             # Check model loading
             engine = state_manager.get("engine")
@@ -463,24 +543,17 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 continue
 
 
-            # Prepare active tools
-            tools = [
-                ReadFileTool(state_manager.get("workspace")),
-                WriteFileTool(state_manager.get("workspace")),
-                SearchFilesTool(state_manager.get("workspace")),
-                ListDirectoryTool(state_manager.get("workspace")),
-                ShellTool(state_manager.get("workspace")),
-                CodeEditTool(state_manager.get("workspace")),
-                InsertLinesTool(state_manager.get("workspace")),
-                GitTool(state_manager.get("workspace")),
-                WebSearchTool(),
-                WebFetchTool(),
-                TodoWriteTool(persist_path=Path(state_manager.get("workspace")) / ".nexus" / "todos.json"),
-            ]
-            memory_tool = MemoryTool()
-            if state_manager.get("memory_manager"):
-                memory_tool.set_memory(state_manager.get("memory_manager"))
-            tools.append(memory_tool)
+            # Prepare the same comprehensive workspace tool catalog used by
+            # the CLI/TUI and multi-agent runtime, plus configured MCP proxies.
+            from nexus_agent.team.runtime import build_workspace_tools
+            config = state_manager.get("config") or {}
+            mcp_clients, mcp_tools = load_configured_servers(config)
+            tools = build_workspace_tools(
+                Path(state_manager.get("workspace")),
+                memory_manager=state_manager.get("memory_manager"),
+                provider=engine,
+                mcp_tools=mcp_tools,
+            )
 
             # Build memory prompt context
             memory_context = ""
@@ -509,24 +582,46 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             # Run the agent in a background thread to prevent blocking the async loop
             # and yield events back to the websocket client.
-            def run_agent_loop(loop, ws, agent_prompt):
+            def run_agent_loop(loop, ws, agent_prompt, prompt_mcp_clients):
+                content_parts: list[str] = []
                 try:
                     for event in agent.run(agent_prompt):
-                        # Dispatch events back to async websocket thread safely
+                        if event.type.value in {"content", "content_chunk"}:
+                            content_parts.append(str(event.data or ""))
                         asyncio.run_coroutine_threadsafe(
                             send_agent_event(ws, event), loop
+                        )
+                    response_text = "".join(content_parts).strip()
+                    session_manager = state_manager.get("session_manager")
+                    if response_text and session_manager:
+                        session_manager.save_message(
+                            "assistant",
+                            content=response_text,
+                            type="assistant",
                         )
                 except (RuntimeError, ValueError, OSError, LookupError) as ex:
                     logger.exception("Agent thread execution failure")
                     asyncio.run_coroutine_threadsafe(
                         ws.send_json({"type": "error", "content": f"Agent error: {ex}"}), loop
                     )
+                finally:
+                    for mcp_client in prompt_mcp_clients:
+                        try:
+                            mcp_client.close()
+                        except (OSError, RuntimeError):
+                            logger.debug("Failed to close web chat MCP client", exc_info=True)
+                    with state_manager.get("web_agent_lock"):
+                        state_manager.get("web_agent_threads").pop(session_id, None)
 
             loop = asyncio.get_running_loop()
             thread = threading.Thread(
                 target=run_agent_loop,
-                args=(loop, websocket, prompt)
+                args=(loop, websocket, prompt, mcp_clients),
+                name=f"nexus-web-agent-{session_id}",
+                daemon=True,
             )
+            with state_manager.get("web_agent_lock"):
+                state_manager.get("web_agent_threads")[session_id] = thread
 
             def _log_thread_error(future):
                 exc = future.exception()
@@ -548,6 +643,8 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
     """Helper to translate AgentEvent into WebSocket JSON messages."""
     try:
         match event.type:
+            case "state_change":
+                await ws.send_json({"type": "state_change", "data": event.data})
             case "thinking":
                 await ws.send_json({"type": "thinking", "content": event.data})
             case "content":
@@ -570,11 +667,6 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
             case "error":
                 await ws.send_json({"type": "error", "content": str(event.data)})
             case "done":
-                # Save to sessions
-                sm = state_manager.get("session_manager")
-                if sm:
-                    # Capture history
-                    sm.save_message("user", content=event.data.get("prompt", ""))
                 await ws.send_json({
                     "type": "done",
                     "iterations": event.data.get("iterations", 0),

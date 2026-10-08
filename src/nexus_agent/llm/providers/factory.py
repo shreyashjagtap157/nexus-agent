@@ -5,10 +5,12 @@ from __future__ import annotations
 import hashlib
 import importlib
 import logging
+import os
 import threading
 from collections.abc import Iterator
 from typing import Any
 
+from nexus_agent.auth import AuthStore
 from nexus_agent.llm.base import (
     LLMProvider,
     LLMResponse,
@@ -16,6 +18,8 @@ from nexus_agent.llm.base import (
     StreamChunk,
     ToolDefinition,
 )
+
+from nexus_agent.llm.providers.catalog import get as get_provider_descriptor
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +35,8 @@ _PROVIDER_MAP: dict[str, tuple[str, str]] = {
     "deepseek": ("nexus_agent.llm.providers.deepseek_provider", "DeepSeekProvider"),
     "bedrock": ("nexus_agent.llm.providers.aws_bedrock_provider", "AWSBedrockProvider"),
     "custom": ("nexus_agent.llm.providers.custom_openai_provider", "CustomOpenAIProvider"),
+    "nvidia_nim": ("nexus_agent.llm.providers.nvidia_nim_provider", "NvidiaNIMProvider"),
+    "litellm": ("nexus_agent.llm.providers.litellm_provider", "LiteLLMProvider"),
 }
 
 
@@ -190,9 +196,17 @@ class ProviderFactory:
         name = provider_name.lower().strip()
         logger.info(f"Creating LLM provider: {name}")
 
-        provider_config = config.get("providers", {}).get(name, {})
+        provider_config = dict(config.get("providers", {}).get(name, {}) or {})
+        descriptor = get_provider_descriptor(name)
+        auth_key = AuthStore().get(name)
+        env_key = descriptor.env_key if descriptor is not None else None
+        env_value = os.environ.get(env_key) if env_key else None
+        if not provider_config.get("api_key"):
+            provider_config["api_key"] = auth_key or env_value or provider_config.get("api_key")
+        if name not in _PROVIDER_MAP and descriptor is not None and descriptor.protocol == "openai_compatible":
+            provider_config.setdefault("api_url", descriptor.base_url or "")
+            provider_config.setdefault("model", "custom-model")
         if model_path_or_name:
-            provider_config = dict(provider_config)
             provider_config["model"] = model_path_or_name
 
         # Build a cache key — local providers may have model-specific state
@@ -210,6 +224,9 @@ class ProviderFactory:
             from nexus_agent.llm.runtime_manager import RuntimeManager
             rm = RuntimeManager(config)
             instance = rm.select_engine(model_path_or_name)
+        elif name not in _PROVIDER_MAP and descriptor is not None and descriptor.protocol == "openai_compatible":
+            from nexus_agent.llm.providers.custom_openai_provider import CustomOpenAIProvider
+            instance = CustomOpenAIProvider(provider_config)
         else:
             provider_cls = ProviderFactory._load_provider_module(name)
             instance = provider_cls(provider_config)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import threading
 import uuid
@@ -30,6 +31,10 @@ class MCPProxyTool(Tool):
     @property
     def name(self) -> str:
         return self._name
+    @property
+    def is_mcp(self) -> bool:
+        return True
+
 
     @property
     def description(self) -> str:
@@ -53,6 +58,46 @@ class MCPProxyTool(Tool):
         return self._client.call_tool(self._name, kwargs)
 
 
+def load_configured_servers(config: dict[str, Any]) -> tuple[list[MCPClient], list[Tool]]:
+    """Start configured MCP servers and return retained clients plus proxy tools."""
+    clients: list[MCPClient] = []
+    tools: list[Tool] = []
+    servers = config.get("mcp", {}).get("servers", [])
+    if not isinstance(servers, list):
+        return clients, tools
+    for item in servers:
+        if not isinstance(item, dict):
+            continue
+        if item.get("enabled", True) is False:
+            continue
+        command = item.get("command")
+        if not command:
+            continue
+        try:
+            command_list = [str(command)] + [str(arg) for arg in item.get("args", [])]
+            inherited = {}
+            passthrough = item.get("env_passthrough", [])
+            if isinstance(passthrough, list):
+                for env_name in passthrough:
+                    name = str(env_name).strip()
+                    if name and name in os.environ:
+                        inherited[name] = os.environ[name]
+            configured_env = item.get("env") if isinstance(item.get("env"), dict) else {}
+            merged_env = {str(k): str(v) for k, v in configured_env.items()}
+            merged_env.update(inherited)
+            client = MCPClient(
+                command=command_list,
+                env=merged_env,
+                allowed_secret_env=list(inherited),
+            )
+            if client.start(startup_timeout=float(item.get("startup_timeout", 15))):
+                clients.append(client)
+                tools.extend(client.discovered_tools)
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return clients, tools
+
+
 class MCPClient:
     """Model Context Protocol (MCP) Client.
 
@@ -60,7 +105,7 @@ class MCPClient:
     tools dynamically to expand the agent's capabilities.
     """
 
-    def __init__(self, command: list[str], env: dict[str, str] | None = None):
+    def __init__(self, command: list[str], env: dict[str, str] | None = None, allowed_secret_env: list[str] | None = None):
         """Initialize MCP client.
 
         Args:
@@ -98,9 +143,19 @@ class MCPClient:
             "TEMP", "TMP", "USERNAME", "USERPROFILE", "LOGNAME", "PWD"
         }
         sanitized_env = {}
+        allowed_secret_env = {
+            str(name).strip()
+            for name in (allowed_secret_env or [])
+            if str(name).strip()
+        }
         if env:
             for k, v in env.items():
-                if k.upper() in allowed_env_keys or k.upper().startswith("NEXUS_") or k.upper().startswith("MCP_"):
+                if (
+                    k.upper() in allowed_env_keys
+                    or k.upper().startswith("NEXUS_")
+                    or k.upper().startswith("MCP_")
+                    or k in allowed_secret_env
+                ):
                     sanitized_env[k] = v
         self.env = sanitized_env or None
 

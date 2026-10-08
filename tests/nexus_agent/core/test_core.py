@@ -29,9 +29,12 @@ class TestAgentMode:
     def test_review_mode(self):
         assert AgentMode.REVIEW.value == "review"
 
+    def test_research_mode(self):
+        assert AgentMode.RESEARCH.value == "research"
+
     def test_all_modes(self):
         modes = [m.value for m in AgentMode]
-        assert set(modes) == {"auto", "plan", "build", "review"}
+        assert set(modes) == {"auto", "plan", "build", "review", "research"}
 
 
 class TestAgentState:
@@ -159,6 +162,22 @@ class TestAgentLoop:
         assert len(events) > 0
         event_types = [e.type for e in events]
         assert AgentEventType.THINKING in event_types or AgentEventType.DONE in event_types
+
+    def test_auto_research_promotion_is_request_scoped(self, agent, monkeypatch):
+        monkeypatch.setattr(agent, "_ensure_research_tools", lambda: None)
+        events = list(agent.run("Research the official sources and provide citations"))
+        assert any(
+            event.type == AgentEventType.STATE_CHANGE
+            and isinstance(event.data, dict)
+            and event.data.get("mode") == "research"
+            for event in events
+        )
+        assert agent.mode == AgentMode.AUTO
+
+    def test_non_research_auto_prompt_stays_auto(self, agent, monkeypatch):
+        monkeypatch.setattr(agent, "_ensure_research_tools", lambda: None)
+        list(agent.run("Refactor this function"))
+        assert agent.mode == AgentMode.AUTO
 
     def test_agent_stats(self, agent):
         stats = agent.get_stats()

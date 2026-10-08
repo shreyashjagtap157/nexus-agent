@@ -1,0 +1,179 @@
+"""Operational research-depth policies for evidence-first teams.
+
+Depth changes work performed per coordination turn, not uncontrolled coordination turns.
+This keeps the deployed team bounded to at most ten post-deployment research turns while
+increasing evidence breadth, independent review and formal-analysis effort at deeper levels.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+RESEARCH_DEPTHS: tuple[str, ...] = (
+    "glance",
+    "surface",
+    "shallow",
+    "basic",
+    "preliminary",
+    "exploratory",
+    "focused",
+    "detailed",
+    "deep",
+    "very_deep",
+    "comprehensive",
+    "exhaustive",
+    "atomic",
+    "molecular",
+    "cellular",
+    "planetary",
+    "stellar",
+    "galactic",
+    "cosmic",
+    "universal",
+    "maximal",
+)
+
+# Values are intentionally monotone. Deeper levels buy more evidence work inside
+# bounded coordination turns rather than producing an unbounded planning loop.
+_RESEARCH_POLICY: tuple[dict[str, Any], ...] = (
+    {
+        "name": "glance", "label": "Glance", "role_floor": 2,
+        "coordination_turns": 5, "query_rounds": 1, "sources_per_round": 2,
+        "verification_passes": 1, "contradiction_passes": 0, "formal_passes": 0,
+        "review_passes": 1, "min_independent_sources": 2,
+    },
+    {
+        "name": "surface", "label": "Surface", "role_floor": 2,
+        "coordination_turns": 5, "query_rounds": 1, "sources_per_round": 3,
+        "verification_passes": 1, "contradiction_passes": 1, "formal_passes": 0,
+        "review_passes": 1, "min_independent_sources": 3,
+    },
+    {
+        "name": "shallow", "label": "Shallow", "role_floor": 3,
+        "coordination_turns": 5, "query_rounds": 2, "sources_per_round": 3,
+        "verification_passes": 1, "contradiction_passes": 1, "formal_passes": 0,
+        "review_passes": 1, "min_independent_sources": 3,
+    },
+    {
+        "name": "basic", "label": "Basic", "role_floor": 3,
+        "coordination_turns": 5, "query_rounds": 2, "sources_per_round": 4,
+        "verification_passes": 1, "contradiction_passes": 1, "formal_passes": 1,
+        "review_passes": 2, "min_independent_sources": 4,
+    },
+    {
+        "name": "preliminary", "label": "Preliminary", "role_floor": 4,
+        "coordination_turns": 5, "query_rounds": 2, "sources_per_round": 4,
+        "verification_passes": 2, "contradiction_passes": 1, "formal_passes": 1,
+        "review_passes": 2, "min_independent_sources": 4,
+    },
+    {
+        "name": "exploratory", "label": "Exploratory", "role_floor": 4,
+        "coordination_turns": 6, "query_rounds": 3, "sources_per_round": 4,
+        "verification_passes": 2, "contradiction_passes": 2, "formal_passes": 1,
+        "review_passes": 2, "min_independent_sources": 5,
+    },
+    {
+        "name": "focused", "label": "Focused", "role_floor": 5,
+        "coordination_turns": 6, "query_rounds": 3, "sources_per_round": 5,
+        "verification_passes": 2, "contradiction_passes": 2, "formal_passes": 1,
+        "review_passes": 2, "min_independent_sources": 5,
+    },
+    {
+        "name": "detailed", "label": "Detailed", "role_floor": 6,
+        "coordination_turns": 6, "query_rounds": 3, "sources_per_round": 5,
+        "verification_passes": 2, "contradiction_passes": 2, "formal_passes": 2,
+        "review_passes": 3, "min_independent_sources": 6,
+    },
+    {
+        "name": "deep", "label": "Deep", "role_floor": 7,
+        "coordination_turns": 7, "query_rounds": 4, "sources_per_round": 6,
+        "verification_passes": 3, "contradiction_passes": 2, "formal_passes": 2,
+        "review_passes": 3, "min_independent_sources": 7,
+    },
+    {
+        "name": "very_deep", "label": "Very Deep", "role_floor": 8,
+        "coordination_turns": 7, "query_rounds": 4, "sources_per_round": 7,
+        "verification_passes": 3, "contradiction_passes": 3, "formal_passes": 2,
+        "review_passes": 3, "min_independent_sources": 8,
+    },
+    {
+        "name": "comprehensive", "label": "Comprehensive", "role_floor": 10,
+        "coordination_turns": 8, "query_rounds": 5, "sources_per_round": 8,
+        "verification_passes": 3, "contradiction_passes": 3, "formal_passes": 3,
+        "review_passes": 4, "min_independent_sources": 10,
+    },
+    {
+        "name": "exhaustive", "label": "Exhaustive", "role_floor": 12,
+        "coordination_turns": 8, "query_rounds": 6, "sources_per_round": 9,
+        "verification_passes": 4, "contradiction_passes": 3, "formal_passes": 3,
+        "review_passes": 4, "min_independent_sources": 12,
+    },
+    {
+        "name": "atomic", "label": "Atomic", "role_floor": 14,
+        "coordination_turns": 9, "query_rounds": 7, "sources_per_round": 10,
+        "verification_passes": 4, "contradiction_passes": 4, "formal_passes": 3,
+        "review_passes": 5, "min_independent_sources": 14,
+    },
+    {
+        "name": "molecular", "label": "Molecular", "role_floor": 16,
+        "coordination_turns": 9, "query_rounds": 8, "sources_per_round": 11,
+        "verification_passes": 4, "contradiction_passes": 4, "formal_passes": 4,
+        "review_passes": 5, "min_independent_sources": 16,
+    },
+    {
+        "name": "cellular", "label": "Cellular", "role_floor": 18,
+        "coordination_turns": 9, "query_rounds": 9, "sources_per_round": 12,
+        "verification_passes": 5, "contradiction_passes": 4, "formal_passes": 4,
+        "review_passes": 6, "min_independent_sources": 18,
+    },
+    {
+        "name": "planetary", "label": "Planetary", "role_floor": 20,
+        "coordination_turns": 10, "query_rounds": 10, "sources_per_round": 13,
+        "verification_passes": 5, "contradiction_passes": 5, "formal_passes": 4,
+        "review_passes": 6, "min_independent_sources": 20,
+    },
+    {
+        "name": "stellar", "label": "Stellar", "role_floor": 22,
+        "coordination_turns": 10, "query_rounds": 10, "sources_per_round": 15,
+        "verification_passes": 5, "contradiction_passes": 5, "formal_passes": 5,
+        "review_passes": 7, "min_independent_sources": 22,
+    },
+    {
+        "name": "galactic", "label": "Galactic", "role_floor": 24,
+        "coordination_turns": 10, "query_rounds": 10, "sources_per_round": 17,
+        "verification_passes": 6, "contradiction_passes": 6, "formal_passes": 5,
+        "review_passes": 7, "min_independent_sources": 24,
+    },
+    {
+        "name": "cosmic", "label": "Cosmic", "role_floor": 28,
+        "coordination_turns": 10, "query_rounds": 10, "sources_per_round": 20,
+        "verification_passes": 6, "contradiction_passes": 6, "formal_passes": 6,
+        "review_passes": 8, "min_independent_sources": 28,
+    },
+    {
+        "name": "universal", "label": "Universal", "role_floor": 32,
+        "coordination_turns": 10, "query_rounds": 10, "sources_per_round": 24,
+        "verification_passes": 7, "contradiction_passes": 7, "formal_passes": 7,
+        "review_passes": 9, "min_independent_sources": 32,
+    },
+    {
+        "name": "maximal", "label": "Maximal", "role_floor": 40,
+        "coordination_turns": 10, "query_rounds": 10, "sources_per_round": 30,
+        "verification_passes": 8, "contradiction_passes": 8, "formal_passes": 8,
+        "review_passes": 10, "min_independent_sources": 40,
+    },
+)
+
+
+def policy(depth: str) -> dict[str, Any]:
+    normalized = depth.strip().lower().replace("-", "_").replace(" ", "_")
+    for item in _RESEARCH_POLICY:
+        if item["name"] == normalized:
+            return dict(item)
+    raise ValueError(
+        f"Unknown research depth {depth!r}. "
+        f"Choose one of: {', '.join(RESEARCH_DEPTHS)}"
+    )
+
+
+def all_policies() -> list[dict[str, Any]]:
+    return [dict(item) for item in _RESEARCH_POLICY]

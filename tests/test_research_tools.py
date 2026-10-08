@@ -1,0 +1,174 @@
+from pathlib import Path
+import hashlib
+
+from nexus_agent.research.tools import ResearchRecordSourceTool
+from nexus_agent.team.runtime import TeamRuntime
+from nexus_agent.team.models import AgentProfile, TeamConfig, TeamMode
+from nexus_agent.llm.base import LLMProvider, ProviderCapabilities
+
+
+class FakeProvider(LLMProvider):
+    @property
+    def name(self) -> str:
+        return "fake"
+
+    @property
+    def model_name(self) -> str:
+        return "fake"
+
+    def get_capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities(
+            supports_tool_calling=False,
+            supports_streaming=False,
+            supports_system_message=True,
+            max_context_length=4096,
+            max_output_tokens=1024,
+        )
+
+    def chat_completion(self, *args, **kwargs):
+        raise AssertionError("provider is not used by this test")
+
+    def chat_completion_stream(self, *args, **kwargs):
+        yield from ()
+
+    def get_available_models(self):
+        return []
+
+
+def test_research_record_source_fetches_authoritative_content(tmp_path: Path):
+    tool = ResearchRecordSourceTool(tmp_path / "research.db", "team-1", "researcher")
+    tool.fetcher.execute = lambda url: "authoritative snapshot"
+
+    result = tool.execute(
+        url="https://example.test/source",
+        title="Example Source",
+        content="fabricated content supplied by the worker",
+        provider="worker-supplied",
+    )
+
+    expected_hash = hashlib.sha256(b"authoritative snapshot").hexdigest()
+    assert result["content_hash"] == expected_hash
+
+    with tool.store._connect() as conn:
+        row = conn.execute(
+            "SELECT content,provider FROM research_sources WHERE source_id=?",
+            (result["source_id"],),
+        ).fetchone()
+    assert row["content"] == "authoritative snapshot"
+    assert row["provider"] == "worker-supplied"
+
+
+def test_user_only_research_does_not_expose_untrusted_source_recorder(tmp_path: Path):
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    from nexus_agent.team.store import TeamStore
+
+    store = TeamStore(tmp_path / "teams.db")
+    try:
+        profile = AgentProfile(
+            role_id="researcher",
+            name="Researcher",
+            profession="Researcher",
+            mission="Research",
+            instructions="Research",
+            tool_categories=["read", "research"],
+        )
+        tools = runtime._tools_for(
+            profile,
+            store,
+            "team-1",
+            TeamConfig(
+                mode=TeamMode.RESEARCH,
+                research_source_strategy="user_only",
+            ),
+        )
+        names = {getattr(tool, "name", "") for tool in tools}
+        assert "research_configured_source" in names
+        assert "research_record_source" not in names
+        assert not names.intersection({"web_search", "web_fetch", "webfetch", "browser"})
+    finally:
+        store.close()
+
+
+def test_worker_permission_lookup_uses_dynamically_injected_tools(tmp_path: Path):
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    from nexus_agent.team.store import TeamStore
+
+    store = TeamStore(tmp_path / "teams.db")
+    try:
+        profile = AgentProfile(
+            role_id="researcher",
+            name="Researcher",
+            profession="Researcher",
+            mission="Research",
+            instructions="Research",
+            tool_categories=["read", "research"],
+        )
+        tools = runtime._tools_for(
+            profile,
+            store,
+            "team-1",
+            TeamConfig(
+                mode=TeamMode.RESEARCH,
+                research_source_strategy="hybrid",
+                auto_approve_tools=False,
+            ),
+        )
+        call = type("ToolCall", (), {"name": "research_record_source"})()
+        assert runtime._permission(call, TeamConfig(mode=TeamMode.RESEARCH), profile, tools) is True
+    finally:
+        store.close()
+
+
+def test_interactive_user_only_policy_excludes_arbitrary_source_fetch(tmp_path: Path):
+    from nexus_agent.team.runtime import build_workspace_tools
+
+    tools = build_workspace_tools(
+        tmp_path,
+        research=True,
+        research_source_strategy="user_only",
+    )
+    names = {getattr(tool, "name", "") for tool in tools}
+    assert "research_configured_source" in names
+    assert "research_record_source" not in names
+    assert not names.intersection({"web_search", "web_fetch", "webfetch", "browser"})
+
+
+def test_research_ledger_write_is_denied_to_non_research_workers(tmp_path: Path):
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path)
+    from nexus_agent.team.store import TeamStore
+
+    store = TeamStore(tmp_path / "teams.db")
+    try:
+        profile = AgentProfile(
+            role_id="reviewer",
+            name="Reviewer",
+            profession="Reviewer",
+            mission="Review",
+            instructions="Review",
+            tool_categories=["read"],
+            write_access=False,
+        )
+        tool = ResearchRecordSourceTool(tmp_path / "research.db", "team-1", profile.role_id)
+        call = type("ToolCall", (), {"name": "research_record_source"})()
+        assert runtime._permission(
+            call,
+            TeamConfig(mode=TeamMode.REVIEW),
+            profile,
+            [tool],
+        ) is False
+    finally:
+        store.close()
+
+
+def test_autonomous_source_capture_rejects_private_targets(tmp_path: Path):
+    tool = ResearchRecordSourceTool(tmp_path / "research.db", "team-1", "researcher")
+    for url in (
+        "http://127.0.0.1:8080/admin",
+        "http://169.254.169.254/latest/meta-data",
+        "http://localhost:8080/",
+        "https://[::1]/",
+        "https://user:password@example.com/private",
+    ):
+        result = tool.execute(url=url)
+        assert isinstance(result, str)
+        assert result.startswith("Error:")

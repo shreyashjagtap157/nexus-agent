@@ -6,9 +6,9 @@
 agent:
   # Name shown in UI
   name: "NexusAgent"
-  version: "0.1.0"
+  version: "0.3.0-alpha.4"
 
-  # Default operating mode: plan, build, auto
+  # Default operating mode: plan, build, auto, research
   default_mode: "auto"
 
   # Maximum iterations in agentic loop before asking for confirmation
@@ -31,6 +31,19 @@ agent:
 
   # Active Hermes coding goal/objective
   goal: ""
+
+
+research:
+  # Default research mode policy for interactive research prompts.
+  depth: "detailed"
+  # Collect sources until the configured stopping criterion is reached.
+  collection: "until_saturation"
+  # user_only, hybrid, or autonomous.
+  source_strategy: "hybrid"
+  # Maximum wall-clock budget for research teams, in minutes.
+  max_minutes: 10080
+  # Consecutive low-yield rounds tolerated before saturation.
+  idle_rounds: 2
 
 
 local_model:
@@ -266,6 +279,35 @@ providers:
     model: ""
     api_key: ""
 
+  nvidia_nim:
+    api_url: "https://integrate.api.nvidia.com/v1/chat/completions"
+    model: "nvidia/nemotron-3.5-lightning-30b-a3b"
+    api_key: ""
+    max_tokens: 8192
+    context_size: 1000000
+    reasoning_budget: 16384
+    top_p: 0.95
+    timeout_seconds: 120
+    pending_poll_seconds: 1.0
+    pending_max_wait_seconds: 300
+
+# Multi-agent team defaults. Role routing is intentionally opt-in.
+team:
+  max_agents: 6
+  parallelism: 4
+  max_iterations_per_agent: 30
+  output_mode: "chat"
+  output_format: "markdown"
+  require_reviewer: true
+  auto_synthesize: true
+  # To route a saved/generated role to NVIDIA NIM, add for example:
+  # roles:
+  #   verifier:
+  #     provider: "nvidia_nim"
+  #     model: "nvidia/nemotron-3.5-lightning-30b-a3b"
+  #     fallbacks: []
+
+
 memory:
   # Enable persistent memory across sessions
   enabled: true
@@ -351,8 +393,16 @@ skills:
   builtin_enabled: true
 
 mcp:
-  # MCP servers to connect to
+  # MCP servers to connect to. Secret variables should be named explicitly
+  # under env_passthrough rather than stored as plaintext in this file.
   servers: []
+  # Example:
+  # - name: github
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-github"]
+  #   env_passthrough: ["GITHUB_TOKEN"]
+  #   startup_timeout: 20
+  #   enabled: true
 
   # Expose agent as MCP server
   serve:

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — Activity Console</title>
+<style>
+:root{color-scheme:dark;--bg:#050a10;--panel:#0c1521;--line:#20324b;--text:#e9f1fb;--muted:#8da0b8;--accent:#7dd3fc;--good:#86efac;--bad:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#19314b 0,#050a10 50%,#02050a 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#07101bdd;backdrop-filter:blur(10px);z-index:2}h1{margin:0;font-size:18px}.sub{font-size:11px;color:var(--muted)}
+a,.btn{color:var(--text)}.btn{border:1px solid var(--line);background:#101b2a;padding:8px 11px;border-radius:8px;text-decoration:none;cursor:pointer}
+main{padding:12px}.panel{background:rgba(12,21,33,.93);border:1px solid var(--line);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.body{padding:12px}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px}.controls input{min-width:0}.controls input,.controls select{width:100%;background:#08111c;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
+.status{display:flex;gap:8px;align-items:center;margin:10px 0;color:var(--muted);font-size:11px}.ok{color:var(--good)}.bad{color:var(--bad)}
+table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #17253a;text-align:left;vertical-align:top;font-size:11px}th{font-size:9px;color:var(--muted);text-transform:uppercase}.mono{font:10px ui-monospace,SFMono-Regular,Consolas,monospace}.payload{white-space:pre-wrap;word-break:break-word;max-width:650px}
+@media(max-width:900px){.controls{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><h1>NexusAgent / Activity Console</h1><div class="sub">Unified agent/team audit stream with tamper-evident chain verification.</div></div><div><a class="btn" href="/team.html">Teams</a> <a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/mcp.html">MCP</a> <a class="btn" href="/">Workspace</a></div></header>
+<main><section class="panel"><h2>Audit Stream</h2><div class="body">
+<div class="controls">
+<input id="run" placeholder="Run/session/team ID (optional)">
+<input id="actor" placeholder="Actor contains…">
+<input id="type" placeholder="Event type contains…">
+<button class="btn" id="verify">Verify chain</button>
+<button class="btn" id="refresh">Refresh</button>
+</div>
+<div id="status" class="status">Loading…</div>
+<div style="overflow:auto"><table><thead><tr><th>Time</th><th>Scope</th><th>Run</th><th>Actor</th><th>Type</th><th>Payload</th><th>Hash</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div></section></main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+async function load(){
+ const run=$("run").value.trim(), r=await fetch("/api/audit/records?limit=5000"+(run?"&run_id="+encodeURIComponent(run):""));const d=await r.json();if(!r.ok){$("status").textContent="Audit API unavailable";return}
+ const actor=$("actor").value.trim().toLowerCase(),type=$("type").value.trim().toLowerCase();
+ const rows=(d.records||[]).filter(x=>(!actor||String(x.actor).toLowerCase().includes(actor))&&(!type||String(x.event_type).toLowerCase().includes(type))).reverse();
+ $("rows").innerHTML=rows.map(x=>"<tr><td>"+esc(new Date(x.timestamp*1000).toLocaleString())+"</td><td>"+esc(x.scope)+"</td><td class='mono'>"+esc(x.run_id)+"</td><td>"+esc(x.actor)+"</td><td>"+esc(x.event_type)+"</td><td class='payload'>"+esc(JSON.stringify(x.payload,null,2))+"</td><td class='mono'>"+esc(String(x.record_hash).slice(0,20))+"…</td></tr>").join("")||"<tr><td colspan='7'>No records.</td></tr>";
+ $("status").textContent="Loaded "+rows.length+" records.";
+}
+$("verify").onclick=async()=>{const r=await fetch("/api/audit/verify");const d=await r.json();$("status").innerHTML=d.valid?"<span class='ok'>CHAIN VALID</span> • "+esc(d.records)+" records • "+esc(String(d.last_hash||"").slice(0,24))+"…":"<span class='bad'>CHAIN INVALID</span> • line "+esc(d.line)+" • "+esc(d.reason);};
+$("refresh").onclick=load;["run","actor","type"].forEach(id=>$(id).onkeydown=e=>{if(e.key==="Enter")load()});load();
+</script></body></html>

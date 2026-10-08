@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — Workflow Forge</title>
+<style>
+:root{color-scheme:dark;--bg:#050a10;--panel:#0c1521;--line:#20324b;--text:#e9f1fb;--muted:#8da0b8;--accent:#7dd3fc;--good:#86efac;--bad:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#19314b 0,#050a10 50%,#02050a 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#07101bdf;backdrop-filter:blur(10px);z-index:2}
+h1{margin:0;font-size:18px}.sub{color:var(--muted);font-size:11px}.btn{border:1px solid var(--line);background:#101b2a;color:var(--text);padding:8px 11px;border-radius:8px;text-decoration:none;cursor:pointer}
+main{display:grid;grid-template-columns:360px 1fr;gap:12px;padding:12px}.panel{background:rgba(12,21,33,.93);border:1px solid var(--line);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.body{padding:12px}
+.workflow{padding:10px;border-bottom:1px solid #17253a;cursor:pointer}.workflow:hover{background:#101a29}.workflow b{display:block}.workflow span{font-size:10px;color:var(--muted)}
+label{display:block;color:var(--muted);font-size:11px;margin:9px 0 4px}input,textarea,select{width:100%;padding:9px;background:#08111d;border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;margin-top:10px}.primary{flex:1;background:#0b3144;border-color:#2b7194}.danger{border-color:#6b2c31}.notice{margin-top:9px;color:var(--muted);font-size:11px}
+@media(max-width:850px){main{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><h1>NexusAgent / Workflow Forge</h1><div class="sub">Built-in orchestration policies plus user/workspace workflows.</div></div><div><a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/providers.html">Providers</a> <a class="btn" href="/mcp.html">MCP</a> <a class="btn" href="/">Workspace</a></div></header>
+<main>
+<section class="panel"><h2>Workflow Catalog</h2><div id="list"><div class="sub" style="padding:12px">Loading…</div></div></section>
+<section class="panel"><h2>Workflow Definition</h2><div class="body">
+<div class="grid"><div><label>ID</label><input id="id" placeholder="custom-research"></div><div><label>Name</label><input id="name" placeholder="Custom Research"></div></div>
+<label>Description</label><textarea id="description" placeholder="What this orchestration is designed to accomplish."></textarea>
+<div class="grid"><div><label>Mode</label><select id="mode"><option>auto</option><option>code</option><option>research</option><option>review</option><option>analysis</option><option>plan</option><option>automation</option></select></div><div><label>Default agents</label><input id="agents" type="number" min="1" max="64" value="6"></div>
+<div><label>Parallelism</label><input id="parallelism" type="number" min="1" max="64" value="4"></div><div><label>Iterations / agent</label><input id="iterations" type="number" min="1" max="500" value="30"></div>
+<div><label>Effort</label><select id="effort"><option>low</option><option selected>medium</option><option>high</option><option>xhigh</option><option>max</option></select></div><div><label>Output mode</label><select id="output"><option>chat</option><option>file</option><option>both</option></select></div>
+<div><label>Output format</label><select id="format"><option selected>markdown</option><option>text</option><option>json</option></select></div><div><label>Research depth</label><select id="depth"></select></div></div>
+<div class="grid"><div><label>Collection</label><select id="collection"><option>bounded</option><option selected>until_saturation</option><option>continuous</option></select></div><div><label>Source strategy</label><select id="source_strategy"><option>user_only</option><option selected>hybrid</option><option>autonomous</option></select></div><div><label>Max research minutes</label><input id="research_max_minutes" type="number" min="1" max="525600" value="10080"></div><div><label>Idle rounds</label><input id="research_idle_rounds" type="number" min="1" max="20" value="2"></div><div><label>Scope</label><select id="scope"><option selected>workspace</option><option>user</option></select></div></div>
+<div class="grid">
+<label><input id="reviewer" type="checkbox" checked> Require reviewer</label>
+<label><input id="synthesis" type="checkbox" checked> Auto synthesize</label>
+<label><input id="parallel_writers" type="checkbox"> Allow parallel writers</label>
+</div>
+<label>Pinned agent IDs (comma-separated)</label><input id="agent_ids" placeholder="architect,reviewer">
+<label>Seed research URLs (one per line)</label><textarea id="sources" style="min-height:70px" placeholder="https://example.org/spec
+https://example.org/paper"></textarea>
+<label>Description tags (comma-separated)</label><input id="tags" placeholder="research,evidence,verification">
+<div class="actions"><button class="btn primary" id="save">Save Workflow</button><button class="btn danger" id="delete">Delete Custom</button></div>
+<div id="notice" class="notice"></div></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+let workflows=[];
+function notice(t,bad){$("notice").textContent=t;$("notice").style.color=bad?"#fca5a5":"#8da0b8"}
+function fill(w){$("id").value=w.id||"";$("name").value=w.name||"";$("description").value=w.description||"";$("mode").value=w.mode?.value||w.mode||"auto";$("agents").value=w.default_agents||4;$("parallelism").value=w.default_parallelism||4;$("iterations").value=w.default_iterations||30;$("effort").value=w.effort_level||"medium";$("output").value=w.output_mode||"chat";$("format").value=w.output_format||"markdown";$("depth").value=w.research_depth||"detailed";$("collection").value=w.research_collection||"until_saturation";$("source_strategy").value=w.research_source_strategy||"hybrid";$("research_max_minutes").value=w.research_max_minutes||10080;$("research_idle_rounds").value=w.research_idle_rounds||2;$("reviewer").checked=w.require_reviewer!==false;$("synthesis").checked=w.auto_synthesize!==false;$("parallel_writers").checked=!!w.allow_parallel_writers;$("agent_ids").value=(w.agent_ids||[]).join(",");$("sources").value=(w.research_source_urls||[]).join("\n");$("tags").value=(w.tags||[]).join(",")}
+async function load(){const r=await fetch("/api/workflows");const d=await r.json();workflows=d.workflows||[];$("list").innerHTML=workflows.map(w=>"<div class='workflow' data-id='"+esc(w.id)+"'><b>"+esc(w.name)+"</b><span>"+esc(w.description)+"</span><div class='sub'>mode="+esc(w.mode?.value||w.mode)+" • agents="+esc(w.default_agents)+" • source="+esc(w.source||"builtin")+"</div></div>").join("");document.querySelectorAll(".workflow").forEach(el=>el.onclick=()=>fill(workflows.find(x=>x.id===el.dataset.id)||{}))}
+$("save").onclick=async()=>{const id=$("id").value.trim();if(!id){notice("Workflow ID is required.",true);return}const payload={id:id,name:$("name").value.trim()||id,description:$("description").value.trim(),mode:$("mode").value,default_agents:+$("agents").value,default_parallelism:+$("parallelism").value,default_iterations:+$("iterations").value,effort_level:$("effort").value,require_reviewer:true,auto_synthesize:true,allow_parallel_writers:false,output_mode:$("output").value,output_format:$("format").value,research_depth:$("depth").value,research_collection:$("collection").value,research_source_strategy:$("source_strategy").value,research_max_minutes:+$("research_max_minutes").value,research_idle_rounds:+$("research_idle_rounds").value,require_reviewer:$("reviewer").checked,auto_synthesize:$("synthesis").checked,allow_parallel_writers:$("parallel_writers").checked,agent_ids:$("agent_ids").value.split(",").map(x=>x.trim()).filter(Boolean),research_source_urls:$("sources").value.split("\n").map(x=>x.trim()).filter(Boolean),tags:$("tags").value.split(",").map(x=>x.trim()).filter(Boolean),scope:$("scope").value,controls:{}};const r=await fetch("/api/workflows/"+encodeURIComponent(id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json();notice(r.ok?"Saved "+id:String(d.detail||"save failed"),!r.ok);if(r.ok)load()};
+$("delete").onclick=async()=>{const id=$("id").value.trim();if(!id){notice("Select or enter a workflow ID.",true);return}const scope=$("scope").value;const r=await fetch("/api/workflows/"+encodeURIComponent(id)+"?scope="+encodeURIComponent(scope),{method:"DELETE"});const d=await r.json();notice(r.ok?"Deleted "+id:String(d.detail||"delete failed"),!r.ok);if(r.ok)load()};
+(async()=>{const r=await fetch("/api/research-depths");const d=await r.json();$("depth").innerHTML=(d.depths||[]).map(x=>"<option value='"+esc(x.name)+"'>"+esc(x.label)+"</option>").join("");await load()})();
+</script></body></html>

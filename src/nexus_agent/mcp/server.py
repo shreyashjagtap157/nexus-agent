@@ -18,14 +18,14 @@ class MCPServer:
     Claude Desktop) over stdio streams using JSON-RPC 2.0.
     """
 
-    def __init__(self, tools: list[Any]):
-        """Initialize MCP server.
-
-        Args:
-            tools: List of Tool instances to expose.
-        """
+    def __init__(self, tools: list[Any], permission_callback=None, protocol_version: str = "2025-11-25"):
+        """Initialize MCP server with optional permission and legacy protocol settings."""
+        if protocol_version not in {"2024-10-07", "2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}:
+            raise ValueError(f"Unsupported legacy MCP protocol version: {protocol_version}")
+        self.protocol_version = protocol_version
         self.tools = tools
         self._tool_map = {t.name: t for t in tools}
+        self._permission_callback = permission_callback
 
         self._transport = StdioTransport(reader=sys.stdin, writer=sys.stdout)
         self._transport.register_handler(self._handle_request)
@@ -49,7 +49,7 @@ class MCPServer:
         try:
             if method == "initialize":
                 result = {
-                    "protocolVersion": "2024-11-05",
+                    "protocolVersion": self.protocol_version,
                     "capabilities": {
                         "tools": {},
                     },
@@ -78,6 +78,28 @@ class MCPServer:
                 tool = self._tool_map.get(tool_name)
                 if not tool:
                     self._send_error(req_id, -32601, f"Tool not found: {tool_name}")
+                    return
+
+                approved = False
+                if self._permission_callback is not None:
+                    approved = bool(
+                        self._permission_callback(
+                            tool.name,
+                            tool_args,
+                            tool.description,
+                        )
+                    )
+                else:
+                    level = str(getattr(tool, "permission_level", "ask")).lower()
+                    approved = level in {"read-only", "allow"}
+
+                if not approved:
+                    self._send_response(req_id, {
+                        "isError": True,
+                        "content": [
+                            {"type": "text", "text": f"Permission denied for tool: {tool_name}"}
+                        ]
+                    })
                     return
 
                 # Execute tool

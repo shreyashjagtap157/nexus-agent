@@ -1,0 +1,8 @@
+# NexusAgent ownership defaults.
+* @shreyashjagtap157
+
+# Release and security-sensitive infrastructure.
+.github/ @shreyashjagtap157
+scripts/ @shreyashjagtap157
+src/nexus_agent/auth/ @shreyashjagtap157
+src/nexus_agent/permissions/ @shreyashjagtap157

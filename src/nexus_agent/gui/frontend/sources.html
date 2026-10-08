@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — Research Sources</title>
+<style>
+:root{color-scheme:dark;--bg:#060a10;--p:#0d1522;--l:#22334c;--t:#e8eef8;--m:#8ea0b8;--a:#7dd3fc;--g:#86efac;--r:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#172941,#060a10 52%,#030509);color:var(--t);font:14px system-ui,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:13px 17px;border-bottom:1px solid var(--l);background:rgba(6,10,16,.94);position:sticky;top:0;z-index:2}h1{margin:0;font-size:18px}.sub{font-size:12px;color:var(--m)}.btn{border:1px solid var(--l);background:#101b2b;color:var(--t);padding:8px 11px;border-radius:8px;cursor:pointer;text-decoration:none}
+main{display:grid;grid-template-columns:360px minmax(0,1fr);gap:12px;padding:12px}.panel{background:rgba(13,21,34,.92);border:1px solid var(--l);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px;border-bottom:1px solid var(--l);font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.08em}.controls{padding:12px}.controls label{display:block;color:var(--m);font-size:11px;margin:9px 0 4px}.controls input,.controls textarea,.controls select{width:100%;background:#08111d;color:var(--t);border:1px solid var(--l);border-radius:8px;padding:9px;font:inherit}.controls textarea{min-height:90px}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.source{padding:11px;border-bottom:1px solid #18253a}.top{display:flex;justify-content:space-between;gap:8px}.name{font-weight:600}.meta{color:var(--m);font-size:11px}.chip{display:inline-block;border:1px solid var(--l);padding:2px 6px;border-radius:999px;font-size:9px;color:var(--m);margin:3px 3px 0 0}.on{color:var(--g)}.off{color:var(--r)}.actions{display:flex;gap:7px;margin-top:12px}.list{max-height:calc(100vh - 90px);overflow:auto}
+</style>
+</head>
+<body>
+<header><div><h1>NexusAgent / Research Sources</h1><div class="sub">Trusted source registry for user-only and hybrid research modes</div></div><div><a class="btn" href="/team.html">Team</a> <a class="btn" href="/">Workspace</a></div></header>
+<main>
+<section class="panel">
+<h2>Add Source</h2>
+<div class="controls">
+<label>Source ID</label><input id="id" placeholder="omni-spec">
+<label>URL</label><input id="url" placeholder="https://example.org/specification">
+<label>Name</label><input id="name" placeholder="Canonical specification">
+<div class="row"><div><label>Priority</label><input id="priority" type="number" min="0" max="1000" value="100"></div><div><label>Enabled</label><select id="enabled"><option value="true" selected>true</option><option value="false">false</option></select></div></div>
+<label>Tags</label><input id="tags" placeholder="primary, specification">
+<label>Notes</label><textarea id="notes" placeholder="Why this source is trusted and what it covers."></textarea>
+<div class="actions"><button class="btn" id="save" style="flex:1">Register Source</button><button class="btn" id="refresh">Refresh</button></div>
+<div id="notice" class="sub" style="margin-top:9px"></div>
+</div>
+</section>
+<section class="panel">
+<h2>Registered Sources</h2>
+<div id="list" class="list"><div class="sub" style="padding:20px">Loading…</div></div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function note(t,b){$("notice").textContent=t;$("notice").style.color=b?"#fca5a5":"#8ea0b8"}
+async function load(){
+ const r=await fetch("/api/research/sources");if(!r.ok){note("Unable to load sources.",true);return}
+ const d=await r.json();$("list").innerHTML="";
+ for(const s of d.sources){
+  const el=document.createElement("div");el.className="source";
+  el.innerHTML="<div class='top'><div><div class='name'>"+esc(s.name||s.id)+"</div><div class='meta'>"+esc(s.id)+" • priority "+esc(s.priority)+"</div></div><div class='meta "+(s.enabled?"on":"off")+"'>"+(s.enabled?"ENABLED":"DISABLED")+"</div></div><div class='meta' style='margin-top:5px;word-break:break-all'>"+esc(s.url)+"</div><div>"+s.tags.map(t=>"<span class='chip'>"+esc(t)+"</span>").join("")+"</div><div class='actions'><button class='btn toggle'>"+(s.enabled?"Disable":"Enable")+"</button><button class='btn del'>Delete</button></div>";
+  el.querySelector(".toggle").onclick=()=>toggle(s);
+  el.querySelector(".del").onclick=()=>remove(s.id);
+  $("list").appendChild(el);
+ }
+ if(!d.sources.length)$("list").innerHTML="<div class='sub' style='padding:20px'>No sources registered.</div>";
+}
+async function toggle(s){
+ const r=await fetch("/api/research/sources/"+encodeURIComponent(s.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({...s,enabled:!s.enabled})});
+ if(!r.ok){note("Failed to update source.",true);return}load()
+}
+async function remove(id){
+ if(!confirm("Delete source "+id+"?"))return;
+ await fetch("/api/research/sources/"+encodeURIComponent(id),{method:"DELETE"});load()
+}
+$("save").onclick=async()=>{
+ const payload={id:$("id").value.trim(),url:$("url").value.trim(),name:$("name").value.trim(),source_type:"web",priority:+$("priority").value,enabled:$("enabled").value==="true",tags:$("tags").value.split(",").map(x=>x.trim()).filter(Boolean),notes:$("notes").value.trim()};
+ if(!payload.id||!payload.url){note("Source ID and URL are required.",true);return}
+ const r=await fetch("/api/research/sources",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+ const d=await r.json();if(!r.ok){note(String(d.detail||"Registration failed"),true);return}
+ note("Registered "+payload.id);load()
+};
+$("refresh").onclick=load;load();
+</script>
+</body>
+</html>

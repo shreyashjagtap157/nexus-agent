@@ -1,0 +1,9 @@
+runtime/
+memory/
+workspace-memory/
+cache/
+logs/
+*.db
+*.sqlite
+*.jsonl
+trash/

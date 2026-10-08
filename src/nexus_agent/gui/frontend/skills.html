@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NexusAgent — Skill Forge</title>
+<style>
+:root{color-scheme:dark;--bg:#060a10;--panel:#0d1522;--line:#22334c;--text:#e7eef8;--muted:#8ea0b8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#172a42 0,#060a10 50%,#030509 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:#07101bdf;position:sticky;top:0;z-index:2}h1{margin:0;font-size:18px}.sub{font-size:11px;color:var(--muted)}
+a,.btn{color:var(--text)}.btn{border:1px solid var(--line);background:#101b2b;padding:8px 11px;border-radius:8px;text-decoration:none}
+main{padding:12px;display:grid;grid-template-columns:1fr 1.6fr;gap:12px}.panel{background:rgba(13,21,34,.93);border:1px solid var(--line);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.body{padding:12px}.skill{padding:11px;border-bottom:1px solid #17253a;cursor:pointer}.skill:hover{background:#101a29}.skill b{display:block}.muted{font-size:11px;color:var(--muted)}pre{white-space:pre-wrap;word-break:break-word;background:#08111d;border:1px solid var(--line);padding:12px;border-radius:8px}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><h1>NexusAgent / Skill Forge</h1><div class="sub">Inspect reusable skills before attaching them to agents.</div></div><div><a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/team.html">Teams</a> <a class="btn" href="/mcp.html">MCP</a> <a class="btn" href="/">Workspace</a></div></header>
+<main><section class="panel"><h2>Skill Catalog</h2><div id="list" class="body">Loading…</div></section><section class="panel"><h2>Skill Definition</h2><div id="detail" class="body"><div class="muted">Select a skill.</div></div></section></main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+async function load(){const r=await fetch("/api/skills");const d=await r.json();const list=$("list");list.innerHTML=(d.skills||[]).map(s=>"<div class='skill' data-id='"+esc(s.id)+"'><b>"+esc(s.name)+"</b><div class='muted'>"+esc(s.description)+"</div><div class='muted'>permission="+esc(s.permission_level)+"</div></div>").join("")||"<div class='muted'>No skills found.</div>";document.querySelectorAll(".skill").forEach(el=>el.onclick=()=>{const s=d.skills.find(x=>x.id===el.dataset.id);$("detail").innerHTML="<pre>"+esc(JSON.stringify(s,null,2))+"</pre>"})}
+load();
+</script></body></html>

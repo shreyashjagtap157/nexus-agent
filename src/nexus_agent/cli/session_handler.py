@@ -173,70 +173,19 @@ class SessionOrchestratorMixin:
         if not self._engine:
             return
 
-        from nexus_agent.tools.boomerang import BoomerangTool
-        from nexus_agent.tools.council import CouncilTool
-        from nexus_agent.tools.batch_edit import BatchEditTool
-        from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
-        from nexus_agent.tools.code_intel import ImportGraphTool
-        from nexus_agent.tools.file_ops import (
-            ListDirectoryTool,
-            ReadFileTool,
-            SearchFilesTool,
-            WriteFileTool,
-        )
-        from nexus_agent.tools.git_ops import GitTool
-        from nexus_agent.tools.memory import MemoryTool
-        from nexus_agent.tools.rag_search import RepositoryRAGTool
-        from nexus_agent.tools.shell import ShellTool
-        from nexus_agent.tools.todowrite import TodoWriteTool
-        from nexus_agent.tools.web_search import WebSearchTool
-        from nexus_agent.tools.webfetch import WebFetchTool
+        from nexus_agent.team.runtime import build_workspace_tools
 
-        tools = [
-            ReadFileTool(self.workspace),
-            WriteFileTool(self.workspace),
-            SearchFilesTool(self.workspace),
-            ListDirectoryTool(self.workspace),
-            ShellTool(self.workspace),
-            CodeEditTool(self.workspace),
-            InsertLinesTool(self.workspace),
-            GitTool(self.workspace),
-            WebSearchTool(),
-            WebFetchTool(),
-            RepositoryRAGTool(self.workspace),
-            BatchEditTool(self.workspace),
-            ImportGraphTool(self.workspace),
-            TodoWriteTool(persist_path=self.workspace / ".nexus" / "todos.json"),
-            BoomerangTool(),
-            CouncilTool(),
-        ]
+        tools = build_workspace_tools(
+            self.workspace,
+            memory_manager=self._memory,
+            provider=self._engine,
+            mcp_tools=getattr(self, "_mcp_tools", []),
+        )
         # Load plugin tools
         plugin_manager = getattr(self, "_plugin_manager", None)
         if plugin_manager:
             for info in plugin_manager.plugins.values():
                 tools.extend(info.tools)
-        # MemoryTool needs the MemoryManager to be constructed first, so
-        # it's bound after the tools list is built.
-        memory_tool = MemoryTool()
-        if self._memory is not None:
-            memory_tool.set_memory(self._memory)
-        tools.append(memory_tool)
-
-        mcp_tools = getattr(self, "_mcp_tools", [])
-        if mcp_tools:
-            tools.extend(mcp_tools)
-
-        try:
-            from nexus_agent.tools.browser import BrowserTool
-            tools.append(BrowserTool())
-        except ImportError as e:
-            logger.debug(f"Browser tool not available: {e}")
-
-        try:
-            from nexus_agent.tools.lsp_client import LSPClientTool
-            tools.append(LSPClientTool(self.workspace))
-        except ImportError as e:
-            logger.debug(f"LSP tool not available: {e}")
 
         memory_context = ""
         if self._memory:
@@ -255,6 +204,10 @@ class SessionOrchestratorMixin:
             system_prompt_extra=memory_context,
             effort_level=self._config.get("agent", {}).get("effort_level", "medium"),
             goal=self._config.get("agent", {}).get("goal", ""),
+            research_depth=self._config.get("research", {}).get("depth", "detailed"),
+            research_collection=self._config.get("research", {}).get("collection", "until_saturation"),
+            research_source_strategy=self._config.get("research", {}).get("source_strategy", "hybrid"),
+            research_session_id=self._session_id,
         )
 
         self._agent = AgentLoop(
@@ -263,6 +216,12 @@ class SessionOrchestratorMixin:
             config=cfg,
             usage_tracker=getattr(self, "_usage_tracker", None),
         )
+        self._agent.memory = self._memory
+        for tool in tools:
+            if hasattr(tool, "set_agent_loop"):
+                tool.set_agent_loop(self._agent)
+            if hasattr(tool, "set_provider"):
+                tool.set_provider(self._engine)
 
         if self._session_mgr:
             if not self._session_id and not getattr(self, "_new_session", False):

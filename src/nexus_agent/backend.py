@@ -124,47 +124,18 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
 
     # 2. Initialize memory
     from nexus_agent.memory.memory_manager import MemoryManager
-    memory_data_dir = config.get("data_dir", "~/.nexus-agent/memory")
+    from nexus_agent.storage.layout import StorageLayout
+    layout = StorageLayout(workspace)
+    layout.ensure()
+    memory_data_dir = str(layout.user_memory)
     memory = MemoryManager(data_dir=memory_data_dir)
 
     # 3. Initialize session (creates or resumes)
     from nexus_agent.session.manager import SessionManager
-    session_data_dir = config.get("data_dir", "~/.nexus-agent/sessions")
+    session_data_dir = str(layout.sessions)
     SessionManager(data_dir=session_data_dir)
 
-    # 4. Create tool registry
-    from nexus_agent.tools.boomerang import BoomerangTool
-    from nexus_agent.tools.code_edit import CodeEditTool
-    from nexus_agent.tools.council import CouncilTool
-    from nexus_agent.tools.file_ops import (
-        ListDirectoryTool,
-        ReadFileTool,
-        SearchFilesTool,
-        WriteFileTool,
-    )
-    from nexus_agent.tools.memory import MemoryTool
-    from nexus_agent.tools.shell import ShellTool
-    from nexus_agent.tools.todowrite import TodoWriteTool
-    from nexus_agent.tools.web_search import WebSearchTool
-    from nexus_agent.tools.webfetch import WebFetchTool
-
-    boomerang_tool = BoomerangTool()
-    council_tool = CouncilTool()
-
-    tools: list[Any] = [
-        ReadFileTool(workspace),
-        WriteFileTool(workspace),
-        ListDirectoryTool(workspace),
-        SearchFilesTool(workspace),
-        CodeEditTool(workspace),
-        ShellTool(workspace),
-        WebSearchTool(),
-        WebFetchTool(),
-        TodoWriteTool(),
-        MemoryTool(memory),
-        boomerang_tool,
-        council_tool,
-    ]
+    # 4. The native backend uses the same universal workspace tool catalog as teams and CLI sessions.
 
     # 5. Determine provider
     provider_name = provider or config.get("agent", {}).get("provider", "local")
@@ -190,6 +161,18 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
         )
         llm_provider = _create_mock_provider()
 
+    # Replace the legacy minimal tool list with the shared universal catalog.
+    from nexus_agent.mcp.client import load_configured_servers
+    from nexus_agent.team.runtime import build_workspace_tools
+
+    mcp_clients, mcp_tools = load_configured_servers(config)
+    tools = build_workspace_tools(
+        workspace,
+        memory_manager=memory,
+        provider=llm_provider,
+        mcp_tools=mcp_tools,
+    )
+
     # 6. Create agent config (config-only fields — provider/tools are passed separately)
     agent_cfg_obj = AgentLoopConfig(
         workspace=workspace,
@@ -204,8 +187,12 @@ def _init_agent(workspace: Path, model: str | None, provider: str | None) -> Any
 
     # 8. Late-bind agent loop and provider to tools that need them
     agent.memory = memory
-    boomerang_tool.set_agent_loop(agent)
-    council_tool.set_provider(llm_provider)
+    agent.mcp_clients = mcp_clients
+    for tool in tools:
+        if hasattr(tool, "set_agent_loop"):
+            tool.set_agent_loop(agent)
+        if hasattr(tool, "set_provider"):
+            tool.set_provider(llm_provider)
     return agent
 
 

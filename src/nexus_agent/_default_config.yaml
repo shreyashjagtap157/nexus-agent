@@ -6,9 +6,9 @@
 agent:
   # Name shown in UI
   name: "NexusAgent"
-  version: "0.1.0"
+  version: "0.3.0-alpha.4"
 
-  # Default operating mode: plan, build, auto
+  # Default operating mode: plan, build, auto, research
   default_mode: "auto"
 
   # Maximum iterations in agentic loop before asking for confirmation
@@ -31,6 +31,19 @@ agent:
 
   # Active Hermes coding goal/objective
   goal: ""
+
+
+research:
+  # Default research mode policy for interactive research prompts.
+  depth: "detailed"
+  # Collect sources until the configured stopping criterion is reached.
+  collection: "until_saturation"
+  # user_only, hybrid, or autonomous.
+  source_strategy: "hybrid"
+  # Maximum wall-clock budget for research teams, in minutes.
+  max_minutes: 10080
+  # Consecutive low-yield rounds tolerated before saturation.
+  idle_rounds: 2
 
 
 local_model:

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — Memory Workbench</title>
+<style>
+:root{color-scheme:dark;--bg:#050a10;--panel:#0c1521;--line:#20324b;--text:#e9f1fb;--muted:#8da0b8;--accent:#7dd3fc;--good:#86efac}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#19314b 0,#050a10 50%,#02050a 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#07101bdd;backdrop-filter:blur(10px);z-index:2}
+h1{margin:0;font-size:18px}.sub{color:var(--muted);font-size:11px}.btn{border:1px solid var(--line);background:#101b2a;color:var(--text);padding:8px 11px;border-radius:8px;text-decoration:none;cursor:pointer}
+main{display:grid;grid-template-columns:280px 1fr;gap:12px;padding:12px}.panel{background:rgba(12,21,33,.93);border:1px solid var(--line);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.body{padding:12px}
+.scope{padding:10px;border-bottom:1px solid #17253a;cursor:pointer}.scope:hover,.scope.active{background:#101a29}.scope b{display:block}.scope span{font-size:10px;color:var(--muted)}
+textarea,input,select{width:100%;background:#08111c;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font:inherit}.actions{display:flex;gap:8px;margin-top:9px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.memory{border-bottom:1px solid #17253a;padding:10px}.id{font:10px ui-monospace,monospace;color:var(--accent)}.meta{font-size:10px;color:var(--muted)}.content{margin-top:5px;white-space:pre-wrap;word-break:break-word;font-size:12px}.empty{padding:25px;color:var(--muted);text-align:center}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div><h1>NexusAgent / Memory Workbench</h1><div class="sub">Inspect and manage scoped persistent memory without touching raw databases.</div></div><div><a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/activity.html">Activity</a> <a class="btn" href="/providers.html">Providers</a> <a class="btn" href="/">Workspace</a></div></header>
+<main>
+<section class="panel"><h2>Scopes</h2><div id="scopes">
+<div class="scope active" data-scope="user"><b>User</b><span>Persistent personal context</span></div>
+<div class="scope" data-scope="project"><b>Project</b><span>Shareable project knowledge</span></div>
+<div class="scope" data-scope="workspace"><b>Workspace</b><span>Local workspace context</span></div>
+<div class="scope" data-scope="global"><b>Global</b><span>Cross-project defaults</span></div>
+</div></section>
+<section class="panel"><h2>Memory</h2><div class="body">
+<div class="grid"><div><label class="sub">Search query</label><input id="query" placeholder="architecture decisions, preferences…"></div><div><label class="sub">Category</label><input id="category" value="general"></div></div>
+<div class="actions"><button class="btn" id="search">Search</button><button class="btn" id="stats">Stats</button></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:13px 0">
+<label class="sub">Store memory</label><textarea id="content" placeholder="A durable fact, preference, project decision, workflow rule, etc."></textarea>
+<div class="actions"><button class="btn" id="store">Store in selected scope</button></div>
+<div id="notice" class="sub" style="margin-top:8px"></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:13px 0">
+<div id="results"><div class="empty">Loading…</div></div>
+</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+let scope="user";
+function notice(t){$("notice").textContent=t}
+function selectScope(next){scope=next;document.querySelectorAll(".scope").forEach(x=>x.classList.toggle("active",x.dataset.scope===scope));loadSearch()}
+document.querySelectorAll(".scope").forEach(x=>x.onclick=()=>selectScope(x.dataset.scope));
+async function loadSearch(){
+ const q=$("query").value.trim()||"";
+ const url="/api/memory/scoped/search?scope="+encodeURIComponent(scope)+"&query="+encodeURIComponent(q)+"&limit=50";
+ const r=await fetch(url); if(!r.ok){$("results").innerHTML="<div class='empty'>Memory API unavailable.</div>";return}
+ const d=await r.json(); render(d.results||[]);
+}
+function render(rows){
+ $("results").innerHTML=rows.length?rows.map(x=>"<div class='memory'><div class='id'>"+esc(x.id)+" • "+esc(x.scope)+"</div><div class='meta'>"+esc(x.category||"general")+"</div><div class='content'>"+esc(x.content||"")+"</div></div>").join(""):"<div class='empty'>No matching memories.</div>";
+}
+$("search").onclick=loadSearch;
+$("stats").onclick=async()=>{const r=await fetch("/api/memory/scoped/stats");const d=await r.json();$("results").innerHTML="<pre style='white-space:pre-wrap'>"+esc(JSON.stringify(d,null,2))+"</pre>"};
+$("store").onclick=async()=>{const content=$("content").value.trim();if(!content){notice("Enter memory content.");return}const r=await fetch("/api/memory/scoped/store",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope:scope,category:$("category").value||"general",content:content})});const d=await r.json();notice(r.ok?"Stored: "+d.id:(d.detail||"store failed"));if(r.ok){$("content").value="";loadSearch()}};
+$("query").onkeydown=e=>{if(e.key==="Enter")loadSearch()};loadSearch();
+</script></body></html>

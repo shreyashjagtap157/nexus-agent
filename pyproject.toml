@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexus-agent"
-version = "0.1.0"
-description = "Offline-first LLM coding agent with CLI and GUI interfaces"
+version = "0.3.0-alpha.4"
+description = "Local multi-agent development and research workbench with CLI, TUI and web interfaces"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -46,6 +46,7 @@ dependencies = [
     "tree-sitter>=0.22.0",
     "psutil>=5.9.0",
     "platformdirs>=4.0.0",
+    "filelock>=4.0.12,<4.1",
 ]
 
 [project.optional-dependencies]
@@ -106,6 +107,7 @@ providers = [
     "anthropic>=0.34.0",
     "google-generativeai>=0.8.0",
     "boto3>=1.35.0",
+    "litellm>=1.101.6,<1.102",
 ]
 
 # Security — OS keychain integration for credential storage
@@ -126,7 +128,7 @@ hw-all = [
 
 # All optional features
 all = [
-    "nexus-agent[hw-all,gui,providers,mcp]",
+    "nexus-agent[hw-all,gui,providers,mcp,security]",
 ]
 dev = [
     "pytest>=8.0.0",
@@ -138,17 +140,18 @@ dev = [
 
 [project.scripts]
 nexus = "nexus_agent.__main__:main"
+nexus-team = "nexus_agent.team_cli:main"
 
 [project.urls]
-Homepage = "https://github.com/nexus-agent/nexus-agent"
+Homepage = "https://github.com/shreyashjagtap157/nexus-agent"
 Documentation = "https://nexus-agent.readthedocs.io"
-Repository = "https://github.com/nexus-agent/nexus-agent"
+Repository = "https://github.com/shreyashjagtap157/nexus-agent"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-nexus_agent = ["gui/frontend/**/*", "py.typed", "_default_config.yaml"]
+nexus_agent = ["gui/frontend/**/*", "py.typed", "_default_config.yaml", "agents/builtin/*.md"]
 
 [tool.ruff]
 line-length = 100

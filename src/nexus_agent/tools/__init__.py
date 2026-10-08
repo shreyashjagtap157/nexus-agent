@@ -8,7 +8,10 @@ from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
 from nexus_agent.tools.code_intel import CallGraphTool, ImportGraphTool, RenameTool
 from nexus_agent.tools.council import CouncilTool
 from nexus_agent.tools.file_ops import (
+    DeleteFileTool,
     ListDirectoryTool,
+    MoveFileTool,
+    ParseDataTool,
     ReadFileTool,
     SearchFilesTool,
     WriteFileTool,
@@ -24,6 +27,7 @@ from nexus_agent.tools.lsp_transport import (
 )
 from nexus_agent.tools.memory import MemoryTool
 from nexus_agent.tools.rag_search import RepositoryRAGTool
+from nexus_agent.tools.restore_file import RestoreFileTool
 from nexus_agent.tools.shell import ShellTool
 from nexus_agent.tools.todowrite import (
     Todo,
@@ -39,6 +43,9 @@ from nexus_agent.tools.webfetch import WebFetchTool, html_to_markdown
 __all__ = [
     "Tool",
     "ReadFileTool",
+    "DeleteFileTool",
+    "MoveFileTool",
+    "ParseDataTool",
     "WriteFileTool",
     "SearchFilesTool",
     "ListDirectoryTool",
@@ -53,6 +60,7 @@ __all__ = [
     "WebFetchTool",
     "MemoryTool",
     "RepositoryRAGTool",
+    "RestoreFileTool",
     "BatchEditTool",
     "BoomerangTool",
     "BrowserTool",

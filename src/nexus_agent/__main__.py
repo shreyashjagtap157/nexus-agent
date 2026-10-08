@@ -133,6 +133,28 @@ def chat(
     app.run()
 
 
+@cli.command("serve")
+@click.option("--host", "-h", type=str, default=None, help="Host to bind the local agent API")
+@click.option("--port", type=int, default=None, help="Port for the local agent API")
+@click.option("--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory")
+@click.option("--provider", "-p", type=str, default=None, help="LLM provider")
+@click.option("--model-path", type=click.Path(exists=True), default=None, help="Local model path")
+@click.pass_context
+def serve(ctx: click.Context, host: str | None, port: int | None, workspace: str, provider: str | None, model_path: str | None) -> None:
+    """Run the NexusAgent local API/web server without opening a browser."""
+    from nexus_agent.gui.server import start_gui_server
+    start_gui_server(
+        model_path=model_path or ctx.obj.get("model"),
+        provider=provider or ctx.obj.get("provider"),
+        workspace=Path(workspace).resolve(),
+        config_path=ctx.obj.get("config_path"),
+        data_dir=ctx.obj.get("data_dir"),
+        host=host,
+        port=port,
+        open_browser=False,
+    )
+
+
 @cli.command()
 @click.option("--host", "-h", type=str, default=None, help="Host to bind to")
 @click.option("--port", type=int, default=None, help="Port to bind to")
@@ -158,6 +180,259 @@ def gui(
         port=port,
         open_browser=not no_browser,
     )
+
+
+@cli.group()
+def provider() -> None:
+    """Discover configured LLM providers and connection metadata."""
+    pass
+
+
+@provider.command("list")
+def provider_list() -> None:
+    """List built-in provider descriptors without exposing credentials."""
+    from nexus_agent.llm.providers.catalog import all_providers
+    for item in all_providers():
+        endpoint = item.base_url or "provider-native"
+        env = item.env_key or "none"
+        click.echo(f"{item.id:16} {item.name:28} {item.protocol:18} env={env} endpoint={endpoint}")
+
+
+@provider.command("models")
+@click.argument("provider_id")
+@click.option("--refresh", is_flag=True, help="Refresh the cached Models.dev catalog.")
+def provider_models(provider_id: str, refresh: bool) -> None:
+    """List model entries for a provider from the cached Models.dev catalog."""
+    from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
+    from nexus_agent.storage.layout import StorageLayout
+
+    catalog = ModelsDevCatalog(
+        StorageLayout(Path.cwd()).caches / "models-dev.json"
+    )
+    try:
+        rows = catalog.models(provider_id, refresh=refresh)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise click.ClickException(f"Models.dev catalog unavailable: {exc}") from exc
+    if not rows:
+        click.echo(f"No cached Models.dev models found for {provider_id}.")
+        return
+    for row in rows:
+        label = str(row.get("name") or row.get("id"))
+        click.echo(f"{row.get('id')}	{label}")
+
+
+@provider.command("catalog-refresh")
+def provider_catalog_refresh() -> None:
+    """Refresh the cached Models.dev provider catalog."""
+    from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
+    from nexus_agent.storage.layout import StorageLayout
+
+    catalog = ModelsDevCatalog(StorageLayout(Path.cwd()).caches / "models-dev.json")
+    try:
+        providers = catalog.providers(refresh=True)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise click.ClickException(f"Models.dev catalog refresh failed: {exc}") from exc
+    click.echo(f"Models.dev catalog refreshed: {len(providers)} providers")
+
+
+
+@provider.command("test")
+@click.argument("provider_id")
+@click.option("--model", type=str, default=None)
+@click.option("--prompt", type=str, default="Respond with exactly: NexusAgent provider test OK")
+@click.option("--max-tokens", type=int, default=64, show_default=True)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.pass_context
+def provider_test(
+    ctx: click.Context,
+    provider_id: str,
+    model: str | None,
+    prompt: str,
+    max_tokens: int,
+    workspace: str,
+) -> None:
+    """Run a real provider connectivity test without exposing credentials."""
+    import time
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.base import Message, Role
+    from nexus_agent.llm.providers.factory import ProviderFactory
+
+    ws = Path(workspace).resolve()
+    config = load_config(config_path=(ctx.obj or {}).get("config_path"), workspace=ws)
+    try:
+        provider = ProviderFactory.create_provider(provider_id, config, model)
+        started = time.perf_counter()
+        response = provider.chat_completion(
+            [
+                Message(
+                    role=Role.SYSTEM,
+                    content="You are performing a connectivity test. Never reveal secrets.",
+                ),
+                Message(role=Role.USER, content=prompt),
+            ],
+            temperature=0.0,
+            max_tokens=max(1, min(max_tokens, 512)),
+        )
+        latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    except (ImportError, RuntimeError, ValueError, OSError, TimeoutError, ConnectionError) as exc:
+        raise click.ClickException(f"Provider test failed: {exc}") from exc
+
+    click.echo(f"Provider: {provider.name}")
+    click.echo(f"Model: {provider.model_name}")
+    click.echo(f"Latency: {latency_ms} ms")
+    click.echo(f"Response: {(response.content or '').strip()[:4000]}")
+    click.echo("Credentials: not displayed.")
+
+
+@provider.command("auth-status")
+def provider_auth_status() -> None:
+    """Show which provider credentials are stored, without revealing them."""
+    from nexus_agent.auth import AuthStore
+    for row in AuthStore().list():
+        click.echo(f"{row['provider']}: {row['key']}")
+
+
+@cli.group()
+def research() -> None:
+    """Manage persistent research source policies."""
+    pass
+
+
+@research.command("sources")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def research_sources(workspace: str) -> None:
+    """List persistent workspace research sources."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.research.sources import ResearchSourceRegistry
+
+    registry = ResearchSourceRegistry(
+        Path(workspace).resolve() / ".nexus-agent" / "research-sources.yaml"
+    )
+    table = Table(title="Research Sources")
+    table.add_column("ID")
+    table.add_column("Priority")
+    table.add_column("Type")
+    table.add_column("URL")
+    for source in registry.list():
+        table.add_row(source.id, str(source.priority), source.source_type, source.url)
+    Console().print(table)
+
+
+@research.command("seed")
+@click.argument("urls", nargs=-1)
+@click.option("--file", "file_path", type=click.Path(exists=True, dir_okay=False), default=None)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def research_seed(urls: tuple[str, ...], file_path: str | None, workspace: str) -> None:
+    """Persist trusted source URLs for future research teams."""
+    from nexus_agent.research.sources import ResearchSourceRegistry
+
+    values = list(urls)
+    if file_path:
+        values.extend(
+            line.strip()
+            for line in Path(file_path).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
+    registry = ResearchSourceRegistry(
+        Path(workspace).resolve() / ".nexus-agent" / "research-sources.yaml"
+    )
+    count = registry.seed_urls(values)
+    click.echo(f"Seeded {count} research source URL(s).")
+
+
+@research.command("remove-source")
+@click.argument("source_id")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def research_remove_source(source_id: str, workspace: str) -> None:
+    """Remove one persistent research source."""
+    from nexus_agent.research.sources import ResearchSourceRegistry
+
+    registry = ResearchSourceRegistry(
+        Path(workspace).resolve() / ".nexus-agent" / "research-sources.yaml"
+    )
+    if not registry.remove(source_id):
+        raise click.ClickException(f"Unknown research source: {source_id}")
+    click.echo(f"Removed research source: {source_id}")
+
+
+@cli.group()
+def workflow() -> None:
+    """Discover and manage named orchestration workflows."""
+    pass
+
+
+@workflow.command("list")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_list(workspace: str) -> None:
+    """List reusable orchestration workflows."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.workflows import WorkflowRegistry
+
+    registry = WorkflowRegistry(Path(workspace).resolve())
+    table = Table(title="NexusAgent Workflows")
+    table.add_column("ID")
+    table.add_column("Name")
+    table.add_column("Mode")
+    table.add_column("Agents")
+    table.add_column("Source")
+    table.add_column("Tags")
+    for item in registry.list():
+        table.add_row(
+            item.id,
+            item.name,
+            item.mode.value,
+            str(item.default_agents),
+            item.source,
+            ", ".join(item.tags),
+        )
+    Console().print(table)
+
+
+@workflow.command("show")
+@click.argument("workflow_id")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_show(workflow_id: str, workspace: str) -> None:
+    """Show a workflow policy."""
+    import json
+    from nexus_agent.workflows import WorkflowRegistry
+
+    item = WorkflowRegistry(Path(workspace).resolve()).get(workflow_id)
+    click.echo(json.dumps(item.__dict__, indent=2, ensure_ascii=False, default=str))
+
+
+@workflow.command("init")
+@click.argument("workflow_id")
+@click.option("--scope", type=click.Choice(["user", "workspace"]), default="workspace", show_default=True)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_init(workflow_id: str, scope: str, workspace: str) -> None:
+    """Create an editable workflow template."""
+    from nexus_agent.workflows import WorkflowRegistry, WorkflowSpec
+
+    spec = WorkflowSpec(
+        id=workflow_id.strip().lower(),
+        name=workflow_id.replace("-", " ").replace("_", " ").title(),
+        description="Describe the orchestration policy and the quality gate it provides.",
+        mode=TeamMode.AUTO,
+        default_agents=4,
+        tags=("custom",),
+    )
+    path = WorkflowRegistry(Path(workspace).resolve()).save(spec, scope)
+    click.echo(f"Created workflow: {path}")
+
+
+@workflow.command("delete")
+@click.argument("workflow_id")
+@click.option("--scope", type=click.Choice(["user", "workspace"]), default="workspace", show_default=True)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def workflow_delete(workflow_id: str, scope: str, workspace: str) -> None:
+    """Delete a custom workflow definition."""
+    from nexus_agent.workflows import WorkflowRegistry
+
+    if not WorkflowRegistry(Path(workspace).resolve()).delete(workflow_id, scope):
+        raise click.ClickException(f"Custom workflow not found: {workflow_id}")
+    click.echo(f"Deleted workflow: {workflow_id}")
 
 
 @cli.group()
@@ -624,6 +899,508 @@ def backend(
         ]
     )
     run_acp_backend(args)
+
+
+
+@cli.group()
+def mcp() -> None:
+    """Inspect and validate Model Context Protocol server configuration."""
+    pass
+
+
+@mcp.command("list")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def mcp_list(workspace: str) -> None:
+    """List configured MCP servers without starting them."""
+    from nexus_agent.core.config import load_config
+    import json
+    config = load_config(workspace=Path(workspace).resolve())
+    raw = config.get("mcp", {})
+    click.echo(json.dumps({
+        "servers": raw.get("servers", []) if isinstance(raw, dict) else [],
+        "serve": raw.get("serve", {}) if isinstance(raw, dict) else {},
+    }, indent=2, ensure_ascii=False))
+
+
+@mcp.command("validate")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def mcp_validate(workspace: str) -> None:
+    """Validate declarative MCP commands without starting servers."""
+    from nexus_agent.core.config import load_config
+    config = load_config(workspace=Path(workspace).resolve())
+    servers = config.get("mcp", {}).get("servers", [])
+    failures = 0
+    for item in servers if isinstance(servers, list) else []:
+        if not isinstance(item, dict):
+            continue
+        command = str(item.get("command") or "")
+        dangerous = any(token in command for token in (";", "&&", "||", "|", ">", "<", "$"))
+        status = "INVALID" if (not command or dangerous) else "OK"
+        click.echo(f"{status}: {item.get('name') or command}")
+        if status != "OK":
+            failures += 1
+    if failures:
+        raise click.ClickException(f"{failures} MCP definition(s) failed validation.")
+
+
+@cli.group()
+def auth() -> None:
+    """Manage LLM provider credentials without storing secrets in project config."""
+    pass
+
+
+@auth.command("login")
+@click.option("--provider", "-p", required=True, type=str)
+@click.option("--api-key", type=str, default=None)
+@click.option("--env", "env_name", type=str, default=None, help="Use the value of an environment variable.")
+def auth_login(provider: str, api_key: str | None, env_name: str | None) -> None:
+    """Store an API credential in the user-level NexusAgent auth store."""
+    from nexus_agent.auth import AuthStore
+    import os
+
+    key = os.environ.get(env_name) if env_name else api_key
+    if key is None:
+        key = click.prompt(f"API key for {provider}", hide_input=True)
+    AuthStore().set(provider, key)
+    click.echo(f"Stored credentials for {provider} in the user auth store.")
+
+
+@auth.command("list")
+def auth_list() -> None:
+    """List configured provider credentials without revealing secret values."""
+    from nexus_agent.auth import AuthStore
+    rows = AuthStore().list()
+    if not rows:
+        click.echo("No provider credentials configured.")
+        return
+    for row in rows:
+        click.echo(f"{row['provider']}: {row['key']}")
+
+
+@auth.command("logout")
+@click.argument("provider")
+def auth_logout(provider: str) -> None:
+    """Remove a provider credential from the user auth store."""
+    from nexus_agent.auth import AuthStore
+    if not AuthStore().remove(provider):
+        raise click.ClickException(f"No stored credential for {provider}")
+    click.echo(f"Removed credentials for {provider}.")
+
+
+@auth.command("paths")
+def auth_paths() -> None:
+    """Show the user-level credential storage location."""
+    from nexus_agent.storage.layout import StorageLayout
+    click.echo(str(StorageLayout(Path.cwd()).auth_file))
+
+
+@cli.group()
+def agent() -> None:
+    """Create, configure, validate and generate reusable agent profiles."""
+    pass
+
+
+@agent.command("list")
+@click.option(
+    "--workspace", "-w", type=click.Path(exists=True, file_okay=False), default="."
+)
+def agent_list(workspace: str) -> None:
+    """List resolved agent profiles after scope precedence is applied."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.agents import AgentRegistry
+
+    console = Console()
+    registry = AgentRegistry(Path(workspace).resolve())
+    rows = registry.load(include_disabled=True)
+    table = Table(title="NexusAgent Agents")
+    table.add_column("ID")
+    table.add_column("Name")
+    table.add_column("Profession")
+    table.add_column("Scope")
+    table.add_column("Tools")
+    table.add_column("Write")
+    table.add_column("State")
+    for item in rows:
+        table.add_row(
+            item.id,
+            item.name,
+            item.profession,
+            item.scope.value,
+            ",".join(item.tool_categories),
+            "yes" if item.write_access else "no",
+            "enabled" if item.enabled else "disabled",
+        )
+    console.print(table)
+
+
+@agent.command("run")
+@click.argument("agent_id")
+@click.argument("goal")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--provider", type=str, default=None)
+@click.option("--model-path", type=click.Path(exists=True), default=None)
+@click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
+@click.option("--yes", is_flag=True, help="Automatically approve all tool requests.")
+@click.pass_context
+def agent_run(
+    ctx: click.Context,
+    agent_id: str,
+    goal: str,
+    workspace: str,
+    provider: str | None,
+    model_path: str | None,
+    effort: str,
+    yes: bool,
+) -> None:
+    """Run one saved agent profile against a goal."""
+    from nexus_agent.agents import AgentRegistry
+    from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.providers.factory import ProviderFactory
+    from nexus_agent.permissions.manager import PermissionManager
+    from nexus_agent.team.providers import make_provider_selector
+    from nexus_agent.team.runtime import build_workspace_tools
+    from nexus_agent.storage.layout import StorageLayout
+    from nexus_agent.memory.memory_manager import MemoryManager
+
+    ws = Path(workspace).resolve()
+    config = load_config(config_path=(ctx.obj or {}).get("config_path"), workspace=ws)
+    registry = AgentRegistry(ws)
+    spec = registry.get(agent_id)
+    if spec is None:
+        raise click.ClickException(f"Unknown or disabled agent: {agent_id}")
+
+    base_name = provider or spec.provider or config.get("providers", {}).get("active", "local")
+    base_provider = ProviderFactory.create_provider(base_name, config, model_path or spec.model)
+    if spec.provider or spec.model:
+        role_provider = make_provider_selector(config, base_provider)(spec.to_team_profile())
+    else:
+        role_provider = base_provider
+
+    permissions = PermissionManager(project=str(ws))
+    permissions.load_from_config(config)
+    memory = MemoryManager(data_dir=StorageLayout(ws).user_memory)
+    tools = build_workspace_tools(
+        ws,
+        memory_manager=memory,
+        provider=role_provider,
+        agent_id=spec.id,
+        research="research" in spec.tool_categories,
+        research_depth=str(config.get("research", {}).get("depth", "detailed")),
+        research_source_strategy=str(config.get("research", {}).get("source_strategy", "hybrid")),
+    )
+    cfg = AgentLoopConfig(
+        mode=AgentMode.BUILD if spec.write_access else AgentMode.REVIEW,
+        workspace=ws,
+        max_iterations=int(config.get("agent", {}).get("max_iterations", 50)),
+        effort_level=effort,
+        permission_callback=lambda tc: True if yes else permissions.check_and_approve(
+            tool_name=tc.name,
+            arguments=tc.arguments,
+            description=f"Agent {spec.id} requesting {tc.name}",
+        ),
+        system_prompt_extra=(
+            f"You are {spec.name}, profession={spec.profession}.\n"
+            f"Mission: {spec.mission}\n\n"
+            f"Persistent agent instructions:\n{spec.instructions}\n\n"
+            "Use the supplied tools for evidence and execution. Stay within your role and report blockers."
+        ),
+    )
+    agent = AgentLoop(provider=role_provider, tools=tools, config=cfg)
+    agent.memory = memory
+    for tool in tools:
+        if hasattr(tool, "set_agent_loop"):
+            tool.set_agent_loop(agent)
+        if hasattr(tool, "set_provider"):
+            tool.set_provider(role_provider)
+    final = ""
+    for event in agent.run(goal):
+        if event.type.value == "content":
+            click.echo(str(event.data))
+            final += str(event.data)
+        elif event.type.value == "error":
+            click.echo(f"ERROR: {event.data}", err=True)
+    click.echo(f"\nAgent {spec.id} complete.")
+
+@agent.command("show")
+@click.argument("agent_id")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_show(agent_id: str, workspace: str) -> None:
+    """Show one resolved agent profile."""
+    import json
+    from nexus_agent.agents import AgentRegistry
+
+    spec = AgentRegistry(Path(workspace).resolve()).get(agent_id)
+    if spec is None:
+        raise click.ClickException(f"Unknown or disabled agent: {agent_id}")
+    click.echo(json.dumps(spec.to_dict(), indent=2, ensure_ascii=False, default=str))
+
+
+@agent.command("paths")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_paths(workspace: str) -> None:
+    """Show agent definition storage paths for every scope."""
+    import json
+    from nexus_agent.agents import AgentRegistry
+
+    click.echo(json.dumps(
+        AgentRegistry(Path(workspace).resolve()).roots_info(),
+        indent=2,
+        ensure_ascii=False,
+    ))
+
+
+@agent.command("init")
+@click.argument("agent_id")
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "workspace", "global"]),
+    default="user",
+    show_default=True,
+)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_init(agent_id: str, scope: str, workspace: str) -> None:
+    """Create an editable agent profile template."""
+    from nexus_agent.agents import AgentRegistry, AgentScope, AgentSpec
+
+    aid = agent_id.strip().lower()
+    spec = AgentSpec(
+        id=aid,
+        name=aid.replace("-", " ").replace("_", " ").title(),
+        profession="Professional Specialist",
+        description="Describe what this agent is uniquely responsible for.",
+        mission="Define the result this agent owns.",
+        instructions="Describe the exact operating procedure, constraints, evidence requirements and completion criteria.",
+        tool_categories=["read", "search"],
+    )
+    registry = AgentRegistry(Path(workspace).resolve())
+    errors = registry.validate(spec)
+    if errors:
+        raise click.ClickException("; ".join(errors))
+    path = registry.save(spec, AgentScope(scope))
+    click.echo(f"Created agent profile: {path}")
+
+
+@agent.command("generate")
+@click.argument("request")
+@click.option("--max-agents", type=int, default=6, show_default=True)
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "workspace", "global"]),
+    default="user",
+    show_default=True,
+)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--provider", type=str, default=None)
+@click.option("--model-path", type=click.Path(exists=True), default=None)
+@click.option("--preview", is_flag=True, help="Generate and print profiles without saving them.")
+@click.pass_context
+def agent_generate(
+    ctx: click.Context,
+    request: str,
+    max_agents: int,
+    scope: str,
+    workspace: str,
+    provider: str | None,
+    model_path: str | None,
+    preview: bool,
+) -> None:
+    """Ask NexusAgent to design reusable professional agents for a requirement."""
+    import json
+    from nexus_agent.agents import AgentGenerator, AgentRegistry, AgentScope
+    from nexus_agent.core.config import load_config
+    from nexus_agent.llm.providers.factory import ProviderFactory
+
+    ws = Path(workspace).resolve()
+    config = load_config(config_path=ctx.obj.get("config_path"), workspace=ws)
+    provider_name = provider or config.get("providers", {}).get("active", "local")
+    llm = ProviderFactory.create_provider(provider_name, config, model_path)
+    specs = AgentGenerator(llm).generate(request, max_agents=max(1, min(max_agents, 32)))
+    registry = AgentRegistry(ws)
+    if preview:
+        click.echo(json.dumps([spec.to_dict() for spec in specs], indent=2, ensure_ascii=False, default=str))
+        return
+    target_scope = AgentScope(scope)
+    for spec in specs:
+        errors = registry.validate(spec)
+        if errors:
+            raise click.ClickException(f"{spec.id}: {'; '.join(errors)}")
+        path = registry.save(spec, target_scope)
+        click.echo(f"Saved {spec.id}: {path}")
+
+
+@agent.command("validate")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_validate(workspace: str) -> None:
+    """Validate every resolved agent definition."""
+    from nexus_agent.agents import AgentRegistry
+
+    registry = AgentRegistry(Path(workspace).resolve())
+    failures = 0
+    for spec in registry.load(include_disabled=True):
+        errors = registry.validate(spec)
+        if errors:
+            failures += 1
+            click.echo(f"{spec.id}: " + "; ".join(errors))
+    if failures:
+        raise click.ClickException(f"{failures} agent profile(s) failed validation.")
+    click.echo("All agent profiles are valid.")
+
+
+@agent.command("delete")
+@click.argument("agent_id")
+@click.option(
+    "--scope",
+    type=click.Choice(["user", "project", "workspace", "global"]),
+    default=None,
+)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def agent_delete(agent_id: str, scope: str | None, workspace: str) -> None:
+    """Remove a persisted agent definition from one or all mutable scopes."""
+    from nexus_agent.agents import AgentRegistry, AgentScope
+
+    registry = AgentRegistry(Path(workspace).resolve())
+    removed = registry.delete(agent_id, AgentScope(scope) if scope else None)
+    if not removed:
+        raise click.ClickException(f"No persisted definition found for {agent_id}")
+    for path in removed:
+        click.echo(f"Deleted: {path}")
+
+
+@cli.group()
+def team() -> None:
+    """Run and inspect dynamically assembled multi-agent teams."""
+    pass
+
+
+@team.command("run")
+@click.argument("goal", type=str)
+@click.option("--mode", type=click.Choice(["auto", "code", "research", "review", "analysis", "plan", "automation"]), default="auto")
+@click.option("--workflow", "workflow_id", type=str, default=None, help="Named workflow policy to use.")
+@click.option("--max-agents", type=int, default=6, show_default=True)
+@click.option("--parallelism", type=int, default=4, show_default=True)
+@click.option("--max-iterations", type=int, default=30, show_default=True)
+@click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
+@click.option("--output", "output_mode", type=click.Choice(["chat", "file", "both"]), default="chat")
+@click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
+@click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
+@click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
+@click.option("--source-strategy", "research_source_strategy", type=click.Choice(["user_only", "hybrid", "autonomous"]), default="hybrid", show_default=True)
+@click.option("--research-max-minutes", type=int, default=10080, show_default=True)
+@click.option("--research-idle-rounds", type=int, default=2, show_default=True)
+@click.option("--source", "research_source_urls", multiple=True, help="Seed a research source URL. Repeat for multiple sources.")
+@click.option("--agent", "agent_ids", multiple=True, help="Pin a saved agent profile by ID. Repeat for multiple profiles.")
+@click.option("--no-saved-agents", is_flag=True, help="Do not load saved agent profiles when assembling the team.")
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--provider", type=str, default=None)
+@click.option("--model-path", type=click.Path(exists=True), default=None)
+@click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
+def team_run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, research_source_strategy: str, research_max_minutes: int, research_idle_rounds: int, research_source_urls: tuple[str, ...], agent_ids: tuple[str, ...], no_saved_agents: bool, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+    """Execute a dynamically assembled peer team."""
+    from rich.console import Console
+    from rich.table import Table
+    from nexus_agent.permissions.manager import PermissionManager
+    from nexus_agent.core.config import load_config
+    from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime, build_workspace_tools
+    from nexus_agent.team.providers import make_provider_selector
+    from nexus_agent.team.research import RESEARCH_DEPTHS
+    from nexus_agent.llm.providers.factory import ProviderFactory
+    from nexus_agent.mcp.client import load_configured_servers
+
+    console = Console()
+    ws = Path(workspace).resolve()
+    config = load_config(workspace=ws)
+    provider_name = provider or config.get("providers", {}).get("active", "local")
+    llm = ProviderFactory.create_provider(provider_name, config, model_path)
+    permissions = PermissionManager(project=str(ws))
+    permissions.load_from_config(config)
+    mcp_clients, mcp_tools = load_configured_servers(config)
+    runtime = TeamRuntime(
+        llm,
+        build_workspace_tools(ws, mcp_tools=mcp_tools),
+        workspace=ws,
+        permission_callback=lambda tc: permissions.check_and_approve(
+            tool_name=tc.name,
+            arguments=tc.arguments,
+            description=f"Team worker requesting {tc.name}",
+        ),
+        provider_selector=make_provider_selector(config, llm),
+        mcp_clients=mcp_clients,
+    )
+    workflow = None
+    if workflow_id:
+        from nexus_agent.workflows import WorkflowRegistry
+        workflow = WorkflowRegistry(ws).get(workflow_id)
+    team_config = (workflow.configure() if workflow else TeamConfig(mode=TeamMode(mode))).normalize()
+    team_config.workflow_id = workflow_id or ""
+    team_config.mode = TeamMode(mode) if not workflow_id else team_config.mode
+    team_config.max_agents = max_agents
+    team_config.parallelism = parallelism
+    team_config.max_iterations_per_agent = max_iterations
+    team_config.workspace = str(ws)
+    team_config.effort_level = effort
+    team_config.output_mode = output_mode
+    team_config.output_format = output_format
+    team_config.research_depth = research_depth
+    team_config.research_collection = research_collection
+    team_config.research_source_strategy = research_source_strategy
+    team_config.research_max_minutes = research_max_minutes
+    team_config.research_idle_rounds = research_idle_rounds
+    team_config.research_source_urls = list(research_source_urls)
+    team_config.agent_ids = list(agent_ids)
+    team_config.use_saved_agents = not no_saved_agents
+    team_config.auto_approve_tools = yes
+    final = None
+    for event in runtime.run(goal, team_config):
+        if event.type.value == "state_change":
+            console.print(f"[cyan]TEAM[/cyan] {event.data}")
+        elif event.type.value == "content":
+            if isinstance(event.data, dict) and event.data.get("agent_id"):
+                console.print(f"[green]{event.data.get('agent_id')}[/green] {event.data.get('status', 'event')}")
+            else:
+                console.print(str(event.data))
+        elif event.type.value == "done" and isinstance(event.data, dict):
+            final = event.data
+    if final is None:
+        runtime.close()
+        raise click.ClickException("Team runtime ended without a result.")
+    console.print(f"[bold green]{final.get('summary', '')}[/bold green]")
+    if final.get("synthesis"):
+        console.print(final["synthesis"])
+    if final.get("artifact_paths"):
+        console.print("Artifacts:\n" + "\n".join(str(path) for path in final["artifact_paths"]))
+    table = Table(title="Team Workers")
+    table.add_column("Agent")
+    table.add_column("Profession")
+    table.add_column("State")
+    for agent in final.get("agents", []):
+        table.add_row(str(agent.get("name")), str(agent.get("profession")), str(agent.get("status")))
+    console.print(table)
+    runtime.close()
+
+
+@team.command("show")
+@click.argument("team_id", type=str)
+@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
+def team_show(team_id: str, workspace: str) -> None:
+    """Inspect a persisted team run as JSON."""
+    import json
+    from nexus_agent.team import TeamStore
+    from nexus_agent.storage.layout import StorageLayout
+    store = TeamStore(StorageLayout(Path(workspace).resolve()).team_db)
+    try:
+        team_data = store.team(team_id)
+        if team_data is None:
+            raise click.ClickException(f"Unknown team: {team_id}")
+        click.echo(json.dumps({
+            "team": team_data,
+            "agents": store.agents(team_id),
+            "messages": store.messages(team_id),
+            "events": store.events(team_id, limit=5000),
+        }, indent=2, ensure_ascii=False, default=str))
+    finally:
+        store.close()
 
 
 def main() -> None:

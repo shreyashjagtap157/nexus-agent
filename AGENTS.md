@@ -1,7 +1,7 @@
 # NexusAgent — Agent Context & Memory
 
 ## Project Overview
-Offline-first AI coding agent that runs GGUF/ONNX LLM models locally via `llama-cpp-python`. Provides a high-fidelity inline REPL CLI (TUI) and a FastAPI GUI interface. Zero internet required by default.
+Local-first multi-agent development and research workbench. The shared runtime supports single-agent workflows, dynamically assembled teams, evidence-first research, provider routing, scoped memory, web/MCP tools, a web console, a Rust client and a native desktop client. Local inference remains a first-class capability, while hosted/custom providers are supported.
 
 ## Quick Start
 ```bash
@@ -89,13 +89,23 @@ Detection: `cli/runtimes.py` — scans for nvcc, CUDA_PATH, llama-cli, vulkaninf
 - Custom GGUF with corrupt header → retrain model (Nemotron 4B works)
 
 ## Testing
+
+The authoritative validation surface is GitHub Actions. The complete Python test suite runs across supported Python versions and Ubuntu, Windows and macOS. Separate workflows validate Ruff/MyPy, native Rust clients, version synchronization, audit evidence and security/dependency checks.
+
+For the local development loop, run:
+
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -q
+python -m ruff check src/
+python -m ruff format --check src/
+python -m mypy src/nexus_agent/
+python scripts/check_version.py
 ```
-1078 tests across: memory, permissions, session, cli, mcp, skills, core, providers, usage, plugins, tools, imports.
 
 ## Git Convention
-- Branch: feature/description
+- Canonical integration branch: main
+- Work through pull requests; do not push directly to main
+- Use short-lived feature branches with descriptive names
 - Emoji-free commit messages
 - Conventional commits: "fix:", "feat:", "docs:", "refactor:"
 
@@ -115,21 +125,25 @@ Flags:
 Test args: ``-q --tb=short -W error::ResourceWarning`` (promotes unclosed
 resource warnings to errors).
 
-## CI Workflow (`.github/workflows/test-and-audit.yml`)
+## CI Workflow (.github/workflows/ci.yml)
+
+The authoritative pull-request validation workflow is a single CI run with a deterministic Required aggregation job.
 
 | Detail | Value |
 |--------|-------|
-| Name | ``Test & Audit`` |
-| Triggers | ``push`` to ``main``/``master``, ``pull_request`` to ``main``/``master``, ``workflow_dispatch`` |
-| Runner | ``ubuntu-latest`` (Python 3.12) |
+| Name | CI |
+| Triggers | push to main, pull_request to main, workflow_dispatch |
+| Required merge gate | Required |
 
-Steps:
-1. Checkout with full git history (``fetch-depth: 0``).
-2. Install dependencies via ``pip install -e ".[dev]"``.
-3. **Run tests** — ``python -m pytest tests/ -q --tb=short > pytest_output.txt``
-4. **Update audit docs** — runs the pre-commit hook in CI mode:
-   ``python .githooks/pre-commit --from-file pytest_output.txt --ci``
-5. **Auto-commit audit updates** (on push to main/master or workflow_dispatch)
-   — commits ``docs/exhaustive_audit.md`` and ``docs/FRESH_AUDIT.md`` with
-   message ``docs: auto-update audit with latest test results`` and pushes.
-6. **Upload pytest output** — uploaded as artifact for debugging.
+Validation includes:
+
+1. Complete Python tests on Ubuntu, Windows and macOS for Python 3.10–3.13.
+2. Ruff formatting/linting and MyPy.
+3. Rust formatting and compilation for both native clients on all supported operating systems.
+4. Repository version-contract validation.
+5. Canonical pytest evidence and read-only audit artifacts.
+6. A final Required job that fails unless every CI component succeeds.
+
+The separate .github/workflows/security.yml workflow provides CodeQL, dependency auditing and dependency review.
+
+CI workflows are intentionally read-only and never push commits to protected integration branches.

@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 from nexus_agent.core.context import ContextManager
 from nexus_agent.core.self_heal import SelfHealingExecutor
+from nexus_agent.audit import AuditLog
 from nexus_agent.llm.base import (
     LLMProvider,
     LLMResponse,
@@ -49,11 +50,12 @@ logger = logging.getLogger(__name__)
 
 
 class AgentMode(str, Enum):
-    """Agent operating modes (inspired by opencode Plan/Build)."""
+    """Agent operating modes."""
     AUTO = "auto"       # Agent decides when to plan vs execute
     PLAN = "plan"       # Read-only analysis and planning
     BUILD = "build"     # Full read/write execution
     REVIEW = "review"   # Code review mode
+    RESEARCH = "research"  # Evidence-first source gathering and verification
 
 
 class AgentState(str, Enum):
@@ -127,6 +129,10 @@ class AgentLoopConfig:
     goal: str = ""
     tool_timeout: float = 120.0
     max_input_chars: int = 50000
+    research_depth: str = "detailed"
+    research_collection: str = "until_saturation"
+    research_source_strategy: str = "hybrid"
+    research_session_id: str | None = None
 
 
 class AgentLoop:
@@ -253,6 +259,11 @@ Current workspace: {workspace}
         self.goal = cfg.goal
         self.tool_timeout = cfg.tool_timeout
         self.max_input_chars = cfg.max_input_chars
+        self.research_depth = cfg.research_depth
+        self.research_collection = cfg.research_collection
+        self.research_source_strategy = cfg.research_source_strategy
+        self.research_session_id = cfg.research_session_id
+        self._research_nudge_count = 0
         self.usage_tracker = usage_tracker
         self._healer = self_healing_executor or SelfHealingExecutor(max_retries=3)
 
@@ -282,6 +293,7 @@ Current workspace: {workspace}
         self.iteration_count = 0
         self._lock = threading.Lock()
         self.session_id = uuid.uuid4().hex[:12]
+        self.audit_log = AuditLog(Path(self.workspace) / ".nexus-agent" / "runtime" / "audit.jsonl")
 
         # Core Architecture telemetry & reflection
         from nexus_agent.core.nla_telemetry import NLATelemetry as _NLATelemetry
@@ -344,6 +356,25 @@ Current workspace: {workspace}
             prompt += "\n\n## Mode: BUILD\nYou have full read/write access. Execute the plan and make necessary changes."
         elif self.mode == AgentMode.REVIEW:
             prompt += "\n\n## Mode: REVIEW\nYou are reviewing code. Provide analysis, suggestions, and identify issues."
+        elif self.mode == AgentMode.RESEARCH:
+            try:
+                from nexus_agent.team.research import policy as research_policy
+                depth = research_policy(self.research_depth)
+                prompt += (
+                    "\n\n## Mode: RESEARCH\n"
+                    "This is an evidence-first research task. Gather authoritative sources before "
+                    "forming conclusions. Preserve exact source snapshots and quotations with the "
+                    "research ledger tools. Treat a claim as verified only after the ledger verification "
+                    "tool succeeds. Explicitly identify unresolved, contradictory, or unsupported claims. "
+                    f"Research depth: {depth['label']}; target verification passes: {depth['verification_passes']}; "
+                    f"collection: {self.research_collection}; source strategy: {self.research_source_strategy}."
+                )
+            except (ImportError, ValueError):
+                prompt += (
+                    "\n\n## Mode: RESEARCH\n"
+                    "Gather authoritative sources, record exact evidence, verify claims, and flag "
+                    "unsupported or contradictory assertions."
+                )
 
         if self.system_prompt_extra:
             prompt += f"\n\n{self.system_prompt_extra}"
@@ -363,7 +394,7 @@ Current workspace: {workspace}
         elif hasattr(data, "value"):  # Enum support
             serializable_data = data.value
 
-        self._trace_buffer.append({
+        record = {
             "timestamp": time.time(),
             "session_id": self.session_id,
             "iteration": self.iteration_count,
@@ -371,7 +402,18 @@ Current workspace: {workspace}
             "state": self.state.value,
             "event_type": event_type,
             "data": serializable_data,
-        })
+        }
+        self._trace_buffer.append(record)
+        try:
+            self.audit_log.append(
+                scope="session",
+                run_id=self.session_id,
+                actor="agent",
+                event_type=event_type,
+                payload=record,
+            )
+        except (OSError, ValueError, RuntimeError) as audit_error:
+            logger.debug("Audit append failed without interrupting agent loop: %s", audit_error)
 
         if len(self._trace_buffer) >= 10:
             self._flush_trace_buffer()
@@ -648,6 +690,13 @@ Current workspace: {workspace}
             logger.debug(f"UsageTracker.record failed: {e}")
 
     def run(self, user_input: str) -> Iterator[AgentEvent]:
+        promoted_from_auto = self.mode == AgentMode.AUTO and self._is_research_request(user_input)
+        if promoted_from_auto:
+            self.mode = AgentMode.RESEARCH
+            self._ensure_research_tools()
+            yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
+        elif self.mode == AgentMode.RESEARCH:
+            self._ensure_research_tools()
         truncated_input = self._init_conversation(user_input)
         yield self._emit_event("state_change", AgentState.THINKING)
 
@@ -684,6 +733,26 @@ Current workspace: {workspace}
                 yield from self._process_tool_calls(response.tool_calls)
                 continue
 
+            if self.mode == AgentMode.RESEARCH:
+                coverage = self._research_coverage()
+                source_count = int((coverage or {}).get("source_count", 0))
+                if source_count == 0 and self._research_nudge_count < 2:
+                    self._research_nudge_count += 1
+                    yield self._emit_event(
+                        "thinking",
+                        "Research quality guard: no source evidence recorded; gathering sources before completion.",
+                    )
+                    with self._lock:
+                        self.messages.append(Message(
+                            role=Role.USER,
+                            content=(
+                                "Do not finish this research task yet. You have not recorded any source evidence. "
+                                "Use web/source tools, record exact source snapshots and supporting quotations in the "
+                                "research ledger, verify the resulting claims, then answer."
+                            ),
+                        ))
+                    continue
+
             rework_needed, reflection_events = self._handle_reflection(truncated_input, response)
             yield from reflection_events
             if rework_needed:
@@ -691,13 +760,20 @@ Current workspace: {workspace}
 
             with self._lock:
                 self.state = AgentState.DONE
-            yield self._emit_event("done", {
+            done_payload = {
                 "iterations": self.iteration_count,
                 "finish_reason": response.finish_reason,
-            })
+            }
+            if self.mode == AgentMode.RESEARCH:
+                done_payload["research_quality"] = self._research_coverage()
+            yield self._emit_event("done", done_payload)
+            if promoted_from_auto:
+                self.mode = AgentMode.AUTO
             self._flush_trace_buffer()
             return
 
+        if promoted_from_auto:
+            self.mode = AgentMode.AUTO
         with self._lock:
             self.state = AgentState.DONE
         yield self._emit_event("done", {
@@ -741,6 +817,13 @@ Current workspace: {workspace}
             self._record_usage_dict(final_usage)
 
     def run_stream(self, user_input: str) -> Iterator[AgentEvent]:
+        promoted_from_auto = self.mode == AgentMode.AUTO and self._is_research_request(user_input)
+        if promoted_from_auto:
+            self.mode = AgentMode.RESEARCH
+            self._ensure_research_tools()
+            yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
+        elif self.mode == AgentMode.RESEARCH:
+            self._ensure_research_tools()
         truncated_input = self._init_conversation(user_input)
         yield self._emit_event("state_change", AgentState.THINKING)
 
@@ -830,9 +913,13 @@ Current workspace: {workspace}
             yield self._emit_event("done", {
                 "iterations": self.iteration_count,
             })
+            if promoted_from_auto:
+                self.mode = AgentMode.AUTO
             self._flush_trace_buffer()
             return
 
+        if promoted_from_auto:
+            self.mode = AgentMode.AUTO
         self.state = AgentState.DONE
         yield self._emit_event("done", {
             "iterations": self.iteration_count,
@@ -840,6 +927,69 @@ Current workspace: {workspace}
         })
         self._flush_trace_buffer()
 
+    @staticmethod
+    def _is_research_request(user_input: str) -> bool:
+        text = user_input.lower()
+        terms = (
+            "research", "literature review", "survey", "investigate", "investigation",
+            "evidence", "sources", "citations", "cite", "papers", "compare sources",
+            "fact check", "fact-check", "verify claims", "authoritative sources",
+            "specification analysis", "what does the literature say",
+        )
+        return any(term in text for term in terms)
+
+    def _ensure_research_tools(self) -> None:
+        """Attach evidence-ledger tools once for interactive research sessions."""
+        required = {
+            "research_configured_source",
+            "research_record_source",
+            "research_record_claim",
+            "research_verify_claim",
+            "research_record_conflict",
+            "research_adjudicate_conflict",
+        }
+        names = {str(getattr(tool, "name", "")) for tool in self.tools}
+        if required.issubset(names):
+            return
+        from nexus_agent.team.runtime import build_workspace_tools
+        catalog = build_workspace_tools(
+            self.workspace,
+            provider=self.provider,
+            session_id=self.research_session_id or self.session_id,
+            research=True,
+            research_depth=self.research_depth,
+            research_source_strategy=self.research_source_strategy,
+        )
+        existing = {str(getattr(tool, "name", "")) for tool in self.tools}
+        for tool in catalog:
+            name = str(getattr(tool, "name", ""))
+            if name in required and name not in existing:
+                self.tools.append(tool)
+                self._tool_map[name] = tool
+                existing.add(name)
+        self._tool_definitions = [
+            ToolDefinition(
+                name=tool.name,
+                description=tool.description,
+                parameters=tool.parameters,
+                required_params=tool.required_params,
+            )
+            for tool in self.tools
+        ]
+    def _research_coverage(self) -> dict[str, Any] | None:
+        if self.mode != AgentMode.RESEARCH:
+            return None
+        try:
+            from nexus_agent.research.store import ResearchStore
+            from nexus_agent.storage.layout import StorageLayout
+            from nexus_agent.team.research import policy as research_policy
+            store = ResearchStore(StorageLayout(self.workspace).workspace_runtime / "research.db")
+            return store.coverage(
+                self.research_session_id or self.session_id,
+                research_policy(self.research_depth)["verification_passes"],
+            )
+        except (ImportError, OSError, ValueError, RuntimeError):
+            return None
     def add_context(self, content: str, label: str = "context") -> None:
         """Add additional context to the conversation.
 

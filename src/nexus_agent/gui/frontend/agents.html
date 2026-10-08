@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — Agent Forge</title>
+<style>
+:root{color-scheme:dark;--bg:#060a10;--panel:#0d1522;--line:#22334c;--text:#e7eef8;--muted:#8ea0b8;--accent:#7dd3fc;--good:#86efac;--bad:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#172a42 0,#060a10 50%,#030509 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:rgba(6,10,16,.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:2}
+h1{margin:0;font-size:18px}.sub{font-size:12px;color:var(--muted)}a,.btn{color:var(--text)}.btn{border:1px solid var(--line);background:#101b2b;padding:8px 12px;border-radius:8px;cursor:pointer}
+main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:12px;padding:12px}.panel{border:1px solid var(--line);background:rgba(13,21,34,.9);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.controls{padding:12px}.controls label{display:block;color:var(--muted);font-size:11px;margin:9px 0 4px}.controls textarea,.controls input,.controls select{width:100%;background:#08111d;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}.controls textarea{min-height:140px;resize:vertical}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{display:flex;gap:8px;margin-top:12px}.primary{border-color:#286c8f;background:#0b3042;flex:1}
+#list{min-height:600px;max-height:calc(100vh - 90px);overflow:auto}.agent{padding:12px;border-bottom:1px solid #18253a;cursor:pointer}.agent:hover{background:#101a2a}.top{display:flex;justify-content:space-between;gap:10px}.name{font-weight:600}.meta{color:var(--muted);font-size:11px}.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}.chip{border:1px solid var(--line);padding:2px 6px;border-radius:999px;font-size:9px;color:var(--muted)}.editor{padding:14px}.empty{padding:35px;text-align:center;color:var(--muted)}pre{white-space:pre-wrap;word-break:break-word;background:#08111d;border:1px solid var(--line);border-radius:8px;padding:12px;max-height:500px;overflow:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div><h1>NexusAgent / Agent Forge</h1><div class="sub">Create reusable specialists or ask NexusAgent to generate them.</div></div><a class="btn" href="/skills.html">Skills</a> <a class="btn" href="/">Workspace</a></header>
+<main>
+<section class="panel">
+<h2>Generate / Configure</h2>
+<div class="controls">
+<label>Natural-language agent requirement</label><textarea id="request" placeholder="Create a senior security engineer who audits dependencies and independently reviews implementation risk."></textarea>
+<div class="grid">
+<div><label>Scope</label><select id="scope"><option>user</option><option selected>workspace</option><option>project</option><option>global</option></select></div>
+<div><label>Max generated agents</label><input id="max" type="number" min="1" max="32" value="4"></div>
+</div>
+<div class="actions"><button class="btn primary" id="generate">Generate & Save</button><button class="btn" id="refresh">Refresh</button></div>
+<div id="notice" class="sub" style="margin-top:10px"></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+<label>Manual agent ID</label><input id="id" placeholder="security-reviewer">
+<label>Name</label><input id="name" placeholder="Security Reviewer">
+<label>Profession</label><input id="profession" placeholder="Application Security Engineer">
+<label>Mission</label><textarea id="mission" style="min-height:80px"></textarea>
+<label>Instructions</label><textarea id="instructions" style="min-height:120px"></textarea>
+<label>Tool categories</label><input id="tools" value="read,search,shell,git,code_intel,lsp">
+<label>Reusable skills (comma-separated)</label><input id="skills" placeholder="debug,test_writer,code_review">
+<div class="grid">
+<label>Model role</label><input id="model_role" value="default">
+<label>Provider</label><select id="provider"><option value="">Default provider</option></select>
+<label>Model</label><input id="model" list="model-options" placeholder="provider/model"><datalist id="model-options"></datalist>
+<label>Fallback providers</label><input id="fallbacks" placeholder="openrouter,litellm">
+</div>
+<label>Dependencies (comma-separated)</label><input id="dependencies" placeholder="architect">
+<label><input id="reviewer" type="checkbox"> Independent reviewer role</label>
+<div class="actions"><button class="btn primary" id="save">Save Manual Agent</button></div>
+</div>
+</section>
+<section class="panel">
+<h2>Resolved Agent Catalog</h2>
+<div id="list"><div class="empty">Loading agents…</div></div>
+<div id="editor" class="editor"><div class="empty">Select an agent to inspect its complete configuration.</div></div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function notice(t,bad){$("notice").textContent=t;$("notice").style.color=bad?"#fca5a5":"#8ea0b8"}
+async function loadProviders(){
+ try{
+   const r=await fetch("/api/providers");
+   if(!r.ok)return;
+   const d=await r.json();
+   const select=$("provider");
+   for(const p of d.providers||[]){
+     const option=document.createElement("option");
+     option.value=p.id;
+     option.textContent=p.name+" ("+p.id+")";
+     select.appendChild(option);
+   }
+   select.onchange=async function(){
+     const value=select.value;
+     const list=$("model-options");
+     list.innerHTML="";
+     if(!value)return;
+     try{
+       const rr=await fetch("/api/providers/models?provider="+encodeURIComponent(value));
+       const md=await rr.json();
+       for(const m of md.models||[]){
+         const o=document.createElement("option");
+         o.value=m.id;
+         o.label=m.name||m.id;
+         list.appendChild(o);
+       }
+     }catch(_){}
+   };
+ }catch(_){}
+}
+async function load(){
+ const r=await fetch("/api/agents?include_disabled=true");
+ if(!r.ok){notice("Unable to load agents.",true);return}
+ const d=await r.json(), list=$("list"); list.innerHTML="";
+ for(const a of d.agents){
+   const el=document.createElement("div"); el.className="agent"; el.dataset.id=a.id;
+   el.innerHTML="<div class='top'><div><div class='name'>"+esc(a.name)+"</div><div class='meta'>"+esc(a.profession)+" • "+esc(a.scope)+" • "+(a.enabled?"enabled":"disabled")+"</div></div><div class='meta'>"+(a.write_access?"WRITE":"READ")+"</div></div><div class='meta' style='margin-top:5px'>"+esc(a.mission)+"</div><div class='chips'>"+a.tool_categories.map(x=>"<span class='chip'>"+esc(x)+"</span>").join("")+"</div>";
+   el.onclick=async function(){const rr=await fetch("/api/agents/"+encodeURIComponent(el.dataset.id));const a2=await rr.json();$("editor").innerHTML="<pre>"+esc(JSON.stringify(a2,null,2))+"</pre>"};
+   list.appendChild(el);
+ }
+ if(!d.agents.length)list.innerHTML="<div class='empty'>No agent definitions found.</div>";
+}
+$("generate").onclick=async function(){
+ const request=$("request").value.trim();if(!request){notice("Describe the agents you want.",true);return}
+ this.disabled=true;notice("Generating professional profiles…");
+ try{const r=await fetch("/api/agents/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request:request,max_agents:+$("max").value,scope:$("scope").value})});const d=await r.json();if(!r.ok)throw new Error(d.detail||"generation failed");notice("Saved "+d.agents.length+" agent profile(s).");await load()}catch(e){notice(e.message||String(e),true)}finally{this.disabled=false}
+};
+$("save").onclick=async function(){
+ const tools=$("tools").value.split(",").map(x=>x.trim()).filter(Boolean);
+ const payload={id:$("id").value.trim(),name:$("name").value.trim(),profession:$("profession").value.trim(),description:"",mission:$("mission").value.trim(),instructions:$("instructions").value.trim(),scope:$("scope").value,tool_categories:tools,skill_ids:$("skills").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),write_access:tools.includes("write"),reviewer:$("reviewer").checked,dependencies:$("dependencies").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),model_role:$("model_role").value.trim()||"default",provider:$("provider").value.trim()||null,model:$("model").value.trim()||null,fallbacks:$("fallbacks").value.split(",").map(x=>x.trim()).filter(Boolean),enabled:true};
+ if(!payload.id||!payload.name||!payload.profession||!payload.mission||!payload.instructions){notice("Fill all manual-agent fields.",true);return}
+ const r=await fetch("/api/agents/"+encodeURIComponent(payload.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok){notice(String(d.detail||"save failed"),true);return}notice("Saved "+payload.id);await load()
+};
+$("refresh").onclick=load;loadProviders();load();
+</script>
+</body>
+</html>

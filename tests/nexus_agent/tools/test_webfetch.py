@@ -348,6 +348,24 @@ class TestWebFetchTool(unittest.TestCase):
             out = tool.execute("https://x.com/")
         self.assertIn("Caf", out)
 
+    def test_block_private_host_rejects_loopback(self):
+        tool = WebFetchTool(cache_ttl_s=0, block_private_hosts=True)
+        out = tool.execute("http://127.0.0.1:8080/")
+        self.assertIn("Private/local hosts are blocked", out)
+
+    def test_block_private_host_checks_final_redirect_target(self):
+        tool = WebFetchTool(cache_ttl_s=0, block_private_hosts=True)
+        with patch("httpx.Client") as MockClient:
+            ctx = MagicMock()
+            response = self._mock_response(
+                "<p>redirected</p>",
+                url="http://127.0.0.1:8080/private",
+            )
+            ctx.__enter__.return_value.get.return_value = response
+            MockClient.return_value = ctx
+            out = tool.execute("https://public.example/")
+        self.assertIn("Private/local hosts are blocked", out)
+
     def test_relative_url_resolution(self):
         tool = WebFetchTool(cache_ttl_s=0)
         with patch("httpx.Client") as MockClient:
