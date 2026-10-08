@@ -6,8 +6,6 @@ import time
 
 from fastapi import HTTPException, Request
 
-from fastapi import HTTPException, Request
-
 from pydantic import BaseModel, Field
 
 from nexus_agent.auth import AuthStore
@@ -110,7 +108,7 @@ def register_auth_routes(app: Any) -> None:
                     continue
                 output[provider_id] = {
                     key: value[key]
-                    for key in ("model", "base_url", "api_url", "context_size", "max_tokens")
+                    for key in ("model", "base_url", "api_url", "context_size", "max_tokens", "reasoning_budget", "top_p", "timeout_seconds", "pending_poll_seconds", "pending_max_wait_seconds")
                     if key in value
                 }
         return {"providers": output}
