@@ -464,6 +464,14 @@ Team protocol:
             thread_name_prefix=f"nexus-team-{team_id}",
         ) as pool:
             while pending or active:
+                persisted_control = store.pop_control(team_id)
+                if persisted_control == "pause":
+                    control_state.pause_requested.set()
+                elif persisted_control == "resume":
+                    control_state.pause_requested.clear()
+                elif persisted_control == "stop":
+                    control_state.stop_requested.set()
+
                 if control_state.stop_requested.is_set():
                     for role_id in sorted(pending):
                         store.update_agent(
