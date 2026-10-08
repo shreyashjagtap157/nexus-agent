@@ -55,30 +55,32 @@ class FileJournal:
     ) -> str:
         change_id = uuid.uuid4().hex[:20]
         import json
-        self._conn.execute(
-            """INSERT INTO file_changes(
-                change_id,operation,path,previous_hash,new_hash,actor,details_json,created_at
-            ) VALUES(?,?,?,?,?,?,?,?)""",
-            (
-                change_id,
-                operation,
-                path,
-                previous_hash,
-                new_hash,
-                actor,
-                json.dumps(details or {}, ensure_ascii=False, default=str),
-                time.time(),
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO file_changes(
+                    change_id,operation,path,previous_hash,new_hash,actor,details_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?)""",
+                (
+                    change_id,
+                    operation,
+                    path,
+                    previous_hash,
+                    new_hash,
+                    actor,
+                    json.dumps(details or {}, ensure_ascii=False, default=str),
+                    time.time(),
+                ),
+            )
+            self._conn.commit()
         return change_id
 
     def recent(self, limit: int = 100) -> list[dict[str, Any]]:
-        rows = self._conn.execute(
-            """SELECT change_id,operation,path,previous_hash,new_hash,actor,details_json,created_at
-               FROM file_changes ORDER BY created_at DESC LIMIT ?""",
-            (max(1, min(int(limit), 5000)),),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                """SELECT change_id,operation,path,previous_hash,new_hash,actor,details_json,created_at
+                   FROM file_changes ORDER BY created_at DESC LIMIT ?""",
+                (max(1, min(int(limit), 5000)),),
+            ).fetchall()
         import json
         return [
             {
