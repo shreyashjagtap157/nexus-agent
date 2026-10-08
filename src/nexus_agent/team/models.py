@@ -74,6 +74,7 @@ class TeamConfig:
     output_format: str = "markdown"
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
+    research_source_urls: list[str] = field(default_factory=list)
     effort_level: str = "medium"
     auto_synthesize: bool = True
     require_reviewer: bool = True
