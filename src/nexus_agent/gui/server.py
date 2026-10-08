@@ -309,6 +309,17 @@ async def update_config(req: ConfigUpdateRequest):
     return {"success": True, "config": state_manager.get("config")}
 
 
+@app.get("/api/activity/files")
+async def file_activity(limit: int = 250):
+    from nexus_agent.storage.journal import FileJournal
+    workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
+    journal = FileJournal(StorageLayout(workspace).workspace_runtime / "file-journal.db")
+    try:
+        return {"changes": journal.recent(limit)}
+    finally:
+        journal.close()
+
+
 @app.get("/api/sessions")
 async def list_sessions():
     """List saved conversation sessions."""
