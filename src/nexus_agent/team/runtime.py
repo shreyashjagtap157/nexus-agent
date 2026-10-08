@@ -303,11 +303,36 @@ Team protocol:
             recipient_id=profile.role_id,
         )
 
+        from nexus_agent.memory.scoped import MemoryScope, ScopedMemory
+        from nexus_agent.storage.layout import StorageLayout
+        scoped_memory = ScopedMemory(
+            StorageLayout(self.workspace),
+            agent_id=profile.role_id,
+            team_id=team_id,
+        )
+        prior_memory = scoped_memory.search(
+            goal,
+            scopes=[
+                MemoryScope.WORKSPACE,
+                MemoryScope.PROJECT,
+                MemoryScope.USER,
+                MemoryScope.TEAM,
+                MemoryScope.AGENT,
+            ],
+            limit=8,
+        )
+        memory_context = ""
+        if prior_memory:
+            memory_context = "\n\nRelevant persistent context:\n" + "\n".join(
+                f"- [{item.get('scope')}] {str(item.get('content', ''))[:1200]}"
+                for item in prior_memory
+            )
+
         cfg = AgentLoopConfig(
             mode=AgentMode.BUILD if profile.write_access else AgentMode.REVIEW,
             workspace=self.workspace,
             max_iterations=config.max_iterations_per_agent,
-            system_prompt_extra=self._system_extra(goal, profile, team_id),
+            system_prompt_extra=self._system_extra(goal, profile, team_id) + memory_context,
             effort_level=config.effort_level,
         )
         worker_provider = self._provider_for(profile)
@@ -368,6 +393,19 @@ Team protocol:
                 ended_at=time.time(),
                 result=result,
             )
+            if result:
+                scoped_memory.store(
+                    result[-5000:],
+                    scope=MemoryScope.TEAM,
+                    category=f"team_result:{profile.role_id}",
+                    metadata={"team_id": team_id, "agent_id": profile.role_id},
+                )
+                scoped_memory.store(
+                    result[-3000:],
+                    scope=MemoryScope.AGENT,
+                    category="completed_work",
+                    metadata={"team_id": team_id, "agent_id": profile.role_id},
+                )
             store.message(
                 team_id,
                 profile.role_id,
