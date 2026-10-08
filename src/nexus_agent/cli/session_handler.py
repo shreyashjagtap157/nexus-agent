@@ -212,6 +212,12 @@ class SessionOrchestratorMixin:
             config=cfg,
             usage_tracker=getattr(self, "_usage_tracker", None),
         )
+        self._agent.memory = self._memory
+        for tool in tools:
+            if hasattr(tool, "set_agent_loop"):
+                tool.set_agent_loop(self._agent)
+            if hasattr(tool, "set_provider"):
+                tool.set_provider(self._engine)
 
         if self._session_mgr:
             if not self._session_id and not getattr(self, "_new_session", False):
