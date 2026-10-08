@@ -289,6 +289,77 @@ Team protocol:
                 "error": str(exc),
             }
 
+    def _write_artifacts(
+        self,
+        team_id: str,
+        goal: str,
+        summary: str,
+        synthesis: str,
+        results: list[dict[str, Any]],
+        config: TeamConfig,
+    ) -> list[str]:
+        if config.output_mode not in {"file", "both"}:
+            return []
+        artifact_dir = self.data_dir / "teams" / team_id
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        content = synthesis or summary
+        if config.output_format == "text":
+            path = artifact_dir / "result.txt"
+            path.write_text(content, encoding="utf-8")
+        elif config.output_format == "json":
+            import json
+            path = artifact_dir / "result.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "team_id": team_id,
+                        "goal": goal,
+                        "summary": summary,
+                        "synthesis": synthesis,
+                        "agents": results,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str,
+                ),
+                encoding="utf-8",
+            )
+        else:
+            path = artifact_dir / "result.md"
+            lines = [
+                "# NexusAgent Team Result",
+                "",
+                "Team: " + team_id,
+                "",
+                "## Goal",
+                "",
+                goal,
+                "",
+                "## Summary",
+                "",
+                summary,
+                "",
+                "## Synthesis",
+                "",
+                content,
+                "",
+                "## Workers",
+                "",
+            ]
+            for item in results:
+                lines.extend(
+                    [
+                        "### " + str(item.get("name", item.get("agent_id", "worker"))),
+                        "",
+                        "Profession: " + str(item.get("profession", "")),
+                        "",
+                        str(item.get("result", "") or item.get("error", "")),
+                        "",
+                    ]
+                )
+            path.write_text("\n".join(lines), encoding="utf-8")
+        return [str(path.resolve())]
+
     def _synthesize(self, team_id: str, goal: str, results: list[dict[str, Any]], store: TeamStore) -> str:
         compact = [
             {
@@ -439,7 +510,26 @@ Team protocol:
         store.message(team_id, "orchestrator", "TEAM_COMPLETE", {"success": success, "summary": summary})
         store.finish_team(team_id, "completed" if success else "needs_review")
 
-        result = TeamRunResult(team_id, goal, success, summary, results, synthesis, failures)
+        artifact_paths = self._write_artifacts(
+            team_id,
+            goal,
+            summary,
+            synthesis,
+            results,
+            cfg,
+        )
+        if artifact_paths:
+            store.event(team_id, "artifacts_written", {"paths": artifact_paths})
+        result = TeamRunResult(
+            team_id,
+            goal,
+            success,
+            summary,
+            results,
+            synthesis,
+            failures,
+            artifact_paths,
+        )
         yield AgentEvent(AgentEventType.CONTENT_COMPLETE, synthesis or summary)
         yield AgentEvent(AgentEventType.DONE, result.__dict__)
         store.close()
