@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusAgent — MCP Forge</title>
+<style>
+:root{color-scheme:dark;--bg:#050a10;--panel:#0c1521;--line:#20324b;--text:#e9f1fb;--muted:#8da0b8;--good:#86efac;--bad:#fca5a5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#19314b 0,#050a10 50%,#02050a 100%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#07101bdd;backdrop-filter:blur(10px);z-index:2}
+h1{margin:0;font-size:18px}.sub{color:var(--muted);font-size:11px}.btn{border:1px solid var(--line);background:#101b2a;color:var(--text);padding:8px 11px;border-radius:8px;text-decoration:none;cursor:pointer}
+main{padding:12px;display:grid;grid-template-columns:1fr 1.4fr;gap:12px}.panel{background:rgba(12,21,33,.93);border:1px solid var(--line);border-radius:12px;overflow:hidden}.panel h2{margin:0;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.body{padding:12px}
+.server{padding:12px;border-bottom:1px solid #17253a}.top{display:flex;justify-content:space-between}.name{font-weight:600}.muted{color:var(--muted);font-size:11px}.ok{color:var(--good)}.bad{color:var(--bad)}
+textarea{width:100%;min-height:420px;background:#08111d;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font:12px ui-monospace,SFMono-Regular,Consolas,monospace}
+.actions{display:flex;gap:8px;margin-top:10px}
+@media(max-width:850px){main{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div><h1>NexusAgent / MCP Forge</h1><div class="sub">Declarative MCP server inventory, validation and local configuration.</div></div><div><a class="btn" href="/agents.html">Agents</a> <a class="btn" href="/activity.html">Activity</a> <a class="btn" href="/">Workspace</a></div></header>
+<main>
+<section class="panel"><h2>Configured Servers</h2><div id="servers"><div class="body muted">Loading…</div></div></section>
+<section class="panel"><h2>Configuration</h2><div class="body"><textarea id="json"></textarea><div class="actions"><button class="btn" id="validate">Validate</button><button class="btn" id="save">Save</button></div><div id="status" class="muted" style="margin-top:10px"></div></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+let config=[];
+async function load(){const r=await fetch("/api/mcp");const d=await r.json();config=d.servers||[];$("json").value=JSON.stringify(config,null,2);$("servers").innerHTML=config.map(s=>"<div class='server'><div class='top'><div class='name'>"+esc(s.name||s.command)+"</div><div class='muted'>"+(s.enabled===false?"disabled":"enabled")+"</div></div><div class='muted' style='margin-top:5px'>"+esc(s.command)+" "+esc((s.args||[]).join(" "))+"</div></div>").join("")||"<div class='body muted'>No MCP servers configured.</div>"}
+$("validate").onclick=async()=>{const r=await fetch("/api/mcp/validate",{method:"POST"});const d=await r.json();$("status").innerHTML=(d.results||[]).map(x=>"<div class='"+(x.valid?"ok":"bad")+"'>"+esc(x.name)+": "+esc(x.reason)+"</div>").join("")};
+$("save").onclick=async()=>{try{const servers=JSON.parse($("json").value);const r=await fetch("/api/mcp",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(servers)});const d=await r.json();$("status").textContent=r.ok?"Saved "+d.count+" MCP server definitions. Restart/start the runtime to apply changes.":String(d.detail||"save failed");if(r.ok)load()}catch(e){$("status").textContent=e.message}};
+load();
+</script></body></html>
