@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable
 
 import platformdirs
+import yaml
 
 from nexus_agent.core.config import APP_NAME, get_data_dir
 
