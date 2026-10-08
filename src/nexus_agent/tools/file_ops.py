@@ -281,6 +281,8 @@ class DeleteFileTool(Tool):
     def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
         self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
+        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
@@ -316,7 +318,7 @@ class DeleteFileTool(Tool):
                 if any(target.iterdir()):
                     return "Error: Refusing to delete a non-empty directory."
                 target.rmdir()
-                FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db").record(
+                self._journal.record(
                     "delete_directory",
                     str(target.relative_to(self.workspace)),
                 )
@@ -324,7 +326,7 @@ class DeleteFileTool(Tool):
             if permanent:
                 previous_hash = FileJournal.digest_file(target)
                 target.unlink()
-                FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db").record(
+                self._journal.record(
                     "delete_permanent",
                     str(target.relative_to(self.workspace)),
                     previous_hash,
@@ -404,7 +406,15 @@ class RestoreFileTool(Tool):
             return "Error: refusing to restore into .git."
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
+            previous_hash = FileJournal.digest_file(item)
             item.rename(target)
+            self._journal.record(
+                "restore",
+                str(target.relative_to(self.workspace)),
+                previous_hash=previous_hash,
+                new_hash=FileJournal.digest_file(target) if target.is_file() else None,
+                details={"trash": str(item.relative_to(self.workspace))},
+            )
             return f"Restored {destination}."
         except OSError as exc:
             return f"Error: restore failed: {exc}"
@@ -415,6 +425,7 @@ class MoveFileTool(Tool):
 
     def __init__(self, workspace: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
+        self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
     def name(self) -> str:
