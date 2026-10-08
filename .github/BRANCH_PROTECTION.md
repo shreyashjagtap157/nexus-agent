@@ -43,3 +43,4 @@ Published tags are immutable. Never force-push or rewrite a release tag.
 The main branch has been created as the canonical integration target and the multi-agent platform work is being integrated through a dedicated pull request.
 
 Branch protection itself is a GitHub administration setting and must be enabled by a repository administrator with administration-level GitHub credentials. The source-controlled policy in this file is the authoritative expected configuration; it is not a substitute for the GitHub-side rule.
+The policy is evaluated against the current main integration head by GitHub pull-request checks; stale cancelled runs are not merge evidence.
