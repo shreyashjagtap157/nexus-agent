@@ -67,6 +67,40 @@ enum Commands {
         no_init: bool,
     },
 
+    /// Run a dynamically assembled multi-agent team using the shared NexusAgent runtime.
+    Team {
+        /// High-level team objective.
+        goal: String,
+
+        /// Team operating mode: auto, code, research, review, analysis, plan or automation.
+        #[arg(long, default_value = "auto")]
+        mode: String,
+
+        /// Maximum specialist workers.
+        #[arg(long, default_value_t = 6)]
+        max_agents: u32,
+
+        /// Maximum concurrently running workers.
+        #[arg(long, default_value_t = 4)]
+        parallelism: u32,
+
+        /// Maximum AgentLoop iterations per worker.
+        #[arg(long, default_value_t = 30)]
+        max_iterations: u32,
+
+        /// Effort level forwarded to the shared Python runtime.
+        #[arg(long, default_value = "medium")]
+        effort: String,
+
+        /// Workspace directory.
+        #[arg(long, default_value = ".")]
+        workspace: String,
+
+        /// Automatically approve tool requests.
+        #[arg(long)]
+        yes: bool,
+    },
+
     /// Run diagnostics.
     Doctor {
         /// Verbose output.
@@ -102,6 +136,28 @@ async fn main() {
             no_init,
         } => {
             run_chat(&workspace, model.as_deref(), provider.as_deref(), no_init).await;
+        }
+        Commands::Team {
+            goal,
+            mode,
+            max_agents,
+            parallelism,
+            max_iterations,
+            effort,
+            workspace,
+            yes,
+        } => {
+            run_team(
+                &goal,
+                &mode,
+                max_agents,
+                parallelism,
+                max_iterations,
+                &effort,
+                &workspace,
+                yes,
+            )
+            .await;
         }
         Commands::Doctor { verbose } => {
             run_doctor(verbose).await;
@@ -373,6 +429,55 @@ async fn run_chat(workspace: &str, model: Option<&str>, provider: Option<&str>, 
     process.shutdown(Duration::from_secs(5)).await;
     let _ = tui_engine.restore();
     eprintln!("[nexus] Goodbye.");
+}
+
+// ── Native Multi-Agent Team Command ────────────────────────────────
+
+async fn run_team(
+    goal: &str,
+    mode: &str,
+    max_agents: u32,
+    parallelism: u32,
+    max_iterations: u32,
+    effort: &str,
+    workspace: &str,
+    yes: bool,
+) {
+    let python = match process::find_python() {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("[nexus] Python runtime not found: {error}");
+            std::process::exit(1);
+        }
+    };
+
+    let mut command = tokio::process::Command::new(&python);
+    command
+        .args(["-m", "nexus_agent.team_cli", "run", goal])
+        .args(["--mode", mode])
+        .args(["--max-agents", &max_agents.to_string()])
+        .args(["--parallelism", &parallelism.to_string()])
+        .args(["--max-iterations", &max_iterations.to_string()])
+        .args(["--effort", effort])
+        .args(["--workspace", workspace]);
+
+    if yes {
+        command.arg("--yes");
+    }
+
+    eprintln!("[nexus] Launching shared multi-agent runtime…");
+    match command.status().await {
+        Ok(status) if status.success() => {}
+        Ok(status) => {
+            let code = status.code().unwrap_or(1);
+            eprintln!("[nexus] Team runtime exited with status {code}");
+            std::process::exit(code);
+        }
+        Err(error) => {
+            eprintln!("[nexus] Failed to launch team runtime: {error}");
+            std::process::exit(1);
+        }
+    }
 }
 
 // ── Text Mode Fallback ──────────────────────────────────────────────
