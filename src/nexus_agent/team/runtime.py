@@ -360,7 +360,28 @@ class TeamRuntime:
             return bool(self.permission_callback(tool_call))
 
         name = str(getattr(tool_call, "name", "")).lower()
+        arguments = getattr(tool_call, "arguments", {}) or {}
+        if not isinstance(arguments, dict):
+            arguments = {}
         catalog = tool_catalog if tool_catalog is not None else self.tools
+
+        # Team coordination is a runtime protocol, not workspace mutation.
+        # A specialist must be able to communicate and read its handoffs even
+        # when it has no code/write permissions.
+        if name in {"team_send_message", "team_read_messages"}:
+            return True
+
+        # Delegation is explicitly opted into through the delegate tool category.
+        if name == "boomerang":
+            return bool(profile and "delegate" in set(profile.tool_categories))
+
+        # Stateful tools expose safe read-only actions alongside mutations.
+        # Allow those read operations to read-only specialists while keeping
+        # persistence/deletion behind the normal write boundary.
+        if name == "memory_scoped" and str(arguments.get("action", "")).lower() in {"search", "stats"}:
+            return True
+        if name == "todowrite" and str(arguments.get("action", "")).lower() in {"list", "get"}:
+            return True
         tool = next(
             (candidate for candidate in catalog if getattr(candidate, "name", "").lower() == name),
             None,
