@@ -1,30 +1,53 @@
-name: Native Desktop
+name: Native Clients
+
+concurrency:
+  group: nexus-agent-native-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
-    branches: ["master", "multi-agent-platform"]
+    branches: ["main"]
     paths:
       - "nexus-desktop/**"
       - "nexus-rs/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
   pull_request:
+    branches: ["main"]
     paths:
       - "nexus-desktop/**"
       - "nexus-rs/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  workflow_dispatch:
 
-concurrency:
-  group: nexus-agent-native-desktop-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
   cargo-check:
-    name: Desktop check (${{ matrix.os }})
+    name: ${{ matrix.project.name }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        project:
+          - name: nexus-rs
+            manifest: nexus-rs/Cargo.toml
+          - name: nexus-desktop
+            manifest: nexus-desktop/Cargo.toml
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo fmt --manifest-path nexus-desktop/Cargo.toml -- --check
-      - run: cargo check --manifest-path nexus-desktop/Cargo.toml
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path ${{ matrix.project.manifest }} -- --check
+
+      - name: Check compilation
+        run: cargo check --manifest-path ${{ matrix.project.manifest }}
