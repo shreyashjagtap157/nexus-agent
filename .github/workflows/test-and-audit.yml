@@ -6,21 +6,25 @@ concurrency:
 
 on:
   push:
-    branches: [main, master]
+    branches: ["main"]
   pull_request:
-    branches: [main, master]
+    branches: ["main"]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test-and-audit:
-    name: Test & Audit (Python 3.12)
+    name: Audit and evidence report
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
         with:
-          # Fetch full history so the auto-commit can push
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -28,35 +32,26 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Install development dependencies
         run: |
-          pip install -e ".[dev]"
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
 
-      - name: Run tests
+      - name: Run complete test suite
         run: |
           python -m pytest tests/ -q --tb=short > pytest_output.txt 2>&1
 
-      - name: Update audit docs via pre-commit hook
-        if: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch' }}
+      - name: Generate audit reports
         run: |
           python .githooks/pre-commit --from-file pytest_output.txt --ci
 
-      - name: Commit audit updates
-        if: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch' }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/exhaustive_audit.md docs/FRESH_AUDIT.md
-          if git diff --cached --quiet; then
-            echo "No audit changes to commit"
-          else
-            git commit -m "docs: auto-update audit with latest test results"
-            git push
-          fi
-
-      - name: Upload pytest output
+      - name: Upload test and audit evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-output
-          path: pytest_output.txt
+          name: test-audit-evidence
+          path: |
+            pytest_output.txt
+            docs/exhaustive_audit.md
+            docs/FRESH_AUDIT.md
