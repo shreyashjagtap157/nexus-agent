@@ -5,6 +5,8 @@
 
 ---
 
+- Autonomous research fetching validates each redirect hop before following it and refuses more than five redirects.
+
 ## Supported Versions
 
 | Version | Supported          |
