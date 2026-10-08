@@ -34,9 +34,9 @@ FALLBACKS: dict[TeamMode, list[AgentProfile]] = {
     ],
     TeamMode.RESEARCH: [
         AgentProfile("researcher", "Primary Researcher", "Primary-Source Researcher", "Gather authoritative evidence.", "Prefer specifications, standards, papers and primary documentation.", ["read", "web", "research"], False),
-        AgentProfile("analyst", "Analyst", "Domain Analyst", "Analyze the collected evidence.", "Compare sources and derive explicit conclusions with provenance.", ["read", "web"], False),
-        AgentProfile("skeptic", "Skeptic", "Contradiction Analyst", "Challenge findings and seek counterevidence.", "Actively search for contradictory evidence and hidden assumptions.", ["read", "web"], False, True),
-        AgentProfile("verifier", "Verifier", "Evidence Verifier", "Independently verify important claims.", "Check claims against source evidence and reject unsupported assertions.", ["read", "web"], False, True),
+        AgentProfile("analyst", "Analyst", "Domain Analyst", "Analyze the collected evidence.", "Compare sources and derive explicit conclusions with provenance.", ["read", "web", "research"], False),
+        AgentProfile("skeptic", "Skeptic", "Contradiction Analyst", "Challenge findings and seek counterevidence.", "Actively search for contradictory evidence and hidden assumptions.", ["read", "web", "research"], False, True),
+        AgentProfile("verifier", "Verifier", "Evidence Verifier", "Independently verify important claims.", "Check claims against source evidence and reject unsupported assertions.", ["read", "web", "research"], False, True),
     ],
     TeamMode.REVIEW: [
         AgentProfile("reviewer-a", "Reviewer A", "Independent Reviewer", "Review the target from a correctness perspective.", "Inspect requirements, behavior and implementation quality.", ["read", "search"], False, True),
