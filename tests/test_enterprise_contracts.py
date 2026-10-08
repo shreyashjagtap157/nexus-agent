@@ -55,3 +55,20 @@ def test_storage_layout_separates_user_and_workspace_state(tmp_path: Path):
     assert layout.user_root != layout.workspace_root
     assert layout.user_agents != layout.workspace_agents
     assert layout.team_db.parent == layout.workspace_runtime
+
+
+def test_research_mode_and_auto_intent_detection():
+    from nexus_agent.core.agent import AgentLoop, AgentMode, AgentLoopConfig
+
+    assert AgentMode.RESEARCH.value == "research"
+    assert AgentLoop._is_research_request("Research the official language specification and compare sources")
+    assert AgentLoop._is_research_request("fact-check these claims with citations")
+    assert not AgentLoop._is_research_request("refactor this function")
+
+    cfg = AgentLoopConfig(
+        mode=AgentMode.RESEARCH,
+        research_depth="exhaustive",
+        research_collection="until_saturation",
+        research_source_strategy="hybrid",
+    )
+    assert cfg.research_depth == "exhaustive"
