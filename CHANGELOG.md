@@ -8,7 +8,7 @@ Release precedence and compatibility are governed by Semantic Versioning.
 
 Changes not yet assigned to a release.
 
-## [0.3.0-alpha.3]
+## [0.3.0-alpha.4]
 
 ### Added
 
@@ -24,7 +24,7 @@ Changes not yet assigned to a release.
 
 ### Changed
 
-- Versioning now advances the canonical development snapshot to `0.3.0-alpha.3` across the Python package, runtime, Rust clients, default configuration and lockfile.
+- Versioning now advances the canonical development snapshot to `0.3.0-alpha.4` across the Python package, runtime, Rust clients, default configuration and lockfile.
 - NexusAgent is positioned as a general-purpose local multi-agent development and research workbench; research is a first-class workload rather than the sole product scope.
 - Provider credentials are separated from normal project configuration, following the same architectural principle used by modern agent CLIs.
 
