@@ -168,37 +168,70 @@ class TeamRuntime:
             return True
         return False
 
-    def _tools_for(self, profile: AgentProfile, store: TeamStore, team_id: str, config: TeamConfig | None = None) -> list[Any]:
+    def _tools_for(
+        self,
+        profile: AgentProfile,
+        store: TeamStore,
+        team_id: str,
+        config: TeamConfig | None = None,
+        worker_provider: LLMProvider | None = None,
+        worker_agent_loop: Any | None = None,
+    ) -> list[Any]:
         categories = set(profile.tool_categories)
-        from nexus_agent.memory.scoped import ScopedMemory
-        from nexus_agent.storage.layout import StorageLayout
-        from nexus_agent.tools.scoped_memory import ScopedMemoryTool
+        provider = worker_provider or self.provider
+
+        # Build a fresh tool graph for every worker. Mutable tools such as
+        # BrowserTool, RAG, LSP and nested delegation must never be shared
+        # concurrently between independent AgentLoop instances.
+        mcp_tools = [
+            tool for tool in self.tools
+            if getattr(tool, "is_mcp", False)
+        ]
+        fresh_catalog = build_workspace_tools(
+            self.workspace,
+            provider=provider,
+            agent_loop=worker_agent_loop,
+            mcp_tools=mcp_tools,
+        )
 
         selected: list[Any] = []
-        for tool in self.tools:
-            name = getattr(tool, "name", "")
+        selected_names: set[str] = set()
+        for tool in fresh_catalog + self.tools:
+            name = str(getattr(tool, "name", ""))
+            if name in selected_names:
+                continue
+            lowered = name.lower()
             allowed = self._tool_matches(name, categories)
             if "mcp" in categories and bool(getattr(tool, "is_mcp", False)):
                 allowed = True
             if (
-                name.lower() in {"write_file", "code_edit", "insert_lines", "batch_edit", "delete_file", "move_file", "restore_file"}
+                lowered in {
+                    "write_file",
+                    "code_edit",
+                    "insert_lines",
+                    "batch_edit",
+                    "delete_file",
+                    "move_file",
+                    "restore_file",
+                    "rename_symbol",
+                }
                 and not profile.write_access
             ):
                 allowed = False
             if allowed:
                 selected.append(tool)
+                selected_names.add(name)
 
-        if "mcp" in categories:
-            selected.extend(
-                tool
-                for tool in self.tools
-                if tool not in selected and tool.__class__.__name__ == "MCPProxyTool"
-            )
         if profile.skill_ids:
             for skill_id in profile.skill_ids:
                 skill = self.skill_registry.get_skill(skill_id)
-                if skill is not None:
+                if skill is not None and getattr(skill, "name", "") not in selected_names:
                     selected.append(skill)
+                    selected_names.add(getattr(skill, "name", ""))
+
+        from nexus_agent.memory.scoped import ScopedMemory
+        from nexus_agent.storage.layout import StorageLayout
+        from nexus_agent.tools.scoped_memory import ScopedMemoryTool
 
         selected.append(
             ScopedMemoryTool(
@@ -215,6 +248,7 @@ class TeamRuntime:
                 TeamReadMessagesTool(store, team_id, profile.role_id),
             ]
         )
+
         if "research" in categories:
             from nexus_agent.research.tools import (
                 ResearchRecordClaimTool,
@@ -231,10 +265,13 @@ class TeamRuntime:
             )
             if config is not None and config.research_source_strategy == "user_only":
                 selected = [
-                    tool for tool in selected
+                    tool
+                    for tool in selected
                     if getattr(tool, "name", "") not in {"web_search", "browser"}
                 ]
+
         return selected
+
 
     def _permission(
         self,
