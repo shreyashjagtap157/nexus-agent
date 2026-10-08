@@ -129,6 +129,10 @@ class AgentLoopConfig:
     goal: str = ""
     tool_timeout: float = 120.0
     max_input_chars: int = 50000
+    research_depth: str = "detailed"
+    research_collection: str = "until_saturation"
+    research_source_strategy: str = "hybrid"
+    research_session_id: str | None = None
 
 
 class AgentLoop:
@@ -255,6 +259,10 @@ Current workspace: {workspace}
         self.goal = cfg.goal
         self.tool_timeout = cfg.tool_timeout
         self.max_input_chars = cfg.max_input_chars
+        self.research_depth = cfg.research_depth
+        self.research_collection = cfg.research_collection
+        self.research_source_strategy = cfg.research_source_strategy
+        self.research_session_id = cfg.research_session_id
         self.usage_tracker = usage_tracker
         self._healer = self_healing_executor or SelfHealingExecutor(max_retries=3)
 
