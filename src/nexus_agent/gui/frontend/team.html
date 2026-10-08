@@ -34,7 +34,7 @@ main{display:grid;grid-template-columns:320px minmax(0,1fr) 360px;gap:12px;paddi
 <div><label>Format</label><select id="format"><option selected>markdown</option><option>text</option><option>json</option></select></div>
 <div><label>Pin saved agents (comma-separated IDs)</label><input id="agent_ids" placeholder="architect,reviewer"></div>
 <div><label>Research depth</label><select id="depth"></select></div>
-<div><label>Research collection</label><select id="collection"><option>bounded</option><option selected>until_saturation</option><option>continuous</option></select></div><div><label>Seed source URLs (one per line)</label><textarea id="sources" style="min-height:80px" placeholder="https://example.org/specification\nhttps://example.org/paper.pdf"></textarea></div>
+<div><label>Research collection</label><select id="collection"><option>bounded</option><option selected>until_saturation</option><option>continuous</option></select></div><div><label>Source strategy</label><select id="source_strategy"><option>user_only</option><option selected>hybrid</option><option>autonomous</option></select></div><div><label>Research max minutes</label><input id="research_max_minutes" type="number" min="1" max="525600" value="10080"></div><div><label>Idle rounds</label><input id="research_idle_rounds" type="number" min="1" max="20" value="2"></div><div><label>Seed source URLs (one per line)</label><textarea id="sources" style="min-height:80px" placeholder="https://example.org/specification\nhttps://example.org/paper.pdf"></textarea></div>
 </div>
 <label class="check"><input id="reviewer" type="checkbox" checked> Require independent reviewer</label>
 <label class="check"><input id="synthesis" type="checkbox" checked> Generate team synthesis</label>
