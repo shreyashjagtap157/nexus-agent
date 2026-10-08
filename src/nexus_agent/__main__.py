@@ -1032,7 +1032,15 @@ def agent_run(
     permissions = PermissionManager(project=str(ws))
     permissions.load_from_config(config)
     memory = MemoryManager(data_dir=StorageLayout(ws).user_memory)
-    tools = build_workspace_tools(ws, memory_manager=memory, provider=role_provider, agent_id=spec.id)
+    tools = build_workspace_tools(
+        ws,
+        memory_manager=memory,
+        provider=role_provider,
+        agent_id=spec.id,
+        research="research" in spec.tool_categories,
+        research_depth=str(config.get("research", {}).get("depth", "detailed")),
+        research_source_strategy=str(config.get("research", {}).get("source_strategy", "hybrid")),
+    )
     cfg = AgentLoopConfig(
         mode=AgentMode.BUILD if spec.write_access else AgentMode.REVIEW,
         workspace=ws,
