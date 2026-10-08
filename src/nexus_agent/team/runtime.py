@@ -507,12 +507,15 @@ Team protocol:
             if research_mode:
                 from .research import policy as research_policy
                 policy_data = research_policy(config.research_depth)
+                coordination_cap = max(5, min(int(policy_data["coordination_turns"]), 10))
+                # Post-deployment coordination is deliberately bounded to five-to-ten
+                # turns. Deeper research spends more work inside each turn.
                 if config.research_collection == "bounded":
-                    max_rounds = max(1, int(policy_data["query_rounds"]))
+                    max_rounds = min(coordination_cap, max(1, int(policy_data["query_rounds"])))
                 elif config.research_collection == "until_saturation":
-                    max_rounds = max(1, int(policy_data["query_rounds"]))
+                    max_rounds = min(coordination_cap, max(1, int(policy_data["query_rounds"])))
                 else:
-                    max_rounds = 0
+                    max_rounds = coordination_cap
             else:
                 max_rounds = 1
 
@@ -574,7 +577,10 @@ Team protocol:
                         "research_round_started",
                         {
                             "round": round_index,
+                            "coordination_turn": round_index,
+                            "coordination_turn_cap": max_rounds,
                             "depth": config.research_depth,
+                            "depth_policy": policy_data,
                             "collection": config.research_collection,
                             "source_strategy": config.research_source_strategy,
                             "source_count_before": before_sources,
@@ -590,7 +596,12 @@ Team protocol:
                 )
                 if research_mode:
                     round_goal += (
-                        f"\n\nThis is evidence-gathering round {round_index}. "
+                        f"\n\nThis is evidence-gathering coordination turn {round_index} of {max_rounds}. "
+                        f"At this depth target at least {policy_data['sources_per_round']} distinct source(s), "
+                        f"{policy_data['verification_passes']} verification pass(es), "
+                        f"{policy_data['contradiction_passes']} contradiction pass(es), "
+                        f"{policy_data['formal_passes']} formal-analysis pass(es), and "
+                        f"{policy_data['review_passes']} review pass(es). "
                         "Inspect existing ledger evidence first. Seek genuinely new or stronger "
                         "evidence, close unresolved gaps, challenge prior findings, and avoid "
                         "duplicate collection. Record exact source snapshots and quotations."
@@ -662,6 +673,10 @@ Team protocol:
                         "research_round_completed",
                         {
                             "round": round_index,
+                            "coordination_turn": round_index,
+                            "coordination_turn_cap": max_rounds,
+                            "depth": config.research_depth,
+                            "depth_policy": policy_data,
                             "source_count_before": before_sources,
                             "source_count_after": after_sources,
                             "new_distinct_sources": delta,
