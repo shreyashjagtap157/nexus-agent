@@ -41,3 +41,14 @@ review passes and minimum independent-source thresholds.
 Planning is a one-time team-deployment phase. Once workers are deployed, they execute
 their missions through the shared blackboard and move to final review rather than
 recursively regenerating the team.
+
+
+## Fail-closed scheduling and evidence boundaries
+
+The scheduler validates unknown dependencies before building each ready wave. A worker with an unknown prerequisite is persisted as failed and is never submitted to the executor; dependency cycles are likewise surfaced explicitly rather than spinning.
+
+Research source policy is enforced before worker tool construction. In `user_only` mode, workers can fetch only sources explicitly registered in the workspace research-source registry. Generic source capture is available only for `hybrid` and `autonomous` modes, and it fetches the URL itself before the evidence snapshot is persisted.
+
+Dynamic worker tools are permission-checked against the actual worker-local tool catalog. This prevents dynamically added research, MCP or skill tools from being misclassified because they are absent from the parent runtime's original tool list.
+
+Provider routing supports ordered fallbacks and also fails over during provider initialization when the selected primary cannot be constructed.
