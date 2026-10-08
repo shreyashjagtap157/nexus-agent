@@ -8,7 +8,10 @@ from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
 from nexus_agent.tools.code_intel import CallGraphTool, ImportGraphTool, RenameTool
 from nexus_agent.tools.council import CouncilTool
 from nexus_agent.tools.file_ops import (
+    DeleteFileTool,
     ListDirectoryTool,
+    MoveFileTool,
+    ParseDataTool,
     ReadFileTool,
     SearchFilesTool,
     WriteFileTool,
@@ -39,6 +42,9 @@ from nexus_agent.tools.webfetch import WebFetchTool, html_to_markdown
 __all__ = [
     "Tool",
     "ReadFileTool",
+    "DeleteFileTool",
+    "MoveFileTool",
+    "ParseDataTool",
     "WriteFileTool",
     "SearchFilesTool",
     "ListDirectoryTool",
