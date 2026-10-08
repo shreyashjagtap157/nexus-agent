@@ -2,18 +2,34 @@
 from __future__ import annotations
 
 from typing import Any
+import time
+
+from fastapi import HTTPException, Request
 
 from fastapi import HTTPException, Request
 
 from pydantic import BaseModel, Field
 
 from nexus_agent.auth import AuthStore
+from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.providers.catalog import all_providers
 from nexus_agent.core.config import save_user_config
 
 
 class CredentialRequest(BaseModel):
     api_key: str = Field(min_length=1, max_length=10000)
+
+
+class ProviderTestRequest(BaseModel):
+    model: str | None = Field(default=None, max_length=500)
+    prompt: str = Field(default="Respond with exactly: NexusAgent provider test OK", max_length=4000)
+    max_tokens: int = Field(default=64, ge=1, le=512)
+
+
+def _local_only(request: Any) -> None:
+    client = getattr(request, "client", None)
+    if client is not None and client.host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Provider configuration is restricted to local clients.")
 
 
 class ProviderConfigRequest(BaseModel):
@@ -30,6 +46,42 @@ class ProviderConfigRequest(BaseModel):
 
 
 def register_auth_routes(app: Any) -> None:
+
+    @app.post("/api/providers/{provider}/test")
+    async def test_provider(provider: str, request: Request, payload: ProviderTestRequest):
+        _local_only(request)
+        from nexus_agent.core.config import load_config
+        from nexus_agent.llm.providers.factory import ProviderFactory
+
+        config = load_config()
+        try:
+            started = time.perf_counter()
+            engine = ProviderFactory.create_provider(provider, config, payload.model)
+            response = engine.chat_completion(
+                [
+                    Message(role=Role.SYSTEM, content="You are performing a connectivity test. Do not reveal secrets."),
+                    Message(role=Role.USER, content=payload.prompt),
+                ],
+                temperature=0.0,
+                max_tokens=payload.max_tokens,
+            )
+            elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+            return {
+                "ok": True,
+                "provider": engine.name,
+                "model": engine.model_name,
+                "latency_ms": elapsed_ms,
+                "response": (response.content or "")[:4000],
+            }
+        except (RuntimeError, ValueError, OSError, TimeoutError, ConnectionError) as exc:
+            elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+            return {
+                "ok": False,
+                "provider": provider,
+                "latency_ms": elapsed_ms,
+                "error": str(exc)[:4000],
+            }
+
     @app.get("/api/providers")
     async def providers():
         return {
