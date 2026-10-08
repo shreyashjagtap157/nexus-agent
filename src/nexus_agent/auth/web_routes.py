@@ -188,7 +188,8 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
 
     @app.delete("/api/auth/{provider}")
     async def auth_delete(provider: str, request: Request):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Credential mutation is restricted to local clients.")
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-        return {"provider": provider.lower(), "removed": AuthStore().remove(provider)}
+        _local_only(request)
+        return {
+            "provider": provider.lower(),
+            "removed": AuthStore().remove(provider),
+        }
