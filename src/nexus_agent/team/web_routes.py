@@ -17,6 +17,7 @@ from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
 
 from .models import TeamConfig, TeamMode
+from .providers import make_provider_selector
 from .runtime import TeamRuntime, build_workspace_tools
 from .store import TeamStore
 
@@ -65,6 +66,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 tool_name=tc.name,
                 arguments=tc.arguments,
                 description=f"Team worker requesting {tc.name}",
+            ),
+            provider_selector=make_provider_selector(
+                state_manager.get("config") or {},
+                provider,
             ),
         )
 
