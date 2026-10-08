@@ -43,6 +43,7 @@ class AgentProfile:
     provider: str | None = None
     model: str | None = None
     fallbacks: list[str] = field(default_factory=list)
+    skill_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -59,6 +60,7 @@ class AgentProfile:
             "provider": self.provider,
             "model": self.model,
             "fallbacks": list(self.fallbacks),
+            "skill_ids": list(self.skill_ids),
         }
 
 
