@@ -122,7 +122,7 @@ register_agent_routes(app, state_manager)
 register_audit_routes(app, state_manager)
 register_mcp_routes(app, state_manager)
 register_skill_routes(app, state_manager)
-register_auth_routes(app)
+register_auth_routes(app, state_manager)
 register_research_source_routes(app, state_manager)
 register_memory_routes(app, state_manager)
 
