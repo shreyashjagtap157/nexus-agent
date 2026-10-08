@@ -17,9 +17,14 @@ from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
 
 from .models import TeamConfig, TeamMode
+from .control import control as control_team_request
 from .providers import make_provider_selector
 from .runtime import TeamRuntime, build_workspace_tools
 from .store import TeamStore
+
+
+class TeamControlRequest(BaseModel):
+    action: str = Field(pattern="^(pause|resume|stop)$")
 
 
 class TeamStartRequest(BaseModel):
@@ -133,6 +138,22 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 "messages": store.messages(team_id),
                 "events": store.events(team_id, limit=5000),
             }
+        finally:
+            store.close()
+
+    @router.post("/api/teams/{team_id}/control")
+    async def control_team(team_id: str, req: TeamControlRequest):
+        if not control_team_request(team_id, req.action):
+            raise HTTPException(status_code=409, detail="Team is not currently running or control window expired")
+        store = store_for()
+        try:
+            status = "paused" if req.action == "pause" else "running" if req.action == "resume" else "stopping"
+            if req.action in {"pause", "resume"}:
+                store.set_status(team_id, status)
+            else:
+                store.set_status(team_id, "stopping")
+            store.event(team_id, "team_control", {"action": req.action})
+            return {"team_id": team_id, "action": req.action, "accepted": True}
         finally:
             store.close()
 
