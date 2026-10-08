@@ -650,6 +650,57 @@ def backend(
 
 
 @cli.group()
+def auth() -> None:
+    """Manage LLM provider credentials without storing secrets in project config."""
+    pass
+
+
+@auth.command("login")
+@click.option("--provider", "-p", required=True, type=str)
+@click.option("--api-key", type=str, default=None)
+@click.option("--env", "env_name", type=str, default=None, help="Use the value of an environment variable.")
+def auth_login(provider: str, api_key: str | None, env_name: str | None) -> None:
+    """Store an API credential in the user-level NexusAgent auth store."""
+    from nexus_agent.auth import AuthStore
+    import os
+
+    key = os.environ.get(env_name) if env_name else api_key
+    if key is None:
+        key = click.prompt(f"API key for {provider}", hide_input=True)
+    AuthStore().set(provider, key)
+    click.echo(f"Stored credentials for {provider} in the user auth store.")
+
+
+@auth.command("list")
+def auth_list() -> None:
+    """List configured provider credentials without revealing secret values."""
+    from nexus_agent.auth import AuthStore
+    rows = AuthStore().list()
+    if not rows:
+        click.echo("No provider credentials configured.")
+        return
+    for row in rows:
+        click.echo(f"{row['provider']}: {row['key']}")
+
+
+@auth.command("logout")
+@click.argument("provider")
+def auth_logout(provider: str) -> None:
+    """Remove a provider credential from the user auth store."""
+    from nexus_agent.auth import AuthStore
+    if not AuthStore().remove(provider):
+        raise click.ClickException(f"No stored credential for {provider}")
+    click.echo(f"Removed credentials for {provider}.")
+
+
+@auth.command("paths")
+def auth_paths() -> None:
+    """Show the user-level credential storage location."""
+    from nexus_agent.storage.layout import StorageLayout
+    click.echo(str(StorageLayout(Path.cwd()).auth_file))
+
+
+@cli.group()
 def agent() -> None:
     """Create, configure, validate and generate reusable agent profiles."""
     pass
