@@ -884,7 +884,7 @@ Team protocol:
         )
 
         research_deadline = None
-        if cfg.mode == TeamMode.RESEARCH and cfg.research_max_minutes > 0:
+        if mode == TeamMode.RESEARCH and cfg.research_max_minutes > 0:
             research_deadline = time.time() + (cfg.research_max_minutes * 60)
 
         # Dependency-aware scheduler: independent agents run concurrently;
