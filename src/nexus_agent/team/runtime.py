@@ -390,23 +390,33 @@ class TeamRuntime:
             tool = self.skill_registry.get_skill(name)
 
         level = str(getattr(tool, "permission_level", "ask")).lower() if tool else "ask"
+        if level == "read-only":
+            return True
         if level in {"dangerous", "ask"}:
             return False
         if level == "read-write":
+            if name == "git":
+                subcommand = str(arguments.get("subcommand", "")).strip().lower()
+                safe_git_reads = {
+                    "status",
+                    "log",
+                    "diff",
+                    "show",
+                    "remote",
+                    "describe",
+                    "version",
+                }
+                if subcommand in safe_git_reads:
+                    return True
+
             research_write = (
                 profile is not None
                 and "research" in set(profile.tool_categories)
                 and name.startswith("research_")
             )
-            if not (profile and profile.write_access) and not research_write:
-                return False
+            return bool(profile and profile.write_access) or research_write
 
-        # Safe team default: allow read/search/web/git introspection; deny
-        # operations that the normal PermissionManager would require approval for.
-        return not any(
-            token in name
-            for token in ("write", "edit", "insert", "shell", "commit", "push", "delete")
-        )
+        return False
 
     def _system_extra(self, goal: str, profile: AgentProfile, team_id: str, config: TeamConfig) -> str:
         research_protocol = ""
