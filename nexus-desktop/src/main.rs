@@ -213,6 +213,10 @@ impl NexusDesktop {
         let (event_tx, event_rx) = mpsc::channel::<Event>();
         thread::spawn(move || worker_loop(command_rx, event_tx));
 
+        let _ = command_tx.send(Command::LoadWorkflows {
+            endpoint: "http://127.0.0.1:7860".into(),
+        });
+
         Self {
             endpoint: "http://127.0.0.1:7860".into(),
             goal: String::new(),
