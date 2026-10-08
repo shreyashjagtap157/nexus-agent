@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import logging
 import socket
 import subprocess
@@ -55,6 +56,7 @@ from nexus_agent.tools.shell import ShellTool
 from nexus_agent.tools.todowrite import TodoWriteTool
 from nexus_agent.tools.web_search import WebSearchTool
 from nexus_agent.tools.webfetch import WebFetchTool
+from nexus_agent.team.web_routes import register_team_routes
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,9 @@ app = FastAPI(
     description="Offline-First LLM Coding Agent Web Interface",
     version=__version__,
 )
+
+# Unified multi-agent team API shares the existing provider, workspace and permission state.
+register_team_routes(app, state_manager)
 
 # Rate limiting store
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
