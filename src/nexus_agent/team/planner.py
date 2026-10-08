@@ -1,9 +1,10 @@
 """Dynamic professional-team planner."""
 from __future__ import annotations
 
-from dataclasses import replace
 import json
+import re
 import uuid
+from dataclasses import replace
 
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
@@ -113,6 +114,12 @@ def infer_mode(goal: str, mode: TeamMode) -> TeamMode:
     return TeamMode.ANALYSIS
 
 
+def _slug(value: str, fallback: str = "agent") -> str:
+    text = re.sub(r"[^a-z0-9_-]+", "-", value.strip().lower())
+    text = re.sub(r"-{2,}", "-", text).strip("-_")
+    return (text or fallback)[:64]
+
+
 def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProfile]:
     try:
         payload = json.loads(raw)
@@ -125,16 +132,24 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
     for item in items:
         if not isinstance(item, dict):
             continue
-        required = [str(item.get(k, "")).strip() for k in ("name", "profession", "mission", "instructions")]
+        required = [
+            str(item.get(k, "")).strip()
+            for k in ("name", "profession", "mission", "instructions")
+        ]
         if not all(required):
             continue
-        base = "-".join(required[0].lower().split())[:32] or uuid.uuid4().hex[:8]
+
+        base = _slug(
+            str(item.get("id") or item.get("role_id") or required[0]),
+            "agent",
+        )
         role_id = base
-        n = 2
+        suffix = 2
         while role_id in seen:
-            role_id = f"{base}-{n}"
-            n += 1
+            role_id = f"{base}-{suffix}"
+            suffix += 1
         seen.add(role_id)
+
         profiles.append(
             AgentProfile(
                 role_id=role_id,
@@ -142,15 +157,27 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
                 profession=required[1],
                 mission=required[2],
                 instructions=required[3],
-                tool_categories=[str(x) for x in item.get("tool_categories", []) if x],
+                tool_categories=[
+                    str(x).strip()
+                    for x in item.get("tool_categories", [])
+                    if str(x).strip()
+                ],
                 write_access=bool(item.get("write_access", False)),
                 reviewer=bool(item.get("reviewer", False)),
-                dependencies=[str(x) for x in item.get("dependencies", []) if x],
-                model_role=str(item.get("model_role", "default")),
+                dependencies=[
+                    _slug(str(x))
+                    for x in item.get("dependencies", [])
+                    if str(x).strip()
+                ],
+                model_role=_slug(str(item.get("model_role", "default")), "default"),
                 provider=str(item.get("provider")) if item.get("provider") else None,
                 model=str(item.get("model")) if item.get("model") else None,
-                fallbacks=[str(x) for x in item.get("fallbacks", []) if x],
-                skill_ids=[str(x).strip().lower() for x in item.get("skill_ids", []) if str(x).strip()],
+                fallbacks=[str(x).strip() for x in item.get("fallbacks", []) if str(x).strip()],
+                skill_ids=[
+                    _slug(str(x))
+                    for x in item.get("skill_ids", [])
+                    if str(x).strip()
+                ],
             )
         )
         if len(profiles) >= max_agents:
@@ -160,11 +187,32 @@ def _parse_profiles(raw: str, mode: TeamMode, max_agents: int) -> list[AgentProf
     if len(profiles) < max_agents:
         for profile in fallback:
             if profile.role_id not in seen:
-                clone = replace(profile, tool_categories=list(profile.tool_categories), dependencies=list(profile.dependencies), fallbacks=list(profile.fallbacks), skill_ids=list(profile.skill_ids))
+                clone = replace(
+                    profile,
+                    tool_categories=list(profile.tool_categories),
+                    dependencies=list(profile.dependencies),
+                    fallbacks=list(profile.fallbacks),
+                    skill_ids=list(profile.skill_ids),
+                )
                 profiles.append(clone)
                 seen.add(clone.role_id)
             if len(profiles) >= max_agents:
                 break
+
+    # Normalize dependency references against generated IDs, names and professions.
+    aliases: dict[str, str] = {}
+    for profile in profiles:
+        aliases[_slug(profile.role_id)] = profile.role_id
+        aliases[_slug(profile.name)] = profile.role_id
+        aliases[_slug(profile.profession)] = profile.role_id
+
+    for profile in profiles:
+        normalized: list[str] = []
+        for dependency in profile.dependencies:
+            resolved = aliases.get(_slug(dependency))
+            if resolved and resolved != profile.role_id and resolved not in normalized:
+                normalized.append(resolved)
+        profile.dependencies = normalized
 
     return profiles[:max_agents]
 
@@ -221,7 +269,7 @@ re-plan or regenerate the team unless the user explicitly requests a new plan.
 Prefer specialist workers over coordinator duplicates. Reuse relevant saved profiles instead of
 recreating them. Do not remove or weaken pinned roles; the runtime will preserve pinned roles.
 Return JSON only:
-{{"agents":[{{"name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default","skill_ids":[]}}]}}
+{{"agents":[{{"id":"stable-role-id","name":"...","profession":"...","mission":"...","instructions":"...","tool_categories":["read","write","shell","web","git","mcp","browser","code_intel","lsp","memory","research"],"write_access":false,"reviewer":false,"dependencies":[],"model_role":"default","skill_ids":[]}}]}}
 """
     try:
         response = provider.chat_completion(
