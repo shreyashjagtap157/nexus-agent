@@ -33,4 +33,11 @@ Teams can be paused, resumed and stopped. Control requests are persisted so a se
 
 Research workers can persist exact source snapshots, factual claims and supporting quotations. Deterministic verification checks that a recorded quotation is present verbatim in its stored source snapshot.
 
-Research depth ranges from glance through maximal, with deeper levels increasing research expectations.
+Research depth ranges from glance through maximal. The post-deployment coordination protocol
+is bounded to 5–10 dependency-aware waves. Deeper levels increase sources per wave,
+independent verification passes, contradiction analysis, formal-analysis passes,
+review passes and minimum independent-source thresholds.
+
+Planning is a one-time team-deployment phase. Once workers are deployed, they execute
+their missions through the shared blackboard and move to final review rather than
+recursively regenerating the team.
