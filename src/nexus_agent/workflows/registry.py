@@ -104,6 +104,48 @@ class WorkflowRegistry:
             default_agents=4,
             tags=("automation", "workflow", "reliability"),
         ),
+        WorkflowSpec(
+            "specification-analysis",
+            "Specification Analysis",
+            "Build a role-separated analysis team for requirements, implementability, formal consistency and contradiction review.",
+            TeamMode.ANALYSIS,
+            default_agents=8,
+            tags=("specification", "formal", "consistency", "implementability"),
+        ),
+        WorkflowSpec(
+            "security-audit",
+            "Security Audit",
+            "Run independent threat, dependency, implementation and adversarial security reviews before synthesis.",
+            TeamMode.REVIEW,
+            default_agents=7,
+            tags=("security", "threat-model", "audit", "adversarial"),
+        ),
+        WorkflowSpec(
+            "release-qualification",
+            "Release Qualification",
+            "Qualify a repository for release with compatibility, tests, packaging, documentation and independent audit workers.",
+            TeamMode.REVIEW,
+            default_agents=8,
+            tags=("release", "qualification", "packaging", "regression"),
+        ),
+        WorkflowSpec(
+            "dependency-upgrade",
+            "Dependency Upgrade",
+            "Analyze dependency changes, migration risk, compatibility and verification before updating a codebase.",
+            TeamMode.CODE,
+            default_agents=6,
+            tags=("dependencies", "migration", "compatibility"),
+        ),
+        WorkflowSpec(
+            "long-running-research",
+            "Long-Running Research",
+            "Operate an evidence-first research team until source saturation, contradiction closure or explicit stop.",
+            TeamMode.RESEARCH,
+            default_agents=12,
+            research_depth="maximal",
+            research_collection="continuous",
+            tags=("research", "autonomous", "saturation", "evidence"),
+        ),
     )
 
     def list(self) -> list[WorkflowSpec]:
