@@ -642,11 +642,13 @@ def team() -> None:
 @click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
 @click.option("--output", "output_mode", type=click.Choice(["chat", "file", "both"]), default="chat")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
+@click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
+@click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
+def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, workspace: str, provider: str | None, model_path: str | None, yes: bool) -> None:
     """Execute a dynamically assembled peer team."""
     from rich.console import Console
     from rich.table import Table
@@ -654,6 +656,7 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
     from nexus_agent.core.config import load_config
     from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime, build_workspace_tools
     from nexus_agent.team.providers import make_provider_selector
+    from nexus_agent.team.research import RESEARCH_DEPTHS
     from nexus_agent.llm.providers.factory import ProviderFactory
 
     console = Console()
@@ -683,6 +686,8 @@ def team_run(goal: str, mode: str, max_agents: int, parallelism: int, max_iterat
         effort_level=effort,
         output_mode=output_mode,
         output_format=output_format,
+        research_depth=research_depth,
+        research_collection=research_collection,
         auto_approve_tools=yes,
     )
     final = None
