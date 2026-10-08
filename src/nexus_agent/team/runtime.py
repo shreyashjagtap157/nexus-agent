@@ -1086,6 +1086,31 @@ Team protocol:
             for item in results
             if item.get("reviewer") and item.get("status") == TeamAgentState.COMPLETED.value
         ]
+
+        quality: dict[str, Any] = {}
+        if mode == TeamMode.RESEARCH:
+            from .research import policy as research_policy
+            from nexus_agent.research.store import ResearchStore
+
+            research_store = ResearchStore(self.data_dir / "research.db")
+            try:
+                quality = research_store.coverage(
+                    team_id,
+                    research_policy(cfg.research_depth)["verification_passes"],
+                )
+            finally:
+                research_store.close()
+            store.event(team_id, "research_quality_gate", quality)
+            if not quality.get("passed", False):
+                failures.append(
+                    "Research evidence quality gate failed: "
+                    f"sources={quality.get('source_count', 0)}, "
+                    f"claims={quality.get('claim_count', 0)}, "
+                    f"verified={quality.get('verified_claims', 0)}, "
+                    f"unresolved={quality.get('unresolved_claims', 0)}, "
+                    f"required_passes={quality.get('required_verification_passes', 0)}."
+                )
+
         success = not failures and (not cfg.require_reviewer or bool(reviewers))
 
         synthesis = ""
@@ -1127,6 +1152,7 @@ Team protocol:
             synthesis,
             failures,
             artifact_paths,
+            quality,
         )
         yield AgentEvent(AgentEventType.CONTENT_COMPLETE, synthesis or summary)
         yield AgentEvent(AgentEventType.DONE, result.__dict__)
@@ -1151,6 +1177,7 @@ Team protocol:
                     synthesis=str(event.data.get("synthesis", "")),
                     failures=list(event.data.get("failures", [])),
                     artifact_paths=list(event.data.get("artifact_paths", [])),
+                    quality=dict(event.data.get("quality", {})),
                 )
         if final is None:
             raise RuntimeError("Team runtime ended without a final result.")
