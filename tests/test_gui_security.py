@@ -1,7 +1,6 @@
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-
-import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from nexus_agent.gui.server import _require_local_client, app
@@ -21,6 +20,7 @@ def test_gui_mutation_access_accepts_loopback_clients():
     for host in ("127.0.0.1", "::1", "localhost"):
         request = type("Request", (), {"client": type("Client", (), {"host": host})()})()
         _require_local_client(request)
+
 
 @pytest.mark.parametrize(
     "path",
