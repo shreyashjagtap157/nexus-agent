@@ -496,7 +496,13 @@ Team protocol:
             )
 
         cfg = AgentLoopConfig(
-            mode=AgentMode.BUILD if profile.write_access else AgentMode.REVIEW,
+            mode=(
+                AgentMode.RESEARCH
+                if "research" in profile.tool_categories
+                else AgentMode.BUILD
+                if profile.write_access
+                else AgentMode.REVIEW
+            ),
             workspace=self.workspace,
             max_iterations=config.max_iterations_per_agent,
             system_prompt_extra=self._system_extra(goal, profile, team_id, config) + memory_context,
