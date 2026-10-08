@@ -183,6 +183,30 @@ def gui(
 
 
 @cli.group()
+def provider() -> None:
+    """Discover configured LLM providers and connection metadata."""
+    pass
+
+
+@provider.command("list")
+def provider_list() -> None:
+    """List built-in provider descriptors without exposing credentials."""
+    from nexus_agent.llm.providers.catalog import all_providers
+    for item in all_providers():
+        endpoint = item.base_url or "provider-native"
+        env = item.env_key or "none"
+        click.echo(f"{item.id:16} {item.name:28} {item.protocol:18} env={env} endpoint={endpoint}")
+
+
+@provider.command("auth-status")
+def provider_auth_status() -> None:
+    """Show which provider credentials are stored, without revealing them."""
+    from nexus_agent.auth import AuthStore
+    for row in AuthStore().list():
+        click.echo(f"{row['provider']}: {row['key']}")
+
+
+@cli.group()
 def model() -> None:
     """Manage local LLM models."""
     pass
