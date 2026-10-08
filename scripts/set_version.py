@@ -34,6 +34,33 @@ def validate(version: str) -> None:
         raise SystemExit(f"Invalid SemVer: {version!r}")
 
 
+def semver_key(version: str) -> tuple[int, int, int, tuple[tuple[int, object], ...]]:
+    """Return a SemVer precedence key sufficient for release monotonicity."""
+    match = re.fullmatch(
+        r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+        r"(?:-([0-9A-Za-z.-]+))?",
+        version,
+    )
+    if not match:
+        raise SystemExit(f"Invalid SemVer: {version!r}")
+    major, minor, patch = (int(match.group(i)) for i in (1, 2, 3))
+    prerelease = match.group(4)
+    if prerelease is None:
+        return major, minor, patch, ((1, 0),)
+    identifiers = []
+    for item in prerelease.split("."):
+        identifiers.append((0, int(item)) if item.isdigit() else (1, item))
+    return major, minor, patch, tuple(identifiers)
+
+
+def ensure_monotonic(current: str, new: str) -> None:
+    if semver_key(new) < semver_key(current):
+        raise SystemExit(
+            f"Version regression is forbidden: {current} -> {new}. "
+            "Published development versions must advance monotonically."
+        )
+
+
 def replace_unique(path: Path, old: str, new: str) -> None:
     text = path.read_text(encoding="utf-8")
     count = text.count(old)
@@ -54,6 +81,7 @@ def main() -> int:
 
     current = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
     validate(current)
+    ensure_monotonic(current, version)
     if current == version:
         print(f"Already at {version}.")
         return 0
