@@ -44,6 +44,7 @@ def build_workspace_tools(
         MoveFileTool,
         ParseDataTool,
         ReadFileTool,
+        RestoreFileTool,
         SearchFilesTool,
         WriteFileTool,
     )
@@ -60,6 +61,7 @@ def build_workspace_tools(
         WriteFileTool(workspace),
         DeleteFileTool(workspace),
         MoveFileTool(workspace),
+        RestoreFileTool(workspace),
         ParseDataTool(workspace),
         SearchFilesTool(workspace),
         ListDirectoryTool(workspace),
