@@ -313,21 +313,21 @@ class TeamRuntime:
                 ResearchVerifyClaimTool,
             )
             research_db = self.data_dir / "research.db"
-            selected.extend(
-                [
-                    ResearchConfiguredSourceTool(
-                        self.workspace / ".nexus-agent" / "research-sources.yaml",
-                        research_db,
-                        team_id,
-                        profile.role_id,
-                    ),
-                    ResearchRecordSourceTool(research_db, team_id, profile.role_id),
-                    ResearchRecordClaimTool(research_db, team_id, profile.role_id),
-                    ResearchVerifyClaimTool(research_db, team_id, profile.role_id),
-                    ResearchRecordConflictTool(research_db, team_id, profile.role_id),
-                    ResearchAdjudicateConflictTool(research_db, team_id, profile.role_id),
-                ]
-            )
+            research_tools = [
+                ResearchConfiguredSourceTool(
+                    self.workspace / ".nexus-agent" / "research-sources.yaml",
+                    research_db,
+                    team_id,
+                    profile.role_id,
+                ),
+                ResearchRecordClaimTool(research_db, team_id, profile.role_id),
+                ResearchVerifyClaimTool(research_db, team_id, profile.role_id),
+                ResearchRecordConflictTool(research_db, team_id, profile.role_id),
+                ResearchAdjudicateConflictTool(research_db, team_id, profile.role_id),
+            ]
+            if config is None or config.research_source_strategy != "user_only":
+                research_tools.insert(1, ResearchRecordSourceTool(research_db, team_id, profile.role_id))
+            selected.extend(research_tools)
             if config is not None and config.research_source_strategy == "user_only":
                 selected = [
                     tool
@@ -400,7 +400,9 @@ class TeamRuntime:
                 f"Team coordination is bounded; your role-specific depth budget is explicit. {budget_line} "
                 f"Collection strategy: {config.research_collection}. {source_line} "
                 f"Seed URLs: {', '.join(config.research_source_urls[:20]) or 'none'}."
-                " Preserve exact source text with research_record_source, record factual claims "
+                " Use research_configured_source when operating under user_only; otherwise "
+                "use research_record_source to fetch and persist authoritative source text. "
+                "Do not manually invent or transcribe source snapshots. Record factual claims "
                 "with exact quotations using research_record_claim, and use research_verify_claim "
                 "before treating quotation-backed evidence as deterministically verified."
             )
