@@ -112,3 +112,29 @@ def test_mcp_tools_are_exposed_to_mcp_roles(tmp_path):
     tools = runtime._tools_for(profile, store, "team-1")
     assert any(getattr(tool, "is_mcp", False) for tool in tools)
     store.close()
+
+    
+def test_builtin_profiles_are_not_auto_loaded_as_saved_agents(tmp_path: Path):
+    from nexus_agent.agents import AgentRegistry, AgentScope, AgentSpec
+    from nexus_agent.llm.base import LLMProvider
+    from nexus_agent.team.runtime import TeamRuntime
+
+    registry = AgentRegistry(tmp_path, project_root=tmp_path)
+    user_spec = AgentSpec(
+        id="user-reviewer",
+        name="User Reviewer",
+        profession="Reviewer",
+        description="",
+        mission="Review user tasks",
+        instructions="Review carefully",
+        scope=AgentScope.USER,
+        tool_categories=["read"],
+        reviewer=True,
+    )
+    registry.save(user_spec, AgentScope.USER)
+    runtime = TeamRuntime(FakeProvider(), [], workspace=tmp_path, agent_registry=registry)
+    saved = [
+        spec for spec in registry.load()
+        if getattr(spec.scope, "value", spec.scope) != "builtin"
+    ]
+    assert any(spec.id == "user-reviewer" for spec in saved)
