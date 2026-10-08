@@ -84,6 +84,12 @@ def _workspace(state_manager: Any) -> Path:
     return Path(state_manager.get("workspace") or Path.cwd()).resolve()
 
 
+def _require_local_client(request: Request) -> None:
+    host = request.client.host if request.client else None
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="Team data access is restricted to local clients.")
+
+
 def _artifact_root(state_manager: Any, team_id: str) -> Path:
     base = StorageLayout(_workspace(state_manager)).artifacts.resolve()
     root = (base / team_id).resolve()
@@ -136,8 +142,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.put("/api/workflows/{workflow_id}")
     async def save_workflow(workflow_id: str, request: Request, req: WorkflowWriteRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Workflow mutation is restricted to local clients.")
+        _require_local_client(request)
         if workflow_id.strip().lower() != req.id.strip().lower():
             raise HTTPException(status_code=400, detail="Path workflow ID and body ID must match")
         from nexus_agent.workflows.registry import WorkflowSpec
@@ -148,8 +153,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.delete("/api/workflows/{workflow_id}")
     async def delete_workflow(workflow_id: str, request: Request, scope: str = "workspace"):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Workflow mutation is restricted to local clients.")
+        _require_local_client(request)
         registry = WorkflowRegistry(_workspace(state_manager))
         if not registry.delete(workflow_id, scope):
             raise HTTPException(status_code=404, detail="Custom workflow not found")
@@ -169,8 +173,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.post("/api/research-sources/seed")
     async def seed_research_sources(request: Request, payload: dict[str, Any]):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Research source mutation is restricted to local clients.")
+        _require_local_client(request)
         from nexus_agent.research.sources import ResearchSourceRegistry
         urls = payload.get("urls") if isinstance(payload, dict) else []
         if not isinstance(urls, list):
@@ -182,7 +185,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return {"seeded": count, "sources": [item.to_dict() for item in registry.list()]}
 
     @router.get("/api/teams")
-    async def list_teams(limit: int = 100, offset: int = 0):
+    async def list_teams(request: Request, limit: int = 100, offset: int = 0):
+        _require_local_client(request)
         store = store_for()
         try:
             return store.list_teams(limit=limit, offset=offset)
@@ -191,8 +195,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.post("/api/teams")
     async def start_team(request: Request, req: TeamStartRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Team execution is restricted to local clients.")
+        _require_local_client(request)
         if state_manager.get("engine") is None:
             raise HTTPException(status_code=503, detail="No LLM provider is loaded")
         job_id = f"team-{int(time.time() * 1000)}"
@@ -244,7 +247,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return {"job_id": job_id}
 
     @router.get("/api/team-history/{team_id}")
-    async def team_history(team_id: str):
+    async def team_history(request: Request, team_id: str):
+        _require_local_client(request)
         store = store_for()
         try:
             team = store.team(team_id)
@@ -261,8 +265,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
     @router.post("/api/teams/{team_id}/control")
     async def control_team(team_id: str, request: Request, req: TeamControlRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="Team control is restricted to local clients.")
+        _require_local_client(request)
         store = store_for()
         try:
             accepted = store.request_control(team_id, req.action)
@@ -275,7 +278,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.get("/api/teams/{job_id}")
-    async def team_status(job_id: str):
+    async def team_status(request: Request, job_id: str):
+        _require_local_client(request)
         with lock:
             job = dict(jobs.get(job_id) or {})
         if not job:
@@ -295,7 +299,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return job
 
     @router.get("/api/teams/{team_id}/events")
-    async def team_events(team_id: str, limit: int = 500, offset: int = 0):
+    async def team_events(request: Request, team_id: str, limit: int = 500, offset: int = 0):
+        _require_local_client(request)
         store = store_for()
         try:
             return store.events(team_id, limit=limit, offset=offset)
@@ -303,7 +308,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.get("/api/teams/{team_id}/messages")
-    async def team_messages(team_id: str, recipient_id: str | None = None):
+    async def team_messages(request: Request, team_id: str, recipient_id: str | None = None):
+        _require_local_client(request)
         store = store_for()
         try:
             return store.messages(team_id, recipient_id=recipient_id)
@@ -311,7 +317,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.get("/api/teams/{team_id}/report")
-    async def team_report(team_id: str, format: str = "markdown"):
+    async def team_report(request: Request, team_id: str, format: str = "markdown"):
+        _require_local_client(request)
         root = _artifact_root(state_manager, team_id)
         if format not in {"markdown", "text", "json"}:
             raise HTTPException(status_code=400, detail="format must be markdown, text or json")
@@ -411,7 +418,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         return FileResponse(target, filename=target.name)
 
     @router.get("/api/teams/{team_id}/audit")
-    async def team_audit(team_id: str):
+    async def team_audit(request: Request, team_id: str):
+        _require_local_client(request)
         store = store_for()
         try:
             result = store._audit.verify()
@@ -424,7 +432,8 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.get("/api/teams/{team_id}/audit/verify")
-    async def team_audit_verify(team_id: str):
+    async def team_audit_verify(request: Request, team_id: str):
+        _require_local_client(request)
         store = store_for()
         try:
             result = store._audit.verify()
@@ -439,12 +448,14 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             store.close()
 
     @router.get("/api/teams/{team_id}/research")
-    async def team_research(team_id: str):
+    async def team_research(request: Request, team_id: str):
+        _require_local_client(request)
         research = ResearchStore(StorageLayout(_workspace(state_manager)).research_db)
         return research.export(team_id)
 
     @router.get("/api/teams/{team_id}/stream")
-    async def team_stream(team_id: str):
+    async def team_stream(request: Request, team_id: str):
+        _require_local_client(request)
         workspace = _workspace(state_manager)
 
         async def generator():
