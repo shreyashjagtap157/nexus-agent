@@ -36,6 +36,14 @@ main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:12px;padding:12p
 <label>Instructions</label><textarea id="instructions" style="min-height:120px"></textarea>
 <label>Tool categories</label><input id="tools" value="read,search,shell,git,code_intel,lsp">
 <label>Reusable skills (comma-separated)</label><input id="skills" placeholder="debug,test_writer,code_review">
+<div class="grid">
+<label>Model role</label><input id="model_role" value="default">
+<label>Provider</label><input id="provider" placeholder="nvidia_nim">
+<label>Model</label><input id="model" placeholder="nvidia/nemotron-3.5-lightning-30b-a3b">
+<label>Fallback providers</label><input id="fallbacks" placeholder="openrouter,litellm">
+</div>
+<label>Dependencies (comma-separated)</label><input id="dependencies" placeholder="architect">
+<label><input id="reviewer" type="checkbox"> Independent reviewer role</label>
 <div class="actions"><button class="btn primary" id="save">Save Manual Agent</button></div>
 </div>
 </section>
@@ -68,7 +76,7 @@ $("generate").onclick=async function(){
 };
 $("save").onclick=async function(){
  const tools=$("tools").value.split(",").map(x=>x.trim()).filter(Boolean);
- const payload={id:$("id").value.trim(),name:$("name").value.trim(),profession:$("profession").value.trim(),description:"",mission:$("mission").value.trim(),instructions:$("instructions").value.trim(),scope:$("scope").value,tool_categories:tools,skill_ids:$("skills").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),write_access:tools.includes("write"),reviewer:false,dependencies:[],model_role:"default",enabled:true};
+ const payload={id:$("id").value.trim(),name:$("name").value.trim(),profession:$("profession").value.trim(),description:"",mission:$("mission").value.trim(),instructions:$("instructions").value.trim(),scope:$("scope").value,tool_categories:tools,skill_ids:$("skills").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),write_access:tools.includes("write"),reviewer:$("reviewer").checked,dependencies:$("dependencies").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean),model_role:$("model_role").value.trim()||"default",provider:$("provider").value.trim()||null,model:$("model").value.trim()||null,fallbacks:$("fallbacks").value.split(",").map(x=>x.trim()).filter(Boolean),enabled:true};
  if(!payload.id||!payload.name||!payload.profession||!payload.mission||!payload.instructions){notice("Fill all manual-agent fields.",true);return}
  const r=await fetch("/api/agents/"+encodeURIComponent(payload.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok){notice(String(d.detail||"save failed"),true);return}notice("Saved "+payload.id);await load()
 };
