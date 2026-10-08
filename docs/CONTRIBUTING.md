@@ -16,7 +16,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/nexus-agent/nexus-agent.git
+git clone https://github.com/shreyashjagtap157/nexus-agent.git
 cd nexus-agent
 
 # Create a virtual environment
