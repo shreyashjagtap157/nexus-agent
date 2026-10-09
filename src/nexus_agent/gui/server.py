@@ -19,6 +19,7 @@ import webbrowser
 from collections import defaultdict
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import urlsplit
 
 import psutil
 import uvicorn
@@ -548,6 +549,42 @@ async def trigger_commit(request: Request):
     return {"message": msg}
 
 
+
+def _allowed_websocket_origin(headers: Any) -> bool:
+    """Allow only same-origin local browser WebSockets; permit non-browser clients without Origin.
+
+    Origin headers are browser-controlled by the browser runtime. A request from a
+    remote website must not be able to open a credentialless WebSocket to the local
+    agent server, even though that connection's TCP peer is loopback.
+    """
+    origin_value = headers.get("origin")
+    if not origin_value:
+        return True
+
+    host_value = headers.get("host")
+    if not host_value:
+        return False
+
+    try:
+        origin = urlsplit(origin_value)
+        request_host = urlsplit("//" + host_value)
+        origin_host = (origin.hostname or "").lower().rstrip(".")
+        request_hostname = (request_host.hostname or "").lower().rstrip(".")
+        allowed_hosts = {"localhost", "127.0.0.1", "::1"}
+
+        if origin.scheme.lower() != "http":
+            return False
+        if origin.username or origin.password or origin.path or origin.query or origin.fragment:
+            return False
+        if origin_host not in allowed_hosts or origin_host != request_hostname:
+            return False
+        if (origin.port or 80) != (request_host.port or 80):
+            return False
+        return True
+    except ValueError:
+        return False
+
+
 # --- WEBSOCKET REAL-TIME STREAMING ---
 
 
@@ -558,6 +595,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     if host not in {"127.0.0.1", "::1", "localhost"}:
         await websocket.close(
             code=1008, reason="Agent WebSocket access is restricted to local clients."
+        )
+        return
+    if not _allowed_websocket_origin(websocket.headers):
+        await websocket.close(
+            code=1008, reason="Agent WebSocket origin is not trusted."
         )
         return
     await websocket.accept()
