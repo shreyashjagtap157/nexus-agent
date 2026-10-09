@@ -321,10 +321,9 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        let context = ui.ctx().clone();
         egui::Panel::left("control")
             .resizable(true)
-            .show(&context, |ui| {
+            .show(ui, |ui| {
                 ui.heading("Task Control");
                 ui.label("Local server");
                 ui.text_edit_singleline(&mut self.endpoint);
@@ -525,7 +524,7 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        egui::CentralPanel::default().show(ui.ctx(), |ui| match self.view {
+        egui::CentralPanel::default().show(ui, |ui| match self.view {
             View::Overview => {
                 ui.heading("Team Overview");
                 ui.label(format!(
