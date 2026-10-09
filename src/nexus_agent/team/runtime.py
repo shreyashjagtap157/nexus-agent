@@ -812,7 +812,6 @@ Team protocol:
                 round_result = "".join(round_chunks).strip()
                 if round_result:
                     round_results.append(f"[Round {round_index}]\n{round_result}")
-                chunks = list(round_chunks)
 
                 if research_store is not None:
                     after_sources = len(research_store.sources(team_id))

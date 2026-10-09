@@ -30,9 +30,6 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from nexus_agent.core.usage import UsageTracker
-
 from nexus_agent.audit import AuditLog
 from nexus_agent.core.context import ContextManager
 from nexus_agent.core.self_heal import SelfHealingExecutor
@@ -45,6 +42,9 @@ from nexus_agent.llm.base import (
     ToolDefinition,
 )
 from nexus_agent.tools.base import format_aci_output
+
+if TYPE_CHECKING:
+    from nexus_agent.core.usage import UsageTracker
 
 logger = logging.getLogger(__name__)
 
