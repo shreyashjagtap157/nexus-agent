@@ -85,7 +85,7 @@ jobs:
           python -m build
           python -m twine check dist/*
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: python-package
           path: dist/*
@@ -125,7 +125,7 @@ jobs:
 
       - run: cargo build --release --manifest-path nexus-rs/Cargo.toml --target ${{ matrix.target }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: nexus-${{ matrix.target }}
           path: nexus-rs/target/${{ matrix.target }}/release/${{ matrix.binary }}
@@ -165,7 +165,7 @@ jobs:
 
       - run: cargo build --release --manifest-path nexus-desktop/Cargo.toml --target ${{ matrix.target }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: nexus-desktop-${{ matrix.target }}
           path: nexus-desktop/target/${{ matrix.target }}/release/${{ matrix.binary }}

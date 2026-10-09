@@ -49,7 +49,7 @@ jobs:
           exit "$test_status"
       - name: Upload canonical test evidence
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: canonical-pytest-output
           path: pytest_output.txt
@@ -154,7 +154,7 @@ jobs:
       - name: Generate audit reports
         run: python .githooks/pre-commit --from-file evidence/pytest_output.txt --ci
       - name: Upload audit reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: audit-evidence
           path: |
