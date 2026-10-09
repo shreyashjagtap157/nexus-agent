@@ -89,9 +89,7 @@ class ResearchStore:
         self.db_path = Path(db_path).expanduser().resolve()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._schema_locks_guard:
-            schema_lock = self._schema_locks.setdefault(
-                str(self.db_path), threading.RLock()
-            )
+            schema_lock = self._schema_locks.setdefault(str(self.db_path), threading.RLock())
         # WAL initialization, DDL and migrations must not race when several
         # team workers open a new ledger for the first time.
         with schema_lock:
