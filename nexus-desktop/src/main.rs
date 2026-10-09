@@ -718,7 +718,7 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
                             continue;
                         }
                         let _ = tx.send(Event::Started(job_id.clone()));
-                        poll_team(&client, &tx, &endpoint, &job_id);
+                        spawn_team_poll(&client, &tx, &endpoint, &job_id);
                     }
                     Err(error) => {
                         let _ = tx.send(Event::Error(error));
@@ -749,7 +749,7 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
                 }
             }
             Command::Refresh { endpoint, job_id } => {
-                poll_team(&client, &tx, &endpoint, &job_id);
+                spawn_team_poll(&client, &tx, &endpoint, &job_id);
             }
             Command::LoadWorkflows { endpoint } => {
                 match client
@@ -822,6 +822,20 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
     }
 }
 
+fn spawn_team_poll(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: &str) {
+    let client = client.clone();
+    let tx = tx.clone();
+    let endpoint = endpoint.to_string();
+    let job_id = job_id.to_string();
+    let thread_name = format!("nexus-team-poll-{job_id}");
+
+    if let Err(error) = thread::Builder::new().name(thread_name).spawn(move || {
+        poll_team(&client, &tx, &endpoint, &job_id);
+    }) {
+        let _ = tx.send(Event::Error(format!("Unable to start team status polling: {error}")));
+    }
+}
+
 fn poll_team(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: &str) {
     for _ in 0..240 {
         match client
@@ -840,7 +854,6 @@ fn poll_team(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: &str) 
                     "completed" | "needs_review" | "failed" | "cancelled"
                 );
                 if let Some(team_id) = status.team_id.clone() {
-                    let _ = tx.send(Event::Artifacts(Vec::new()));
                     let _ = client
                         .get(format!(
                             "{}/api/teams/{}/artifacts",
