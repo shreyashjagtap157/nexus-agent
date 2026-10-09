@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   autofix:
-    if: github.ref_name == 'automation/formatting-ba4eabe9203f' && !contains(github.event.head_commit.message, 'chore: apply Ruff autofixes')
+    if: ${{ github.ref_name == 'automation/formatting-ba4eabe9203f' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -29,6 +29,7 @@ jobs:
           python -m ruff check --fix src/ || true
           python -m ruff format src/
       - name: Commit automated fixes to the review branch
+        if: ${{ github.event.head_commit.message != 'chore: apply Ruff autofixes' }}
         shell: bash
         run: |
           set -euo pipefail
