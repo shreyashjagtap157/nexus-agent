@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from nexus_agent.llm.base import LLMProvider
@@ -23,7 +24,7 @@ def _routing_target(value: str) -> tuple[str, str | None]:
 def make_provider_selector(
     config: dict[str, Any],
     default_provider: LLMProvider,
-):
+) -> Callable[[AgentProfile], LLMProvider]:
     """Create a role-aware provider selector.
 
     Configuration is read from:
