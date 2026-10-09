@@ -81,12 +81,12 @@ jobs:
         run: python -m mypy src/nexus_agent/
 
   ruff-autofix:
-    name: One-time Ruff autofix (PR #357)
+    name: One-time format normalization (PR #357)
     if: ${{ github.event_name == 'pull_request' && github.head_ref == 'automation/formatting-ba4eabe9203f' }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,24 +94,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install Ruff
         run: python -m pip install --upgrade ruff
-      - name: Apply standard automatic fixes and formatting
+      - name: Apply Python and Rust formatters
         run: |
           python -m ruff check --fix src/ || true
           python -m ruff format src/
-      - name: Commit automatic fixes to the PR branch
+          cargo fmt --manifest-path nexus-rs/Cargo.toml
+          cargo fmt --manifest-path nexus-desktop/Cargo.toml
+      - name: Commit formatter changes to the PR branch
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- src; then
-            echo "No automatic changes were needed."
+          if git diff --quiet -- src nexus-rs nexus-desktop; then
+            echo "All source files are already formatted."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src
-          git commit -m "chore: apply Ruff autofixes"
+          git add src nexus-rs nexus-desktop
+          git commit -m "chore: apply CI formatter fixes"
           git push origin "HEAD:${GITHUB_HEAD_REF}"
   native:
     name: Native (${{ matrix.project.name }}, ${{ matrix.os }})
