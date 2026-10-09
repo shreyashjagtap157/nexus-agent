@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from nexus_agent.tools.base import Tool
+from nexus_agent.utils.sql import escape_like_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +327,7 @@ class RepositoryRAGTool(Tool):
                     results_map[key] = r
         except sqlite3.OperationalError:
             # Fallback to standard LIKE (escape wildcards to prevent injection)
-            escaped = query.replace("%", r"\%").replace("_", r"\_")
+            escaped = escape_like_pattern(query)
             like_query = f"%{escaped}%"
             cursor = conn.execute(
                 "SELECT *, 0 as rank FROM file_chunks WHERE content LIKE ? ESCAPE '\\' LIMIT ?",
