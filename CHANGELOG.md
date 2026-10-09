@@ -1,3 +1,8 @@
+## [0.3.0-alpha.5] - 2026-10-09
+
+- Harden SQLite LIKE fallback escaping for backslash, percent and underscore across episodic memory, long-term memory, and repository RAG.
+- Repair the SemVer version-bump script's Cargo.lock newline matching and add a regression test that bumps all governed manifests in an isolated project tree.
+
 # Changelog
 
 All notable NexusAgent changes are recorded here.
