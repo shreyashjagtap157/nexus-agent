@@ -1,4 +1,5 @@
 """Safe escaping for parameterized SQLite LIKE expressions."""
+
 from __future__ import annotations
 
 
