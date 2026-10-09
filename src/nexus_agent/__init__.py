@@ -17,7 +17,7 @@ Features:
 - Web, CLI/TUI and native Rust client surfaces
 """
 
-__version__ = "0.3.0-alpha.4"
+__version__ = "0.3.0-alpha.5"
 __app_name__ = "NexusAgent"
 
 __all__ = [

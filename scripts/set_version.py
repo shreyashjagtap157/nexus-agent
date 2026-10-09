@@ -124,8 +124,8 @@ def main() -> int:
 
     lock_path = ROOT / "nexus-rs/Cargo.lock"
     lock_text = lock_path.read_text(encoding="utf-8")
-    old_lock = f'name = "nexus"\\nversion = "{current}"'
-    new_lock = f'name = "nexus"\\nversion = "{version}"'
+    old_lock = f'name = "nexus"\nversion = "{current}"'
+    new_lock = f'name = "nexus"\nversion = "{version}"'
     if lock_text.count(old_lock) != 1:
         raise SystemExit("nexus-rs/Cargo.lock: expected exactly one nexus package version marker")
     lock_path.write_text(lock_text.replace(old_lock, new_lock), encoding="utf-8")
