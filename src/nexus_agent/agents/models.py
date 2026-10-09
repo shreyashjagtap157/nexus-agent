@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from nexus_agent.team.models import AgentProfile
 
 
 class AgentScope(str, Enum):
@@ -62,7 +65,7 @@ class AgentSpec:
             "source_path": self.source_path,
         }
 
-    def to_team_profile(self):
+    def to_team_profile(self) -> AgentProfile:
         from nexus_agent.team.models import AgentProfile
 
         return AgentProfile(

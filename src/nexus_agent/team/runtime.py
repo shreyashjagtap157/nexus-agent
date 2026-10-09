@@ -546,7 +546,7 @@ Team protocol:
         goal: str,
         config: TeamConfig,
         store: TeamStore,
-        events: queue.Queue,
+        events: queue.Queue[AgentEvent],
         control_state: Any,
     ) -> dict[str, Any]:
         started = time.time()
@@ -626,16 +626,16 @@ Team protocol:
             profile.role_id,
         )
         worker_tools = self._tools_for(profile, store, team_id, config)
+        cfg.permission_callback = lambda tc: self._permission(
+            tc,
+            config,
+            profile,
+            worker_tools,
+        )
         agent = AgentLoop(
             provider=worker_provider,
             tools=worker_tools,
             config=cfg,
-            permission_callback=lambda tc: self._permission(
-                tc,
-                config,
-                profile,
-                worker_tools,
-            ),
         )
         for tool in worker_tools:
             if hasattr(tool, "set_agent_loop"):
@@ -760,12 +760,6 @@ Team protocol:
                     provider=worker_provider,
                     tools=worker_tools,
                     config=cfg,
-                    permission_callback=lambda tc: self._permission(
-                        tc,
-                        config,
-                        profile,
-                        worker_tools,
-                    ),
                 )
                 for tool in worker_tools:
                     if hasattr(tool, "set_agent_loop"):
@@ -1391,7 +1385,8 @@ Team protocol:
                 profile = active.pop(done_future)
                 try:
                     result = done_future.result()
-                except (RuntimeError, ValueError, OSError, TypeError) as exc:
+                except (RuntimeError, ValueError, OSError, TypeError, AttributeError) as exc:
+                    failure = str(exc)
                     result = {
                         "agent_id": profile.role_id,
                         "name": profile.name,
@@ -1399,8 +1394,26 @@ Team protocol:
                         "status": TeamAgentState.FAILED.value,
                         "result": "",
                         "reviewer": profile.reviewer,
-                        "error": str(exc),
+                        "error": failure,
                     }
+                    store.update_agent(
+                        agent_storage_ids[profile.role_id],
+                        state=TeamAgentState.FAILED.value,
+                        ended_at=time.time(),
+                        error=failure,
+                    )
+                    store.message(
+                        team_id,
+                        profile.role_id,
+                        "FAILURE",
+                        {"error": failure},
+                    )
+                    store.event(
+                        team_id,
+                        "agent_worker_exception",
+                        {"error": failure},
+                        profile.role_id,
+                    )
                     failed_ids.add(profile.role_id)
                 else:
                     if result.get("status") == TeamAgentState.COMPLETED.value:

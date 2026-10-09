@@ -96,6 +96,10 @@ class ResearchStore:
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
+    def close(self) -> None:
+        """Compatibility no-op; each operation owns and closes its connection."""
+        return None
+
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
             conn.executescript(self.SCHEMA)

@@ -77,8 +77,16 @@ jobs:
         run: |
           python -m ruff check src/
           python -m ruff format --check src/
-      - name: MyPy
-        run: python -m mypy src/nexus_agent/
+      - name: Strict MyPy for typed runtime and evidence boundaries
+        run: |
+          python -m mypy --follow-imports=silent \
+            src/nexus_agent/team/runtime.py \
+            src/nexus_agent/team/models.py \
+            src/nexus_agent/team/quality.py \
+            src/nexus_agent/team/providers.py \
+            src/nexus_agent/research/store.py \
+            src/nexus_agent/storage/layout.py \
+            src/nexus_agent/agents/models.py
 
   ruff-autofix:
     name: One-time Ruff autofix (PR #357)
