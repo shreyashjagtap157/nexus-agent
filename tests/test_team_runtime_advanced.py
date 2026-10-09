@@ -59,7 +59,7 @@ def test_team_runtime_executes_dependency_waves_and_outputs_artifact(tmp_path: P
             require_reviewer=True,
         ),
     )
-    assert result.success
+    assert result.success, {"agents": result.agents, "failures": result.failures}
     assert len(result.agents) == 2
     assert result.artifact_paths
     artifact = Path(result.artifact_paths[0])
@@ -157,7 +157,7 @@ def test_team_runtime_markdown_artifact_serializes_quality_gate(tmp_path: Path):
             require_reviewer=True,
         ),
     )
-    assert result.success
+    assert result.success, {"agents": result.agents, "failures": result.failures}
     artifact = Path(result.artifact_paths[0])
     content = artifact.read_text(encoding="utf-8")
     assert "## Evidence Quality Gate" in content

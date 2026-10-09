@@ -66,7 +66,7 @@ def test_team_runtime_executes_real_agent_loops_in_parallel(tmp_path: Path):
         ),
     )
 
-    assert result.success is True
+    assert result.success is True, {"agents": result.agents, "failures": result.failures}
     assert result.team_id
     assert len(result.agents) == 3
     assert sum(a["status"] == "completed" for a in result.agents) == 3
@@ -95,7 +95,7 @@ def test_team_runtime_persists_blackboard_messages(tmp_path: Path):
     try:
         messages = store.messages(result.team_id)
         assert any(m["message_type"] == "TASK_ASSIGNMENT" for m in messages)
-        assert any(m["message_type"] == "COMPLETION" for m in messages)
+        assert any(m["message_type"] == "COMPLETION" for m in messages), {"agents": result.agents, "messages": messages}
         assert any(m["message_type"] == "TEAM_COMPLETE" for m in messages)
         assert store.team(result.team_id)["status"] == "completed"
     finally:
@@ -111,11 +111,11 @@ def test_team_roles_do_not_collide_between_runs(tmp_path: Path):
 
     from nexus_agent.team.store import TeamStore
 
-    store = TeamStore(tmp_path / ".nexus" / "teams.db")
+    store = TeamStore(runtime.data_dir / "teams.db")
     try:
         first_agents = store.agents(first.team_id)
         second_agents = store.agents(second.team_id)
-        assert len(first_agents) == len(second_agents) == 2
+        assert len(first_agents) == len(second_agents) == 2, {"first": first_agents, "second": second_agents, "db_path": str(runtime.data_dir / 'teams.db')}
         assert {a["agent_id"] for a in first_agents}.isdisjoint({a["agent_id"] for a in second_agents})
     finally:
         store.close()
