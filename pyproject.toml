@@ -112,7 +112,7 @@ providers = [
 
 # Security — OS keychain integration for credential storage
 security = [
-    "keyring>=25.0.0",
+    "keyring>=25.7.0",
     "cryptography>=42.0.0",
 ]
 
