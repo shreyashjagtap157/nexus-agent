@@ -642,7 +642,6 @@ impl eframe::App for NexusDesktop {
                 });
             }
         });
-
     }
 }
 
@@ -832,7 +831,9 @@ fn spawn_team_poll(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: 
     if let Err(error) = thread::Builder::new().name(thread_name).spawn(move || {
         poll_team(&client, &tx, &endpoint, &job_id);
     }) {
-        let _ = tx.send(Event::Error(format!("Unable to start team status polling: {error}")));
+        let _ = tx.send(Event::Error(format!(
+            "Unable to start team status polling: {error}"
+        )));
     }
 }
 
