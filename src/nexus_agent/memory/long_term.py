@@ -30,6 +30,7 @@ import uuid
 from typing import Any
 
 from nexus_agent.core.sqlite_store import SQLiteStore
+from nexus_agent.utils.sql import escape_like_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -375,7 +376,7 @@ class LongTermMemory(SQLiteStore):
                     )
             except sqlite3.OperationalError:
                 # FTS query syntax error — fall back to LIKE
-                escaped = query.replace("%", "\\%").replace("_", "\\_")
+                escaped = escape_like_pattern(query)
                 like_query = f"%{escaped}%"
                 if category:
                     cursor = conn.execute(
