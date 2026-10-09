@@ -99,7 +99,7 @@ jobs:
     if: github.event_name == 'pull_request' && needs.dependency-graph.result == 'success' && needs.dependency-graph.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
 
 
   required:
