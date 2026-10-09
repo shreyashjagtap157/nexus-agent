@@ -91,7 +91,7 @@ openvino = [
 # TPU — Google Tensor Processing Unit (via JAX)
 tpu = [
     "jax>=0.4.0",
-    "jaxlib>=0.4.0",
+    "jaxlib>=0.6.2",
 ]
 
 # GUI dependencies
