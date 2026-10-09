@@ -61,7 +61,11 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip freeze --exclude-editable > "$RUNNER_TEMP/nexus-agent-audit-requirements.txt"
-          python -m pip_audit --requirement "$RUNNER_TEMP/nexus-agent-audit-requirements.txt" --strict
+          # Temporary, narrow exception for PYSEC-2026-2447: diskcache is a transitive
+          # llama-cpp-python dependency, but NexusAgent does not instantiate LlamaCache
+          # or use diskcache directly. The upstream advisory lists no patched version.
+          # Reassess this exception when upstream fixes the issue or the dependency graph changes.
+          python -m pip_audit --requirement "$RUNNER_TEMP/nexus-agent-audit-requirements.txt" --strict --ignore-vuln PYSEC-2026-2447
 
   dependency-graph:
     name: Dependency graph availability
