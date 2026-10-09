@@ -98,9 +98,7 @@ class AgentSpec:
         ):
             raise ValueError(f"Agent {identifier!r} is missing required descriptive fields.")
         raw_metadata = data.get("metadata")
-        metadata: dict[str, Any] = (
-            raw_metadata if isinstance(raw_metadata, dict) else {}
-        )
+        metadata: dict[str, Any] = raw_metadata if isinstance(raw_metadata, dict) else {}
         return cls(
             id=identifier,
             name=str(data["name"]).strip(),
