@@ -65,7 +65,7 @@ def test_sensitive_team_read_routes_reject_remote_clients(tmp_path: Path, path: 
     register_team_routes(app, RouteState(tmp_path))
     response = TestClient(app).get(path)
     assert response.status_code == 403
-\n
+
 def test_team_report_rejects_symlinked_result_artifact(tmp_path: Path):
     root = _artifact_root(State(tmp_path), "team-1")
     root.mkdir(parents=True, exist_ok=True)
