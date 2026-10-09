@@ -1,7 +1,9 @@
 """Tests for TUI rebuild features: ASCII status dashboard, git ΔLines, /unload, and /tools."""
 
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -209,7 +211,9 @@ class TestTuiRebuildFeatures(unittest.TestCase):
     def test_workspace_session_auto_resume(self):
         """Verify the session orchestrator resumes the last session by default unless new_session is True."""
         from pathlib import Path
-        app = NexusApp(quiet=True, workspace=Path("/mock/workspace"))
+        workspace = Path(tempfile.mkdtemp(prefix="nexus-agent-tui-test-"))
+        self.addCleanup(shutil.rmtree, workspace, ignore_errors=True)
+        app = NexusApp(quiet=True, workspace=workspace)
         self.addCleanup(app._cleanup)
 
         # Mock SessionManager
@@ -238,7 +242,7 @@ class TestTuiRebuildFeatures(unittest.TestCase):
             app._new_session = False
             app._session_id = None
             app._init_agent()
-            expected_ws = str(Path("/mock/workspace"))
+            expected_ws = str(workspace)
             mock_sess_mgr.get_last_session_for_workspace.assert_called_with(expected_ws)
             mock_sess_mgr.resume_session.assert_called_with("session-123")
             self.assertEqual(app._session_id, "session-123")

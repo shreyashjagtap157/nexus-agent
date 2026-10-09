@@ -16,9 +16,10 @@ def test_team_console_references_existing_controls():
 def test_workflow_console_contains_research_and_output_controls():
     html = (ROOT / "src/nexus_agent/gui/frontend/workflows.html").read_text(encoding="utf-8")
     required_ids = {
-        "workflow", "mode", "agents", "parallelism", "iterations",
-        "output", "format", "depth", "collection", "source_strategy",
-        "research_max_minutes", "research_idle_rounds", "agent_ids", "sources",
+        "id", "name", "description", "mode", "agents", "parallelism", "iterations",
+        "effort", "output", "format", "depth", "collection", "source_strategy",
+        "research_max_minutes", "research_idle_rounds", "scope", "reviewer", "synthesis",
+        "parallel_writers", "agent_ids", "sources", "tags", "save", "delete", "list", "notice",
     }
     missing = [item for item in required_ids if f'id="{item}"' not in html]
     assert not missing, f"workflow UI missing controls: {missing}"
@@ -33,15 +34,18 @@ def test_provider_vault_has_inference_test_and_no_raw_secret_rendering():
 
 
 def test_native_ci_covers_both_rust_clients():
-    workflow = (ROOT / ".github/workflows/native-desktop.yml").read_text(encoding="utf-8")
-    assert 'nexus-desktop/**' in workflow
-    assert 'nexus-rs/**' in workflow
-    assert 'cargo check --manifest-path nexus-rs/Cargo.toml' in workflow
-    assert 'cargo test --manifest-path nexus-rs/Cargo.toml' in workflow
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "nexus-desktop" in workflow
+    assert "nexus-rs" in workflow
+    assert "manifest: nexus-rs/Cargo.toml" in workflow
+    assert "manifest: nexus-desktop/Cargo.toml" in workflow
+    assert "cargo check --manifest-path ${{ matrix.project.manifest }}" in workflow
 
 
 def test_canonical_team_artifact_path_is_consistent():
     runtime = (ROOT / "src/nexus_agent/team/runtime.py").read_text(encoding="utf-8")
     routes = (ROOT / "src/nexus_agent/team/web_routes.py").read_text(encoding="utf-8")
     assert 'self.data_dir / "artifacts" / team_id' in runtime
-    assert 'StorageLayout(_workspace(state_manager)).artifacts / team_id' in routes
+    assert "def _artifact_root(state_manager: Any, team_id: str) -> Path:" in routes
+    assert "root = (base / team_id).resolve()" in routes
+    assert "_artifact_root(state_manager, team_id)" in routes
