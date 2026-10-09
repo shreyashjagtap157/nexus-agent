@@ -13,6 +13,7 @@ import time
 from typing import Any
 
 from nexus_agent.core.sqlite_store import SQLiteStore
+from nexus_agent.utils.sql import escape_like_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class EpisodicMemory(SQLiteStore):
                     (safe_query, limit),
                 )
             except sqlite3.OperationalError:
-                escaped = query.replace("%", "\\%").replace("_", "\\_")
+                escaped = escape_like_pattern(query)
                 cursor = conn.execute(
                     "SELECT *, 0 as rank FROM episodes WHERE summary LIKE ? ESCAPE '\\' LIMIT ?",
                     (f"%{escaped}%", limit),
