@@ -57,7 +57,11 @@ jobs:
           python -m pip check
 
       - name: Audit installed dependencies
-        run: python -m pip_audit --local --strict --skip-editable
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip freeze --exclude-editable > "$RUNNER_TEMP/nexus-agent-audit-requirements.txt"
+          python -m pip_audit --requirement "$RUNNER_TEMP/nexus-agent-audit-requirements.txt" --strict
 
   dependency-graph:
     name: Dependency graph availability
