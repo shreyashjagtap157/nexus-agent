@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import platformdirs
 import yaml
 
 from nexus_agent.core.config import get_data_dir
@@ -64,7 +63,7 @@ class WorkflowSpec:
         return TeamConfig(**values).normalize()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], source: str) -> "WorkflowSpec":
+    def from_dict(cls, data: dict[str, Any], source: str) -> WorkflowSpec:
         workflow_id = str(data.get("id") or "").strip().lower()
         if not workflow_id:
             raise ValueError("Workflow requires id.")

@@ -18,7 +18,6 @@ from nexus_agent.llm.base import (
     StreamChunk,
     ToolDefinition,
 )
-
 from nexus_agent.llm.providers.catalog import get as get_provider_descriptor
 
 logger = logging.getLogger(__name__)

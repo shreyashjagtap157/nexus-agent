@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import json
 import re
-import uuid
 from dataclasses import replace
 
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
 from .models import AgentProfile, TeamConfig, TeamMode
-from .research import policy as research_policy
-
 
 SYSTEM_PROMPT = """You are NexusAgent's team architect.
 

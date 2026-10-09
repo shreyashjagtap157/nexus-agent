@@ -89,7 +89,7 @@ class TeamConfig:
     agent_ids: list[str] = field(default_factory=list)
     use_saved_agents: bool = True
 
-    def normalize(self) -> "TeamConfig":
+    def normalize(self) -> TeamConfig:
         self.max_agents = max(1, min(int(self.max_agents), 64))
         self.agent_ids = list(
             dict.fromkeys(str(item).strip().lower() for item in self.agent_ids if str(item).strip())

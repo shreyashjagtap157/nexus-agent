@@ -9,8 +9,8 @@ from typing import Any
 import click
 
 from nexus_agent import __app_name__, __version__
-from nexus_agent.utils.fs import iter_files
 from nexus_agent.team.research import RESEARCH_DEPTHS
+from nexus_agent.utils.fs import iter_files
 
 
 @click.group(invoke_without_command=True)
@@ -262,6 +262,7 @@ def provider_test(
 ) -> None:
     """Run a real provider connectivity test without exposing credentials."""
     import time
+
     from nexus_agent.core.config import load_config
     from nexus_agent.llm.base import Message, Role
     from nexus_agent.llm.providers.factory import ProviderFactory
@@ -314,6 +315,7 @@ def research_sources(workspace: str) -> None:
     """List persistent workspace research sources."""
     from rich.console import Console
     from rich.table import Table
+
     from nexus_agent.research.sources import ResearchSourceRegistry
 
     registry = ResearchSourceRegistry(
@@ -378,6 +380,7 @@ def workflow_list(workspace: str) -> None:
     """List reusable orchestration workflows."""
     from rich.console import Console
     from rich.table import Table
+
     from nexus_agent.workflows import WorkflowRegistry
 
     registry = WorkflowRegistry(Path(workspace).resolve())
@@ -406,6 +409,7 @@ def workflow_list(workspace: str) -> None:
 def workflow_show(workflow_id: str, workspace: str) -> None:
     """Show a workflow policy."""
     import json
+
     from nexus_agent.workflows import WorkflowRegistry
 
     item = WorkflowRegistry(Path(workspace).resolve()).get(workflow_id)
@@ -925,8 +929,9 @@ def mcp() -> None:
 @click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False), default=".")
 def mcp_list(workspace: str) -> None:
     """List configured MCP servers without starting them."""
-    from nexus_agent.core.config import load_config
     import json
+
+    from nexus_agent.core.config import load_config
 
     config = load_config(workspace=Path(workspace).resolve())
     raw = config.get("mcp", {})
@@ -978,8 +983,9 @@ def auth() -> None:
 )
 def auth_login(provider: str, api_key: str | None, env_name: str | None) -> None:
     """Store an API credential in the user-level NexusAgent auth store."""
-    from nexus_agent.auth import AuthStore
     import os
+
+    from nexus_agent.auth import AuthStore
 
     key = os.environ.get(env_name) if env_name else api_key
     if key is None:
@@ -1032,6 +1038,7 @@ def agent_list(workspace: str) -> None:
     """List resolved agent profiles after scope precedence is applied."""
     from rich.console import Console
     from rich.table import Table
+
     from nexus_agent.agents import AgentRegistry
 
     console = Console()
@@ -1084,11 +1091,11 @@ def agent_run(
     from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode
     from nexus_agent.core.config import load_config
     from nexus_agent.llm.providers.factory import ProviderFactory
+    from nexus_agent.memory.memory_manager import MemoryManager
     from nexus_agent.permissions.manager import PermissionManager
+    from nexus_agent.storage.layout import StorageLayout
     from nexus_agent.team.providers import make_provider_selector
     from nexus_agent.team.runtime import build_workspace_tools
-    from nexus_agent.storage.layout import StorageLayout
-    from nexus_agent.memory.memory_manager import MemoryManager
 
     ws = Path(workspace).resolve()
     config = load_config(config_path=(ctx.obj or {}).get("config_path"), workspace=ws)
@@ -1160,6 +1167,7 @@ def agent_run(
 def agent_show(agent_id: str, workspace: str) -> None:
     """Show one resolved agent profile."""
     import json
+
     from nexus_agent.agents import AgentRegistry
 
     spec = AgentRegistry(Path(workspace).resolve()).get(agent_id)
@@ -1173,6 +1181,7 @@ def agent_show(agent_id: str, workspace: str) -> None:
 def agent_paths(workspace: str) -> None:
     """Show agent definition storage paths for every scope."""
     import json
+
     from nexus_agent.agents import AgentRegistry
 
     click.echo(
@@ -1241,6 +1250,7 @@ def agent_generate(
 ) -> None:
     """Ask NexusAgent to design reusable professional agents for a requirement."""
     import json
+
     from nexus_agent.agents import AgentGenerator, AgentRegistry, AgentScope
     from nexus_agent.core.config import load_config
     from nexus_agent.llm.providers.factory import ProviderFactory
@@ -1403,13 +1413,13 @@ def team_run(
     """Execute a dynamically assembled peer team."""
     from rich.console import Console
     from rich.table import Table
-    from nexus_agent.permissions.manager import PermissionManager
+
     from nexus_agent.core.config import load_config
-    from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime, build_workspace_tools
-    from nexus_agent.team.providers import make_provider_selector
-    from nexus_agent.team.research import RESEARCH_DEPTHS
     from nexus_agent.llm.providers.factory import ProviderFactory
     from nexus_agent.mcp.client import load_configured_servers
+    from nexus_agent.permissions.manager import PermissionManager
+    from nexus_agent.team import TeamConfig, TeamMode, TeamRuntime, build_workspace_tools
+    from nexus_agent.team.providers import make_provider_selector
 
     console = Console()
     ws = Path(workspace).resolve()
@@ -1496,8 +1506,9 @@ def team_run(
 def team_show(team_id: str, workspace: str) -> None:
     """Inspect a persisted team run as JSON."""
     import json
-    from nexus_agent.team import TeamStore
+
     from nexus_agent.storage.layout import StorageLayout
+    from nexus_agent.team import TeamStore
 
     store = TeamStore(StorageLayout(Path(workspace).resolve()).team_db)
     try:

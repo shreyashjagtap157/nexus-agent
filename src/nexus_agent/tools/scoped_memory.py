@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from nexus_agent.tools.base import Tool
-
 from nexus_agent.memory.scoped import MemoryScope, ScopedMemory
+from nexus_agent.tools.base import Tool
 
 
 class ScopedMemoryTool(Tool):

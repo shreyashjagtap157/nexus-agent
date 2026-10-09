@@ -367,18 +367,13 @@ class Sandbox:
                 if not target.is_dir():
                     raise NotADirectoryError(f"Not a directory: {target}")
                 entries = sorted(target.iterdir(), key=lambda item: item.name.casefold())
-                lines = [
-                    f"<DIR> {item.name}" if item.is_dir() else item.name
-                    for item in entries
-                ]
+                lines = [f"<DIR> {item.name}" if item.is_dir() else item.name for item in entries]
                 output = "\n".join(lines)
                 if output:
                     output += "\n"
                 return subprocess.CompletedProcess(parsed_args, 0, output, "")
             except (OSError, ValueError, RuntimeError) as exc:
-                return subprocess.CompletedProcess(
-                    parsed_args, 1, "", f"Execution denied: {exc}"
-                )
+                return subprocess.CompletedProcess(parsed_args, 1, "", f"Execution denied: {exc}")
 
         if name == "type":
             if len(parsed_args) < 2:
@@ -393,9 +388,7 @@ class Sandbox:
                         raise FileNotFoundError(f"Not a file: {target}")
                     chunks.append(target.read_text(encoding="utf-8", errors="replace"))
             except (OSError, ValueError, RuntimeError) as exc:
-                return subprocess.CompletedProcess(
-                    parsed_args, 1, "", f"Execution denied: {exc}"
-                )
+                return subprocess.CompletedProcess(parsed_args, 1, "", f"Execution denied: {exc}")
             return subprocess.CompletedProcess(parsed_args, 0, "".join(chunks), "")
 
         return None
@@ -461,9 +454,7 @@ class Sandbox:
                 parsed_args = shlex.split(command, posix=sys.platform != "win32")
                 if sys.platform == "win32":
                     parsed_args = [
-                        arg[1:-1]
-                        if len(arg) >= 2 and arg[0] == arg[-1] == '"'
-                        else arg
+                        arg[1:-1] if len(arg) >= 2 and arg[0] == arg[-1] == '"' else arg
                         for arg in parsed_args
                     ]
             except ValueError:
@@ -483,9 +474,7 @@ class Sandbox:
             # Never route untrusted input through cmd.exe, including when arguments are
             # supplied as a list: cmd.exe reparses metacharacters from that list.
             if sys.platform == "win32":
-                executable_name = (
-                    parsed_args[0].replace("\\", "/").rsplit("/", 1)[-1].lower()
-                )
+                executable_name = parsed_args[0].replace("\\", "/").rsplit("/", 1)[-1].lower()
                 blocked_launchers = {
                     "cmd",
                     "cmd.exe",
@@ -514,9 +503,7 @@ class Sandbox:
                         batch_suffixes = {".bat", ".cmd"}
                         given_suffix = Path(parsed_args[0]).suffix.lower()
                         resolved_suffix = (
-                            Path(resolved_executable).suffix.lower()
-                            if resolved_executable
-                            else ""
+                            Path(resolved_executable).suffix.lower() if resolved_executable else ""
                         )
                         if given_suffix in batch_suffixes or resolved_suffix in batch_suffixes:
                             proc = subprocess.CompletedProcess(

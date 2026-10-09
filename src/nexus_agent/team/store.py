@@ -8,9 +8,9 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
 from nexus_agent.audit import AuditLog
-from typing import Any
 
 
 class TeamStore:

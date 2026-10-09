@@ -15,7 +15,6 @@ from typing import Any, TextIO
 
 from filelock import FileLock
 
-
 _SECRET_PATTERNS = (
     re.compile(r"nvapi-[A-Za-z0-9_-]{12,}"),
     re.compile(r"sk-[A-Za-z0-9_-]{12,}"),

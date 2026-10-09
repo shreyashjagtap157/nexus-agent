@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import logging
+import os
 import socket
 import subprocess
 import threading
@@ -31,14 +31,9 @@ from pydantic import BaseModel, Field
 from nexus_agent import __app_name__, __version__
 from nexus_agent.agents.web_routes import register_agent_routes
 from nexus_agent.audit.web_routes import register_audit_routes
-from nexus_agent.mcp.web_routes import register_mcp_routes
-from nexus_agent.mcp.client import load_configured_servers
-from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.auth.web_routes import register_auth_routes
-from nexus_agent.research.web_routes import register_research_source_routes
-from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
-from nexus_agent.core.config import load_config, save_user_config, _strip_secrets
+from nexus_agent.core.config import _strip_secrets, load_config, save_user_config
 from nexus_agent.core.debate import DebateEngine
 from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.nla_telemetry import NLATelemetry
@@ -48,24 +43,17 @@ from nexus_agent.llm.local_engine import LocalEngine
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.providers.factory import ProviderFactory
 from nexus_agent.llm.runtime_manager import RuntimeManager
+from nexus_agent.mcp.client import load_configured_servers
+from nexus_agent.mcp.web_routes import register_mcp_routes
 from nexus_agent.memory.memory_manager import MemoryManager
+from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.permissions.manager import PermissionManager
+from nexus_agent.research.web_routes import register_research_source_routes
 from nexus_agent.session.manager import SessionManager
+from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.storage.layout import StorageLayout
-from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
-from nexus_agent.tools.file_ops import (
-    ListDirectoryTool,
-    ReadFileTool,
-    SearchFilesTool,
-    WriteFileTool,
-)
-from nexus_agent.tools.git_ops import GitTool, SmartCommitTool
-from nexus_agent.tools.memory import MemoryTool
-from nexus_agent.tools.shell import ShellTool
-from nexus_agent.tools.todowrite import TodoWriteTool
-from nexus_agent.tools.web_search import WebSearchTool
-from nexus_agent.tools.webfetch import WebFetchTool
 from nexus_agent.team.web_routes import register_team_routes
+from nexus_agent.tools.git_ops import SmartCommitTool
 
 logger = logging.getLogger(__name__)
 

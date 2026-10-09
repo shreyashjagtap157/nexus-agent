@@ -33,9 +33,9 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 if TYPE_CHECKING:
     pass
 
+from nexus_agent.audit import AuditLog
 from nexus_agent.core.context import ContextManager
 from nexus_agent.core.self_heal import SelfHealingExecutor
-from nexus_agent.audit import AuditLog
 from nexus_agent.llm.base import (
     LLMProvider,
     LLMResponse,

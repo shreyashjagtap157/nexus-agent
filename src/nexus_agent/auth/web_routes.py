@@ -10,11 +10,11 @@ from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
 
 from nexus_agent.auth import AuthStore
+from nexus_agent.core.config import _strip_secrets, load_config, save_user_config
 from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.providers.catalog import all_providers
 from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
 from nexus_agent.storage.layout import StorageLayout
-from nexus_agent.core.config import _strip_secrets, load_config, save_user_config
 
 
 class CredentialRequest(BaseModel):

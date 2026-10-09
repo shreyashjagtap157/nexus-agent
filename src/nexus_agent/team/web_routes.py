@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import threading
-import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -15,20 +14,18 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from nexus_agent.core.config import load_config
-from nexus_agent.permissions.manager import PermissionManager
-from nexus_agent.storage.layout import StorageLayout
 from nexus_agent.mcp.client import load_configured_servers
+from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
+from nexus_agent.storage.layout import StorageLayout
+from nexus_agent.workflows import WorkflowRegistry
 
-from .models import TeamConfig, TeamMode
 from .control import control as control_team_request
+from .models import TeamConfig, TeamMode
 from .providers import make_provider_selector
 from .research import all_policies
 from .runtime import TeamRuntime, build_workspace_tools
-from nexus_agent.workflows import WorkflowRegistry
 from .store import TeamStore
-
 
 logger = logging.getLogger(__name__)
 

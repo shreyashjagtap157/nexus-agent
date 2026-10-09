@@ -12,17 +12,17 @@ from rich.panel import Panel
 from rich.table import Table
 
 from nexus_agent.core.config import load_config
-from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.llm.providers.factory import ProviderFactory
+from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.storage.layout import StorageLayout
+from nexus_agent.workflows import WorkflowRegistry
 
 from .team.models import TeamConfig, TeamMode
-from .team.runtime import TeamRuntime, build_workspace_tools
 from .team.providers import make_provider_selector
 from .team.research import RESEARCH_DEPTHS
+from .team.runtime import TeamRuntime, build_workspace_tools
 from .team.store import TeamStore
-from nexus_agent.workflows import WorkflowRegistry
 
 
 def _make_runtime(

@@ -85,7 +85,7 @@ class AgentSpec:
     @classmethod
     def from_dict(
         cls, data: dict[str, Any], scope: AgentScope, source_path: str | None = None
-    ) -> "AgentSpec":
+    ) -> AgentSpec:
         identifier = str(data.get("id") or "").strip().lower()
         if not identifier:
             raise ValueError("Agent definition requires a non-empty id.")

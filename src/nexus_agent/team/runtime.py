@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import queue
-import re
-import threading
 import time
 import uuid
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from nexus_agent.agents.registry import AgentRegistry
 from nexus_agent.core.agent import AgentEvent, AgentEventType, AgentLoop, AgentLoopConfig, AgentMode
@@ -17,13 +16,13 @@ from nexus_agent.llm.base import LLMProvider, Message, Role
 from nexus_agent.skills.skill_registry import SkillRegistry
 from nexus_agent.storage.layout import StorageLayout
 
+from .control import register as register_team_control
+from .control import unregister as unregister_team_control
 from .models import AgentProfile, TeamAgentState, TeamConfig, TeamMode, TeamRunResult
-from .control import register as register_team_control, unregister as unregister_team_control
 from .planner import generate_team, infer_mode
 from .quality import evaluate_team
 from .store import TeamStore
 from .tools import TeamReadMessagesTool, TeamSendMessageTool
-
 
 PermissionCallback = Callable[[Any], bool]
 ProviderSelector = Callable[[AgentProfile], LLMProvider]
@@ -43,13 +42,12 @@ def build_workspace_tools(
     research_depth: str = "detailed",
     research_source_strategy: str = "hybrid",
 ) -> list[Any]:
-    from nexus_agent.tools.browser import BrowserTool
-    from nexus_agent.tools.boomerang import BoomerangTool
     from nexus_agent.tools.batch_edit import BatchEditTool
+    from nexus_agent.tools.boomerang import BoomerangTool
+    from nexus_agent.tools.browser import BrowserTool
     from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
     from nexus_agent.tools.code_intel import CallGraphTool, ImportGraphTool, RenameTool
     from nexus_agent.tools.council import CouncilTool
-    from nexus_agent.tools.formal import FormalCheckTool
     from nexus_agent.tools.file_ops import (
         DeleteFileTool,
         ListDirectoryTool,
@@ -60,6 +58,7 @@ def build_workspace_tools(
         SearchFilesTool,
         WriteFileTool,
     )
+    from nexus_agent.tools.formal import FormalCheckTool
     from nexus_agent.tools.git_ops import CIAnalyzerTool, GitTool, PRGeneratorTool, SmartCommitTool
     from nexus_agent.tools.lsp_client import LSPClientTool
     from nexus_agent.tools.rag_search import RepositoryRAGTool
@@ -106,12 +105,12 @@ def build_workspace_tools(
     if research:
         run_id = session_id or team_id or "interactive"
         from nexus_agent.research.configured_source_tool import ResearchConfiguredSourceTool
-        from nexus_agent.storage.layout import StorageLayout
         from nexus_agent.research.tools import (
             ResearchRecordClaimTool,
             ResearchRecordSourceTool,
             ResearchVerifyClaimTool,
         )
+        from nexus_agent.storage.layout import StorageLayout
 
         research_db = StorageLayout(workspace).workspace_runtime / "research.db"
         research_tools = [
@@ -1454,8 +1453,9 @@ Team protocol:
 
         research_quality: dict[str, Any] | None = None
         if mode == TeamMode.RESEARCH:
-            from .research import policy as research_policy
             from nexus_agent.research.store import ResearchStore
+
+            from .research import policy as research_policy
 
             research_store = ResearchStore(self.data_dir / "research.db")
             try:
