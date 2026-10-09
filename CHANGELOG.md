@@ -1,8 +1,3 @@
-## [0.3.0-alpha.5] - 2026-10-09
-
-- Harden SQLite LIKE fallback escaping for backslash, percent and underscore across episodic memory, long-term memory, and repository RAG.
-- Repair the SemVer version-bump script's Cargo.lock newline matching and add a regression test that bumps all governed manifests in an isolated project tree.
-
 # Changelog
 
 All notable NexusAgent changes are recorded here.
@@ -12,6 +7,11 @@ Release precedence and compatibility are governed by Semantic Versioning.
 ## [Unreleased]
 
 Changes not yet assigned to a release.
+
+## [0.3.0-alpha.5] - 2026-10-09
+
+- Harden SQLite LIKE fallback escaping for backslash, percent and underscore across episodic memory, long-term memory, and repository RAG.
+- Repair the SemVer version-bump script's Cargo.lock newline matching and add a regression test that bumps all governed manifests in an isolated project tree.
 
 ## [0.3.0-alpha.4]
 
@@ -72,3 +72,4 @@ Alpha.4 is an unreleased development snapshot. Public CLI, HTTP, MCP, tool, prov
 Initial multi-agent platform prerelease baseline.
 
 This prerelease established the unified product architecture and did not provide a stable compatibility commitment.
+
