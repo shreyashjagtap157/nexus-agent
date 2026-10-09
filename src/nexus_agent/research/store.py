@@ -8,15 +8,17 @@ import sqlite3
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 
 class _ClosingConnection(sqlite3.Connection):
     """SQLite connection context that commits/rolls back and always closes."""
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> bool:
+    def __exit__(
+        self, exc_type: Any, exc_value: Any, traceback: Any
+    ) -> Literal[False]:
         try:
-            return bool(super().__exit__(exc_type, exc_value, traceback))
+            return super().__exit__(exc_type, exc_value, traceback)
         finally:
             self.close()
 
