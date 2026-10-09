@@ -483,32 +483,57 @@ class Sandbox:
             # Never route untrusted input through cmd.exe, including when arguments are
             # supplied as a list: cmd.exe reparses metacharacters from that list.
             if sys.platform == "win32":
-                proc = self._run_windows_builtin(parsed_args, work_dir)
-                if proc is None:
-                    resolved_executable = shutil.which(parsed_args[0])
-                    batch_suffixes = {".bat", ".cmd"}
-                    given_suffix = Path(parsed_args[0]).suffix.lower()
-                    resolved_suffix = (
-                        Path(resolved_executable).suffix.lower()
-                        if resolved_executable
-                        else ""
+                executable_name = (
+                    parsed_args[0].replace("\\", "/").rsplit("/", 1)[-1].lower()
+                )
+                blocked_launchers = {
+                    "cmd",
+                    "cmd.exe",
+                    "powershell",
+                    "powershell.exe",
+                    "pwsh",
+                    "pwsh.exe",
+                    "bash",
+                    "bash.exe",
+                    "sh",
+                    "sh.exe",
+                    "zsh",
+                    "zsh.exe",
+                }
+                if executable_name in blocked_launchers:
+                    proc = subprocess.CompletedProcess(
+                        parsed_args,
+                        -1,
+                        "",
+                        "Execution denied: command interpreters cannot be launched by the sandbox.",
                     )
-                    if given_suffix in batch_suffixes or resolved_suffix in batch_suffixes:
-                        proc = subprocess.CompletedProcess(
-                            parsed_args,
-                            -1,
-                            "",
-                            "Execution denied: Windows batch files are not executed by the sandbox.",
+                else:
+                    proc = self._run_windows_builtin(parsed_args, work_dir)
+                    if proc is None:
+                        resolved_executable = shutil.which(parsed_args[0])
+                        batch_suffixes = {".bat", ".cmd"}
+                        given_suffix = Path(parsed_args[0]).suffix.lower()
+                        resolved_suffix = (
+                            Path(resolved_executable).suffix.lower()
+                            if resolved_executable
+                            else ""
                         )
-                    else:
-                        proc = subprocess.run(
-                            parsed_args,
-                            capture_output=True,
-                            text=True,
-                            cwd=str(work_dir),
-                            env=exec_env,
-                            timeout=effective_timeout,
-                        )
+                        if given_suffix in batch_suffixes or resolved_suffix in batch_suffixes:
+                            proc = subprocess.CompletedProcess(
+                                parsed_args,
+                                -1,
+                                "",
+                                "Execution denied: Windows batch files are not executed by the sandbox.",
+                            )
+                        else:
+                            proc = subprocess.run(
+                                parsed_args,
+                                capture_output=True,
+                                text=True,
+                                cwd=str(work_dir),
+                                env=exec_env,
+                                timeout=effective_timeout,
+                            )
             else:
                 proc = subprocess.run(
                     parsed_args,
