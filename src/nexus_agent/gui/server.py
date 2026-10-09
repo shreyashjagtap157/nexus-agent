@@ -549,7 +549,6 @@ async def trigger_commit(request: Request):
     return {"message": msg}
 
 
-
 def _allowed_websocket_origin(headers: Any) -> bool:
     """Allow only same-origin local browser WebSockets; permit non-browser clients without Origin.
 
@@ -574,7 +573,13 @@ def _allowed_websocket_origin(headers: Any) -> bool:
 
         if origin.scheme.lower() != "http":
             return False
-        if origin.username or origin.password or origin.path or origin.query or origin.fragment:
+        if (
+            origin.username
+            or origin.password
+            or origin.path
+            or origin.query
+            or origin.fragment
+        ):
             return False
         if origin_host not in allowed_hosts or origin_host != request_hostname:
             return False
