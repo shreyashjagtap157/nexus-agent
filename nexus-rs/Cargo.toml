@@ -36,7 +36,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
-sysinfo = "0.33"
+sysinfo = "0.39"
 
 [profile.release]
 lto = true
