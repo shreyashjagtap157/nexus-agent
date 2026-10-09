@@ -1,4 +1,5 @@
 name: Temporary Ruff auto-fix
+# Isolated to the formatting review branch; never rewrites main or master.
 
 on:
   push:
