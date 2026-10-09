@@ -66,11 +66,11 @@ def enable_vt_processing():
     if sys.platform == "win32" and HAS_CTYPES:
         try:
             kernel32 = ctypes.windll.kernel32
-            hStdout = kernel32.GetStdHandle(-11)
+            h_stdout = kernel32.GetStdHandle(-11)
             mode = ctypes.c_uint32()
-            if kernel32.GetConsoleMode(hStdout, ctypes.byref(mode)):
+            if kernel32.GetConsoleMode(h_stdout, ctypes.byref(mode)):
                 mode.value |= 0x0004 | 0x0002  # VT processing | Enable output processing
-                kernel32.SetConsoleMode(hStdout, mode)
+                kernel32.SetConsoleMode(h_stdout, mode)
         except (OSError, AttributeError, ValueError):
             pass
 
@@ -1898,12 +1898,12 @@ class NexusTerminalRenderer:
         session_removed: int = 0,
     ):
         try:
-            W = shutil.get_terminal_size().columns
+            width = shutil.get_terminal_size().columns
         except (OSError, ValueError):
-            W = 80
+            width = 80
 
         # Narrow terminal fallback
-        if W < 40:
+        if width < 40:
             model_d = truncate_visual(model_name, 20)
             ws = truncate_visual(workspace, 20)
             lines = [
@@ -2015,7 +2015,7 @@ class NexusTerminalRenderer:
         context_limit = context_size
 
         # 4. Formatter layout
-        if W < 75:
+        if width < 75:
             box_width = 55
             left_col_w = 33
             right_col_w = 18
@@ -2041,11 +2041,11 @@ class NexusTerminalRenderer:
 
         # Colors
         hex_to_ansi(self.theme.accent_primary)
-        R = "\033[0m"
+        reset = "\033[0m"
         hex_to_ansi(self.theme.accent_warning)
-        M_color = "\033[38;2;180;80;220m"
+        m_color = "\033[38;2;180;80;220m"
 
-        left_1 = f" 🦄 NexusAgent      Model: {M_color}{model_d}{R}"
+        left_1 = f" 🦄 NexusAgent      Model: {m_color}{model_d}{reset}"
         right_1 = f"Mem: {mem_str}"
 
         # ↓/↑ spec glyphs for session totals

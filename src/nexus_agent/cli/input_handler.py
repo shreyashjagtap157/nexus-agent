@@ -619,15 +619,15 @@ class InputHandlerMixin:
 
     def _render_footer(self, menu_height: int = 0):
         try:
-            W = shutil.get_terminal_size().columns
-            H = shutil.get_terminal_size().lines
+            width = shutil.get_terminal_size().columns
+            height = shutil.get_terminal_size().lines
         except (OSError, ValueError):
-            W, H = 80, 24
+            width, height = 80, 24
 
         mode_str = self._current_mode.value.upper()
         effort = self._config.get("agent", {}).get("effort_level", "medium").lower()
-        EFFORT_COLORS = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
-        ec = EFFORT_COLORS.get(effort, "0")
+        effort_colors = {"low": "32", "medium": "36", "high": "33", "xhigh": "35", "max": "31"}
+        ec = effort_colors.get(effort, "0")
 
         parts = [f"Mode: \033[1m{mode_str}\033[0m"]
         parts.append(f"Effort: \033[1;{ec}m{effort.upper()}\033[0m")
@@ -638,20 +638,20 @@ class InputHandlerMixin:
             parts.append(f"\033[2m{notif}\033[0m")
 
         footer = "  │  ".join(parts)
-        if len(footer) > W:
-            footer = footer[:W]
+        if len(footer) > width:
+            footer = footer[:width]
 
         sys.stdout.write("\033[s")
 
         drawer_h = 0
         if getattr(self, "_drawer_active", False):
             d_items = self._sub_agents
-            max_visible = min(8, H - 5)
+            max_visible = min(8, height - 5)
             d_count = min(len(d_items), max_visible) if d_items else 0
             drawer_h = d_count + 3
-            d_start = H - drawer_h - 1
+            d_start = height - drawer_h - 1
 
-            sys.stdout.write(f"\033[{d_start};1H\033[2K\033[2m{'─' * min(W, 60)}\033[0m")
+            sys.stdout.write(f"\033[{d_start};1H\033[2K\033[2m{'─' * min(width, 60)}\033[0m")
             sys.stdout.write(f"\033[{d_start + 1};1H\033[2K  \033[1mSub-Agents\033[0m")
             if d_items:
                 visible_items = d_items[:max_visible]
@@ -661,12 +661,12 @@ class InputHandlerMixin:
                     prefix = "▸" if i == self._drawer_idx else " "
                     line = f"  {prefix} \033[1m{name}\033[0m"
                     if desc:
-                        d_max = W - 22 - len(name)
+                        d_max = width - 22 - len(name)
                         if d_max > 5:
                             line += f"  \033[2m{desc[:d_max]}\033[0m"
                     if i == self._drawer_idx:
                         line = f"\033[7m{line}\033[0m"
-                    sys.stdout.write(f"\033[{d_start + 2 + i};1H\033[2K{line[:W]}")
+                    sys.stdout.write(f"\033[{d_start + 2 + i};1H\033[2K{line[:width]}")
                 nav_row = d_start + 2 + d_count
                 sys.stdout.write(
                     f"\033[{nav_row};1H\033[2K  \033[2m↑↓ navigate · Enter use · Esc close\033[0m"
@@ -676,7 +676,7 @@ class InputHandlerMixin:
                     f"\033[{d_start + 2};1H\033[2K  \033[2mNo sub-agents configured.\033[0m"
                 )
 
-        sys.stdout.write(f"\033[{H - drawer_h};1H\033[2K{footer}")
+        sys.stdout.write(f"\033[{height - drawer_h};1H\033[2K{footer}")
         sys.stdout.write("\033[u")
         sys.stdout.flush()
 
@@ -722,18 +722,18 @@ class InputHandlerMixin:
         max_name = min(max(len(c["name"]) for c in commands), term_width - 25) if commands else 20
         query.lower()
 
-        MAX_VISIBLE = min(10, max(3, term_lines - 6))
+        max_visible = min(10, max(3, term_lines - 6))
         total_items = len(commands)
 
-        if total_items <= MAX_VISIBLE:
+        if total_items <= max_visible:
             start_idx = 0
             end_idx = total_items
             display_cmds = commands
             show_indicators = False
         else:
-            start_idx = idx - MAX_VISIBLE // 2
-            start_idx = max(0, min(start_idx, total_items - MAX_VISIBLE))
-            end_idx = start_idx + MAX_VISIBLE
+            start_idx = idx - max_visible // 2
+            start_idx = max(0, min(start_idx, total_items - max_visible))
+            end_idx = start_idx + max_visible
             display_cmds = commands[start_idx:end_idx]
             show_indicators = True
 

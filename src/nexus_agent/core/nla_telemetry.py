@@ -231,7 +231,7 @@ class NLATelemetry:
         pairs = []
 
         # Redaction patterns for sensitive data
-        _REDACT_PATTERNS = [
+        redact_patterns = [
             (
                 re.compile(r"(?i)(password|secret|api_key|token|credential)\s*[=:]\s*\S+"),
                 r"\1=[REDACTED]",
@@ -249,13 +249,13 @@ class NLATelemetry:
             if r.confidence_score > 0.7:
                 # Redact thought process and alternative paths
                 redacted_thought = r.thought_process
-                for pattern, replacement in _REDACT_PATTERNS:
+                for pattern, replacement in redact_patterns:
                     redacted_thought = pattern.sub(replacement, redacted_thought)
 
                 redacted_alternatives = [
                     pattern.sub(replacement, alt)
                     for alt in r.alternative_paths
-                    for pattern, replacement in _REDACT_PATTERNS
+                    for pattern, replacement in redact_patterns
                 ]
 
                 pairs.append(
