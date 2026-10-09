@@ -1,5 +1,7 @@
 """Test that all package modules can be imported without errors."""
 
+from pathlib import Path
+
 import pytest
 
 
@@ -9,7 +11,8 @@ class TestCoreImports:
     def test_import_nexus_agent(self):
         import nexus_agent
         assert hasattr(nexus_agent, "__version__")
-        assert nexus_agent.__version__ == "0.3.0-alpha.4"
+        version_file = Path(__file__).resolve().parents[1] / "VERSION"
+        assert nexus_agent.__version__ == version_file.read_text(encoding="utf-8").strip()
 
     def test_import_agent_loop(self):
         from nexus_agent.core.agent import AgentLoop, AgentLoopConfig, AgentMode, AgentState
