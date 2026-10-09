@@ -52,16 +52,17 @@ def test_gui_mutation_access_accepts_loopback_clients():
     ],
 )
 def test_workspace_sensitive_gui_routes_reject_remote_clients(path):
-    response = TestClient(app).get(path)
+    response = TestClient(app, client=("203.0.113.10", 12345)).get(path)
     assert response.status_code == 403
 
 
 def test_gui_agent_websocket_rejects_remote_clients():
-    client = TestClient(app)
+    client = TestClient(app, client=("203.0.113.10", 12345))
     with pytest.raises(WebSocketDisconnect) as exc:
         with client.websocket_connect("/api/ws/test-session"):
             pass
     assert exc.value.code == 1008
+
 
 @pytest.mark.parametrize(
     "guard",
