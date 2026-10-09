@@ -16,7 +16,7 @@ path = "src/main.rs"
 clap = { version = "4", features = ["derive"] }
 
 # TUI
-ratatui = "0.29"
+ratatui = "0.30"
 crossterm = "0.28"
 
 # IPC — JSON-RPC over stdio
