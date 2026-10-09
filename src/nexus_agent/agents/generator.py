@@ -1,4 +1,5 @@
 """LLM-assisted user agent generator."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,6 @@ from typing import Any
 from nexus_agent.llm.base import LLMProvider, Message, Role
 
 from .models import AgentScope, AgentSpec
-from .registry import AgentRegistry
 
 
 class AgentGenerator:

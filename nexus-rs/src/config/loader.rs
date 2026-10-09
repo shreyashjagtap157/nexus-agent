@@ -55,7 +55,10 @@ pub fn load_config() -> Config {
 
 /// Merge a TOML file on top of the current config.
 /// Fields in the file override those in the base config.
-fn merge_toml_file(path: &std::path::Path, config: &mut Config) -> Result<(), Box<dyn std::error::Error>> {
+fn merge_toml_file(
+    path: &std::path::Path,
+    config: &mut Config,
+) -> Result<(), Box<dyn std::error::Error>> {
     let content = std::fs::read_to_string(path)?;
     let file_config: Config = toml::from_str(&content)?;
 
@@ -111,9 +114,7 @@ fn user_config_path() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            return Some(
-                PathBuf::from(home).join("Library/Application Support/nexus/config.toml"),
-            );
+            return Some(PathBuf::from(home).join("Library/Application Support/nexus/config.toml"));
         }
     }
     #[cfg(target_os = "windows")]

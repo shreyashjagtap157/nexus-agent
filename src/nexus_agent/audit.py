@@ -1,4 +1,5 @@
 """Tamper-evident append-only audit log for NexusAgent runtime activity."""
+
 from __future__ import annotations
 
 import hashlib
@@ -161,13 +162,15 @@ class AuditLog:
                             run_id=data.get("run_id"),
                             actor=str(data.get("actor", "system")),
                             event_type=str(data.get("event_type", "event")),
-                            payload=data.get("payload") if isinstance(data.get("payload"), dict) else {},
+                            payload=data.get("payload")
+                            if isinstance(data.get("payload"), dict)
+                            else {},
                             created_at=float(data["created_at"]),
                             previous_hash=str(data.get("previous_hash", "")),
                             record_hash=str(data["record_hash"]),
                         )
                     )
-        return rows[-max(1, min(int(limit), 100000)):]
+        return rows[-max(1, min(int(limit), 100000)) :]
 
     def verify(self) -> dict[str, Any]:
         if not self.path.exists():

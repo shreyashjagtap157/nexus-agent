@@ -4,6 +4,7 @@ The tool never invokes a shell. It selects from an explicit executable allow-lis
 runs in the current workspace, enforces a wall-clock timeout and records enough
 metadata for an agent/auditor to reproduce the check.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -73,7 +74,9 @@ class FormalCheckTool(Tool):
     def timeout(self) -> int:
         return 3600
 
-    def execute(self, verifier: str, file: str, timeout: int = 300, **kwargs: Any) -> dict[str, Any]:
+    def execute(
+        self, verifier: str, file: str, timeout: int = 300, **kwargs: Any
+    ) -> dict[str, Any]:
         normalized = verifier.strip().lower()
         adapter = self._ADAPTERS.get(normalized)
         if adapter is None:

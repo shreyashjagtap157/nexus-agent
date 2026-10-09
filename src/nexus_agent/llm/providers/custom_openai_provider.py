@@ -23,7 +23,11 @@ class CustomOpenAIProvider(OpenAIProvider):
         super().__init__(config)
         self._api_key = config.get("api_key") or "custom"  # Often not required for local hosts
         self._model_name = config.get("model") or "custom-model"
-        self._api_url = config.get("api_url") or config.get("base_url") or "http://localhost:8000/v1/chat/completions"
+        self._api_url = (
+            config.get("api_url")
+            or config.get("base_url")
+            or "http://localhost:8000/v1/chat/completions"
+        )
 
     @property
     def name(self) -> str:
@@ -43,7 +47,11 @@ class CustomOpenAIProvider(OpenAIProvider):
 
     def get_available_models(self) -> list[dict[str, Any]]:
         return [
-            {"id": self._model_name, "name": f"{self._model_name} (Custom Endpoint)", "provider": "custom"},
+            {
+                "id": self._model_name,
+                "name": f"{self._model_name} (Custom Endpoint)",
+                "provider": "custom",
+            },
         ]
 
     def validate_config(self) -> list[str]:

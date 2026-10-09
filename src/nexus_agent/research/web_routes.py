@@ -1,4 +1,5 @@
 """Web management API for user-configured research sources."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,7 +25,9 @@ class SourceRequest(BaseModel):
 def _require_local(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Research source access is restricted to local clients.")
+        raise HTTPException(
+            status_code=403, detail="Research source access is restricted to local clients."
+        )
 
 
 def register_research_source_routes(app: Any, state_manager: Any) -> None:
@@ -35,7 +38,9 @@ def register_research_source_routes(app: Any, state_manager: Any) -> None:
     @app.get("/api/research/sources")
     async def list_research_sources(request: Request, enabled_only: bool = False):
         _require_local(request)
-        return {"sources": [source.to_dict() for source in registry().list(enabled_only=enabled_only)]}
+        return {
+            "sources": [source.to_dict() for source in registry().list(enabled_only=enabled_only)]
+        }
 
     @app.post("/api/research/sources")
     async def add_research_source(request: Request, payload: SourceRequest):

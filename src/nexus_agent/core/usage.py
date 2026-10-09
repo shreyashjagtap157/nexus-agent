@@ -154,9 +154,7 @@ class UsageSummary:
             lines.append("")
             lines.append(f"By day (top {top_n}):")
             for day, s in list(self.by_day.items())[:top_n]:
-                lines.append(
-                    f"  {day}  {s['total_tokens']:>10,} tok  ${s['estimated_cost']:.4f}"
-                )
+                lines.append(f"  {day}  {s['total_tokens']:>10,} tok  ${s['estimated_cost']:.4f}")
         return lines
 
 
@@ -223,9 +221,7 @@ class UsageTracker:
             }
             # Atomic write — write to a temp file in the same directory
             # then replace. Avoids partial writes on crash.
-            fd, tmp = tempfile.mkstemp(
-                prefix=".usage.", suffix=".json.tmp", dir=self.path.parent
-            )
+            fd, tmp = tempfile.mkstemp(prefix=".usage.", suffix=".json.tmp", dir=self.path.parent)
             try:
                 with open(fd, "w", encoding="utf-8") as f:
                     json.dump(payload, f, indent=1, sort_keys=True)
@@ -253,9 +249,7 @@ class UsageTracker:
         pricing: dict[str, dict[str, float]] | None = None,
     ) -> UsageEntry:
         """Append one usage entry, returning it."""
-        cost = estimate_cost(
-            provider, model, prompt_tokens, completion_tokens, pricing
-        )
+        cost = estimate_cost(provider, model, prompt_tokens, completion_tokens, pricing)
         entry = UsageEntry(
             ts=time.time(),
             session_id=session_id or "unknown",
@@ -300,9 +294,7 @@ class UsageTracker:
     def clear_session(self, session_id: str) -> int:
         with self._lock:
             n_before = len(self._entries)
-            self._entries = [
-                e for e in self._entries if e.session_id != session_id
-            ]
+            self._entries = [e for e in self._entries if e.session_id != session_id]
             removed = n_before - len(self._entries)
             if removed:
                 self._save()
@@ -349,8 +341,13 @@ class UsageTracker:
 
             sess = s.by_session.setdefault(
                 e.session_id,
-                {"prompt_tokens": 0, "completion_tokens": 0,
-                 "total_tokens": 0, "estimated_cost": 0.0, "entries": 0},
+                {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "estimated_cost": 0.0,
+                    "entries": 0,
+                },
             )
             sess["prompt_tokens"] += e.prompt_tokens
             sess["completion_tokens"] += e.completion_tokens
@@ -361,8 +358,13 @@ class UsageTracker:
             model_key = f"{e.provider}/{e.model}" if e.provider else e.model or "unknown"
             m = s.by_model.setdefault(
                 model_key,
-                {"prompt_tokens": 0, "completion_tokens": 0,
-                 "total_tokens": 0, "estimated_cost": 0.0, "entries": 0},
+                {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "estimated_cost": 0.0,
+                    "entries": 0,
+                },
             )
             m["prompt_tokens"] += e.prompt_tokens
             m["completion_tokens"] += e.completion_tokens
@@ -373,8 +375,13 @@ class UsageTracker:
             day = _day_key(e.ts)
             d = s.by_day.setdefault(
                 day,
-                {"prompt_tokens": 0, "completion_tokens": 0,
-                 "total_tokens": 0, "estimated_cost": 0.0, "entries": 0},
+                {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "estimated_cost": 0.0,
+                    "entries": 0,
+                },
             )
             d["prompt_tokens"] += e.prompt_tokens
             d["completion_tokens"] += e.completion_tokens
@@ -384,13 +391,7 @@ class UsageTracker:
 
         s.estimated_cost = round(s.estimated_cost, 6)
         # Sort breakdowns by cost descending.
-        s.by_model = dict(
-            sorted(s.by_model.items(), key=lambda kv: -kv[1]["estimated_cost"])
-        )
-        s.by_session = dict(
-            sorted(s.by_session.items(), key=lambda kv: -kv[1]["estimated_cost"])
-        )
-        s.by_day = dict(
-            sorted(s.by_day.items(), key=lambda kv: kv[0], reverse=True)
-        )
+        s.by_model = dict(sorted(s.by_model.items(), key=lambda kv: -kv[1]["estimated_cost"]))
+        s.by_session = dict(sorted(s.by_session.items(), key=lambda kv: -kv[1]["estimated_cost"]))
+        s.by_day = dict(sorted(s.by_day.items(), key=lambda kv: kv[0], reverse=True))
         return s

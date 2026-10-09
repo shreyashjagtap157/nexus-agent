@@ -1,9 +1,11 @@
 """Hierarchical agent registry with explicit scope precedence."""
+
 from __future__ import annotations
 
 import logging
+import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import platformdirs
 import yaml
@@ -78,10 +80,7 @@ class AgentRegistry:
 
     def match_relevant(self, query: str, limit: int = 16) -> list[AgentSpec]:
         """Return enabled user/project/workspace profiles ranked by lexical relevance."""
-        tokens = {
-            token
-            for token in re.findall(r"[a-z0-9_+-]{3,}", query.lower())
-        }
+        tokens = {token for token in re.findall(r"[a-z0-9_+-]{3,}", query.lower())}
         scored: list[tuple[int, str, AgentSpec]] = []
         for spec in self.load():
             haystack = " ".join(
@@ -96,15 +95,24 @@ class AgentRegistry:
             ).lower()
             score = sum(1 for token in tokens if token in haystack)
             # Reviewers and specialist profiles get a deterministic tie-break.
-            if spec.reviewer and any(term in tokens for term in {"review", "audit", "verify", "security"}):
+            if spec.reviewer and any(
+                term in tokens for term in {"review", "audit", "verify", "security"}
+            ):
                 score += 2
             scored.append((score, spec.name.lower(), spec))
         scored.sort(key=lambda item: (-item[0], item[1]))
         return [spec for score, _, spec in scored[: max(1, min(limit, 64))] if score > 0]
- 
+
     def get(self, agent_id: str) -> AgentSpec | None:
         normalized = agent_id.strip().lower()
-        return next((spec for spec in self.load(include_disabled=True) if spec.id == normalized and spec.enabled), None)
+        return next(
+            (
+                spec
+                for spec in self.load(include_disabled=True)
+                if spec.id == normalized and spec.enabled
+            ),
+            None,
+        )
 
     def save(self, spec: AgentSpec, scope: AgentScope) -> Path:
         if scope == AgentScope.BUILTIN:
@@ -116,7 +124,12 @@ class AgentRegistry:
 
     def delete(self, agent_id: str, scope: AgentScope | None = None) -> list[str]:
         removed: list[str] = []
-        mutable_scopes = [AgentScope.GLOBAL, AgentScope.USER, AgentScope.PROJECT, AgentScope.WORKSPACE]
+        mutable_scopes = [
+            AgentScope.GLOBAL,
+            AgentScope.USER,
+            AgentScope.PROJECT,
+            AgentScope.WORKSPACE,
+        ]
         scopes = [scope] if scope is not None else list(reversed(mutable_scopes))
         if scope == AgentScope.BUILTIN:
             raise ValueError("Built-in agent profiles are immutable.")
@@ -131,21 +144,35 @@ class AgentRegistry:
 
     def resolve_tool_categories(self, agent: AgentSpec) -> set[str]:
         allowed = {
-            "read", "write", "shell", "web", "git", "mcp",
-            "browser", "code_intel", "lsp", "memory", "research", "formal",
+            "read",
+            "write",
+            "shell",
+            "web",
+            "git",
+            "mcp",
+            "browser",
+            "code_intel",
+            "lsp",
+            "memory",
+            "research",
+            "formal",
         }
         requested = set(agent.tool_categories)
         return requested & allowed
 
     def validate(self, spec: AgentSpec) -> list[str]:
         errors: list[str] = []
-        if spec.id != spec.id.strip().lower() or not spec.id.replace("-", "").replace("_", "").isalnum():
+        if (
+            spec.id != spec.id.strip().lower()
+            or not spec.id.replace("-", "").replace("_", "").isalnum()
+        ):
             errors.append("id must contain only lowercase letters, numbers, '-' or '_'.")
         if not spec.tool_categories:
             errors.append("tool_categories must contain at least one category.")
         if spec.write_access and "write" not in spec.tool_categories:
             errors.append("write_access=true requires the 'write' tool category.")
         from nexus_agent.skills.skill_registry import SkillRegistry
+
         skills = SkillRegistry(
             search_dirs=[
                 str(self.roots[AgentScope.USER].parent / "skills"),

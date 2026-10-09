@@ -147,11 +147,17 @@ class Skill(Tool):
     it spawns a specialized sub-agent initialized with the skill's system prompt.
     """
 
-    def __init__(self, name: str, description: str, parameters: dict[str, Any],
-                 instructions: str, permission_level: str = "read-write",
-                 workspace: Path | None = None,
-                 agent_core: Any | None = None,
-                 sub_agent_factory: SubAgentFactory | None = None):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        parameters: dict[str, Any],
+        instructions: str,
+        permission_level: str = "read-write",
+        workspace: Path | None = None,
+        agent_core: Any | None = None,
+        sub_agent_factory: SubAgentFactory | None = None,
+    ):
         """Initialize the Skill.
 
         Args:
@@ -235,10 +241,7 @@ class Skill(Tool):
                 rendered = render_template(self._instructions, kwargs)
             except TemplateError as e:
                 return f"Error rendering skill template: {e}"
-            return (
-                f"You are executing the specialized skill '{self._name}'.\n\n"
-                f"{rendered}"
-            )
+            return f"You are executing the specialized skill '{self._name}'.\n\n{rendered}"
         arg_summary = "\n".join(f"- {k}: {v}" for k, v in kwargs.items())
         return (
             f"You are executing the specialized skill '{self._name}'.\n"

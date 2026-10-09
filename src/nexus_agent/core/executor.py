@@ -47,7 +47,9 @@ Your goal is to implement the changes cleanly, matching the plan's specification
         # Filter out keys that conflict with AgentLoopConfig constructor
         conflicting_keys = {"mode", "system_prompt_extra"}
         filtered_kwargs = {k: v for k, v in agent_kwargs.items() if k not in conflicting_keys}
-        cfg = AgentLoopConfig(mode=AgentMode.BUILD, system_prompt_extra=self.SYSTEM_PROMPT, **filtered_kwargs)
+        cfg = AgentLoopConfig(
+            mode=AgentMode.BUILD, system_prompt_extra=self.SYSTEM_PROMPT, **filtered_kwargs
+        )
         self.agent = AgentLoop(
             provider=provider,
             tools=tools,
@@ -66,9 +68,9 @@ Your goal is to implement the changes cleanly, matching the plan's specification
         """
         prompt = (
             f"Please execute the following task:\n"
-            f"\"\"\"\n{task}\n\"\"\"\n\n"
+            f'"""\n{task}\n"""\n\n'
             f"Follow this step-by-step Technical Implementation Plan meticulously:\n"
-            f"\"\"\"\n{plan}\n\"\"\"\n\n"
+            f'"""\n{plan}\n"""\n\n'
             f"Verify your work when complete by running tests or compilation checks."
         )
         yield from self.agent.run_stream(prompt)

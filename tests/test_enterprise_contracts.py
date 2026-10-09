@@ -8,7 +8,7 @@ from nexus_agent.storage.layout import StorageLayout
 def test_version_contract_script_is_valid():
     root = Path(__file__).resolve().parents[1]
     version = (root / "VERSION").read_text(encoding="utf-8").strip()
-    assert version == "0.3.0-alpha.1"
+    assert version == "0.3.0-alpha.4"
     result = __import__("subprocess").run(
         ["python", str(root / "scripts" / "check_version.py")],
         capture_output=True,

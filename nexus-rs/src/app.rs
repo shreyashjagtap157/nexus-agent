@@ -262,13 +262,9 @@ pub enum AppEvent {
         result: Option<serde_json::Value>,
     },
     /// Memory list response from backend.
-    MemoryList {
-        result: MemoryListResult,
-    },
+    MemoryList { result: MemoryListResult },
     /// Memory stats response from backend.
-    MemoryStats {
-        stats: serde_json::Value,
-    },
+    MemoryStats { stats: serde_json::Value },
     /// Keyboard key press.
     KeyPressed(crossterm::event::KeyEvent),
     /// Terminal was resized.
@@ -325,9 +321,7 @@ impl App {
     pub fn refresh_resources(&mut self) {
         use sysinfo::System;
         static SYS: std::sync::OnceLock<std::sync::Mutex<System>> = std::sync::OnceLock::new();
-        let sys = SYS.get_or_init(|| {
-            std::sync::Mutex::new(System::new())
-        });
+        let sys = SYS.get_or_init(|| std::sync::Mutex::new(System::new()));
         if let Ok(mut sys) = sys.lock() {
             sys.refresh_cpu_all();
             sys.refresh_memory();
@@ -385,27 +379,51 @@ impl App {
                 Command::None
             }
             AppEvent::MemoryList { result } => {
-                let entries: Vec<crate::tui::memory_browser::MemoryEntry> = result.entries.iter().map(|v| {
-                    let content = v.get("content").and_then(|c| c.as_str()).unwrap_or("").to_string();
-                    let tier_str = v.get("source").and_then(|s| s.as_str()).unwrap_or("long_term");
-                    let tier = match tier_str {
-                        "working" => crate::tui::memory_browser::MemoryTier::Working,
-                        "episodic" => crate::tui::memory_browser::MemoryTier::Episodic,
-                        "vector" => crate::tui::memory_browser::MemoryTier::VectorStore,
-                        "user_profile" | "profile" => crate::tui::memory_browser::MemoryTier::UserProfile,
-                        _ => crate::tui::memory_browser::MemoryTier::LongTerm,
-                    };
-                    crate::tui::memory_browser::MemoryEntry {
-                        id: v.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string(),
-                        content,
-                        tier,
-                        category: v.get("category").and_then(|c| c.as_str()).unwrap_or("general").to_string(),
-                        created_at: v.get("created_at").and_then(|c| c.as_f64()).unwrap_or(0.0),
-                        updated_at: v.get("updated_at").and_then(|u| u.as_f64()).unwrap_or(0.0),
-                        access_count: v.get("access_count").and_then(|a| a.as_u64()).unwrap_or(0) as usize,
-                        score: v.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0),
-                    }
-                }).collect();
+                let entries: Vec<crate::tui::memory_browser::MemoryEntry> = result
+                    .entries
+                    .iter()
+                    .map(|v| {
+                        let content = v
+                            .get("content")
+                            .and_then(|c| c.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let tier_str = v
+                            .get("source")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("long_term");
+                        let tier = match tier_str {
+                            "working" => crate::tui::memory_browser::MemoryTier::Working,
+                            "episodic" => crate::tui::memory_browser::MemoryTier::Episodic,
+                            "vector" => crate::tui::memory_browser::MemoryTier::VectorStore,
+                            "user_profile" | "profile" => {
+                                crate::tui::memory_browser::MemoryTier::UserProfile
+                            }
+                            _ => crate::tui::memory_browser::MemoryTier::LongTerm,
+                        };
+                        crate::tui::memory_browser::MemoryEntry {
+                            id: v
+                                .get("id")
+                                .and_then(|i| i.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            content,
+                            tier,
+                            category: v
+                                .get("category")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("general")
+                                .to_string(),
+                            created_at: v.get("created_at").and_then(|c| c.as_f64()).unwrap_or(0.0),
+                            updated_at: v.get("updated_at").and_then(|u| u.as_f64()).unwrap_or(0.0),
+                            access_count: v
+                                .get("access_count")
+                                .and_then(|a| a.as_u64())
+                                .unwrap_or(0) as usize,
+                            score: v.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0),
+                        }
+                    })
+                    .collect();
                 self.memory_browser.set_entries(entries, result.count);
                 Command::None
             }
@@ -428,10 +446,7 @@ impl App {
     fn on_acp_event(&mut self, method: &str, params: Option<&serde_json::Value>) {
         match method {
             "content_chunk" => {
-                if let Some(text) = params
-                    .and_then(|p| p.get("data"))
-                    .and_then(|d| d.as_str())
-                {
+                if let Some(text) = params.and_then(|p| p.get("data")).and_then(|d| d.as_str()) {
                     self.stream_buffer.push_str(text);
                     // Feed block detector for streaming state
                     for ch in text.chars() {
@@ -483,10 +498,7 @@ impl App {
                 }
             }
             "thinking" => {
-                if let Some(text) = params
-                    .and_then(|p| p.get("data"))
-                    .and_then(|d| d.as_str())
-                {
+                if let Some(text) = params.and_then(|p| p.get("data")).and_then(|d| d.as_str()) {
                     self.add_thinking_message(text);
                 }
             }
@@ -505,10 +517,7 @@ impl App {
                         .get("name")
                         .and_then(|n| n.as_str())
                         .unwrap_or("unknown");
-                    let output = data
-                        .get("output")
-                        .and_then(|o| o.as_str())
-                        .unwrap_or("");
+                    let output = data.get("output").and_then(|o| o.as_str()).unwrap_or("");
                     let success = data
                         .get("success")
                         .and_then(|s| s.as_bool())
@@ -517,18 +526,12 @@ impl App {
                 }
             }
             "state_change" => {
-                if let Some(text) = params
-                    .and_then(|p| p.get("data"))
-                    .and_then(|d| d.as_str())
-                {
+                if let Some(text) = params.and_then(|p| p.get("data")).and_then(|d| d.as_str()) {
                     self.agent_state = text.to_string();
                 }
             }
             "error" => {
-                if let Some(text) = params
-                    .and_then(|p| p.get("data"))
-                    .and_then(|d| d.as_str())
-                {
+                if let Some(text) = params.and_then(|p| p.get("data")).and_then(|d| d.as_str()) {
                     self.add_error_message(text);
                     if self.phase == AppPhase::Processing {
                         self.phase = AppPhase::Ready;
@@ -604,7 +607,7 @@ impl App {
             }
         }
 
-            // Esc: close modals or cancel
+        // Esc: close modals or cancel
         if key.code == KeyCode::Esc {
             if self.inspector_visible {
                 self.inspector_visible = false;
@@ -621,7 +624,10 @@ impl App {
         if key.code == KeyCode::Tab {
             if self.inspector_visible {
                 let panels = InspectorPanel::ALL;
-                let current = panels.iter().position(|p| *p == self.inspector_tab).unwrap_or(0);
+                let current = panels
+                    .iter()
+                    .position(|p| *p == self.inspector_tab)
+                    .unwrap_or(0);
                 self.inspector_tab = panels[(current + 1) % panels.len()];
                 return Command::None;
             }
@@ -633,7 +639,10 @@ impl App {
         if key.code == KeyCode::BackTab {
             if self.inspector_visible {
                 let panels = InspectorPanel::ALL;
-                let current = panels.iter().position(|p| *p == self.inspector_tab).unwrap_or(0);
+                let current = panels
+                    .iter()
+                    .position(|p| *p == self.inspector_tab)
+                    .unwrap_or(0);
                 self.inspector_tab = panels[(current + panels.len() - 1) % panels.len()];
                 return Command::None;
             }
@@ -812,7 +821,13 @@ impl App {
 
     /// Cycle through available layout presets.
     pub fn cycle_layout(&mut self) {
-        let presets = ["minimal", "developer", "researcher", "orchestrator", "monitor"];
+        let presets = [
+            "minimal",
+            "developer",
+            "researcher",
+            "orchestrator",
+            "monitor",
+        ];
         let current = presets.iter().position(|p| *p == self.layout).unwrap_or(0);
         let next = (current + 1) % presets.len();
         self.layout = presets[next].to_string();

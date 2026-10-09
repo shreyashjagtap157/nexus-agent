@@ -159,7 +159,9 @@ impl BlockDetector {
         // Check for opening code fence: ``` at start of line
         if ch == '`' && !self.in_inline_code {
             let backtick_count = self.buf.chars().filter(|&c| c == '`').count();
-            if backtick_count >= 3 && self.current.content.trim().is_empty() || self.current.content.ends_with('\n') {
+            if backtick_count >= 3 && self.current.content.trim().is_empty()
+                || self.current.content.ends_with('\n')
+            {
                 // Only trigger at line start (after newline or empty)
                 if self.current.content.is_empty() || self.current.content.ends_with('\n') {
                     // Start code fence
@@ -181,10 +183,16 @@ impl BlockDetector {
                         .trim_start_matches(['`', '\n'])
                         .trim()
                         .to_string();
-                    let lang = if lang.is_empty() || lang.contains('`') { None } else { Some(lang) };
+                    let lang = if lang.is_empty() || lang.contains('`') {
+                        None
+                    } else {
+                        Some(lang)
+                    };
 
                     // Start a new code block
-                    self.current = ContentBlock::new(BlockType::Code { language: lang.clone() });
+                    self.current = ContentBlock::new(BlockType::Code {
+                        language: lang.clone(),
+                    });
                     self.current.language = lang;
                     self.fence_language = None;
                     self.buf.clear();
@@ -246,5 +254,7 @@ impl BlockDetector {
 }
 
 impl Default for BlockDetector {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

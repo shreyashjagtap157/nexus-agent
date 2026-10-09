@@ -1,4 +1,5 @@
 """Agent tool for managing the persistent research source registry."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,8 +28,16 @@ class ResearchSourceTool(Tool):
             "action": {"type": "string", "description": "list, add, remove or seed"},
             "source_id": {"type": "string", "description": "Source identifier for remove"},
             "url": {"type": "string", "description": "Source URL for add"},
-            "name": {"type": "string", "description": "Human-readable source name", "required": False},
-            "source_type": {"type": "string", "description": "web, paper, standard, repository, documentation, api", "required": False},
+            "name": {
+                "type": "string",
+                "description": "Human-readable source name",
+                "required": False,
+            },
+            "source_type": {
+                "type": "string",
+                "description": "web, paper, standard, repository, documentation, api",
+                "required": False,
+            },
             "priority": {"type": "integer", "description": "Priority 0-100", "required": False},
             "tags": {"type": "array", "description": "Source tags", "required": False},
             "urls": {"type": "array", "description": "URLs for seed action", "required": False},

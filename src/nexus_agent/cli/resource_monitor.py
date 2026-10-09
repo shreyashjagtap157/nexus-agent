@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import psutil  # type: ignore
+
     _HAS_PSUTIL = True
 except ImportError:  # pragma: no cover - optional dep
     psutil = None  # type: ignore
@@ -38,6 +39,7 @@ except ImportError:  # pragma: no cover - optional dep
 @dataclass
 class ResourceSnapshot:
     """One sample of system resource usage."""
+
     cpu_percent: float = 0.0
     cpu_threads: int = 0
     ram_used_gb: float = 0.0
@@ -172,14 +174,12 @@ class ResourceMonitor:
                 snap.cpu_percent = 0.0
             try:
                 vm = psutil.virtual_memory()
-                snap.ram_used_gb = vm.used / (1024 ** 3)
-                snap.ram_total_gb = vm.total / (1024 ** 3)
+                snap.ram_used_gb = vm.used / (1024**3)
+                snap.ram_total_gb = vm.total / (1024**3)
             except (OSError, ValueError):
                 pass
         if self._nvidia_path:
-            snap.gpu_percent, snap.vram_used_gb, snap.vram_total_gb = (
-                self._sample_nvidia()
-            )
+            snap.gpu_percent, snap.vram_used_gb, snap.vram_total_gb = self._sample_nvidia()
         return snap
 
     def _find_nvidia_smi(self) -> str | None:

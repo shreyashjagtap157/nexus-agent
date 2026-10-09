@@ -115,17 +115,24 @@ impl MemoryBrowser {
     }
 
     /// Render the memory browser as lines for the overlay.
-    pub fn render(&self, area: Rect, theme: &super::render::themes::Theme) -> (Vec<Line<'_>>, ScrollbarState) {
+    pub fn render(
+        &self,
+        area: Rect,
+        theme: &super::render::themes::Theme,
+    ) -> (Vec<Line<'_>>, ScrollbarState) {
         let mut lines: Vec<Line> = Vec::new();
 
         // Header: tier selector
-        let mut header_spans = vec![
-            Span::styled(" Tiers: ", Style::default().fg(theme.colors.muted_col())),
-        ];
+        let mut header_spans = vec![Span::styled(
+            " Tiers: ",
+            Style::default().fg(theme.colors.muted_col()),
+        )];
         for (tier, &(_, count)) in MemoryTier::ALL.iter().zip(self.tier_counts.iter()) {
             let is_selected = self.selected_tier == Some(*tier);
             let style = if is_selected {
-                Style::default().fg(theme.colors.accent()).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme.colors.accent())
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(theme.colors.fg())
             };
@@ -135,10 +142,17 @@ impl MemoryBrowser {
                 format!(" {} ", tier.as_str())
             };
             header_spans.push(Span::styled(name, style));
-            header_spans.push(Span::styled("│", Style::default().fg(theme.colors.muted_col())));
+            header_spans.push(Span::styled(
+                "│",
+                Style::default().fg(theme.colors.muted_col()),
+            ));
         }
         header_spans.push(Span::styled(
-            if self.search_mode { " [Search]" } else { " [/search]" },
+            if self.search_mode {
+                " [Search]"
+            } else {
+                " [/search]"
+            },
             Style::default().fg(theme.colors.info_col()).italic(),
         ));
         lines.push(Line::from(header_spans));
@@ -181,7 +195,11 @@ impl MemoryBrowser {
             )));
         } else {
             let max_content = (area.width.saturating_sub(6) as usize).min(80);
-            for entry in filtered.iter().skip(self.scroll).take(area.height.saturating_sub(6) as usize) {
+            for entry in filtered
+                .iter()
+                .skip(self.scroll)
+                .take(area.height.saturating_sub(6) as usize)
+            {
                 let tier_style = match entry.tier {
                     MemoryTier::Working => theme.colors.accent(),
                     MemoryTier::LongTerm => theme.colors.ok(),
@@ -216,11 +234,17 @@ impl MemoryBrowser {
 
         // Footer with entry count
         lines.push(Line::from(Span::styled(
-            format!(" {} entries shown / {} total ", filtered.len(), self.total_count),
+            format!(
+                " {} entries shown / {} total ",
+                filtered.len(),
+                self.total_count
+            ),
             Style::default().fg(theme.colors.muted_col()).italic(),
         )));
 
-        let max_scroll = filtered.len().saturating_sub(area.height.saturating_sub(6) as usize);
+        let max_scroll = filtered
+            .len()
+            .saturating_sub(area.height.saturating_sub(6) as usize);
         let state = ScrollbarState::new(max_scroll).position(self.scroll.min(max_scroll));
         (lines, state)
     }

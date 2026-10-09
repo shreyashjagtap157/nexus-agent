@@ -36,7 +36,7 @@ Published tags are immutable. Never force-push or rewrite a release tag.
 
 ## Current migration state
 
-`main` is the canonical integration branch and currently contains the complete merged platform head. The GitHub repository default branch is still observed as `master`; `master` is kept fast-forwarded to the same commit as `main` only to prevent stale default-branch contents. The default-branch setting remains an administrator action and is intentionally enforced by the CI governance gate.
+`main` is the canonical integration branch. The GitHub repository default branch is still observed as `master`; keep `master` fast-forwarded to `main` until an administrator changes the repository default. The default-branch setting remains an administrator action tracked in issue #326. CI reports a warning for this setting rather than allowing an unchangeable repository setting to masquerade as an application test failure.
 
 The main branch has been created as the canonical integration target and the multi-agent platform work is being integrated through a dedicated pull request.
 

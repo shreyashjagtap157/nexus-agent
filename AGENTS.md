@@ -98,7 +98,14 @@ For the local development loop, run:
 python -m pytest tests/ -q
 python -m ruff check src/
 python -m ruff format --check src/
-python -m mypy src/nexus_agent/
+python -m mypy --follow-imports=silent \
+  src/nexus_agent/team/runtime.py \
+  src/nexus_agent/team/models.py \
+  src/nexus_agent/team/quality.py \
+  src/nexus_agent/team/providers.py \
+  src/nexus_agent/research/store.py \
+  src/nexus_agent/storage/layout.py \
+  src/nexus_agent/agents/models.py
 python scripts/check_version.py
 ```
 
@@ -127,7 +134,7 @@ resource warnings to errors).
 
 ## CI Workflow (.github/workflows/ci.yml)
 
-The authoritative pull-request validation workflow is a single CI run with a deterministic Required aggregation job.
+The authoritative pull-request validation workflow is a single CI run with a deterministic Required aggregation job. The job reports the repository default-branch setting as an advisory because changing that setting requires administrator access; issue #326 tracks the outstanding change.
 
 | Detail | Value |
 |--------|-------|
@@ -138,7 +145,7 @@ The authoritative pull-request validation workflow is a single CI run with a det
 Validation includes:
 
 1. Complete Python tests on Ubuntu, Windows and macOS for Python 3.10–3.13.
-2. Ruff formatting/linting and MyPy.
+2. Ruff formatting/linting and strict MyPy over the typed runtime/evidence boundary modules.
 3. Rust formatting and compilation for both native clients on all supported operating systems.
 4. Repository version-contract validation.
 5. Canonical pytest evidence and read-only audit artifacts.

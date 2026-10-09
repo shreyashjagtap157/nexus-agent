@@ -1,6 +1,8 @@
 """Provider routing for dynamically generated team roles."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from nexus_agent.llm.base import LLMProvider
@@ -22,7 +24,7 @@ def _routing_target(value: str) -> tuple[str, str | None]:
 def make_provider_selector(
     config: dict[str, Any],
     default_provider: LLMProvider,
-):
+) -> Callable[[AgentProfile], LLMProvider]:
     """Create a role-aware provider selector.
 
     Configuration is read from:
@@ -51,9 +53,7 @@ def make_provider_selector(
         fallback_specs = list(profile.fallbacks or [])
         if not fallback_specs:
             fallback_specs = [
-                str(item).strip()
-                for item in spec.get("fallbacks", [])
-                if str(item).strip()
+                str(item).strip() for item in spec.get("fallbacks", []) if str(item).strip()
             ]
 
         if not provider_name:

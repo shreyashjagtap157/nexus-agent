@@ -1,4 +1,5 @@
 """Research evidence tools exposed to research-mode team workers."""
+
 from __future__ import annotations
 
 import ipaddress
@@ -36,7 +37,14 @@ def _reject_private_target(url: str) -> str | None:
         address = ipaddress.ip_address(host)
     except ValueError:
         return None
-    if address.is_private or address.is_loopback or address.is_link_local or address.is_reserved or address.is_multicast or address.is_unspecified:
+    if (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_reserved
+        or address.is_multicast
+        or address.is_unspecified
+    ):
         return "Error: private/local source targets are blocked by the autonomous research fetch policy."
     return None
 
@@ -62,7 +70,11 @@ class ResearchRecordSourceTool(_ResearchTool):
         return {
             "url": {"type": "string", "description": "Absolute HTTP(S) source URL"},
             "title": {"type": "string", "description": "Optional human-readable source title"},
-            "provider": {"type": "string", "description": "Discovery provider label", "required": False},
+            "provider": {
+                "type": "string",
+                "description": "Discovery provider label",
+                "required": False,
+            },
         }
 
     def execute(self, **kwargs: Any) -> Any:
@@ -97,10 +109,23 @@ class ResearchRecordClaimTool(_ResearchTool):
     @property
     def parameters(self) -> dict[str, Any]:
         return {
-            "claim_id": {"type": "integer", "description": "Existing claim ID; when provided, attach another source quotation instead of creating a new claim.", "required": False},
-            "statement": {"type": "string", "description": "Claim statement; required when claim_id is not provided."},
-            "claim_type": {"type": "string", "description": "fact, definition, requirement, historical or assessment"},
-            "source_id": {"type": "integer", "description": "Research source ID from research_record_source"},
+            "claim_id": {
+                "type": "integer",
+                "description": "Existing claim ID; when provided, attach another source quotation instead of creating a new claim.",
+                "required": False,
+            },
+            "statement": {
+                "type": "string",
+                "description": "Claim statement; required when claim_id is not provided.",
+            },
+            "claim_type": {
+                "type": "string",
+                "description": "fact, definition, requirement, historical or assessment",
+            },
+            "source_id": {
+                "type": "integer",
+                "description": "Research source ID from research_record_source",
+            },
             "quote": {"type": "string", "description": "Exact supporting quotation"},
         }
 
@@ -149,6 +174,7 @@ class ResearchVerifyClaimTool(_ResearchTool):
             str(kwargs.get("note") or ""),
         )
 
+
 class ResearchRecordConflictTool(_ResearchTool):
     @property
     def name(self) -> str:
@@ -156,17 +182,24 @@ class ResearchRecordConflictTool(_ResearchTool):
 
     @property
     def description(self) -> str:
-        return "Persist a contradiction or conflict between two claims for independent adjudication."
+        return (
+            "Persist a contradiction or conflict between two claims for independent adjudication."
+        )
 
     @property
     def parameters(self) -> dict[str, Any]:
         return {
             "claim_a": {"type": "integer", "description": "First claim ID"},
             "claim_b": {"type": "integer", "description": "Second claim ID"},
-            "conflict_type": {"type": "string", "description": "contradiction, scope_mismatch, temporal_conflict, source_conflict"},
+            "conflict_type": {
+                "type": "string",
+                "description": "contradiction, scope_mismatch, temporal_conflict, source_conflict",
+            },
         }
 
-    def execute(self, claim_a: int, claim_b: int, conflict_type: str = "contradiction", **kwargs: Any) -> Any:
+    def execute(
+        self, claim_a: int, claim_b: int, conflict_type: str = "contradiction", **kwargs: Any
+    ) -> Any:
         return self.store.record_conflict(
             self.team_id,
             self.agent_id,
@@ -189,7 +222,10 @@ class ResearchAdjudicateConflictTool(_ResearchTool):
     def parameters(self) -> dict[str, Any]:
         return {
             "conflict_id": {"type": "integer", "description": "Conflict ID"},
-            "status": {"type": "string", "description": "adjudicated, accepted_uncertainty, rejected"},
+            "status": {
+                "type": "string",
+                "description": "adjudicated, accepted_uncertainty, rejected",
+            },
             "resolution": {"type": "string", "description": "Evidence-based resolution rationale"},
         }
 

@@ -1,4 +1,5 @@
 """Deterministic team quality evaluation."""
+
 from __future__ import annotations
 
 import re
@@ -31,9 +32,7 @@ def evaluate_team(
     failed = [item for item in results if item.get("status") == "failed"]
     cancelled = [item for item in results if item.get("status") == "cancelled"]
     reviewers = [
-        item
-        for item in results
-        if item.get("reviewer") and item.get("status") == "completed"
+        item for item in results if item.get("reviewer") and item.get("status") == "completed"
     ]
 
     checks: dict[str, dict[str, Any]] = {
@@ -65,10 +64,7 @@ def evaluate_team(
     if research_summary is not None:
         checks["research_evidence"] = research_summary
         verified_claim_ids = _claim_id_set(research_summary.get("verified_claim_ids"))
-        markers = [
-            int(match)
-            for match in re.findall(r"\[claim:(\d+)\]", research_synthesis or "")
-        ]
+        markers = [int(match) for match in re.findall(r"\[claim:(\d+)\]", research_synthesis or "")]
         checks["research_synthesis_evidence"] = {
             "passed": not bool(research_synthesis.strip())
             or (
@@ -85,5 +81,8 @@ def evaluate_team(
     return {
         "passed": passed,
         "checks": checks,
-        "score": round(sum(1 for value in checks.values() if value.get("passed")) / max(1, len(checks)) * 100, 2),
+        "score": round(
+            sum(1 for value in checks.values() if value.get("passed")) / max(1, len(checks)) * 100,
+            2,
+        ),
     }

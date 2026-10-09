@@ -69,6 +69,7 @@ def format_aci_output(
         content_str = ""
     elif isinstance(output, (dict, list)):
         import json
+
         try:
             content_str = json.dumps(output, indent=2, default=str)
         except (TypeError, ValueError):
@@ -87,6 +88,7 @@ def format_aci_output(
         parts.append(ACI_SUCCESS_EMPTY_MSG)
         if metadata:
             import json
+
             try:
                 meta_str = json.dumps(metadata, default=str)
                 parts.append(f"Metadata: {meta_str}")
@@ -126,6 +128,7 @@ def format_aci_output(
     # Additional metadata
     if metadata:
         import json
+
         try:
             meta_str = json.dumps(metadata, default=str)
             parts.append(f"Metadata: {meta_str}")
@@ -228,8 +231,7 @@ class Tool(ABC):
     def required_params(self) -> list[str]:
         """List of required parameter names."""
         return [
-            name for name, schema in self.parameters_schema.items()
-            if schema.get("required", True)
+            name for name, schema in self.parameters_schema.items() if schema.get("required", True)
         ]
 
     @property

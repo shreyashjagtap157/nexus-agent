@@ -1,4 +1,5 @@
 """Markdown + YAML-frontmatter format for persisted agent definitions."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -53,7 +54,13 @@ def render_agent_file(spec: AgentSpec) -> str:
         payload["skill_ids"] = spec.skill_ids
     if spec.metadata:
         payload["metadata"] = spec.metadata
-    return "---\n" + yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip() + "\n---\n\n" + spec.instructions.rstrip() + "\n"
+    return (
+        "---\n"
+        + yaml.safe_dump(payload, sort_keys=False, allow_unicode=True).rstrip()
+        + "\n---\n\n"
+        + spec.instructions.rstrip()
+        + "\n"
+    )
 
 
 def write_agent_file(path: Path, spec: AgentSpec) -> Path:

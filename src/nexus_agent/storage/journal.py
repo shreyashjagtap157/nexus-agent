@@ -1,11 +1,12 @@
 """Durable audit journal for NexusAgent file mutations."""
+
 from __future__ import annotations
 
 import hashlib
 import sqlite3
+import threading
 import time
 import uuid
-import threading
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,7 @@ class FileJournal:
     ) -> str:
         change_id = uuid.uuid4().hex[:20]
         import json
+
         with self._lock:
             self._conn.execute(
                 """INSERT INTO file_changes(
@@ -82,6 +84,7 @@ class FileJournal:
                 (max(1, min(int(limit), 5000)),),
             ).fetchall()
         import json
+
         return [
             {
                 "change_id": row[0],

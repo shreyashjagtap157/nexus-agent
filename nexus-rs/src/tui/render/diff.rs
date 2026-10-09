@@ -117,44 +117,35 @@ pub fn render_diff<'a>(hunk: &'a DiffHunk, theme: &'a Theme) -> Vec<Line<'a>> {
             .add_modifier(Modifier::BOLD),
     )));
 
-        // Summary
-        let summary = if hunk.added > 0 && hunk.removed > 0 {
-            format!("+{}/-{}", hunk.added, hunk.removed)
-        } else if hunk.added > 0 {
-            format!("+{}", hunk.added)
-        } else if hunk.removed > 0 {
-            format!("-{}", hunk.removed)
-        } else {
-            String::new()
-        };
-        lines.push(Line::from(Span::styled(
-            format!("   {} {}", summary, theme.icons.tool),
-            Style::default().fg(theme.colors.muted_col()),
-        )));
+    // Summary
+    let summary = if hunk.added > 0 && hunk.removed > 0 {
+        format!("+{}/-{}", hunk.added, hunk.removed)
+    } else if hunk.added > 0 {
+        format!("+{}", hunk.added)
+    } else if hunk.removed > 0 {
+        format!("-{}", hunk.removed)
+    } else {
+        String::new()
+    };
+    lines.push(Line::from(Span::styled(
+        format!("   {} {}", summary, theme.icons.tool),
+        Style::default().fg(theme.colors.muted_col()),
+    )));
 
     lines.push(Line::from(""));
 
     // Diff lines
     for diff_line in &hunk.lines {
         let (style, prefix) = match diff_line.kind {
-            DiffLineKind::Addition => (
-                Style::default().fg(theme.colors.diff_add_col()),
-                "+",
-            ),
-            DiffLineKind::Removal => (
-                Style::default().fg(theme.colors.diff_remove_col()),
-                "-",
-            ),
+            DiffLineKind::Addition => (Style::default().fg(theme.colors.diff_add_col()), "+"),
+            DiffLineKind::Removal => (Style::default().fg(theme.colors.diff_remove_col()), "-"),
             DiffLineKind::Header => (
                 Style::default()
                     .fg(theme.colors.muted_col())
                     .add_modifier(Modifier::DIM),
                 "",
             ),
-            DiffLineKind::Context => (
-                Style::default().fg(theme.colors.fg()),
-                " ",
-            ),
+            DiffLineKind::Context => (Style::default().fg(theme.colors.fg()), " "),
         };
 
         lines.push(Line::from(Span::styled(

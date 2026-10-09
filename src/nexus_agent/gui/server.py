@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import logging
+import os
 import socket
 import subprocess
 import threading
@@ -31,14 +31,9 @@ from pydantic import BaseModel, Field
 from nexus_agent import __app_name__, __version__
 from nexus_agent.agents.web_routes import register_agent_routes
 from nexus_agent.audit.web_routes import register_audit_routes
-from nexus_agent.mcp.web_routes import register_mcp_routes
-from nexus_agent.mcp.client import load_configured_servers
-from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.auth.web_routes import register_auth_routes
-from nexus_agent.research.web_routes import register_research_source_routes
-from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.core.agent import AgentEvent, AgentLoop, AgentLoopConfig, AgentMode
-from nexus_agent.core.config import load_config, save_user_config, _strip_secrets
+from nexus_agent.core.config import _strip_secrets, load_config, save_user_config
 from nexus_agent.core.debate import DebateEngine
 from nexus_agent.core.devops import VerificationPipeline
 from nexus_agent.core.nla_telemetry import NLATelemetry
@@ -48,24 +43,17 @@ from nexus_agent.llm.local_engine import LocalEngine
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.providers.factory import ProviderFactory
 from nexus_agent.llm.runtime_manager import RuntimeManager
+from nexus_agent.mcp.client import load_configured_servers
+from nexus_agent.mcp.web_routes import register_mcp_routes
 from nexus_agent.memory.memory_manager import MemoryManager
+from nexus_agent.memory.web_routes import register_memory_routes
 from nexus_agent.permissions.manager import PermissionManager
+from nexus_agent.research.web_routes import register_research_source_routes
 from nexus_agent.session.manager import SessionManager
+from nexus_agent.skills.web_routes import register_skill_routes
 from nexus_agent.storage.layout import StorageLayout
-from nexus_agent.tools.code_edit import CodeEditTool, InsertLinesTool
-from nexus_agent.tools.file_ops import (
-    ListDirectoryTool,
-    ReadFileTool,
-    SearchFilesTool,
-    WriteFileTool,
-)
-from nexus_agent.tools.git_ops import GitTool, SmartCommitTool
-from nexus_agent.tools.memory import MemoryTool
-from nexus_agent.tools.shell import ShellTool
-from nexus_agent.tools.todowrite import TodoWriteTool
-from nexus_agent.tools.web_search import WebSearchTool
-from nexus_agent.tools.webfetch import WebFetchTool
 from nexus_agent.team.web_routes import register_team_routes
+from nexus_agent.tools.git_ops import SmartCommitTool
 
 logger = logging.getLogger(__name__)
 
@@ -87,24 +75,28 @@ class StateManager:
 
 
 # Global instances shared across endpoints
-state_manager = StateManager({
-    "config": {},
-    "workspace": Path.cwd(),
-    "runtime_manager": None,
-    "memory_manager": None,
-    "session_manager": None,
-    "permission_manager": None,
-    "active_session_id": None,
-    "engine": None,
-    "web_agent_threads": {},
-    "web_agent_lock": threading.RLock(),
-})
+state_manager = StateManager(
+    {
+        "config": {},
+        "workspace": Path.cwd(),
+        "runtime_manager": None,
+        "memory_manager": None,
+        "session_manager": None,
+        "permission_manager": None,
+        "active_session_id": None,
+        "engine": None,
+        "web_agent_threads": {},
+        "web_agent_lock": threading.RLock(),
+    }
+)
 
 
 def _require_local_client(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="State-changing GUI access is restricted to local clients.")
+        raise HTTPException(
+            status_code=403, detail="State-changing GUI access is restricted to local clients."
+        )
 
 
 def get_free_port() -> int:
@@ -152,7 +144,9 @@ async def security_middleware(request: Request, call_next):
             hits = _rate_limit_store[client_ip]
             _rate_limit_store[client_ip] = [t for t in hits if t > window_start]
             if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX:
-                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+                return JSONResponse(
+                    status_code=429, content={"detail": "Rate limit exceeded. Try again later."}
+                )
             _rate_limit_store[client_ip].append(now)
 
         # Request body size limit
@@ -213,16 +207,38 @@ class SessionCreateRequest(BaseModel):
     title: Annotated[str | None, Field(max_length=256)] = None
 
 
-
 def _merge_user_section(section: str, values: dict[str, Any]) -> dict[str, Any]:
     allowed_sections = {
-        "agent", "research", "team", "local_model", "permissions", "gui", "session",
-        "skills", "mcp", "cli", "memory",
+        "agent",
+        "research",
+        "team",
+        "local_model",
+        "permissions",
+        "gui",
+        "session",
+        "skills",
+        "mcp",
+        "cli",
+        "memory",
     }
     if section not in allowed_sections:
-        raise HTTPException(status_code=400, detail="Configuration section is not editable from the web UI.")
+        raise HTTPException(
+            status_code=400, detail="Configuration section is not editable from the web UI."
+        )
     clean = _strip_secrets(values)
-    if section in {"agent", "research", "team", "local_model", "permissions", "gui", "session", "skills", "mcp", "cli", "memory"}:
+    if section in {
+        "agent",
+        "research",
+        "team",
+        "local_model",
+        "permissions",
+        "gui",
+        "session",
+        "skills",
+        "mcp",
+        "cli",
+        "memory",
+    }:
         save_user_config({section: clean})
         cfg = state_manager.get("config")
         cfg[section] = {**cfg.get(section, {}), **clean}
@@ -246,6 +262,7 @@ async def update_config_section(section: str, req: GeneralConfigUpdateRequest, r
 
 
 # --- API ENDPOINTS ---
+
 
 @app.get("/api/status")
 async def get_status(request: Request):
@@ -281,7 +298,7 @@ async def get_status(request: Request):
             "vram": hw_info.get("vram"),
             "npu": hw_info.get("npu"),
             "recommended": hw_info.get("recommended_model_size"),
-        }
+        },
     }
 
 
@@ -296,14 +313,16 @@ async def get_models(request: Request):
     # Format list
     serialized = []
     for m in models:
-        serialized.append({
-            "name": m["name"],
-            "filename": m["filename"],
-            "path": str(m["path"]),
-            "size_str": m["size_str"],
-            "quantization": m.get("quantization", "unknown"),
-            "format": m.get("format", "gguf"),
-        })
+        serialized.append(
+            {
+                "name": m["name"],
+                "filename": m["filename"],
+                "path": str(m["path"]),
+                "size_str": m["size_str"],
+                "quantization": m.get("quantization", "unknown"),
+                "format": m.get("format", "gguf"),
+            }
+        )
     return serialized
 
 
@@ -313,7 +332,9 @@ async def load_model(req: ModelLoadRequest, request: Request):
     _require_local_client(request)
     try:
         # Check guardrails first
-        guardrail_level = state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")
+        guardrail_level = (
+            state_manager.get("config").get("local_model", {}).get("guardrails", "balanced")
+        )
         mgr = ModelManager()
         chk = mgr.evaluate_loading_guardrail(req.model_path, guardrail_level)
         if not chk["allowed"]:
@@ -321,19 +342,22 @@ async def load_model(req: ModelLoadRequest, request: Request):
 
         # Construct loading parameters with dynamic settings
         load_kwargs: dict[str, Any] = {}
-        if req.gpu_layers is not None: load_kwargs["gpu_layers"] = req.gpu_layers
-        if req.context_size is not None: load_kwargs["context_size"] = req.context_size
-        if req.threads is not None: load_kwargs["threads"] = req.threads
-        if req.flash_attention is not None: load_kwargs["flash_attention"] = req.flash_attention
-        if req.unified_kv_cache is not None: load_kwargs["unified_kv_cache"] = req.unified_kv_cache
-        if req.kv_quant_type is not None: load_kwargs["kv_quant_type"] = req.kv_quant_type
+        if req.gpu_layers is not None:
+            load_kwargs["gpu_layers"] = req.gpu_layers
+        if req.context_size is not None:
+            load_kwargs["context_size"] = req.context_size
+        if req.threads is not None:
+            load_kwargs["threads"] = req.threads
+        if req.flash_attention is not None:
+            load_kwargs["flash_attention"] = req.flash_attention
+        if req.unified_kv_cache is not None:
+            load_kwargs["unified_kv_cache"] = req.unified_kv_cache
+        if req.kv_quant_type is not None:
+            load_kwargs["kv_quant_type"] = req.kv_quant_type
 
         # Select and swap active LocalEngine — close previous engine first
         old_engine = state_manager.get("engine")
-        engine = LocalEngine(
-            model_path=req.model_path,
-            **load_kwargs
-        )
+        engine = LocalEngine(model_path=req.model_path, **load_kwargs)
         state_manager.set("engine", engine)
         if old_engine is not None:
             try:
@@ -372,6 +396,7 @@ async def update_config(req: ConfigUpdateRequest, request: Request):
 async def file_activity(request: Request, limit: int = 250):
     _require_local_client(request)
     from nexus_agent.storage.journal import FileJournal
+
     workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
     journal = FileJournal(StorageLayout(workspace).workspace_runtime / "file-journal.db")
     try:
@@ -445,7 +470,7 @@ async def get_tasks(request: Request):
             "root_id": tg.root_id,
             "progress": tg.get_progress(),
             "nodes": {nid: node.to_dict() for nid, node in tg.nodes.items()},
-            "markdown": tg.to_markdown()
+            "markdown": tg.to_markdown(),
         }
     return {"message": "No active task graph for this session."}
 
@@ -459,7 +484,7 @@ async def get_nla(session_id: str, request: Request):
     return {
         "session_id": session_id,
         "records": [r.to_dict() for r in records],
-        "summary": nla.generate_session_summary()
+        "summary": nla.generate_session_summary(),
     }
 
 
@@ -468,7 +493,13 @@ async def trigger_debate(request: Request):
     """Convening parallel code debate reviews."""
     _require_local_client(request)
     try:
-        diff_res = subprocess.run(["git", "diff", "HEAD"], cwd=str(state_manager.get("workspace")), capture_output=True, text=True, timeout=10)
+        diff_res = subprocess.run(
+            ["git", "diff", "HEAD"],
+            cwd=str(state_manager.get("workspace")),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         changes = diff_res.stdout or "Simulated: refactoring core pipeline structures"
     except (subprocess.TimeoutExpired, OSError, ValueError) as e:
         logger.debug(f"Git diff failed, using simulated changes: {e}")
@@ -482,7 +513,7 @@ async def trigger_debate(request: Request):
         "scores": verdict.reviewer_scores,
         "summary": verdict.consensus_summary,
         "issues": verdict.aggregated_issues,
-        "recommendations": verdict.recommendations
+        "recommendations": verdict.recommendations,
     }
 
 
@@ -502,7 +533,7 @@ async def trigger_verify(request: Request):
             for s in report.secrets_found
         ],
         "vulnerabilities": report.vulnerabilities_found,
-        "traceback_analysis": report.traceback_analysis
+        "traceback_analysis": report.traceback_analysis,
     }
 
 
@@ -510,19 +541,24 @@ async def trigger_verify(request: Request):
 async def trigger_commit(request: Request):
     """Auto-generate conventional commits from staged modifications."""
     _require_local_client(request)
-    tool = SmartCommitTool(workspace=state_manager.get("workspace"), provider=state_manager.get("engine"))
+    tool = SmartCommitTool(
+        workspace=state_manager.get("workspace"), provider=state_manager.get("engine")
+    )
     msg = tool.execute()
     return {"message": msg}
 
 
 # --- WEBSOCKET REAL-TIME STREAMING ---
 
+
 @app.websocket("/api/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
     host = websocket.client.host if websocket.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
-        await websocket.close(code=1008, reason="Agent WebSocket access is restricted to local clients.")
+        await websocket.close(
+            code=1008, reason="Agent WebSocket access is restricted to local clients."
+        )
         return
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
@@ -533,7 +569,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             # Wait for user input prompt
             data_str = await websocket.receive_text()
             if len(data_str) > 65536:
-                await websocket.send_json({"type": "error", "content": "Message exceeds 64 KiB limit."})
+                await websocket.send_json(
+                    {"type": "error", "content": "Message exceeds 64 KiB limit."}
+                )
                 continue
             data = json.loads(data_str)
             prompt = data.get("prompt", "").strip()
@@ -546,10 +584,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 active_threads = state_manager.get("web_agent_threads")
                 running_thread = active_threads.get(session_id)
                 if running_thread is not None and running_thread.is_alive():
-                    await websocket.send_json({
-                        "type": "error",
-                        "content": "A response is already running for this session. Wait for completion before sending another prompt.",
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "content": "A response is already running for this session. Wait for completion before sending another prompt.",
+                        }
+                    )
                     continue
                 active_threads[session_id] = None
 
@@ -563,17 +603,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             engine = state_manager.get("engine")
             is_loaded = getattr(engine, "is_loaded", True) if engine else False
             if not engine or not is_loaded:
-                await websocket.send_json({
-                    "type": "error",
-                    "content": "No model loaded. Please load a model or configure a provider first."
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "content": "No model loaded. Please load a model or configure a provider first.",
+                    }
+                )
                 await websocket.send_json({"type": "done", "iterations": 0})
                 continue
-
 
             # Prepare the same comprehensive workspace tool catalog used by
             # the CLI/TUI and multi-agent runtime, plus configured MCP proxies.
             from nexus_agent.team.runtime import build_workspace_tools
+
             config = state_manager.get("config") or {}
             mcp_clients, mcp_tools = load_configured_servers(config)
             tools = build_workspace_tools(
@@ -592,10 +634,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             agent_cfg = AgentLoopConfig(
                 mode=AgentMode(mode_str),
                 workspace=state_manager.get("workspace"),
-                max_iterations=state_manager.get("config").get("agent", {}).get("max_iterations", 50),
+                max_iterations=state_manager.get("config")
+                .get("agent", {})
+                .get("max_iterations", 50),
                 temperature=state_manager.get("config").get("agent", {}).get("temperature", 0.1),
                 max_tokens=state_manager.get("config").get("agent", {}).get("max_tokens", 4096),
-                permission_callback=lambda tc: state_manager.get("permission_manager").check_and_approve(
+                permission_callback=lambda tc: state_manager.get(
+                    "permission_manager"
+                ).check_and_approve(
                     tool_name=tc.name,
                     arguments=tc.arguments,
                 ),
@@ -616,9 +662,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     for event in agent.run(agent_prompt):
                         if event.type.value in {"content", "content_chunk"}:
                             content_parts.append(str(event.data or ""))
-                        asyncio.run_coroutine_threadsafe(
-                            send_agent_event(ws, event), loop
-                        )
+                        asyncio.run_coroutine_threadsafe(send_agent_event(ws, event), loop)
                     response_text = "".join(content_parts).strip()
                     session_manager = state_manager.get("session_manager")
                     if response_text and session_manager:
@@ -656,9 +700,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 if exc:
                     logger.error(f"Agent thread failed: {exc}")
 
-            future = asyncio.run_coroutine_threadsafe(
-                asyncio.to_thread(thread.start), loop
-            )
+            future = asyncio.run_coroutine_threadsafe(asyncio.to_thread(thread.start), loop)
             future.add_done_callback(_log_thread_error)
 
     except WebSocketDisconnect:
@@ -680,25 +722,31 @@ async def send_agent_event(ws: WebSocket, event: AgentEvent):
             case "content_chunk":
                 await ws.send_json({"type": "chunk", "content": event.data})
             case "tool_call":
-                await ws.send_json({
-                    "type": "tool_call",
-                    "name": event.data.get("name"),
-                    "arguments": event.data.get("arguments"),
-                })
+                await ws.send_json(
+                    {
+                        "type": "tool_call",
+                        "name": event.data.get("name"),
+                        "arguments": event.data.get("arguments"),
+                    }
+                )
             case "tool_result":
-                await ws.send_json({
-                    "type": "tool_result",
-                    "name": event.data.get("name"),
-                    "success": event.data.get("success"),
-                    "output": event.data.get("output", "")[:2000],  # Truncate long logs
-                })
+                await ws.send_json(
+                    {
+                        "type": "tool_result",
+                        "name": event.data.get("name"),
+                        "success": event.data.get("success"),
+                        "output": event.data.get("output", "")[:2000],  # Truncate long logs
+                    }
+                )
             case "error":
                 await ws.send_json({"type": "error", "content": str(event.data)})
             case "done":
-                await ws.send_json({
-                    "type": "done",
-                    "iterations": event.data.get("iterations", 0),
-                })
+                await ws.send_json(
+                    {
+                        "type": "done",
+                        "iterations": event.data.get("iterations", 0),
+                    }
+                )
     except (RuntimeError, OSError) as e:
         logger.error(f"Failed to send websocket message: {e}")
 
@@ -722,6 +770,7 @@ frontend_dir = Path(__file__).parent / "frontend"
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 else:
+
     @app.get("/")
     async def get_index():
         return HTMLResponse(content=_welcome_html())
@@ -741,11 +790,14 @@ def start_gui_server(
     # Load configuration
     workspace_path = workspace or Path.cwd()
     state_manager.set("workspace", workspace_path)
-    state_manager.set("config", load_config(
-        config_path=config_path,
-        workspace=workspace_path,
-        data_dir=data_dir,
-    ))
+    state_manager.set(
+        "config",
+        load_config(
+            config_path=config_path,
+            workspace=workspace_path,
+            data_dir=data_dir,
+        ),
+    )
 
     # Initialize shared subsystems
     data_dir_path = state_manager.get("config").get("_data_dir", "~/.nexus-agent")
@@ -753,23 +805,31 @@ def start_gui_server(
     state_manager.set("session_manager", SessionManager(data_dir=f"{data_dir_path}/sessions"))
     state_manager.set("permission_manager", PermissionManager())
     state_manager.get("permission_manager").load_from_config(state_manager.get("config"))
-    state_manager.set("usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json"))
+    state_manager.set(
+        "usage_tracker", UsageTracker(path=Path(os.path.expanduser(data_dir_path)) / "usage.json")
+    )
 
     # Initialize RuntimeManager
     rm = RuntimeManager(state_manager.get("config"))
     state_manager.set("runtime_manager", rm)
 
     # Preload engine using ProviderFactory
-    active_provider = provider or state_manager.get("config").get("providers", {}).get("active", "local")
+    active_provider = provider or state_manager.get("config").get("providers", {}).get(
+        "active", "local"
+    )
     target_model = model_path
     if active_provider == "local" and not target_model:
         target_model = state_manager.get("config").get("local_model", {}).get("default_model", "")
 
     try:
-        state_manager.set("engine", ProviderFactory.create_provider(active_provider, state_manager.get("config"), target_model))
+        state_manager.set(
+            "engine",
+            ProviderFactory.create_provider(
+                active_provider, state_manager.get("config"), target_model
+            ),
+        )
     except (ImportError, ValueError, OSError, RuntimeError) as e:
         logger.warning(f"Failed to preload LLM provider '{active_provider}': {e}")
-
 
     # Set up host/port
     srv_config = state_manager.get("config").get("gui", {})
@@ -793,9 +853,11 @@ def start_gui_server(
 
     # Automatically launch browser if requested
     if open_browser:
+
         def launch_browser():
             time.sleep(1.5)
             webbrowser.open(url)
+
         threading.Thread(target=launch_browser, daemon=True).start()
 
     # Run Uvicorn ASGI server

@@ -1,7 +1,7 @@
 """Configurable and generated agent profiles."""
 
-from .models import AgentSpec, AgentScope
-from .registry import AgentRegistry
 from .generator import AgentGenerator
+from .models import AgentScope, AgentSpec
+from .registry import AgentRegistry
 
 __all__ = ["AgentSpec", "AgentScope", "AgentRegistry", "AgentGenerator"]

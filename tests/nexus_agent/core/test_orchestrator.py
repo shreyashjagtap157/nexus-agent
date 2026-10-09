@@ -35,12 +35,16 @@ class TestOrchestratorInit(unittest.TestCase):
         self.callback = MagicMock(return_value=True)
 
     def test_init_with_all_params(self):
-        orch = Orchestrator(
-            provider=self.provider,
-            tools=self.tools,
-            approval_callback=self.callback,
-            workspace=Path("/test/workspace"),
-        )
+        # This test checks constructor argument preservation, not workspace I/O.
+        with patch("nexus_agent.core.orchestrator.Planner"), patch(
+            "nexus_agent.core.orchestrator.Executor"
+        ):
+            orch = Orchestrator(
+                provider=self.provider,
+                tools=self.tools,
+                approval_callback=self.callback,
+                workspace=Path("/test/workspace"),
+            )
         self.assertIs(orch.provider, self.provider)
         self.assertIs(orch.tools, self.tools)
         self.assertIs(orch.approval_callback, self.callback)

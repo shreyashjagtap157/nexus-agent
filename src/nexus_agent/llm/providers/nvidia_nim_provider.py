@@ -1,4 +1,5 @@
 """NVIDIA NIM OpenAI-compatible provider with pending-result polling."""
+
 from __future__ import annotations
 
 import os
@@ -35,8 +36,7 @@ class NvidiaNIMProvider(OpenAIProvider):
         self._pending_poll_seconds = float(config.get("pending_poll_seconds", 1.0))
         self._pending_max_wait_seconds = float(config.get("pending_max_wait_seconds", 600.0))
         self._status_url = str(
-            config.get("status_url")
-            or self._api_url.rsplit("/chat/completions", 1)[0] + "/status"
+            config.get("status_url") or self._api_url.rsplit("/chat/completions", 1)[0] + "/status"
         )
 
     @property
@@ -83,10 +83,7 @@ class NvidiaNIMProvider(OpenAIProvider):
         raw_tool_calls = message.get("tool_calls") or []
         tool_calls = None
         if raw_tool_calls:
-            tool_calls = [
-                ToolCall.from_openai_format(item)
-                for item in raw_tool_calls
-            ]
+            tool_calls = [ToolCall.from_openai_format(item) for item in raw_tool_calls]
         return LLMResponse(
             content=message.get("content"),
             tool_calls=tool_calls,

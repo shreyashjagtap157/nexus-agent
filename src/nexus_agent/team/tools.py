@@ -1,4 +1,5 @@
 """Shared blackboard tools exposed to team workers."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -25,8 +26,14 @@ class TeamSendMessageTool(Tool):
     @property
     def parameters(self) -> dict[str, Any]:
         return {
-            "recipient_id": {"type": "string", "description": "Target agent ID. Empty broadcasts to the whole team."},
-            "message_type": {"type": "string", "description": "QUESTION, FINDING, WARNING, REVIEW_REQUEST, HANDOFF or UPDATE"},
+            "recipient_id": {
+                "type": "string",
+                "description": "Target agent ID. Empty broadcasts to the whole team.",
+            },
+            "message_type": {
+                "type": "string",
+                "description": "QUESTION, FINDING, WARNING, REVIEW_REQUEST, HANDOFF or UPDATE",
+            },
             "topic": {"type": "string", "description": "Short topic"},
             "message": {"type": "string", "description": "Message body"},
         }
@@ -62,7 +69,12 @@ class TeamReadMessagesTool(Tool):
 
     @property
     def parameters(self) -> dict[str, Any]:
-        return {"since": {"type": "number", "description": "Unix timestamp; 0 reads all retained messages."}}
+        return {
+            "since": {
+                "type": "number",
+                "description": "Unix timestamp; 0 reads all retained messages.",
+            }
+        }
 
     def execute(self, **kwargs: Any) -> Any:
         return self.store.messages(
