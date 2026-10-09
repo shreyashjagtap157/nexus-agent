@@ -79,7 +79,7 @@ sycl = [
 # NPU — Neural Processing Unit (Windows DirectML / ONNX)
 npu = [
     "onnxruntime-genai>=0.3.0; sys_platform == 'win32'",
-    "onnxruntime-directml>=1.18.0; sys_platform == 'win32'",
+    "onnxruntime-directml>=1.24.3; sys_platform == 'win32'",
 ]
 
 # OpenVINO — Intel CPU/GPU/NPU
