@@ -10,6 +10,7 @@ import click
 
 from nexus_agent import __app_name__, __version__
 from nexus_agent.utils.fs import iter_files
+from nexus_agent.team.research import RESEARCH_DEPTHS
 
 
 @click.group(invoke_without_command=True)
