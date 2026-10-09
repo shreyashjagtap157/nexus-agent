@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -130,6 +131,8 @@ class SandboxConfig:
             r"^bash\s+-c\b",
             r"^sh\s+-c\b",
             r"^zsh\s+-c\b",  # Shell arbitrary code
+            r"^cmd(?:\.exe)?\b",
+            r"^(?:powershell|pwsh)(?:\.exe)?\b",
             r"^eval\b",
             r"^exec\b",  # Shell builtin code execution
             r"^curl\s+.*\|",
@@ -320,6 +323,83 @@ class Sandbox:
             logger.warning(f"Path resolution failed for {path}: {e}")
             return self.workspace
 
+    def _resolve_workspace_entry(self, path: str, work_dir: Path) -> Path:
+        """Resolve a Windows built-in path without permitting workspace escapes."""
+        candidate = Path(path)
+        if not candidate.is_absolute():
+            candidate = work_dir / candidate
+        resolved = candidate.resolve()
+        workspace_root = self.workspace.resolve()
+        try:
+            resolved.relative_to(workspace_root)
+        except ValueError as exc:
+            raise PermissionError(
+                f"Path {resolved} is outside workspace boundary {workspace_root}"
+            ) from exc
+        return resolved
+
+    def _run_windows_builtin(
+        self,
+        parsed_args: list[str],
+        work_dir: Path,
+    ) -> subprocess.CompletedProcess[str] | None:
+        """Implement common cmd built-ins without invoking the Windows command shell."""
+        name = parsed_args[0].lower()
+
+        if name == "echo":
+            output = " ".join(parsed_args[1:]) + "\\n"
+            return subprocess.CompletedProcess(parsed_args, 0, output, "")
+
+        if name == "dir":
+            if len(parsed_args) > 2:
+                return subprocess.CompletedProcess(
+                    parsed_args,
+                    2,
+                    "",
+                    "Execution denied: dir accepts at most one workspace-relative path.",
+                )
+            try:
+                target = (
+                    self._resolve_workspace_entry(parsed_args[1], work_dir)
+                    if len(parsed_args) == 2
+                    else self._resolve_workspace_entry(".", work_dir)
+                )
+                if not target.is_dir():
+                    raise NotADirectoryError(f"Not a directory: {target}")
+                entries = sorted(target.iterdir(), key=lambda item: item.name.casefold())
+                lines = [
+                    f"<DIR> {item.name}" if item.is_dir() else item.name
+                    for item in entries
+                ]
+                output = "\\n".join(lines)
+                if output:
+                    output += "\\n"
+                return subprocess.CompletedProcess(parsed_args, 0, output, "")
+            except (OSError, ValueError, RuntimeError) as exc:
+                return subprocess.CompletedProcess(
+                    parsed_args, 1, "", f"Execution denied: {exc}"
+                )
+
+        if name == "type":
+            if len(parsed_args) < 2:
+                return subprocess.CompletedProcess(
+                    parsed_args, 1, "", "Usage: type <workspace-file> [workspace-file ...]"
+                )
+            chunks: list[str] = []
+            try:
+                for path in parsed_args[1:]:
+                    target = self._resolve_workspace_entry(path, work_dir)
+                    if not target.is_file():
+                        raise FileNotFoundError(f"Not a file: {target}")
+                    chunks.append(target.read_text(encoding="utf-8", errors="replace"))
+            except (OSError, ValueError, RuntimeError) as exc:
+                return subprocess.CompletedProcess(
+                    parsed_args, 1, "", f"Execution denied: {exc}"
+                )
+            return subprocess.CompletedProcess(parsed_args, 0, "".join(chunks), "")
+
+        return None
+
     def execute(
         self,
         command: str,
@@ -376,7 +456,16 @@ class Sandbox:
         try:
             # Parse command to avoid shell injection - use list form
             try:
-                parsed_args = shlex.split(command)
+                # Preserve Windows backslashes and quoted executable paths. Arguments
+                # are passed directly to CreateProcess; no shell parses them.
+                parsed_args = shlex.split(command, posix=sys.platform != "win32")
+                if sys.platform == "win32":
+                    parsed_args = [
+                        arg[1:-1]
+                        if len(arg) >= 2 and arg[0] == arg[-1] == '"'
+                        else arg
+                        for arg in parsed_args
+                    ]
             except ValueError:
                 parsed_args = None
 
@@ -391,18 +480,35 @@ class Sandbox:
                     risk_level=risk,
                 )
 
-            # Use direct execution on both Unix and Windows when parsing succeeds
+            # Never route untrusted input through cmd.exe, including when arguments are
+            # supplied as a list: cmd.exe reparses metacharacters from that list.
             if sys.platform == "win32":
-                # On Windows, use cmd.exe /c with parsed args (no shell interpretation)
-                cmd_args = ["cmd.exe", "/c"] + parsed_args
-                proc = subprocess.run(
-                    cmd_args,
-                    capture_output=True,
-                    text=True,
-                    cwd=str(work_dir),
-                    env=exec_env,
-                    timeout=effective_timeout,
-                )
+                proc = self._run_windows_builtin(parsed_args, work_dir)
+                if proc is None:
+                    resolved_executable = shutil.which(parsed_args[0])
+                    batch_suffixes = {".bat", ".cmd"}
+                    given_suffix = Path(parsed_args[0]).suffix.lower()
+                    resolved_suffix = (
+                        Path(resolved_executable).suffix.lower()
+                        if resolved_executable
+                        else ""
+                    )
+                    if given_suffix in batch_suffixes or resolved_suffix in batch_suffixes:
+                        proc = subprocess.CompletedProcess(
+                            parsed_args,
+                            -1,
+                            "",
+                            "Execution denied: Windows batch files are not executed by the sandbox.",
+                        )
+                    else:
+                        proc = subprocess.run(
+                            parsed_args,
+                            capture_output=True,
+                            text=True,
+                            cwd=str(work_dir),
+                            env=exec_env,
+                            timeout=effective_timeout,
+                        )
             else:
                 proc = subprocess.run(
                     parsed_args,
