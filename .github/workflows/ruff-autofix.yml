@@ -1,18 +1,18 @@
 name: Temporary Ruff auto-fix
-# Isolated to the formatting review branch; never rewrites main or master.
 
 on:
   push:
-    branches: ["automation/formatting-ba4eabe9203f"]
+    branches: ["automation/formatting-ba4eabe9203f", "main", "master"]
     paths:
       - "src/**/*.py"
+      - ".github/workflows/ruff-autofix.yml"
 
 permissions:
   contents: write
 
 jobs:
   autofix:
-    if: ${{ !contains(github.event.head_commit.message, 'chore: apply Ruff autofixes') }}
+    if: ${{ github.ref_name == 'automation/formatting-ba4eabe9203f' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -24,11 +24,12 @@ jobs:
           python-version: "3.12"
       - name: Install Ruff
         run: python -m pip install --upgrade ruff
-      - name: Apply only standard Ruff automatic fixes and formatting
+      - name: Apply standard automatic fixes and formatting
         run: |
           python -m ruff check --fix src/ || true
           python -m ruff format src/
       - name: Commit automated fixes to the review branch
+        if: ${{ github.event.head_commit.message != 'chore: apply Ruff autofixes' }}
         shell: bash
         run: |
           set -euo pipefail
