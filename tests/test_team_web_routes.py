@@ -66,6 +66,7 @@ def test_sensitive_team_read_routes_reject_remote_clients(tmp_path: Path, path: 
     response = TestClient(app, client=("203.0.113.10", 12345)).get(path)
     assert response.status_code == 403
 
+
 def test_team_report_rejects_symlinked_result_artifact(tmp_path: Path):
     root = _artifact_root(State(tmp_path), "team-1")
     root.mkdir(parents=True, exist_ok=True)
@@ -79,5 +80,5 @@ def test_team_report_rejects_symlinked_result_artifact(tmp_path: Path):
 
     app = FastAPI()
     register_team_routes(app, State(tmp_path))
-    response = TestClient(app).get("/api/teams/team-1/report")
+    response = TestClient(app, client=("127.0.0.1", 12345)).get("/api/teams/team-1/report")
     assert response.status_code == 400
