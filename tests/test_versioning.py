@@ -37,7 +37,8 @@ def test_version_bumper_updates_every_manifest_and_lockfile(tmp_path: Path) -> N
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (tmp_path / "VERSION").read_text(encoding="utf-8").strip() == "0.3.0-alpha.5"
+    actual_version = (tmp_path / "VERSION").read_text(encoding="utf-8").strip()
+    assert actual_version == "0.3.0-alpha.5"
     lock = (tmp_path / "nexus-rs" / "Cargo.lock").read_text(encoding="utf-8")
     assert 'name = "nexus"\nversion = "0.3.0-alpha.5"' in lock
     check = subprocess.run(
