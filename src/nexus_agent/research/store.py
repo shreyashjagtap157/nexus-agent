@@ -5,12 +5,26 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any
 
 
+class _ClosingConnection(sqlite3.Connection):
+    """SQLite connection context that commits/rolls back and always closes."""
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> bool:
+        try:
+            return bool(super().__exit__(exc_type, exc_value, traceback))
+        finally:
+            self.close()
+
+
 class ResearchStore:
+    _schema_locks: dict[str, Any] = {}
+    _schema_locks_guard = threading.Lock()
+
     SCHEMA = """
     CREATE TABLE IF NOT EXISTS research_sources (
         source_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,10 +86,17 @@ class ResearchStore:
     """
 
     def __init__(self, db_path: str | Path):
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path).expanduser().resolve()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._ensure_schema()
-        self._ensure_migrations()
+        with self._schema_locks_guard:
+            schema_lock = self._schema_locks.setdefault(
+                str(self.db_path), threading.RLock()
+            )
+        # WAL initialization, DDL and migrations must not race when several
+        # team workers open a new ledger for the first time.
+        with schema_lock:
+            self._ensure_schema()
+            self._ensure_migrations()
 
     def _ensure_migrations(self) -> None:
         with self._connect() as conn:
@@ -90,9 +111,13 @@ class ResearchStore:
                 conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path), timeout=30)
+        conn = sqlite3.connect(
+            str(self.db_path),
+            timeout=30,
+            factory=_ClosingConnection,
+        )
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
@@ -102,6 +127,7 @@ class ResearchStore:
 
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
+            conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(self.SCHEMA)
             conn.commit()
 
