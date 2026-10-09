@@ -429,8 +429,10 @@ class ModelManager:
                     ]
                     if npu_names:
                         hw["npu"] = npu_names[0]
-            except (OSError, AttributeError):
-                pass
+            except (OSError, subprocess.TimeoutExpired, AttributeError):
+                # Hardware inventory is advisory. Slow/unavailable Windows
+                # device enumeration must not break first-run configuration.
+                logger.debug("Windows NPU detection unavailable or timed out", exc_info=True)
         elif platform.system() == "Linux":
             # Check for /sys/class/accel (Linux accelerator subsystem used for NPUs)
             accel_path = Path("/sys/class/accel")
