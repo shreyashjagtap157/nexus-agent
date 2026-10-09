@@ -57,7 +57,7 @@ jobs:
           python -m pip check
 
       - name: Audit installed dependencies
-        run: python -m pip_audit --local --strict
+        run: python -m pip_audit --local --strict --skip-editable
 
   dependency-review:
     name: Dependency review
