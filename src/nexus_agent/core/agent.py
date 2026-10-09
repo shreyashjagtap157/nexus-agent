@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    pass
+    from nexus_agent.core.usage import UsageTracker
 
 from nexus_agent.audit import AuditLog
 from nexus_agent.core.context import ContextManager

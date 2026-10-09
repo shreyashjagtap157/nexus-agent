@@ -38,7 +38,7 @@ class HealthMetric:
     ok: bool | None = None  # None = not applicable (info)
 
     @classmethod
-    def ok(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
+    def success(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
         return cls(name=name, value=value, unit=unit, status="ok", ok=True)
 
     @classmethod
@@ -94,7 +94,7 @@ def _check_package(name: str, min_version: str | None = None) -> HealthMetric:
             min_parts = [int(x) for x in min_version.split(".") if x.isdigit()]
             if parts and min_parts and parts < min_parts:
                 return HealthMetric.warn(name, f"{ver_str} (need {min_version})")
-        return HealthMetric.ok(name, ver_str)
+        return HealthMetric.success(name, ver_str)
     except ImportError:
         return HealthMetric.warn(name, "not installed")
 
@@ -158,7 +158,7 @@ def _detect_gpu() -> str | None:
             timeout=5,
         )
         if res.returncode == 0:
-            lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+            lines = [line.strip() for line in res.stdout.splitlines() if line.strip()]
             if lines:
                 parts = [p.strip() for p in lines[0].split(",")]
                 name = parts[0]
@@ -173,7 +173,6 @@ def _detect_gpu() -> str | None:
             nvmlDeviceGetCount,
             nvmlDeviceGetName,
             nvmlInit,
-            nvmlSystemGetDriverVersion,
         )
 
         nvmlInit()

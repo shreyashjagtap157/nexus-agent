@@ -9,6 +9,7 @@ from typing import Any
 import click
 
 from nexus_agent import __app_name__, __version__
+from nexus_agent.team.models import TeamMode
 from nexus_agent.team.research import RESEARCH_DEPTHS
 from nexus_agent.utils.fs import iter_files
 

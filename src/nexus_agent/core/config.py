@@ -15,11 +15,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, TypedDict
 
+import platformdirs
 import yaml
 
 logger = logging.getLogger(__name__)
-
-import platformdirs
 
 APP_NAME = "nexus-agent"
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "_default_config.yaml"
