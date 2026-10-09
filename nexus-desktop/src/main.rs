@@ -589,9 +589,9 @@ impl eframe::App for NexusDesktop {
                         let body = message
                             .payload
                             .get("message")
-                            .and_then(|x| x.as_str())
-                            .unwrap_or_else(|| message.payload.to_string().as_str())
-                            .to_string();
+                            .and_then(|value| value.as_str())
+                            .map(str::to_owned)
+                            .unwrap_or_else(|| message.payload.to_string());
                         ui.group(|ui| {
                             ui.label(format!(
                                 "{} → {} • {}",
