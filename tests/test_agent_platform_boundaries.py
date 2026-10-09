@@ -104,7 +104,8 @@ def test_saved_agent_provider_override_wins_over_role_mapping():
         default,
     )
     selected = selector(profile)
-    assert selected.name == "custom"
+    assert selected.name == "custom->nvidia_nim"
+    assert selected.model_name == "custom-model"
 
 
 def test_delete_and_restore_file_round_trip(tmp_path: Path):

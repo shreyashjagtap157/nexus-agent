@@ -36,7 +36,7 @@ def test_agent_generate_route_initializes_provider_for_local_request(tmp_path: P
         lambda self, request, max_agents=6: [spec],
     )
 
-    response = TestClient(app).post(
+    response = TestClient(app, client=("127.0.0.1", 12345)).post(
         "/api/agents/generate",
         json={
             "request": "Create a reviewer",

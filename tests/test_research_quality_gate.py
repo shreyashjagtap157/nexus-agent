@@ -37,7 +37,7 @@ def test_research_claim_can_attach_second_source(tmp_path: Path):
         "researcher",
         "https://example.test/a",
         "A",
-        "The system is deterministic.",
+        "The system is deterministic. Source A provides context.",
         "test",
     )
     second = store.record_source(
@@ -45,7 +45,7 @@ def test_research_claim_can_attach_second_source(tmp_path: Path):
         "researcher",
         "https://example.test/b",
         "B",
-        "The system is deterministic.",
+        "The system is deterministic. Source B provides independent context.",
         "test",
     )
     claim = store.record_claim(
