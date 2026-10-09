@@ -1,5 +1,10 @@
 # Nexus CLI — Complete Implementation Plan
 
+> **Historical implementation snapshot — June 8, 2026.** The Phase 1a/1b labels, estimates, file counts and “next” recommendations below describe an older native-CLI planning snapshot; they are not the current project status.
+>
+> The current source of truth for what remains to implement, how to test it, deployment steps and release qualification is [PROJECT_COMPLETION_AND_QUALIFICATION.md](PROJECT_COMPLETION_AND_QUALIFICATION.md). Reassess all claims below against current main, current workflows and current code before acting on them.
+
+
 > **Date:** June 8, 2026
 > **Status:** Phase 1a ✅ Complete | Phase 1b 🔜 Next
 > **Architecture:** Hybrid Rust/Python (Rust CLI/TUI, Python agents/memory/tools)

@@ -1,6 +1,8 @@
 # NexusAgent — Agent Context & Memory
 
 ## Project Overview
+
+**Authoritative completion/qualification guide:** [docs/PROJECT_COMPLETION_AND_QUALIFICATION.md](docs/PROJECT_COMPLETION_AND_QUALIFICATION.md). Use it for implementation milestones, testing, deployment, release criteria and residual risks; treat older phase plans and audit snapshots as historical context unless revalidated against the current tree.
 Local-first multi-agent development and research workbench. The shared runtime supports single-agent workflows, dynamically assembled teams, evidence-first research, provider routing, scoped memory, web/MCP tools, a web console, a Rust client and a native desktop client. Local inference remains a first-class capability, while hosted/custom providers are supported.
 
 ## Quick Start

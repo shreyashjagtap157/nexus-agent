@@ -1,116 +1,47 @@
 # NexusAgent Execution Roadmap
 
-> **Current baseline:** 0.3.0-alpha.4
-> **Status:** Active hardening and release qualification
-> **Canonical integration branch:** `main`
+> Current baseline: 0.3.0-alpha.5
+> Status: active hardening and release qualification
+> Canonical integration branch: main
 
-This roadmap supersedes the original 0.2.x planning document. Historical implementation estimates from that document are no longer authoritative; the repository state, tests, CI workflows and current architecture documentation are authoritative.
+This roadmap is the short prioritization view. The detailed implementation, testing, deployment and release acceptance contract is maintained in [PROJECT_COMPLETION_AND_QUALIFICATION.md](PROJECT_COMPLETION_AND_QUALIFICATION.md). Historical estimates are not current implementation evidence.
 
-## Current platform baseline
+## Current product baseline
 
-The unified NexusAgent platform currently includes:
+NexusAgent provides a shared Python agent runtime with CLI/TUI and FastAPI surfaces, native Rust CLI and desktop clients, local and hosted provider integrations, tool execution, scoped memory, sessions, MCP, generated/saved agents, team orchestration and evidence-oriented research. Cross-surface behavior and security must be qualified by current tests rather than inferred from the presence of a module.
 
-- single-agent and multi-agent team execution using real `AgentLoop` workers
-- professional agent generation and scoped saved-agent definitions
-- dependency-aware team scheduling, persistent team history and lifecycle controls
-- evidence-first research with source capture, claim verification, contradiction handling and deterministic quality gates
-- worker-local tool authorization and fail-closed dependency handling
-- provider/model routing with initialization failover and NVIDIA NIM/OpenAI-compatible support
-- persistent workspace/team/research artifacts with path containment
-- local-only protection for sensitive team-control and team-data APIs
-- guarded autonomous web fetching with private-target and redirect protection
-- Python CLI/web surfaces plus native Rust CLI and desktop clients
-- cross-platform CI, lint/type validation, native compilation, version contracts and security gates
-- reproducible release validation and provenance-oriented packaging workflow
+## Priority order
 
-## Alpha.4 hardening priorities
+### P0 — Release-blocking foundations
 
-### 1. Authoritative CI qualification
+1. Set main as the GitHub default branch and apply real branch protection/rulesets; issue #326 records the administrator action. Documentation alone does not satisfy this gate.
+2. Keep CI / Required and Security / Required green on the exact candidate commit.
+3. Reassess the narrowly scoped diskcache dependency-audit exception when upstream/dependency evidence changes.
+4. Reconcile the critical-module MyPy list in normal CI with the broader check performed by the release workflow; grow coverage rather than hiding failures.
+5. Correct stale continuation/implementation documentation and make installation, API, migration, backup and rollback instructions match actual behavior.
 
-Required evidence:
+### P1 — Correctness and end-to-end qualification
 
-- complete Python test matrix on Ubuntu, Windows and macOS
-- supported Python versions 3.10 through 3.13
-- Ruff check and format validation
-- MyPy validation
-- native Rust/desktop format and compilation checks
-- version synchronization contract
-- deterministic audit evidence generation
-- CodeQL
-- Python dependency audit
-- pull-request dependency review
+1. Expand full-tree type checking and shared CLI/web/MCP/native contract tests.
+2. Complete multi-process persistence, migration, backup/restore and crash-recovery qualification.
+3. Test provider retry, timeout, cancellation and fallback identity under fault injection.
+4. Exercise team scheduling, lifecycle control, worker-local permissions and resource budgets under randomized DAGs and concurrent load.
+5. Qualify evidence changes, stale research verification, source provenance, source deduplication and SSRF boundaries end to end.
+6. Smoke-test built packages and native artifacts in clean environments on every claimed platform.
+7. Improve redacted diagnostics, support matrix, resource metrics and troubleshooting flows.
 
-The canonical required application gate is `CI / Required`. The canonical security gate is `Security / Required`.
+### P2 — After correctness stabilizes
 
-### 2. Repository governance
+1. Improve accessibility, UX consistency and setup friction.
+2. Optimize performance only after establishing reproducible baselines.
+3. Add providers, backends or tools only for documented user needs with shared contract, security and cross-surface tests.
+4. Do not expose remote/shared deployment until authentication, tenant isolation and operational controls are separately designed and reviewed.
 
-The intended GitHub configuration is:
+## Qualification rule
 
-- `main` as the repository default branch
-- pull requests required before merge
-- required approval and Code Owner review
-- stale approvals dismissed after new commits
-- required CI and Security gates
-- branch-current requirement
-- resolved conversations
-- no force-push or branch deletion
-- administrator enforcement
+A phase is complete only when its acceptance criteria can be traced to actual tests, workflow URLs, artifact inspection or verified GitHub settings. A queued, cancelled, skipped or stale-head workflow is not a pass. Do not promote directly from alpha to 1.0 merely because a workflow is green.
 
-The source-controlled policy is documented in `.github/BRANCH_PROTECTION.md`. GitHub-side administration must be completed with an account that has repository administration permission.
+## Historical material
 
-### 3. Runtime integration qualification
+Older audit and implementation documents remain as historical reference. Their snapshots, estimates, file counts and feature-status assertions must not override current main, current tests or the detailed completion guide.
 
-Before the next prerelease:
-
-- exercise the CLI, web and native clients against the same shared runtime contracts
-- exercise long-running team pause/resume/stop flows
-- verify persistence and recovery across process boundaries
-- verify research evidence and conflict quality gates end to end
-- verify provider failover under initialization and request failures
-- verify artifact containment and local-client boundaries on each supported platform
-
-### 4. Provider and research reliability
-
-Continue hardening:
-
-- provider capability and error normalization
-- rate-limit and retry behavior
-- research source availability and deterministic capture
-- evidence provenance and citation completeness
-- bounded research coordination and resource budgets
-- graceful behavior when optional providers or tools are unavailable
-
-### 5. Documentation and compatibility
-
-Keep these synchronized with implementation:
-
-- `README.md`
-- `docs/ARCHITECTURE.md`
-- `docs/MULTI_AGENT_PLATFORM.md`
-- `docs/ORCHESTRATION.md`
-- `docs/VERSIONING.md`
-- `CHANGELOG.md`
-- `AGENTS.md`
-
-Historical audits and planning documents must identify their snapshot date and must not be presented as current implementation status.
-
-## Release progression
-
-The current snapshot is `0.3.0-alpha.4` and remains unreleased.
-
-The next release decision should be based on current CI/security evidence and end-to-end qualification, not on elapsed time or historical task completion percentages.
-
-Release readiness requires the version contract, full test/lint/type/native validation, security/dependency validation, changelog accuracy, immutable tagging and the documented main-branch governance controls.
-
-## Long-term evolution
-
-After alpha stabilization, larger initiatives can be considered without treating them as release blockers:
-
-- richer native/Rust integration
-- expanded memory and model capability intelligence
-- broader protocol compatibility
-- performance and concurrency optimization
-- packaging/distribution improvements
-- reproducible build and benchmarking infrastructure
-
-These are subordinate to correctness, security, compatibility and maintainability of the existing platform.

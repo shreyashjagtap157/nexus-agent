@@ -23,7 +23,7 @@ It supports:
 - evidence-first research with source/claim verification
 - scoped persistent memory and explicit runtime storage boundaries
 
-The active development version is **0.3.0-alpha.4**. This is an unreleased prerelease and is not a stable API commitment.
+The active development version is **0.3.0-alpha.5**. This is an unreleased prerelease and is not a stable API commitment.
 
 ---
 
@@ -541,7 +541,7 @@ The repository-root `VERSION` file is canonical. Python, Rust, configuration and
 Current snapshot:
 
 ```
-0.3.0-alpha.4
+0.3.0-alpha.5
 ```
 
 Development sequence:
@@ -587,8 +587,9 @@ scripts/               Release/versioning utilities
 | Document | Purpose |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime architecture and data flow |
+| [docs/PROJECT_COMPLETION_AND_QUALIFICATION.md](docs/PROJECT_COMPLETION_AND_QUALIFICATION.md) | Implementation backlog, testing, deployment and release qualification |
 | [docs/API.md](docs/API.md) | HTTP/MCP/API surfaces |
-| [docs/AGENTS.md](docs/AGENTS.md) | Reusable and generated agents |
+| [AGENTS.md](AGENTS.md) | Reusable and generated agents |
 | [docs/MULTI_AGENT_PLATFORM.md](docs/MULTI_AGENT_PLATFORM.md) | Team architecture and coordination |
 | [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | Workflows and scheduling |
 | [docs/PROVIDERS.md](docs/PROVIDERS.md) | Provider routing and model configuration |
