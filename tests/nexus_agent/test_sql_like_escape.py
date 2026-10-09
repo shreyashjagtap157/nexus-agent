@@ -16,10 +16,10 @@ def test_like_pattern_matches_literal_wildcards_only() -> None:
         "INSERT INTO items(content) VALUES (?)",
         [("prefix \\%_ suffix",), ("prefix AX suffix",), ("prefix \\abc suffix",)],
     )
-    needle = r"\\%_"
+    needle = r"\%_"
     pattern = f"%{escape_like_pattern(needle)}%"
     matches = conn.execute(
-        "SELECT content FROM items WHERE content LIKE ? ESCAPE \\?",
+        "SELECT content FROM items WHERE content LIKE ? ESCAPE '\\'",
         (pattern,),
     ).fetchall()
     assert matches == [("prefix \\%_ suffix",)]
