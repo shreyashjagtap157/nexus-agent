@@ -97,6 +97,10 @@ class AgentSpec:
             for key in ("name", "profession", "mission", "instructions")
         ):
             raise ValueError(f"Agent {identifier!r} is missing required descriptive fields.")
+        raw_metadata = data.get("metadata")
+        metadata: dict[str, Any] = (
+            raw_metadata if isinstance(raw_metadata, dict) else {}
+        )
         return cls(
             id=identifier,
             name=str(data["name"]).strip(),
@@ -120,6 +124,6 @@ class AgentSpec:
             fallbacks=[str(x).strip() for x in data.get("fallbacks", []) if str(x).strip()],
             tags=[str(x).strip() for x in data.get("tags", []) if str(x).strip()],
             skill_ids=[str(x).strip().lower() for x in data.get("skill_ids", []) if str(x).strip()],
-            metadata=data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
+            metadata=metadata,
             source_path=source_path,
         )

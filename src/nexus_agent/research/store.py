@@ -170,7 +170,10 @@ class ResearchStore:
                     time.time(),
                 ),
             )
-            claim_id = int(cur.lastrowid)
+            inserted_claim_id = cur.lastrowid
+            if inserted_claim_id is None:
+                raise RuntimeError("Claim insert did not return a persisted claim ID.")
+            claim_id = inserted_claim_id
             conn.execute(
                 """INSERT INTO research_claim_evidence(
                     claim_id,source_id,quote,quote_present
@@ -329,8 +332,11 @@ class ResearchStore:
                 (team_id, claim_a, claim_b, conflict_type, agent_id, time.time()),
             )
             conn.commit()
+            conflict_id = cur.lastrowid
+            if conflict_id is None:
+                raise RuntimeError("Conflict insert did not return a persisted conflict ID.")
             return {
-                "conflict_id": int(cur.lastrowid),
+                "conflict_id": conflict_id,
                 "status": "unresolved",
             }
 

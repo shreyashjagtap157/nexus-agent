@@ -161,7 +161,9 @@ def test_team_runtime_markdown_artifact_serializes_quality_gate(tmp_path: Path):
     artifact = Path(result.artifact_paths[0])
     content = artifact.read_text(encoding="utf-8")
     assert "## Evidence Quality Gate" in content
-    assert "{}" in content
+    assert '"workers_complete"' in content
+    assert '"reviewer_present"' in content
+    assert '"score"' in content
 
 
 def test_unknown_dependency_is_failed_before_worker_submission(tmp_path, monkeypatch):
