@@ -321,194 +321,187 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        egui::Panel::left("control")
-            .resizable(true)
-            .show(ui, |ui| {
-                ui.heading("Task Control");
-                ui.label("Local server");
-                ui.text_edit_singleline(&mut self.endpoint);
+        egui::Panel::left("control").resizable(true).show(ui, |ui| {
+            ui.heading("Task Control");
+            ui.label("Local server");
+            ui.text_edit_singleline(&mut self.endpoint);
 
-                ui.label("Goal");
-                ui.add(
-                    egui::TextEdit::multiline(&mut self.goal)
-                        .desired_rows(7)
-                        .desired_width(f32::INFINITY),
-                );
+            ui.label("Goal");
+            ui.add(
+                egui::TextEdit::multiline(&mut self.goal)
+                    .desired_rows(7)
+                    .desired_width(f32::INFINITY),
+            );
 
-                ui.horizontal(|ui| {
-                    egui::ComboBox::from_label("Workflow")
-                        .selected_text(if self.workflow.is_empty() {
-                            "Ad hoc"
-                        } else {
-                            self.workflow.as_str()
-                        })
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.workflow, String::new(), "Ad hoc");
-                            for workflow in &self.workflows {
-                                ui.selectable_value(
-                                    &mut self.workflow,
-                                    workflow.id.clone(),
-                                    workflow.name.clone(),
-                                );
-                            }
-                        });
-                });
-
-                egui::ComboBox::from_label("Mode")
-                    .selected_text(&self.mode)
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_label("Workflow")
+                    .selected_text(if self.workflow.is_empty() {
+                        "Ad hoc"
+                    } else {
+                        self.workflow.as_str()
+                    })
                     .show_ui(ui, |ui| {
-                        for mode in [
-                            "auto",
-                            "code",
-                            "research",
-                            "review",
-                            "analysis",
-                            "plan",
-                            "automation",
-                        ] {
-                            ui.selectable_value(&mut self.mode, mode.to_string(), mode);
-                        }
-                    });
-
-                egui::ComboBox::from_label("Research depth")
-                    .selected_text(&self.depth)
-                    .show_ui(ui, |ui| {
-                        for depth in [
-                            "glance",
-                            "surface",
-                            "shallow",
-                            "basic",
-                            "preliminary",
-                            "exploratory",
-                            "focused",
-                            "detailed",
-                            "deep",
-                            "very_deep",
-                            "comprehensive",
-                            "exhaustive",
-                            "atomic",
-                            "molecular",
-                            "cellular",
-                            "planetary",
-                            "stellar",
-                            "galactic",
-                            "cosmic",
-                            "universal",
-                            "maximal",
-                        ] {
-                            ui.selectable_value(&mut self.depth, depth.to_string(), depth);
-                        }
-                    });
-
-                egui::ComboBox::from_label("Collection")
-                    .selected_text(&self.collection)
-                    .show_ui(ui, |ui| {
-                        for value in ["bounded", "until_saturation", "continuous"] {
-                            ui.selectable_value(&mut self.collection, value.to_string(), value);
-                        }
-                    });
-
-                egui::ComboBox::from_label("Source strategy")
-                    .selected_text(&self.source_strategy)
-                    .show_ui(ui, |ui| {
-                        for value in ["user_only", "hybrid", "autonomous"] {
+                        ui.selectable_value(&mut self.workflow, String::new(), "Ad hoc");
+                        for workflow in &self.workflows {
                             ui.selectable_value(
-                                &mut self.source_strategy,
-                                value.to_string(),
-                                value,
+                                &mut self.workflow,
+                                workflow.id.clone(),
+                                workflow.name.clone(),
                             );
                         }
                     });
+            });
 
-                ui.add(egui::Slider::new(&mut self.max_agents, 1..=64).text("max agents"));
-                ui.add(egui::Slider::new(&mut self.parallelism, 1..=32).text("parallelism"));
-                ui.add(
-                    egui::Slider::new(&mut self.max_minutes, 1..=525600)
-                        .text("max research minutes"),
-                );
-                ui.add(egui::Slider::new(&mut self.idle_rounds, 1..=20).text("idle rounds"));
-
-                ui.label("Seed sources (one URL per line)");
-                ui.add(egui::TextEdit::multiline(&mut self.sources).desired_rows(3));
-
-                ui.label("Pinned agent IDs (comma separated)");
-                ui.text_edit_singleline(&mut self.pinned_agents);
-
-                ui.horizontal(|ui| {
-                    if ui.button("Start Team").clicked() {
-                        if self.goal.trim().is_empty() {
-                            self.errors.push("Enter a goal first.".into());
-                        } else {
-                            let _ = self.commands.send(Command::Start {
-                                endpoint: self.endpoint.clone(),
-                                goal: self.goal.clone(),
-                                workflow: self.workflow.clone(),
-                                mode: self.mode.clone(),
-                                effort: self.effort.clone(),
-                                depth: self.depth.clone(),
-                                collection: self.collection.clone(),
-                                source_strategy: self.source_strategy.clone(),
-                                max_minutes: self.max_minutes,
-                                idle_rounds: self.idle_rounds,
-                                sources: self
-                                    .sources
-                                    .lines()
-                                    .map(|s| s.trim())
-                                    .filter(|s| !s.is_empty())
-                                    .map(str::to_string)
-                                    .collect(),
-                                agents: self
-                                    .pinned_agents
-                                    .split(',')
-                                    .map(|s| s.trim())
-                                    .filter(|s| !s.is_empty())
-                                    .map(str::to_string)
-                                    .collect(),
-                                max_agents: self.max_agents,
-                                parallelism: self.parallelism,
-                                output_mode: self.output_mode.clone(),
-                                output_format: self.output_format.clone(),
-                            });
-                            self.status = "starting".into();
-                        }
-                    }
-                    if ui.button("Pause").clicked() {
-                        self.send_control(ControlAction::Pause);
-                    }
-                    if ui.button("Resume").clicked() {
-                        self.send_control(ControlAction::Resume);
-                    }
-                    if ui.button("Stop").clicked() {
-                        self.send_control(ControlAction::Stop);
+            egui::ComboBox::from_label("Mode")
+                .selected_text(&self.mode)
+                .show_ui(ui, |ui| {
+                    for mode in [
+                        "auto",
+                        "code",
+                        "research",
+                        "review",
+                        "analysis",
+                        "plan",
+                        "automation",
+                    ] {
+                        ui.selectable_value(&mut self.mode, mode.to_string(), mode);
                     }
                 });
 
-                ui.horizontal(|ui| {
-                    if ui.button("Refresh").clicked() && !self.job_id.is_empty() {
-                        let _ = self.commands.send(Command::Refresh {
-                            endpoint: self.endpoint.clone(),
-                            job_id: self.job_id.clone(),
-                        });
-                    }
-                    if ui.button("Verify Audit").clicked() {
-                        let _ = self.commands.send(Command::VerifyAudit {
-                            endpoint: self.endpoint.clone(),
-                        });
+            egui::ComboBox::from_label("Research depth")
+                .selected_text(&self.depth)
+                .show_ui(ui, |ui| {
+                    for depth in [
+                        "glance",
+                        "surface",
+                        "shallow",
+                        "basic",
+                        "preliminary",
+                        "exploratory",
+                        "focused",
+                        "detailed",
+                        "deep",
+                        "very_deep",
+                        "comprehensive",
+                        "exhaustive",
+                        "atomic",
+                        "molecular",
+                        "cellular",
+                        "planetary",
+                        "stellar",
+                        "galactic",
+                        "cosmic",
+                        "universal",
+                        "maximal",
+                    ] {
+                        ui.selectable_value(&mut self.depth, depth.to_string(), depth);
                     }
                 });
 
-                if !self.errors.is_empty() {
-                    ui.separator();
-                    ui.colored_label(egui::Color32::from_rgb(250, 165, 165), "Errors");
-                    egui::ScrollArea::vertical()
-                        .max_height(160.0)
-                        .show(ui, |ui| {
-                            for error in self.errors.iter().rev().take(8) {
-                                ui.label(error);
-                            }
+            egui::ComboBox::from_label("Collection")
+                .selected_text(&self.collection)
+                .show_ui(ui, |ui| {
+                    for value in ["bounded", "until_saturation", "continuous"] {
+                        ui.selectable_value(&mut self.collection, value.to_string(), value);
+                    }
+                });
+
+            egui::ComboBox::from_label("Source strategy")
+                .selected_text(&self.source_strategy)
+                .show_ui(ui, |ui| {
+                    for value in ["user_only", "hybrid", "autonomous"] {
+                        ui.selectable_value(&mut self.source_strategy, value.to_string(), value);
+                    }
+                });
+
+            ui.add(egui::Slider::new(&mut self.max_agents, 1..=64).text("max agents"));
+            ui.add(egui::Slider::new(&mut self.parallelism, 1..=32).text("parallelism"));
+            ui.add(
+                egui::Slider::new(&mut self.max_minutes, 1..=525600).text("max research minutes"),
+            );
+            ui.add(egui::Slider::new(&mut self.idle_rounds, 1..=20).text("idle rounds"));
+
+            ui.label("Seed sources (one URL per line)");
+            ui.add(egui::TextEdit::multiline(&mut self.sources).desired_rows(3));
+
+            ui.label("Pinned agent IDs (comma separated)");
+            ui.text_edit_singleline(&mut self.pinned_agents);
+
+            ui.horizontal(|ui| {
+                if ui.button("Start Team").clicked() {
+                    if self.goal.trim().is_empty() {
+                        self.errors.push("Enter a goal first.".into());
+                    } else {
+                        let _ = self.commands.send(Command::Start {
+                            endpoint: self.endpoint.clone(),
+                            goal: self.goal.clone(),
+                            workflow: self.workflow.clone(),
+                            mode: self.mode.clone(),
+                            effort: self.effort.clone(),
+                            depth: self.depth.clone(),
+                            collection: self.collection.clone(),
+                            source_strategy: self.source_strategy.clone(),
+                            max_minutes: self.max_minutes,
+                            idle_rounds: self.idle_rounds,
+                            sources: self
+                                .sources
+                                .lines()
+                                .map(|s| s.trim())
+                                .filter(|s| !s.is_empty())
+                                .map(str::to_string)
+                                .collect(),
+                            agents: self
+                                .pinned_agents
+                                .split(',')
+                                .map(|s| s.trim())
+                                .filter(|s| !s.is_empty())
+                                .map(str::to_string)
+                                .collect(),
+                            max_agents: self.max_agents,
+                            parallelism: self.parallelism,
+                            output_mode: self.output_mode.clone(),
+                            output_format: self.output_format.clone(),
                         });
+                        self.status = "starting".into();
+                    }
+                }
+                if ui.button("Pause").clicked() {
+                    self.send_control(ControlAction::Pause);
+                }
+                if ui.button("Resume").clicked() {
+                    self.send_control(ControlAction::Resume);
+                }
+                if ui.button("Stop").clicked() {
+                    self.send_control(ControlAction::Stop);
                 }
             });
+
+            ui.horizontal(|ui| {
+                if ui.button("Refresh").clicked() && !self.job_id.is_empty() {
+                    let _ = self.commands.send(Command::Refresh {
+                        endpoint: self.endpoint.clone(),
+                        job_id: self.job_id.clone(),
+                    });
+                }
+                if ui.button("Verify Audit").clicked() {
+                    let _ = self.commands.send(Command::VerifyAudit {
+                        endpoint: self.endpoint.clone(),
+                    });
+                }
+            });
+
+            if !self.errors.is_empty() {
+                ui.separator();
+                ui.colored_label(egui::Color32::from_rgb(250, 165, 165), "Errors");
+                egui::ScrollArea::vertical()
+                    .max_height(160.0)
+                    .show(ui, |ui| {
+                        for error in self.errors.iter().rev().take(8) {
+                            ui.label(error);
+                        }
+                    });
+            }
+        });
 
         egui::Panel::bottom("tabs").show(ui, |ui| {
             ui.horizontal(|ui| {
