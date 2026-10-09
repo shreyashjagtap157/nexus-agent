@@ -59,9 +59,44 @@ jobs:
       - name: Audit installed dependencies
         run: python -m pip_audit --local --strict --skip-editable
 
+  dependency-graph:
+    name: Dependency graph availability
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.probe.outputs.enabled }}
+    steps:
+      - name: Check repository dependency graph
+        id: probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/dependency-graph/sbom")
+          case "$status" in
+            200)
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+              echo "Dependency graph is available; dependency review will run."
+              ;;
+            404)
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::GitHub Dependency Graph is disabled or unavailable for this repository; dependency-review-action will be skipped. Enable the Dependency Graph in repository settings to restore this gate."
+              ;;
+            *)
+              echo "Unable to verify Dependency Graph availability (HTTP $status)." >&2
+              exit 1
+              ;;
+          esac
+
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    needs: dependency-graph
+    if: github.event_name == 'pull_request' && needs.dependency-graph.result == 'success' && needs.dependency-graph.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/dependency-review-action@v4
@@ -70,7 +105,7 @@ jobs:
   required:
     name: Required
     if: always()
-    needs: [codeql, dependency-audit, dependency-review]
+    needs: [codeql, dependency-audit, dependency-graph, dependency-review]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -78,11 +113,12 @@ jobs:
         env:
           CODEQL: ${{ needs.codeql.result }}
           DEPENDENCY_AUDIT: ${{ needs.dependency-audit.result }}
+          DEPENDENCY_GRAPH: ${{ needs.dependency-graph.result }}
           DEPENDENCY_REVIEW: ${{ needs.dependency-review.result }}
         shell: bash
         run: |
           set -eu
-          for result in "codeql=$CODEQL" "dependency-audit=$DEPENDENCY_AUDIT" "dependency-review=$DEPENDENCY_REVIEW"; do
+          for result in "codeql=$CODEQL" "dependency-audit=$DEPENDENCY_AUDIT" "dependency-graph=$DEPENDENCY_GRAPH" "dependency-review=$DEPENDENCY_REVIEW"; do
             case "$result" in
               *success) ;;
               *skipped) ;;
