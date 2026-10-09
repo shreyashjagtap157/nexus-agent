@@ -71,6 +71,24 @@ def test_windows_shell_launchers_are_blocked(
     run.assert_not_called()
 
 
+def test_windows_interpreter_block_cannot_be_overridden_by_custom_rules(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sandbox_module.sys, "platform", "win32")
+    sandbox = Sandbox(
+        config=SandboxConfig(mode=SandboxMode.AUTO, denied_patterns=[]),
+        workspace=tmp_path,
+    )
+
+    with patch.object(sandbox_module.subprocess, "run") as run:
+        result = sandbox.execute("cmd.exe /c whoami")
+
+    assert result.returncode == -1
+    assert "command interpreters cannot be launched" in result.stderr
+    run.assert_not_called()
+
+
 def test_windows_batch_scripts_are_blocked(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
