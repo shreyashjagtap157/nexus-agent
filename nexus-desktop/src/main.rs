@@ -295,10 +295,13 @@ impl NexusDesktop {
 }
 
 impl eframe::App for NexusDesktop {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_events();
+        ctx.request_repaint_after(Duration::from_millis(500));
+    }
 
-        egui::TopBottomPanel::top("top").show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        egui::Panel::top("top").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading("NexusAgent");
                 ui.label("Native Multi-Agent Command Center");
@@ -318,7 +321,7 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        egui::SidePanel::left("control")
+        egui::Panel::left("control")
             .resizable(true)
             .show(ctx, |ui| {
                 ui.heading("Task Control");
@@ -507,7 +510,7 @@ impl eframe::App for NexusDesktop {
                 }
             });
 
-        egui::TopBottomPanel::bottom("tabs").show(ctx, |ui| {
+        egui::Panel::bottom("tabs").show(ui, |ui| {
             ui.horizontal(|ui| {
                 for (view, label) in [
                     (View::Overview, "Overview"),
@@ -521,7 +524,7 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| match self.view {
+        egui::CentralPanel::default().show_inside(ui, |ui| match self.view {
             View::Overview => {
                 ui.heading("Team Overview");
                 ui.label(format!(
@@ -640,7 +643,6 @@ impl eframe::App for NexusDesktop {
             }
         });
 
-        ctx.request_repaint_after(Duration::from_millis(500));
     }
 }
 
