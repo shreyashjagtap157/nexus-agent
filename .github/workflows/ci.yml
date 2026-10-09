@@ -42,8 +42,11 @@ jobs:
       - name: Run complete test suite
         shell: bash
         run: |
+          set +e
           python -m pytest tests/ -q --tb=short -W error::ResourceWarning > pytest_output.txt 2>&1
+          test_status=$?
           cat pytest_output.txt
+          exit "$test_status"
       - name: Upload canonical test evidence
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' }}
         uses: actions/upload-artifact@v4
