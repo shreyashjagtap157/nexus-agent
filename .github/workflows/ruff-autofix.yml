@@ -1,0 +1,42 @@
+name: Temporary Ruff auto-fix
+
+on:
+  push:
+    branches: ["automation/formatting-ba4eabe9203f"]
+    paths:
+      - "src/**/*.py"
+
+permissions:
+  contents: write
+
+jobs:
+  autofix:
+    if: ${{ !contains(github.event.head_commit.message, 'chore: apply Ruff autofixes') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ruff
+        run: python -m pip install --upgrade ruff
+      - name: Apply only standard Ruff automatic fixes and formatting
+        run: |
+          python -m ruff check --fix src/ || true
+          python -m ruff format src/
+      - name: Commit automated fixes to the review branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src; then
+            echo "No automatic changes were needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "chore: apply Ruff autofixes"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
