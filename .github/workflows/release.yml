@@ -93,7 +93,7 @@ jobs:
           retention-days: 14
 
       - name: Attest Python package
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/*
 
@@ -133,7 +133,7 @@ jobs:
           retention-days: 14
 
       - name: Attest native binary
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: nexus-rs/target/${{ matrix.target }}/release/${{ matrix.binary }}
 
@@ -173,7 +173,7 @@ jobs:
           retention-days: 14
 
       - name: Attest desktop binary
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: nexus-desktop/target/${{ matrix.target }}/release/${{ matrix.binary }}
 
