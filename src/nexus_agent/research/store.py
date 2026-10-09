@@ -210,9 +210,37 @@ class ResearchStore:
                     quote_present=excluded.quote_present""",
                 (claim_id, source_id, quote, quote_present),
             )
+            evidence_counts = conn.execute(
+                """SELECT COUNT(*) AS total, COALESCE(SUM(quote_present), 0) AS present
+                   FROM research_claim_evidence WHERE claim_id=?""",
+                (claim_id,),
+            ).fetchone()
+            evidence_complete = (
+                evidence_counts is not None
+                and int(evidence_counts["total"]) > 0
+                and int(evidence_counts["present"]) == int(evidence_counts["total"])
+            )
+            # Any evidence mutation invalidates previous verifier decisions. Keep
+            # the records for auditability, but mark them stale so coverage and
+            # synthesis cannot count them toward the current evidence set.
             conn.execute(
-                "UPDATE research_claims SET status=? WHERE claim_id=? AND status='unverified'",
-                ("quote_present" if quote_present else "unverified", claim_id),
+                """UPDATE research_verifications
+                   SET verdict='stale',
+                       note=CASE WHEN note='' THEN
+                           'Superseded because claim evidence changed.'
+                           ELSE note || char(10) ||
+                           'Superseded because claim evidence changed.'
+                       END
+                   WHERE claim_id=? AND verdict='verified'""",
+                (claim_id,),
+            )
+            conn.execute(
+                "UPDATE research_claims SET status=? WHERE claim_id=? AND team_id=?",
+                (
+                    "quote_present" if evidence_complete else "unverified",
+                    claim_id,
+                    team_id,
+                ),
             )
             conn.commit()
             return {
