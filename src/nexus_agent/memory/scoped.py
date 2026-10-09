@@ -1,4 +1,5 @@
 """Hierarchical scoped memory over the existing MemoryManager."""
+
 from __future__ import annotations
 
 import threading

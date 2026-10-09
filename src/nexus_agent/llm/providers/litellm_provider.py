@@ -1,4 +1,5 @@
 """Optional LiteLLM bridge for broad provider compatibility."""
+
 from __future__ import annotations
 
 from typing import Any, Iterator
@@ -80,12 +81,15 @@ class LiteLLMProvider(LLMProvider):
                 else:
                     function = getattr(item, "function", None)
                     name = getattr(function, "name", None) if function is not None else None
-                    arguments = getattr(function, "arguments", None) if function is not None else None
+                    arguments = (
+                        getattr(function, "arguments", None) if function is not None else None
+                    )
                     call_id = getattr(item, "id", "")
                 if not isinstance(arguments, str):
                     arguments = "{}" if arguments is None else str(arguments)
                 try:
                     import json
+
                     parsed = json.loads(arguments)
                 except (TypeError, ValueError):
                     parsed = {"raw": arguments}
@@ -112,7 +116,9 @@ class LiteLLMProvider(LLMProvider):
             return {str(k): int(v) for k, v in data.items() if isinstance(v, (int, float))}
         return None
 
-    def _kwargs(self, temperature: float, max_tokens: int, kwargs: dict[str, Any]) -> dict[str, Any]:
+    def _kwargs(
+        self, temperature: float, max_tokens: int, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         payload = dict(kwargs)
         payload.setdefault("temperature", temperature)
         payload.setdefault("max_tokens", max_tokens)

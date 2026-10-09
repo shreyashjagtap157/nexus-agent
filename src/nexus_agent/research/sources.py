@@ -1,4 +1,5 @@
 """Persistent user-configurable research source registry."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -55,7 +56,11 @@ class ResearchSourceRegistry:
         return result
 
     def _write(self, sources: list[ResearchSource]) -> None:
-        payload = {"sources": [item.to_dict() for item in sorted(sources, key=lambda x: (-x.priority, x.id))]}
+        payload = {
+            "sources": [
+                item.to_dict() for item in sorted(sources, key=lambda x: (-x.priority, x.id))
+            ]
+        }
         self.path.write_text(
             yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
             encoding="utf-8",
@@ -93,6 +98,7 @@ class ResearchSourceRegistry:
             if not clean:
                 continue
             import hashlib
+
             identifier = "source-" + hashlib.sha1(clean.encode("utf-8")).hexdigest()[:12]
             self.add(ResearchSource(id=identifier, url=clean, name=clean))
             added += 1

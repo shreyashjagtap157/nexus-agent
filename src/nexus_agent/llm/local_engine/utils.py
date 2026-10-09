@@ -43,6 +43,7 @@ def _detect_gpu_support() -> dict[str, Any]:
     info: dict[str, Any] = {"available": False, "backend": None, "layers_recommended": 0}
     try:
         import psutil
+
         psutil.virtual_memory().total / (1024**3)
     except ImportError:
         pass
@@ -52,6 +53,7 @@ def _detect_gpu_support() -> dict[str, Any]:
         if cuda_visible != "-1":
             try:
                 from llama_cpp import llama_supports_gpu_offload
+
                 if llama_supports_gpu_offload():
                     info["available"] = True
                     info["backend"] = "cuda"
@@ -65,6 +67,7 @@ def _detect_gpu_support() -> dict[str, Any]:
     if platform.system() == "Darwin":
         try:
             from llama_cpp import llama_supports_gpu_offload
+
             if llama_supports_gpu_offload():
                 info["available"] = True
                 info["backend"] = "metal"

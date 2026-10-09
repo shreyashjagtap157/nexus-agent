@@ -26,11 +26,11 @@ mod config;
 mod ipc;
 mod tui;
 
-use app::{App, AppEvent, AppPhase, Command, BackendStatus};
+use app::{App, AppEvent, AppPhase, BackendStatus, Command};
 use ipc::acp_client::AcpClient;
 use ipc::process;
 use ipc::process::PythonProcess;
-use ipc::protocol::{AcpEvent, event_type};
+use ipc::protocol::{event_type, AcpEvent};
 
 // ── CLI Argument Definitions ─────────────────────────────────────────
 
@@ -168,8 +168,7 @@ async fn main() {
     // Initialize structured logging
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 
@@ -241,12 +240,11 @@ async fn main() {
 
 async fn run_chat(workspace: &str, model: Option<&str>, provider: Option<&str>, no_init: bool) {
     // 0. Load config and create App state
-    let cfg = config::loader::load_config()
-        .with_cli_overrides(
-            model.map(|s| s.to_string()),
-            provider.map(|s| s.to_string()),
-            Some(workspace.to_string()),
-        );
+    let cfg = config::loader::load_config().with_cli_overrides(
+        model.map(|s| s.to_string()),
+        provider.map(|s| s.to_string()),
+        Some(workspace.to_string()),
+    );
     let mut app = App::new(cfg);
 
     // 1. Spawn the Python backend process
@@ -298,19 +296,25 @@ async fn run_chat(workspace: &str, model: Option<&str>, provider: Option<&str>, 
                         eprintln!("[nexus] Init error: {e}");
                         process.mark_degraded(e.to_string());
                         // Send backend error to app
-                        let _ = tui_engine.event_tx
+                        let _ = tui_engine
+                            .event_tx
                             .send(AppEvent::BackendError(e.to_string()))
                             .await;
                     } else {
                         process.mark_ready();
                         init_ok = true;
-                        let _ = tui_engine.event_tx
+                        let _ = tui_engine
+                            .event_tx
                             .send(AppEvent::BackendEvent(BackendStatus::Connected))
                             .await;
                         // Send init response to app
                         if let Some(r) = result {
-                            let _ = tui_engine.event_tx
-                                .send(AppEvent::AcpResponse { id, result: Some(r) })
+                            let _ = tui_engine
+                                .event_tx
+                                .send(AppEvent::AcpResponse {
+                                    id,
+                                    result: Some(r),
+                                })
                                 .await;
                         }
                     }
@@ -326,7 +330,8 @@ async fn run_chat(workspace: &str, model: Option<&str>, provider: Option<&str>, 
         }
     } else {
         process.mark_ready();
-        let _ = tui_engine.event_tx
+        let _ = tui_engine
+            .event_tx
             .send(AppEvent::BackendEvent(BackendStatus::Connected))
             .await;
     }
@@ -662,7 +667,10 @@ async fn run_text_mode(
                 let req = ipc::protocol::AcpRequest::get_status(id);
                 let _ = client.send(&req).await;
                 while let Some(event) = client.events.recv().await {
-                    if let AcpEvent::Response { id: rid, result, .. } = event {
+                    if let AcpEvent::Response {
+                        id: rid, result, ..
+                    } = event
+                    {
                         if rid == id {
                             if let Some(r) = result {
                                 println!("Status: {}", serde_json::to_string_pretty(&r).unwrap());
@@ -769,7 +777,10 @@ async fn run_doctor(verbose: bool) {
         Ok(python) => {
             println!("  ✅ Found: {python}");
             if verbose {
-                match std::process::Command::new(&python).arg("--version").output() {
+                match std::process::Command::new(&python)
+                    .arg("--version")
+                    .output()
+                {
                     Ok(out) => {
                         let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
                         println!("     Version: {v}");
@@ -808,7 +819,10 @@ async fn run_doctor(verbose: bool) {
                 Ok(id) => {
                     let mut ok = false;
                     while let Some(event) = client.events.recv().await {
-                        if let AcpEvent::Response { id: rid, result: _, .. } = event {
+                        if let AcpEvent::Response {
+                            id: rid, result: _, ..
+                        } = event
+                        {
                             if rid == id {
                                 println!("  ✅ Backend responded");
                                 ok = true;

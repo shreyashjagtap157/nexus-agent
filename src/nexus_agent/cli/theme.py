@@ -13,6 +13,7 @@ from dataclasses import dataclass
 @dataclass
 class ThemeColors:
     """Color palette for the TUI."""
+
     # Background
     bg_primary: str = "#0d1117"
     bg_secondary: str = "#161b22"
@@ -27,18 +28,18 @@ class ThemeColors:
     text_accent: str = "#58a6ff"
 
     # Accent colors
-    accent_primary: str = "#58a6ff"    # Blue
+    accent_primary: str = "#58a6ff"  # Blue
     accent_secondary: str = "#bc8cff"  # Purple
-    accent_success: str = "#3fb950"    # Green
-    accent_warning: str = "#d29922"    # Yellow/Gold
-    accent_error: str = "#f85149"      # Red
-    accent_info: str = "#79c0ff"       # Light blue
+    accent_success: str = "#3fb950"  # Green
+    accent_warning: str = "#d29922"  # Yellow/Gold
+    accent_error: str = "#f85149"  # Red
+    accent_info: str = "#79c0ff"  # Light blue
 
     # Agent states
-    state_thinking: str = "#d2a8ff"    # Soft purple
-    state_executing: str = "#58a6ff"   # Blue
-    state_done: str = "#3fb950"        # Green
-    state_error: str = "#f85149"       # Red
+    state_thinking: str = "#d2a8ff"  # Soft purple
+    state_executing: str = "#58a6ff"  # Blue
+    state_done: str = "#3fb950"  # Green
+    state_error: str = "#f85149"  # Red
 
     # Borders
     border_default: str = "#30363d"
@@ -88,4 +89,3 @@ LIGHT_THEME = ThemeColors(
     syntax_number="#218bff",
     syntax_operator="#cf222e",
 )
-

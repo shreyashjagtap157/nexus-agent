@@ -1,4 +1,5 @@
 """Concurrent multi-agent team runtime."""
+
 from __future__ import annotations
 
 import queue
@@ -96,6 +97,7 @@ def build_workspace_tools(
     ]
     if memory_manager is not None:
         from nexus_agent.tools.memory import MemoryTool
+
         memory = MemoryTool()
         memory.set_memory(memory_manager)
         tools.append(memory)
@@ -109,6 +111,7 @@ def build_workspace_tools(
             ResearchRecordSourceTool,
             ResearchVerifyClaimTool,
         )
+
         research_db = StorageLayout(workspace).workspace_runtime / "research.db"
         research_tools = [
             ResearchConfiguredSourceTool(
@@ -134,7 +137,8 @@ def build_workspace_tools(
             tools = [
                 tool
                 for tool in tools
-                if getattr(tool, "name", "") not in {"web_search", "web_fetch", "webfetch", "browser"}
+                if getattr(tool, "name", "")
+                not in {"web_search", "web_fetch", "webfetch", "browser"}
             ]
 
     if mcp_tools:
@@ -144,7 +148,6 @@ def build_workspace_tools(
         council = CouncilTool(provider)
         tools.extend([boomerang, council])
     return tools
-
 
 
 class TeamRuntime:
@@ -168,6 +171,7 @@ class TeamRuntime:
         self.provider_selector = provider_selector
         self.agent_registry = agent_registry or AgentRegistry(self.workspace)
         from nexus_agent.core.config import get_data_dir
+
         self.skill_registry = SkillRegistry(
             search_dirs=[
                 str(Path(get_data_dir()) / "skills"),
@@ -193,7 +197,6 @@ class TeamRuntime:
         except Exception:
             pass
 
-
     def _make_store(self) -> TeamStore:
         return TeamStore(self.data_dir / "teams.db")
 
@@ -201,23 +204,43 @@ class TeamRuntime:
     def _tool_matches(name: str, categories: set[str]) -> bool:
         lowered = name.lower()
         if "read" in categories or "search" in categories:
-            if lowered in {"read_file", "list_directory", "search_files", "repository_rag", "memory", "memory_scoped"}:
+            if lowered in {
+                "read_file",
+                "list_directory",
+                "search_files",
+                "repository_rag",
+                "memory",
+                "memory_scoped",
+            }:
                 return True
             if any(token in lowered for token in ("graph", "intel", "todo", "search")):
                 return True
-        if "write" in categories and lowered in {"write_file", "code_edit", "insert_lines", "batch_edit", "delete_file", "move_file"}:
+        if "write" in categories and lowered in {
+            "write_file",
+            "code_edit",
+            "insert_lines",
+            "batch_edit",
+            "delete_file",
+            "move_file",
+        }:
             return True
         if "shell" in categories and lowered == "shell":
             return True
         if "web" in categories and lowered in {"web_search", "web_fetch", "webfetch", "browser"}:
             return True
-        if "git" in categories and ("git" in lowered or lowered in {"ci_analyzer", "pr_generator", "smart_commit"}):
+        if "git" in categories and (
+            "git" in lowered or lowered in {"ci_analyzer", "pr_generator", "smart_commit"}
+        ):
             return True
         if "parse" in categories and lowered == "parse_data":
             return True
         if "formal" in categories and lowered == "formal_check":
             return True
-        if "code_intel" in categories and lowered in {"import_graph", "call_graph", "rename_symbol"}:
+        if "code_intel" in categories and lowered in {
+            "import_graph",
+            "call_graph",
+            "rename_symbol",
+        }:
             return True
         if "lsp" in categories and lowered == "lsp_query":
             return True
@@ -246,10 +269,7 @@ class TeamRuntime:
         # Build a fresh tool graph for every worker. Mutable tools such as
         # BrowserTool, RAG, LSP and nested delegation must never be shared
         # concurrently between independent AgentLoop instances.
-        mcp_tools = [
-            tool for tool in self.tools
-            if getattr(tool, "is_mcp", False)
-        ]
+        mcp_tools = [tool for tool in self.tools if getattr(tool, "is_mcp", False)]
         fresh_catalog = build_workspace_tools(
             self.workspace,
             provider=provider,
@@ -268,7 +288,8 @@ class TeamRuntime:
             if "mcp" in categories and bool(getattr(tool, "is_mcp", False)):
                 allowed = True
             if (
-                lowered in {
+                lowered
+                in {
                     "write_file",
                     "code_edit",
                     "insert_lines",
@@ -321,6 +342,7 @@ class TeamRuntime:
                 ResearchRecordSourceTool,
                 ResearchVerifyClaimTool,
             )
+
             research_db = self.data_dir / "research.db"
             research_tools = [
                 ResearchConfiguredSourceTool(
@@ -335,7 +357,9 @@ class TeamRuntime:
                 ResearchAdjudicateConflictTool(research_db, team_id, profile.role_id),
             ]
             if config is None or config.research_source_strategy != "user_only":
-                research_tools.insert(1, ResearchRecordSourceTool(research_db, team_id, profile.role_id))
+                research_tools.insert(
+                    1, ResearchRecordSourceTool(research_db, team_id, profile.role_id)
+                )
             selected.extend(research_tools)
             if config is not None and config.research_source_strategy == "user_only":
                 selected = [
@@ -345,7 +369,6 @@ class TeamRuntime:
                 ]
 
         return selected
-
 
     def _permission(
         self,
@@ -378,7 +401,10 @@ class TeamRuntime:
         # Stateful tools expose safe read-only actions alongside mutations.
         # Allow those read operations to read-only specialists while keeping
         # persistence/deletion behind the normal write boundary.
-        if name == "memory_scoped" and str(arguments.get("action", "")).lower() in {"search", "stats"}:
+        if name == "memory_scoped" and str(arguments.get("action", "")).lower() in {
+            "search",
+            "stats",
+        }:
             return True
         if name == "todowrite" and str(arguments.get("action", "")).lower() in {"list", "get"}:
             return True
@@ -386,7 +412,11 @@ class TeamRuntime:
             (candidate for candidate in catalog if getattr(candidate, "name", "").lower() == name),
             None,
         )
-        if tool is None and profile is not None and name in {item.lower() for item in profile.skill_ids}:
+        if (
+            tool is None
+            and profile is not None
+            and name in {item.lower() for item in profile.skill_ids}
+        ):
             tool = self.skill_registry.get_skill(name)
 
         level = str(getattr(tool, "permission_level", "ask")).lower() if tool else "ask"
@@ -421,10 +451,13 @@ class TeamRuntime:
 
         return False
 
-    def _system_extra(self, goal: str, profile: AgentProfile, team_id: str, config: TeamConfig) -> str:
+    def _system_extra(
+        self, goal: str, profile: AgentProfile, team_id: str, config: TeamConfig
+    ) -> str:
         research_protocol = ""
         if "research" in profile.tool_categories:
             from .research import policy as research_policy
+
             depth = research_policy(config.research_depth)
             source_line = (
                 "Only use the user-configured/seeded sources; autonomous discovery is disabled."
@@ -434,9 +467,21 @@ class TeamRuntime:
                 else "Use user-configured sources first and expand autonomously when useful."
             )
             role_text = f"{profile.role_id} {profile.name} {profile.profession}".lower()
-            if any(term in role_text for term in ("researcher", "source", "bibliography", "metadata", "academic", "historian")):
+            if any(
+                term in role_text
+                for term in (
+                    "researcher",
+                    "source",
+                    "bibliography",
+                    "metadata",
+                    "academic",
+                    "historian",
+                )
+            ):
                 budget_line = f"Own the source-breadth budget: seek at least {depth['sources_per_round']} distinct source(s) in each turn and preserve provenance."
-            elif any(term in role_text for term in ("verifier", "evidence", "citation", "claim-auditor")):
+            elif any(
+                term in role_text for term in ("verifier", "evidence", "citation", "claim-auditor")
+            ):
                 budget_line = f"Own the verification budget: complete {depth['verification_passes']} verification pass(es) over high-value claims."
             elif any(term in role_text for term in ("skeptic", "contradiction", "conflict")):
                 budget_line = f"Own the contradiction budget: perform {depth['contradiction_passes']} contradiction/counterevidence pass(es)."
@@ -488,7 +533,9 @@ Team protocol:
         try:
             return self.provider_selector(profile)
         except (RuntimeError, ValueError, OSError, TypeError) as exc:
-            raise RuntimeError(f"Unable to resolve provider for agent {profile.role_id}: {exc}") from exc
+            raise RuntimeError(
+                f"Unable to resolve provider for agent {profile.role_id}: {exc}"
+            ) from exc
 
     def _worker(
         self,
@@ -506,13 +553,21 @@ Team protocol:
         store.event(
             team_id,
             "agent_started",
-            {"profession": profile.profession, "mission": profile.mission, "model_role": profile.model_role},
+            {
+                "profession": profile.profession,
+                "mission": profile.mission,
+                "model_role": profile.model_role,
+            },
             profile.role_id,
         )
         events.put(
             AgentEvent(
                 AgentEventType.STATE_CHANGE,
-                {"team_id": team_id, "agent_id": profile.role_id, "state": TeamAgentState.RUNNING.value},
+                {
+                    "team_id": team_id,
+                    "agent_id": profile.role_id,
+                    "state": TeamAgentState.RUNNING.value,
+                },
             )
         )
         store.message(
@@ -525,6 +580,7 @@ Team protocol:
 
         from nexus_agent.memory.scoped import MemoryScope, ScopedMemory
         from nexus_agent.storage.layout import StorageLayout
+
         scoped_memory = ScopedMemory(
             StorageLayout(self.workspace),
             agent_id=profile.role_id,
@@ -592,6 +648,7 @@ Team protocol:
             research_mode = "research" in profile.tool_categories
             if research_mode:
                 from .research import policy as research_policy
+
                 policy_data = research_policy(config.research_depth)
                 coordination_cap = max(5, min(int(policy_data["coordination_turns"]), 10))
                 # Post-deployment coordination is deliberately bounded to five-to-ten
@@ -625,7 +682,9 @@ Team protocol:
                         ended_at=time.time(),
                         error="Cancelled by user.",
                     )
-                    store.event(team_id, "agent_cancelled", {"round": round_index + 1}, profile.role_id)
+                    store.event(
+                        team_id, "agent_cancelled", {"round": round_index + 1}, profile.role_id
+                    )
                     return {
                         "agent_id": profile.role_id,
                         "name": profile.name,
@@ -639,7 +698,10 @@ Team protocol:
                 if control_state.pause_requested.is_set():
                     store.update_agent(agent_storage_id, state=TeamAgentState.WAITING_AGENT.value)
                     store.set_status(team_id, "paused")
-                    while control_state.pause_requested.is_set() and not control_state.stop_requested.is_set():
+                    while (
+                        control_state.pause_requested.is_set()
+                        and not control_state.stop_requested.is_set()
+                    ):
                         persisted_control = store.pop_control(team_id)
                         if persisted_control == "resume":
                             control_state.pause_requested.clear()
@@ -656,6 +718,7 @@ Team protocol:
                 research_store = None
                 if research_mode:
                     from nexus_agent.research.store import ResearchStore
+
                     research_store = ResearchStore(self.data_dir / "research.db")
                     before_sources = len(research_store.sources(team_id))
                     store.event(
@@ -776,7 +839,10 @@ Team protocol:
                         },
                         profile.role_id,
                     )
-                    if config.research_collection == "until_saturation" and idle_rounds >= config.research_idle_rounds:
+                    if (
+                        config.research_collection == "until_saturation"
+                        and idle_rounds >= config.research_idle_rounds
+                    ):
                         store.event(
                             team_id,
                             "research_saturation_reached",
@@ -806,6 +872,7 @@ Team protocol:
                 result=result,
             )
             from nexus_agent.memory.scoped import MemoryScope
+
             if result:
                 scoped_memory.store(
                     result[-5000:],
@@ -892,6 +959,7 @@ Team protocol:
             path.write_text(content, encoding="utf-8")
         elif config.output_format == "json":
             import json
+
             path = artifact_dir / "result.json"
             path.write_text(
                 json.dumps(
@@ -1044,6 +1112,7 @@ Team protocol:
         saved_profiles = [spec.to_team_profile() for spec in saved_specs]
         if cfg.research_source_urls:
             from nexus_agent.research.sources import ResearchSourceRegistry
+
             ResearchSourceRegistry(
                 self.workspace / ".nexus-agent" / "research-sources.yaml"
             ).seed_urls(cfg.research_source_urls)
@@ -1079,6 +1148,7 @@ Team protocol:
         )
         if mode == TeamMode.RESEARCH:
             from .research import policy as research_policy
+
             store.event(
                 team_id,
                 "research_policy",
@@ -1100,6 +1170,7 @@ Team protocol:
 
         if mode == TeamMode.RESEARCH:
             from .research import policy as research_policy
+
             deployment_policy = research_policy(cfg.research_depth)
             store.event(
                 team_id,
@@ -1107,7 +1178,9 @@ Team protocol:
                 {
                     "agent_count": len(profiles),
                     "planning_phase": "complete",
-                    "post_deployment_coordination_turn_cap": deployment_policy["coordination_turns"],
+                    "post_deployment_coordination_turn_cap": deployment_policy[
+                        "coordination_turns"
+                    ],
                     "research_depth": cfg.research_depth,
                 },
             )
@@ -1141,6 +1214,7 @@ Team protocol:
         coordination_turn_cap = None
         if mode == TeamMode.RESEARCH:
             from .research import policy as research_policy
+
             coordination_turn_cap = int(research_policy(cfg.research_depth)["coordination_turns"])
 
         with ThreadPoolExecutor(
@@ -1149,7 +1223,11 @@ Team protocol:
         ) as pool:
             while pending or active:
                 if research_deadline is not None and time.time() >= research_deadline:
-                    store.event(team_id, "research_deadline_reached", {"max_minutes": cfg.research_max_minutes})
+                    store.event(
+                        team_id,
+                        "research_deadline_reached",
+                        {"max_minutes": cfg.research_max_minutes},
+                    )
                     control_state.stop_requested.set()
                 persisted_control = store.pop_control(team_id)
                 if persisted_control == "pause":
@@ -1178,22 +1256,26 @@ Team protocol:
 
                 if control_state.pause_requested.is_set() and not active:
                     store.set_status(team_id, "paused")
-                    yield AgentEvent(AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "paused"})
-                    while control_state.pause_requested.is_set() and not control_state.stop_requested.is_set():
+                    yield AgentEvent(
+                        AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "paused"}
+                    )
+                    while (
+                        control_state.pause_requested.is_set()
+                        and not control_state.stop_requested.is_set()
+                    ):
                         time.sleep(0.5)
                     if control_state.stop_requested.is_set():
                         continue
                     store.set_status(team_id, "running")
-                    yield AgentEvent(AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "running"})
+                    yield AgentEvent(
+                        AgentEventType.STATE_CHANGE, {"team_id": team_id, "state": "running"}
+                    )
 
                 # Unknown dependencies cannot ever unblock. Mark those workers
                 # as failed/review-required instead of deadlocking the team.
                 for role_id in sorted(pending):
                     profile = profile_by_id[role_id]
-                    unknown = [
-                        dep for dep in profile.dependencies
-                        if dep not in profile_by_id
-                    ]
+                    unknown = [dep for dep in profile.dependencies if dep not in profile_by_id]
                     if unknown:
                         store.update_agent(
                             agent_storage_ids[role_id],
@@ -1213,16 +1295,24 @@ Team protocol:
                 # Active workers constitute one coordination wave. Do not replenish
                 # the wave until every member finishes; this makes the 5-10
                 # post-deployment coordination-turn guarantee observable and testable.
-                ready = [] if active else [
-                    profile_by_id[role_id]
-                    for role_id in sorted(pending)
-                    if all(
-                        dependency in completed_ids
-                        for dependency in profile_by_id[role_id].dependencies
-                    )
-                ]
+                ready = (
+                    []
+                    if active
+                    else [
+                        profile_by_id[role_id]
+                        for role_id in sorted(pending)
+                        if all(
+                            dependency in completed_ids
+                            for dependency in profile_by_id[role_id].dependencies
+                        )
+                    ]
+                )
 
-                if ready and coordination_turn_cap is not None and coordination_turn >= coordination_turn_cap:
+                if (
+                    ready
+                    and coordination_turn_cap is not None
+                    and coordination_turn >= coordination_turn_cap
+                ):
                     store.event(
                         team_id,
                         "coordination_turn_cap_reached",
@@ -1379,6 +1469,7 @@ Team protocol:
         research_claims: list[dict[str, Any]] | None = None
         if mode == TeamMode.RESEARCH:
             from nexus_agent.research.store import ResearchStore
+
             evidence_store = ResearchStore(self.data_dir / "research.db")
             try:
                 research_claims = evidence_store.verified_claims(team_id)
@@ -1391,7 +1482,11 @@ Team protocol:
             {
                 "workflow": "post-deployment-final-review",
                 "workers_completed": len(
-                    [item for item in results if item.get("status") == TeamAgentState.COMPLETED.value]
+                    [
+                        item
+                        for item in results
+                        if item.get("status") == TeamAgentState.COMPLETED.value
+                    ]
                 ),
                 "reviewers_completed": len(reviewers),
                 "verified_claim_count": len(research_claims or []),
@@ -1417,7 +1512,11 @@ Team protocol:
 
         if cfg.auto_synthesize:
             try:
-                if mode == TeamMode.RESEARCH and research_quality and not research_quality.get("passed"):
+                if (
+                    mode == TeamMode.RESEARCH
+                    and research_quality
+                    and not research_quality.get("passed")
+                ):
                     store.event(
                         team_id,
                         "research_report_suppressed",
@@ -1466,7 +1565,11 @@ Team protocol:
         if artifact_paths:
             store.event(team_id, "artifacts_written", {"paths": artifact_paths})
         store.event(team_id, "team_quality_gate", final_quality)
-        terminal_status = "cancelled" if control_state.stop_requested.is_set() else ("completed" if success else "needs_review")
+        terminal_status = (
+            "cancelled"
+            if control_state.stop_requested.is_set()
+            else ("completed" if success else "needs_review")
+        )
         store.message(
             team_id,
             "orchestrator",
@@ -1518,11 +1621,13 @@ Team protocol:
 
 def json_dump(value: Any) -> str:
     import json
+
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
 def json_load(value: Any) -> dict[str, Any]:
     import json
+
     if not value:
         return {}
     try:

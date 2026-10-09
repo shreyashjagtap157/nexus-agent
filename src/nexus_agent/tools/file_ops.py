@@ -246,6 +246,7 @@ class WriteFileTool(Tool):
             previous_hash = FileJournal.digest_file(file_path)
             import os
             import tempfile
+
             fd, tmp = tempfile.mkstemp(prefix=".nexus-write-", dir=file_path.parent)
             try:
                 with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -280,7 +281,9 @@ class DeleteFileTool(Tool):
 
     def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
-        self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+        self.trash_dir = (
+            trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")
+        ).resolve()
         self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
@@ -294,8 +297,15 @@ class DeleteFileTool(Tool):
     @property
     def parameters(self) -> dict[str, Any]:
         return {
-            "path": {"type": "string", "description": "Workspace-relative or absolute target path."},
-            "permanent": {"type": "boolean", "description": "Permanently remove instead of moving to runtime trash. Use only when explicitly requested.", "required": False},
+            "path": {
+                "type": "string",
+                "description": "Workspace-relative or absolute target path.",
+            },
+            "permanent": {
+                "type": "boolean",
+                "description": "Permanently remove instead of moving to runtime trash. Use only when explicitly requested.",
+                "required": False,
+            },
         }
 
     @property
@@ -334,6 +344,7 @@ class DeleteFileTool(Tool):
                 return f"Permanently deleted {path}."
             import time
             import uuid
+
             self.trash_dir.mkdir(parents=True, exist_ok=True)
             relative = target.relative_to(self.workspace)
             safe_name = f"{int(time.time())}-{uuid.uuid4().hex[:8]}-{relative.name}"
@@ -356,7 +367,9 @@ class RestoreFileTool(Tool):
 
     def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
-        self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+        self.trash_dir = (
+            trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")
+        ).resolve()
         self._journal = FileJournal(self.workspace / ".nexus-agent" / "runtime" / "file-journal.db")
 
     @property
@@ -371,19 +384,33 @@ class RestoreFileTool(Tool):
     def parameters(self) -> dict[str, Any]:
         return {
             "action": {"type": "string", "description": "list or restore"},
-            "trash_name": {"type": "string", "description": "Filename inside the runtime trash directory.", "required": False},
-            "destination": {"type": "string", "description": "Workspace-relative destination for restore.", "required": False},
+            "trash_name": {
+                "type": "string",
+                "description": "Filename inside the runtime trash directory.",
+                "required": False,
+            },
+            "destination": {
+                "type": "string",
+                "description": "Workspace-relative destination for restore.",
+                "required": False,
+            },
         }
 
     @property
     def permission_level(self) -> str:
         return "read-write"
 
-    def execute(self, action: str, trash_name: str = "", destination: str = "", **kwargs: Any) -> str:
+    def execute(
+        self, action: str, trash_name: str = "", destination: str = "", **kwargs: Any
+    ) -> str:
         self.trash_dir.mkdir(parents=True, exist_ok=True)
         action = action.strip().lower()
         if action == "list":
-            items = [p.name for p in sorted(self.trash_dir.iterdir(), key=lambda p: p.name) if p.is_file()]
+            items = [
+                p.name
+                for p in sorted(self.trash_dir.iterdir(), key=lambda p: p.name)
+                if p.is_file()
+            ]
             return "\n".join(items) or "Trash is empty."
         if action != "restore":
             return "Error: action must be list or restore."
@@ -439,7 +466,10 @@ class MoveFileTool(Tool):
     def parameters(self) -> dict[str, Any]:
         return {
             "source": {"type": "string", "description": "Existing workspace-relative source path."},
-            "destination": {"type": "string", "description": "Destination workspace-relative path."},
+            "destination": {
+                "type": "string",
+                "description": "Destination workspace-relative path.",
+            },
         }
 
     @property
@@ -493,15 +523,25 @@ class ParseDataTool(Tool):
     def parameters(self) -> dict[str, Any]:
         return {
             "path": {"type": "string", "description": "Path to a structured data file."},
-            "format": {"type": "string", "description": "auto, json, yaml, toml, csv, xml", "required": False},
-            "max_chars": {"type": "integer", "description": "Maximum serialized output length.", "required": False},
+            "format": {
+                "type": "string",
+                "description": "auto, json, yaml, toml, csv, xml",
+                "required": False,
+            },
+            "max_chars": {
+                "type": "integer",
+                "description": "Maximum serialized output length.",
+                "required": False,
+            },
         }
 
     @property
     def permission_level(self) -> str:
         return "read-only"
 
-    def execute(self, path: str, format: str = "auto", max_chars: int = 50000, **kwargs: Any) -> str:
+    def execute(
+        self, path: str, format: str = "auto", max_chars: int = 50000, **kwargs: Any
+    ) -> str:
         try:
             target = Tool.resolve_workspace_path(self.workspace, path)
             raw = target.read_text(encoding="utf-8")
@@ -513,24 +553,30 @@ class ParseDataTool(Tool):
         try:
             if fmt == "json":
                 import json
+
                 data = json.loads(raw)
             elif fmt in {"yaml", "yml"}:
                 import yaml
+
                 data = yaml.safe_load(raw)
             elif fmt == "toml":
                 import tomllib
+
                 data = tomllib.loads(raw)
             elif fmt == "csv":
                 import csv
                 import io
+
                 data = list(csv.DictReader(io.StringIO(raw)))
             elif fmt == "xml":
                 import xml.etree.ElementTree as ET
+
                 root = ET.fromstring(raw)
                 data = self._xml_node(root)
             else:
                 return f"Error: unsupported format {fmt!r}."
             import json
+
             encoded = json.dumps(data, ensure_ascii=False, indent=2, default=str)
             limit = max(100, min(int(max_chars), 2_000_000))
             return encoded[:limit] + ("\\n…[truncated]" if len(encoded) > limit else "")

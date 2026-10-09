@@ -1,4 +1,5 @@
 """Web endpoints for provider catalog and credential lifecycle."""
+
 from __future__ import annotations
 
 import time
@@ -22,14 +23,18 @@ class CredentialRequest(BaseModel):
 
 class ProviderTestRequest(BaseModel):
     model: str | None = Field(default=None, max_length=500)
-    prompt: str = Field(default="Respond with exactly: NexusAgent provider test OK", max_length=4000)
+    prompt: str = Field(
+        default="Respond with exactly: NexusAgent provider test OK", max_length=4000
+    )
     max_tokens: int = Field(default=64, ge=1, le=512)
 
 
 def _local_only(request: Any) -> None:
     client = getattr(request, "client", None)
     if client is None or client.host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Provider configuration is restricted to local clients.")
+        raise HTTPException(
+            status_code=403, detail="Provider configuration is restricted to local clients."
+        )
 
 
 class ProviderConfigRequest(BaseModel):
@@ -52,14 +57,23 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         _local_only(request)
         from nexus_agent.llm.providers.factory import ProviderFactory
 
-        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
-        config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
+        workspace = Path(
+            state_manager.get("workspace") if state_manager is not None else Path.cwd()
+        ).resolve()
+        config = (
+            state_manager.get("config")
+            if state_manager is not None
+            else load_config(workspace=workspace)
+        )
         try:
             started = time.perf_counter()
             engine = ProviderFactory.create_provider(provider, config, payload.model)
             response = engine.chat_completion(
                 [
-                    Message(role=Role.SYSTEM, content="You are performing a connectivity test. Do not reveal secrets."),
+                    Message(
+                        role=Role.SYSTEM,
+                        content="You are performing a connectivity test. Do not reveal secrets.",
+                    ),
                     Message(role=Role.USER, content=payload.prompt),
                 ],
                 temperature=0.0,
@@ -99,19 +113,29 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         }
 
     @app.post("/api/providers/{provider}/activate")
-    async def activate_provider(provider: str, request: Request, payload: ProviderTestRequest | None = None):
+    async def activate_provider(
+        provider: str, request: Request, payload: ProviderTestRequest | None = None
+    ):
         _local_only(request)
         from nexus_agent.core.config import load_config, save_user_config
         from nexus_agent.llm.providers.factory import ProviderFactory
 
-        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
-        config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
+        workspace = Path(
+            state_manager.get("workspace") if state_manager is not None else Path.cwd()
+        ).resolve()
+        config = (
+            state_manager.get("config")
+            if state_manager is not None
+            else load_config(workspace=workspace)
+        )
         provider_name = provider.strip().lower()
         requested_model = payload.model if payload is not None else None
         try:
             new_engine = ProviderFactory.create_provider(provider_name, config, requested_model)
         except (ImportError, RuntimeError, ValueError, OSError) as exc:
-            raise HTTPException(status_code=400, detail=f"Unable to activate provider {provider_name}: {exc}") from exc
+            raise HTTPException(
+                status_code=400, detail=f"Unable to activate provider {provider_name}: {exc}"
+            ) from exc
 
         if state_manager is not None:
             old_engine = state_manager.get("engine")
@@ -133,8 +157,14 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
     @app.get("/api/provider-config")
     async def provider_config(request: Request):
         _local_only(request)
-        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
-        config = state_manager.get("config") if state_manager is not None else load_config(workspace=workspace)
+        workspace = Path(
+            state_manager.get("workspace") if state_manager is not None else Path.cwd()
+        ).resolve()
+        config = (
+            state_manager.get("config")
+            if state_manager is not None
+            else load_config(workspace=workspace)
+        )
         providers = config.get("providers", {})
         output = {}
         if isinstance(providers, dict):
@@ -143,7 +173,18 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
                     continue
                 output[provider_id] = {
                     key: value[key]
-                    for key in ("model", "base_url", "api_url", "context_size", "max_tokens", "reasoning_budget", "top_p", "timeout_seconds", "pending_poll_seconds", "pending_max_wait_seconds")
+                    for key in (
+                        "model",
+                        "base_url",
+                        "api_url",
+                        "context_size",
+                        "max_tokens",
+                        "reasoning_budget",
+                        "top_p",
+                        "timeout_seconds",
+                        "pending_poll_seconds",
+                        "pending_max_wait_seconds",
+                    )
                     if key in value
                 }
         return {
@@ -152,7 +193,9 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         }
 
     @app.put("/api/provider-config/{provider}")
-    async def update_provider_config(provider: str, request: Request, payload: ProviderConfigRequest):
+    async def update_provider_config(
+        provider: str, request: Request, payload: ProviderConfigRequest
+    ):
         _local_only(request)
         values = payload.model_dump(exclude_none=True)
         provider_id = provider.lower()
@@ -163,14 +206,13 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
             state_manager.set("config", config)
         return {"provider": provider_id, "config": _strip_secrets(values)}
 
-
     @app.get("/api/providers/models")
     async def provider_models(request: Request, provider: str, refresh: bool = False):
         _local_only(request)
-        workspace = Path(state_manager.get("workspace") if state_manager is not None else Path.cwd()).resolve()
-        catalog = ModelsDevCatalog(
-            StorageLayout(workspace).caches / "models-dev.json"
-        )
+        workspace = Path(
+            state_manager.get("workspace") if state_manager is not None else Path.cwd()
+        ).resolve()
+        catalog = ModelsDevCatalog(StorageLayout(workspace).caches / "models-dev.json")
         return {
             "provider": provider,
             "models": catalog.models(provider, refresh=refresh),

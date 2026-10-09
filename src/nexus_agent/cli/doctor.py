@@ -30,11 +30,12 @@ REPORT_DIR = Path("~/.nexus-agent/doctor").expanduser()
 @dataclass
 class HealthMetric:
     """A single measured health metric with metadata."""
+
     name: str
     value: str | float | int | bool
     unit: str = ""
-    status: str = "ok"           # ok | warn | error | info
-    ok: bool | None = None       # None = not applicable (info)
+    status: str = "ok"  # ok | warn | error | info
+    ok: bool | None = None  # None = not applicable (info)
 
     @classmethod
     def ok(cls, name: str, value: Any, unit: str = "") -> HealthMetric:
@@ -56,6 +57,7 @@ class HealthMetric:
 @dataclass
 class BenchmarkResult:
     """Results from a single benchmark run."""
+
     cold_start_ms: float = 0.0
     first_token_ms: float = 0.0
     model_path: str = ""
@@ -68,6 +70,7 @@ class BenchmarkResult:
 @dataclass
 class DoctorReport:
     """Complete doctor report."""
+
     timestamp: float = field(default_factory=time.time)
     system: list[HealthMetric] = field(default_factory=list)
     python_env: list[HealthMetric] = field(default_factory=list)
@@ -107,6 +110,7 @@ def check_system() -> list[HealthMetric]:
     # RAM
     try:
         import psutil
+
         vm = psutil.virtual_memory()
         total_gb = vm.total / (1024**3)
         avail_gb = vm.available / (1024**3)
@@ -146,9 +150,12 @@ def _detect_gpu() -> str | None:
     # NVIDIA via nvidia-smi
     try:
         import subprocess
+
         res = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if res.returncode == 0:
             lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
@@ -168,13 +175,14 @@ def _detect_gpu() -> str | None:
             nvmlInit,
             nvmlSystemGetDriverVersion,
         )
+
         nvmlInit()
         count = nvmlDeviceGetCount()
         if count > 0:
             names = []
             for i in range(count):
                 name = nvmlDeviceGetName(i)
-                names.append(name.decode() if hasattr(name, 'decode') else str(name))
+                names.append(name.decode() if hasattr(name, "decode") else str(name))
             return ", ".join(names)
     except ImportError:
         pass
@@ -185,7 +193,9 @@ def _detect_gpu() -> str | None:
     try:
         res = subprocess.run(
             ["rocm-smi", "--showproductname"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if res.returncode == 0 and res.stdout.strip():
             return "AMD GPU detected"
@@ -201,7 +211,9 @@ def _detect_gpu() -> str | None:
         try:
             res = subprocess.run(
                 ["dxdiag", "/t", os.devnull],
-                capture_output=True, text=True, timeout=3,
+                capture_output=True,
+                text=True,
+                timeout=3,
             )
             # dxdiag exists = DirectX available
             if res.returncode == 0 or res.returncode == 1:
@@ -240,7 +252,11 @@ def check_platform_services(workspace: Path | None = None) -> list[HealthMetric]
             if errors:
                 invalid.append(spec.id)
         value = f"{len(agents)} loaded"
-        metrics.append(HealthMetric.ok("Agent registry", value) if not invalid else HealthMetric.error("Agent registry", f"{invalid}"))
+        metrics.append(
+            HealthMetric.ok("Agent registry", value)
+            if not invalid
+            else HealthMetric.error("Agent registry", f"{invalid}")
+        )
     except (OSError, ValueError, RuntimeError) as exc:
         metrics.append(HealthMetric.error("Agent registry", str(exc)))
 
@@ -262,7 +278,9 @@ def check_platform_services(workspace: Path | None = None) -> list[HealthMetric]
     try:
         provider_ids = [item.id for item in all_providers()]
         active = load_config(workspace=ws).get("providers", {}).get("active", "local")
-        metrics.append(HealthMetric.ok("Provider catalog", f"{len(provider_ids)} providers; active={active}"))
+        metrics.append(
+            HealthMetric.ok("Provider catalog", f"{len(provider_ids)} providers; active={active}")
+        )
     except (OSError, ValueError, RuntimeError) as exc:
         metrics.append(HealthMetric.error("Provider catalog", str(exc)))
 
@@ -272,14 +290,23 @@ def check_platform_services(workspace: Path | None = None) -> list[HealthMetric]
         if result["valid"]:
             metrics.append(HealthMetric.ok("Audit chain", f"{result['records']} records"))
         else:
-            metrics.append(HealthMetric.error("Audit chain", f"invalid at line {result.get('line')} ({result.get('reason')})"))
+            metrics.append(
+                HealthMetric.error(
+                    "Audit chain", f"invalid at line {result.get('line')} ({result.get('reason')})"
+                )
+            )
     except (OSError, ValueError, RuntimeError) as exc:
         metrics.append(HealthMetric.error("Audit chain", str(exc)))
 
     try:
         config = load_config(workspace=ws)
         mcp_servers = config.get("mcp", {}).get("servers", [])
-        metrics.append(HealthMetric.info("MCP configuration", f"{len(mcp_servers) if isinstance(mcp_servers, list) else 0} configured servers"))
+        metrics.append(
+            HealthMetric.info(
+                "MCP configuration",
+                f"{len(mcp_servers) if isinstance(mcp_servers, list) else 0} configured servers",
+            )
+        )
     except (OSError, ValueError, RuntimeError) as exc:
         metrics.append(HealthMetric.error("MCP configuration", str(exc)))
 
@@ -348,9 +375,7 @@ class BenchmarkRunner:
         config = load_config()
 
         start = time.perf_counter()
-        provider = ProviderFactory.create_provider(
-            provider_name, config, model_path
-        )
+        provider = ProviderFactory.create_provider(provider_name, config, model_path)
         elapsed = (time.perf_counter() - start) * 1000
 
         return elapsed, provider
@@ -373,8 +398,7 @@ class BenchmarkRunner:
         messages = [Message(role=Role.USER, content=prompt)]
 
         supports_stream = getattr(provider, "supports_streaming", False) or (
-            hasattr(provider, "get_capabilities")
-            and provider.get_capabilities().supports_streaming
+            hasattr(provider, "get_capabilities") and provider.get_capabilities().supports_streaming
         )
 
         if supports_stream:
@@ -471,6 +495,7 @@ class BenchmarkRunner:
         import nexus_agent.memory.memory_manager
         import nexus_agent.session.manager
         import nexus_agent.tools.base
+
         nexus_agent.core.config.load_config()
 
         elapsed = (time.perf_counter() - start) * 1000
@@ -530,7 +555,9 @@ def print_report(report: DoctorReport) -> None:
     console = Console()
 
     console.print()
-    console.print(Panel.fit("[bold]🩺 Nexus Doctor — Full Diagnostic Report[/bold]", border_style="cyan"))
+    console.print(
+        Panel.fit("[bold]🩺 Nexus Doctor — Full Diagnostic Report[/bold]", border_style="cyan")
+    )
     console.print()
 
     # ── System ──
@@ -545,7 +572,9 @@ def print_report(report: DoctorReport) -> None:
     console.print()
 
     # ── Python Env ──
-    py_table = Table(title="Python Environment", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+    py_table = Table(
+        title="Python Environment", box=box.SIMPLE, title_style="bold cyan", show_header=False
+    )
     py_table.add_column("Package", style="cyan", width=22)
     py_table.add_column("Version", style="white")
     py_table.add_column("Status", width=8)
@@ -556,7 +585,9 @@ def print_report(report: DoctorReport) -> None:
     console.print()
 
     # ── NexusAgent Platform ──
-    platform_table = Table(title="NexusAgent Platform", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+    platform_table = Table(
+        title="NexusAgent Platform", box=box.SIMPLE, title_style="bold cyan", show_header=False
+    )
     platform_table.add_column("Component", style="cyan", width=22)
     platform_table.add_column("Status / Value", style="white")
     platform_table.add_column("Status", width=8)
@@ -572,7 +603,9 @@ def print_report(report: DoctorReport) -> None:
     # ── Benchmarks ──
     bench = report.benchmarks
     if bench:
-        bm_table = Table(title="Benchmarks", box=box.SIMPLE, title_style="bold cyan", show_header=False)
+        bm_table = Table(
+            title="Benchmarks", box=box.SIMPLE, title_style="bold cyan", show_header=False
+        )
         bm_table.add_column("Metric", style="cyan", width=22)
         bm_table.add_column("Value", style="white")
         bm_table.add_column("Status", width=8)

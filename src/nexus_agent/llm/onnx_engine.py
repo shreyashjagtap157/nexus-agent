@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Try to import onnxruntime_genai
 try:
     import onnxruntime_genai as og
+
     ONNX_AVAILABLE = True
 except ImportError:
     og = None
@@ -143,7 +144,9 @@ class OnnxEngine(LLMProvider):
         if self._model is None:
             raise RuntimeError("No ONNX model loaded. Call load_model() first.")
 
-    def _format_prompt(self, messages: list[Message], tools: list[ToolDefinition] | None = None) -> str:
+    def _format_prompt(
+        self, messages: list[Message], tools: list[ToolDefinition] | None = None
+    ) -> str:
         """Format message conversation list into standard ChatML or Instruct prompt text.
 
         Injects tool definitions and formatting rules if tools are present.
@@ -184,7 +187,9 @@ class OnnxEngine(LLMProvider):
 
         # Prefix system prompt
         if system_content or tool_system_prompt:
-            prompt = f"<|im_start|>system\n{system_content}{tool_system_prompt}<|im_end|>\n" + prompt
+            prompt = (
+                f"<|im_start|>system\n{system_content}{tool_system_prompt}<|im_end|>\n" + prompt
+            )
 
         # Append assistant trigger
         prompt += "<|im_start|>assistant\n"
@@ -348,7 +353,7 @@ class OnnxEngine(LLMProvider):
                 )
 
                 # Split content before the code block using match position
-                content_before = text[:match.start()].strip()
+                content_before = text[: match.start()].strip()
                 return content_before or None, [tool_call]
             elif isinstance(data, list):
                 logger.warning("Tool call returned as array format; expected single object")
@@ -360,12 +365,14 @@ class OnnxEngine(LLMProvider):
     def get_available_models(self) -> list[dict[str, Any]]:
         """List current loaded ONNX model."""
         if self._model_path:
-            return [{
-                "id": self._model_name_str,
-                "name": self._model_name_str,
-                "path": self._model_path,
-                "provider": "onnx",
-            }]
+            return [
+                {
+                    "id": self._model_name_str,
+                    "name": self._model_name_str,
+                    "path": self._model_path,
+                    "provider": "onnx",
+                }
+            ]
         return []
 
     def count_tokens(self, text: str) -> int:

@@ -1,4 +1,5 @@
 """SQLite-backed evidence ledger for research-mode teams."""
+
 from __future__ import annotations
 
 import hashlib
@@ -126,7 +127,9 @@ class ResearchStore:
                 (team_id, digest),
             ).fetchone()
             if row is None:
-                raise RuntimeError("Research source insert completed without a persisted source row.")
+                raise RuntimeError(
+                    "Research source insert completed without a persisted source row."
+                )
             return {
                 "source_id": int(row["source_id"]),
                 "duplicate": not inserted,
@@ -149,9 +152,7 @@ class ResearchStore:
             ).fetchone()
             if source is None:
                 raise ValueError("Unknown research source for this team.")
-            quote_present = int(
-                bool(quote.strip()) and quote.strip() in str(source["content"])
-            )
+            quote_present = int(bool(quote.strip()) and quote.strip() in str(source["content"]))
             cur = conn.execute(
                 """INSERT INTO research_claims(
                     team_id,statement,claim_type,created_by,status,created_at
@@ -199,9 +200,7 @@ class ResearchStore:
             ).fetchone()
             if source is None:
                 raise ValueError("Unknown research source for this team.")
-            quote_present = int(
-                bool(quote.strip()) and quote.strip() in str(source["content"])
-            )
+            quote_present = int(bool(quote.strip()) and quote.strip() in str(source["content"]))
             conn.execute(
                 """INSERT INTO research_claim_evidence(
                     claim_id,source_id,quote,quote_present
@@ -222,7 +221,9 @@ class ResearchStore:
                 "quote_present": bool(quote_present),
             }
 
-    def verify_claim(self, team_id: str, claim_id: int, verifier_id: str, note: str = "") -> dict[str, Any]:
+    def verify_claim(
+        self, team_id: str, claim_id: int, verifier_id: str, note: str = ""
+    ) -> dict[str, Any]:
         with self._connect() as conn:
             claim = conn.execute(
                 "SELECT * FROM research_claims WHERE claim_id=? AND team_id=?",
@@ -264,7 +265,12 @@ class ResearchStore:
                 (verdict, claim_id),
             )
             conn.commit()
-            return {"claim_id": claim_id, "verdict": verdict, "evidence_count": len(evidence), "source_ids": source_ids}
+            return {
+                "claim_id": claim_id,
+                "verdict": verdict,
+                "evidence_count": len(evidence),
+                "source_ids": source_ids,
+            }
 
     def record_conflict(
         self,
@@ -306,7 +312,9 @@ class ResearchStore:
     ) -> dict[str, Any]:
         normalized = status.strip().lower()
         if normalized not in {"adjudicated", "accepted_uncertainty", "rejected"}:
-            raise ValueError("Conflict status must be adjudicated, accepted_uncertainty or rejected.")
+            raise ValueError(
+                "Conflict status must be adjudicated, accepted_uncertainty or rejected."
+            )
         if not resolution.strip():
             raise ValueError("A conflict resolution explanation is required.")
         with self._connect() as conn:
@@ -335,10 +343,7 @@ class ResearchStore:
         return [dict(row) for row in rows]
 
     def unresolved_conflicts(self, team_id: str) -> list[dict[str, Any]]:
-        return [
-            item for item in self.conflicts(team_id)
-            if item["status"] == "unresolved"
-        ]
+        return [item for item in self.conflicts(team_id) if item["status"] == "unresolved"]
 
     def verified_claims(self, team_id: str) -> list[dict[str, Any]]:
         """Return only claims that passed the persisted verification gate, with provenance."""
@@ -462,9 +467,7 @@ class ResearchStore:
             "claim_count": total_claims,
             "verified_claims": verified_claims,
             "verified_claim_ids": [
-                int(row["claim_id"])
-                for row in claim_rows
-                if row["status"] == "verified"
+                int(row["claim_id"]) for row in claim_rows if row["status"] == "verified"
             ],
             "rejected_claims": rejected_claims,
             "unresolved_claims": unresolved_claims,
@@ -473,4 +476,3 @@ class ResearchStore:
             "conflicts": unresolved_conflicts,
             "passed": passed and not unresolved_conflicts,
         }
-

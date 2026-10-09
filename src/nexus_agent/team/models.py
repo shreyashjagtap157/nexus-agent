@@ -1,4 +1,5 @@
 """Typed models for NexusAgent multi-agent teams."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -90,16 +91,20 @@ class TeamConfig:
 
     def normalize(self) -> "TeamConfig":
         self.max_agents = max(1, min(int(self.max_agents), 64))
-        self.agent_ids = list(dict.fromkeys(
-            str(item).strip().lower() for item in self.agent_ids if str(item).strip()
-        ))[:64]
+        self.agent_ids = list(
+            dict.fromkeys(str(item).strip().lower() for item in self.agent_ids if str(item).strip())
+        )[:64]
         self.max_agents = max(self.max_agents, len(self.agent_ids))
         self.parallelism = max(1, min(int(self.parallelism), self.max_agents))
         self.max_iterations_per_agent = max(1, min(int(self.max_iterations_per_agent), 500))
         self.research_max_minutes = max(1, min(int(self.research_max_minutes), 525600))
         self.research_idle_rounds = max(1, min(int(self.research_idle_rounds), 20))
-        self.output_mode = self.output_mode if self.output_mode in {"chat", "file", "both"} else "chat"
-        self.output_format = self.output_format if self.output_format in {"markdown", "text", "json"} else "markdown"
+        self.output_mode = (
+            self.output_mode if self.output_mode in {"chat", "file", "both"} else "chat"
+        )
+        self.output_format = (
+            self.output_format if self.output_format in {"markdown", "text", "json"} else "markdown"
+        )
         self.research_collection = (
             self.research_collection
             if self.research_collection in {"bounded", "until_saturation", "continuous"}
@@ -112,6 +117,7 @@ class TeamConfig:
         )
         if self.mode == TeamMode.RESEARCH:
             from .research import policy as research_policy
+
             depth = research_policy(self.research_depth)
             self.max_agents = max(self.max_agents, min(int(depth["role_floor"]), 64))
         return self

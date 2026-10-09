@@ -303,150 +303,209 @@ impl eframe::App for NexusDesktop {
                 ui.heading("NexusAgent");
                 ui.label("Native Multi-Agent Command Center");
                 ui.separator();
-                ui.label(format!("{} • {}", self.status, if self.team_id.is_empty() { "no-team" } else { &self.team_id }));
+                ui.label(format!(
+                    "{} • {}",
+                    self.status,
+                    if self.team_id.is_empty() {
+                        "no-team"
+                    } else {
+                        &self.team_id
+                    }
+                ));
                 if self.audit.valid {
                     ui.colored_label(egui::Color32::from_rgb(134, 239, 172), "AUDIT VALID");
                 }
             });
         });
 
-        egui::SidePanel::left("control").resizable(true).show(ctx, |ui| {
-            ui.heading("Task Control");
-            ui.label("Local server");
-            ui.text_edit_singleline(&mut self.endpoint);
+        egui::SidePanel::left("control")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Task Control");
+                ui.label("Local server");
+                ui.text_edit_singleline(&mut self.endpoint);
 
-            ui.label("Goal");
-            ui.add(
-                egui::TextEdit::multiline(&mut self.goal)
-                    .desired_rows(7)
-                    .desired_width(f32::INFINITY),
-            );
+                ui.label("Goal");
+                ui.add(
+                    egui::TextEdit::multiline(&mut self.goal)
+                        .desired_rows(7)
+                        .desired_width(f32::INFINITY),
+                );
 
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_label("Workflow")
-                    .selected_text(if self.workflow.is_empty() { "Ad hoc" } else { self.workflow.as_str() })
+                ui.horizontal(|ui| {
+                    egui::ComboBox::from_label("Workflow")
+                        .selected_text(if self.workflow.is_empty() {
+                            "Ad hoc"
+                        } else {
+                            self.workflow.as_str()
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.workflow, String::new(), "Ad hoc");
+                            for workflow in &self.workflows {
+                                ui.selectable_value(
+                                    &mut self.workflow,
+                                    workflow.id.clone(),
+                                    workflow.name.clone(),
+                                );
+                            }
+                        });
+                });
+
+                egui::ComboBox::from_label("Mode")
+                    .selected_text(&self.mode)
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.workflow, String::new(), "Ad hoc");
-                        for workflow in &self.workflows {
+                        for mode in [
+                            "auto",
+                            "code",
+                            "research",
+                            "review",
+                            "analysis",
+                            "plan",
+                            "automation",
+                        ] {
+                            ui.selectable_value(&mut self.mode, mode.to_string(), mode);
+                        }
+                    });
+
+                egui::ComboBox::from_label("Research depth")
+                    .selected_text(&self.depth)
+                    .show_ui(ui, |ui| {
+                        for depth in [
+                            "glance",
+                            "surface",
+                            "shallow",
+                            "basic",
+                            "preliminary",
+                            "exploratory",
+                            "focused",
+                            "detailed",
+                            "deep",
+                            "very_deep",
+                            "comprehensive",
+                            "exhaustive",
+                            "atomic",
+                            "molecular",
+                            "cellular",
+                            "planetary",
+                            "stellar",
+                            "galactic",
+                            "cosmic",
+                            "universal",
+                            "maximal",
+                        ] {
+                            ui.selectable_value(&mut self.depth, depth.to_string(), depth);
+                        }
+                    });
+
+                egui::ComboBox::from_label("Collection")
+                    .selected_text(&self.collection)
+                    .show_ui(ui, |ui| {
+                        for value in ["bounded", "until_saturation", "continuous"] {
+                            ui.selectable_value(&mut self.collection, value.to_string(), value);
+                        }
+                    });
+
+                egui::ComboBox::from_label("Source strategy")
+                    .selected_text(&self.source_strategy)
+                    .show_ui(ui, |ui| {
+                        for value in ["user_only", "hybrid", "autonomous"] {
                             ui.selectable_value(
-                                &mut self.workflow,
-                                workflow.id.clone(),
-                                workflow.name.clone(),
+                                &mut self.source_strategy,
+                                value.to_string(),
+                                value,
                             );
                         }
                     });
-            });
 
-            egui::ComboBox::from_label("Mode")
-                .selected_text(&self.mode)
-                .show_ui(ui, |ui| {
-                    for mode in ["auto", "code", "research", "review", "analysis", "plan", "automation"] {
-                        ui.selectable_value(&mut self.mode, mode.to_string(), mode);
+                ui.add(egui::Slider::new(&mut self.max_agents, 1..=64).text("max agents"));
+                ui.add(egui::Slider::new(&mut self.parallelism, 1..=32).text("parallelism"));
+                ui.add(
+                    egui::Slider::new(&mut self.max_minutes, 1..=525600)
+                        .text("max research minutes"),
+                );
+                ui.add(egui::Slider::new(&mut self.idle_rounds, 1..=20).text("idle rounds"));
+
+                ui.label("Seed sources (one URL per line)");
+                ui.add(egui::TextEdit::multiline(&mut self.sources).desired_rows(3));
+
+                ui.label("Pinned agent IDs (comma separated)");
+                ui.text_edit_singleline(&mut self.pinned_agents);
+
+                ui.horizontal(|ui| {
+                    if ui.button("Start Team").clicked() {
+                        if self.goal.trim().is_empty() {
+                            self.errors.push("Enter a goal first.".into());
+                        } else {
+                            let _ = self.commands.send(Command::Start {
+                                endpoint: self.endpoint.clone(),
+                                goal: self.goal.clone(),
+                                workflow: self.workflow.clone(),
+                                mode: self.mode.clone(),
+                                effort: self.effort.clone(),
+                                depth: self.depth.clone(),
+                                collection: self.collection.clone(),
+                                source_strategy: self.source_strategy.clone(),
+                                max_minutes: self.max_minutes,
+                                idle_rounds: self.idle_rounds,
+                                sources: self
+                                    .sources
+                                    .lines()
+                                    .map(|s| s.trim())
+                                    .filter(|s| !s.is_empty())
+                                    .map(str::to_string)
+                                    .collect(),
+                                agents: self
+                                    .pinned_agents
+                                    .split(',')
+                                    .map(|s| s.trim())
+                                    .filter(|s| !s.is_empty())
+                                    .map(str::to_string)
+                                    .collect(),
+                                max_agents: self.max_agents,
+                                parallelism: self.parallelism,
+                                output_mode: self.output_mode.clone(),
+                                output_format: self.output_format.clone(),
+                            });
+                            self.status = "starting".into();
+                        }
+                    }
+                    if ui.button("Pause").clicked() {
+                        self.send_control(ControlAction::Pause);
+                    }
+                    if ui.button("Resume").clicked() {
+                        self.send_control(ControlAction::Resume);
+                    }
+                    if ui.button("Stop").clicked() {
+                        self.send_control(ControlAction::Stop);
                     }
                 });
 
-            egui::ComboBox::from_label("Research depth")
-                .selected_text(&self.depth)
-                .show_ui(ui, |ui| {
-                    for depth in [
-                        "glance", "surface", "shallow", "basic", "preliminary",
-                        "exploratory", "focused", "detailed", "deep", "very_deep",
-                        "comprehensive", "exhaustive", "atomic", "molecular",
-                        "cellular", "planetary", "stellar", "galactic", "cosmic",
-                        "universal", "maximal",
-                    ] {
-                        ui.selectable_value(&mut self.depth, depth.to_string(), depth);
-                    }
-                });
-
-            egui::ComboBox::from_label("Collection")
-                .selected_text(&self.collection)
-                .show_ui(ui, |ui| {
-                    for value in ["bounded", "until_saturation", "continuous"] {
-                        ui.selectable_value(&mut self.collection, value.to_string(), value);
-                    }
-                });
-
-            egui::ComboBox::from_label("Source strategy")
-                .selected_text(&self.source_strategy)
-                .show_ui(ui, |ui| {
-                    for value in ["user_only", "hybrid", "autonomous"] {
-                        ui.selectable_value(&mut self.source_strategy, value.to_string(), value);
-                    }
-                });
-
-            ui.add(egui::Slider::new(&mut self.max_agents, 1..=64).text("max agents"));
-            ui.add(egui::Slider::new(&mut self.parallelism, 1..=32).text("parallelism"));
-            ui.add(egui::Slider::new(&mut self.max_minutes, 1..=525600).text("max research minutes"));
-            ui.add(egui::Slider::new(&mut self.idle_rounds, 1..=20).text("idle rounds"));
-
-            ui.label("Seed sources (one URL per line)");
-            ui.add(egui::TextEdit::multiline(&mut self.sources).desired_rows(3));
-
-            ui.label("Pinned agent IDs (comma separated)");
-            ui.text_edit_singleline(&mut self.pinned_agents);
-
-            ui.horizontal(|ui| {
-                if ui.button("Start Team").clicked() {
-                    if self.goal.trim().is_empty() {
-                        self.errors.push("Enter a goal first.".into());
-                    } else {
-                        let _ = self.commands.send(Command::Start {
+                ui.horizontal(|ui| {
+                    if ui.button("Refresh").clicked() && !self.job_id.is_empty() {
+                        let _ = self.commands.send(Command::Refresh {
                             endpoint: self.endpoint.clone(),
-                            goal: self.goal.clone(),
-                            workflow: self.workflow.clone(),
-                            mode: self.mode.clone(),
-                            effort: self.effort.clone(),
-                            depth: self.depth.clone(),
-                            collection: self.collection.clone(),
-                            source_strategy: self.source_strategy.clone(),
-                            max_minutes: self.max_minutes,
-                            idle_rounds: self.idle_rounds,
-                            sources: self.sources.lines().map(|s| s.trim()).filter(|s| !s.is_empty()).map(str::to_string).collect(),
-                            agents: self.pinned_agents.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).map(str::to_string).collect(),
-                            max_agents: self.max_agents,
-                            parallelism: self.parallelism,
-                            output_mode: self.output_mode.clone(),
-                            output_format: self.output_format.clone(),
+                            job_id: self.job_id.clone(),
                         });
-                        self.status = "starting".into();
                     }
-                }
-                if ui.button("Pause").clicked() {
-                    self.send_control(ControlAction::Pause);
-                }
-                if ui.button("Resume").clicked() {
-                    self.send_control(ControlAction::Resume);
-                }
-                if ui.button("Stop").clicked() {
-                    self.send_control(ControlAction::Stop);
-                }
-            });
-
-            ui.horizontal(|ui| {
-                if ui.button("Refresh").clicked() && !self.job_id.is_empty() {
-                    let _ = self.commands.send(Command::Refresh {
-                        endpoint: self.endpoint.clone(),
-                        job_id: self.job_id.clone(),
-                    });
-                }
-                if ui.button("Verify Audit").clicked() {
-                    let _ = self.commands.send(Command::VerifyAudit {
-                        endpoint: self.endpoint.clone(),
-                    });
-                }
-            });
-
-            if !self.errors.is_empty() {
-                ui.separator();
-                ui.colored_label(egui::Color32::from_rgb(250, 165, 165), "Errors");
-                egui::ScrollArea::vertical().max_height(160.0).show(ui, |ui| {
-                    for error in self.errors.iter().rev().take(8) {
-                        ui.label(error);
+                    if ui.button("Verify Audit").clicked() {
+                        let _ = self.commands.send(Command::VerifyAudit {
+                            endpoint: self.endpoint.clone(),
+                        });
                     }
                 });
-            }
-        });
+
+                if !self.errors.is_empty() {
+                    ui.separator();
+                    ui.colored_label(egui::Color32::from_rgb(250, 165, 165), "Errors");
+                    egui::ScrollArea::vertical()
+                        .max_height(160.0)
+                        .show(ui, |ui| {
+                            for error in self.errors.iter().rev().take(8) {
+                                ui.label(error);
+                            }
+                        });
+                }
+            });
 
         egui::TopBottomPanel::bottom("tabs").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -462,95 +521,122 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            match self.view {
-                View::Overview => {
-                    ui.heading("Team Overview");
-                    ui.label(format!("Job: {}", if self.job_id.is_empty() { "—" } else { &self.job_id }));
-                    ui.label(format!("Agents: {} • Messages: {} • Events: {} • Artifacts: {}", self.agents.len(), self.messages.len(), self.events.len(), self.artifacts.len()));
-                    ui.separator();
-                    ui.heading("Integrated Result");
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.label(if self.synthesis.is_empty() {
-                            "Awaiting team completion.".to_string()
-                        } else {
-                            self.synthesis.clone()
+        egui::CentralPanel::default().show(ctx, |ui| match self.view {
+            View::Overview => {
+                ui.heading("Team Overview");
+                ui.label(format!(
+                    "Job: {}",
+                    if self.job_id.is_empty() {
+                        "—"
+                    } else {
+                        &self.job_id
+                    }
+                ));
+                ui.label(format!(
+                    "Agents: {} • Messages: {} • Events: {} • Artifacts: {}",
+                    self.agents.len(),
+                    self.messages.len(),
+                    self.events.len(),
+                    self.artifacts.len()
+                ));
+                ui.separator();
+                ui.heading("Integrated Result");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.label(if self.synthesis.is_empty() {
+                        "Awaiting team completion.".to_string()
+                    } else {
+                        self.synthesis.clone()
+                    });
+                });
+                ui.separator();
+                ui.heading("Audit Integrity");
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(if self.audit.valid {
+                        "CHAIN VALID"
+                    } else {
+                        "CHAIN UNVERIFIED"
+                    });
+                    ui.label(format!("records: {}", self.audit.records));
+                    if !self.audit.last_hash.is_empty() {
+                        ui.label(format!(
+                            "hash: {}…",
+                            &self.audit.last_hash[..self.audit.last_hash.len().min(20)]
+                        ));
+                    }
+                });
+            }
+            View::Agents => {
+                ui.heading("Agent Topology");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for agent in &self.agents {
+                        ui.group(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.strong(&agent.name);
+                                ui.separator();
+                                ui.label(&agent.profession);
+                                ui.separator();
+                                ui.label(&agent.state);
+                            });
+                            ui.label(format!("role: {} • {}", agent.agent_id, agent.model_role));
+                            ui.label(&agent.mission);
+                            if let Some(error) = &agent.error {
+                                ui.colored_label(egui::Color32::from_rgb(250, 165, 165), error);
+                            }
                         });
-                    });
-                    ui.separator();
-                    ui.heading("Audit Integrity");
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(if self.audit.valid { "CHAIN VALID" } else { "CHAIN UNVERIFIED" });
-                        ui.label(format!("records: {}", self.audit.records));
-                        if !self.audit.last_hash.is_empty() {
-                            ui.label(format!("hash: {}…", &self.audit.last_hash[..self.audit.last_hash.len().min(20)]));
-                        }
-                    });
-                }
-                View::Agents => {
-                    ui.heading("Agent Topology");
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for agent in &self.agents {
-                            ui.group(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.strong(&agent.name);
-                                    ui.separator();
-                                    ui.label(&agent.profession);
-                                    ui.separator();
-                                    ui.label(&agent.state);
-                                });
-                                ui.label(format!("role: {} • {}", agent.agent_id, agent.model_role));
-                                ui.label(&agent.mission);
-                                if let Some(error) = &agent.error {
-                                    ui.colored_label(egui::Color32::from_rgb(250, 165, 165), error);
-                                }
-                            });
-                        }
-                    });
-                }
-                View::Messages => {
-                    ui.heading("Peer Communication");
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for message in self.messages.iter().rev() {
-                            let body = message.payload.get("message").and_then(|x| x.as_str()).unwrap_or_else(|| message.payload.to_string().as_str()).to_string();
-                            ui.group(|ui| {
-                                ui.label(format!(
-                                    "{} → {} • {}",
-                                    message.sender_id,
-                                    message.recipient_id.as_deref().unwrap_or("TEAM"),
-                                    message.message_type
-                                ));
-                                ui.label(body);
-                            });
-                        }
-                    });
-                }
-                View::Activity => {
-                    ui.heading("Execution Activity");
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for event in self.events.iter().rev() {
-                            ui.group(|ui| {
-                                ui.label(format!(
-                                    "{}{}",
-                                    event.event_type,
-                                    event.agent_id.as_deref().map(|id| format!(" • {id}")).unwrap_or_default()
-                                ));
-                                ui.label(event.payload.to_string());
-                            });
-                        }
-                    });
-                }
-                View::Artifacts => {
-                    ui.heading("Artifacts");
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for artifact in &self.artifacts {
-                            ui.group(|ui| {
-                                ui.label(&artifact.name);
-                                ui.label(format!("{} bytes", artifact.size));
-                            });
-                        }
-                    });
-                }
+                    }
+                });
+            }
+            View::Messages => {
+                ui.heading("Peer Communication");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for message in self.messages.iter().rev() {
+                        let body = message
+                            .payload
+                            .get("message")
+                            .and_then(|x| x.as_str())
+                            .unwrap_or_else(|| message.payload.to_string().as_str())
+                            .to_string();
+                        ui.group(|ui| {
+                            ui.label(format!(
+                                "{} → {} • {}",
+                                message.sender_id,
+                                message.recipient_id.as_deref().unwrap_or("TEAM"),
+                                message.message_type
+                            ));
+                            ui.label(body);
+                        });
+                    }
+                });
+            }
+            View::Activity => {
+                ui.heading("Execution Activity");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for event in self.events.iter().rev() {
+                        ui.group(|ui| {
+                            ui.label(format!(
+                                "{}{}",
+                                event.event_type,
+                                event
+                                    .agent_id
+                                    .as_deref()
+                                    .map(|id| format!(" • {id}"))
+                                    .unwrap_or_default()
+                            ));
+                            ui.label(event.payload.to_string());
+                        });
+                    }
+                });
+            }
+            View::Artifacts => {
+                ui.heading("Artifacts");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for artifact in &self.artifacts {
+                        ui.group(|ui| {
+                            ui.label(&artifact.name);
+                            ui.label(format!("{} bytes", artifact.size));
+                        });
+                    }
+                });
             }
         });
 
@@ -562,7 +648,9 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
     let client = match Client::builder().timeout(Duration::from_secs(120)).build() {
         Ok(value) => value,
         Err(error) => {
-            let _ = tx.send(Event::Error(format!("HTTP client initialization failed: {error}")));
+            let _ = tx.send(Event::Error(format!(
+                "HTTP client initialization failed: {error}"
+            )));
             return;
         }
     };
@@ -618,7 +706,11 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
 
                 match result {
                     Ok(value) => {
-                        let job_id = value.get("job_id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                        let job_id = value
+                            .get("job_id")
+                            .and_then(|x| x.as_str())
+                            .unwrap_or("")
+                            .to_string();
                         if job_id.is_empty() {
                             let _ = tx.send(Event::Error("Team API returned no job_id.".into()));
                             continue;
@@ -631,14 +723,22 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
                     }
                 }
             }
-            Command::Control { endpoint, team_id, action } => {
+            Command::Control {
+                endpoint,
+                team_id,
+                action,
+            } => {
                 let action_name = match action {
                     ControlAction::Pause => "pause",
                     ControlAction::Resume => "resume",
                     ControlAction::Stop => "stop",
                 };
                 let result = client
-                    .post(format!("{}/api/teams/{}/control", endpoint.trim_end_matches('/'), team_id))
+                    .post(format!(
+                        "{}/api/teams/{}/control",
+                        endpoint.trim_end_matches('/'),
+                        team_id
+                    ))
                     .json(&serde_json::json!({ "action": action_name }))
                     .send()
                     .and_then(|response| response.error_for_status());
@@ -658,8 +758,12 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
                 {
                     Ok(value) => {
                         let workflows = serde_json::from_value::<Vec<Workflow>>(
-                            value.get("workflows").cloned().unwrap_or_else(|| serde_json::json!([]))
-                        ).unwrap_or_default();
+                            value
+                                .get("workflows")
+                                .cloned()
+                                .unwrap_or_else(|| serde_json::json!([])),
+                        )
+                        .unwrap_or_default();
                         let _ = tx.send(Event::Workflows(workflows));
                     }
                     Err(error) => {
@@ -669,15 +773,23 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
             }
             Command::LoadArtifacts { endpoint, team_id } => {
                 match client
-                    .get(format!("{}/api/teams/{}/artifacts", endpoint.trim_end_matches('/'), team_id))
+                    .get(format!(
+                        "{}/api/teams/{}/artifacts",
+                        endpoint.trim_end_matches('/'),
+                        team_id
+                    ))
                     .send()
                     .and_then(|response| response.error_for_status())
                     .and_then(|response| response.json::<serde_json::Value>())
                 {
                     Ok(value) => {
                         let artifacts = serde_json::from_value::<Vec<Artifact>>(
-                            value.get("artifacts").cloned().unwrap_or_else(|| serde_json::json!([]))
-                        ).unwrap_or_default();
+                            value
+                                .get("artifacts")
+                                .cloned()
+                                .unwrap_or_else(|| serde_json::json!([])),
+                        )
+                        .unwrap_or_default();
                         let _ = tx.send(Event::Artifacts(artifacts));
                     }
                     Err(error) => {
@@ -687,7 +799,10 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
             }
             Command::VerifyAudit { endpoint } => {
                 match client
-                    .get(format!("{}/api/audit/verify", endpoint.trim_end_matches('/')))
+                    .get(format!(
+                        "{}/api/audit/verify",
+                        endpoint.trim_end_matches('/')
+                    ))
                     .send()
                     .and_then(|response| response.error_for_status())
                     .and_then(|response| response.json::<AuditStatus>())
@@ -696,7 +811,8 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
                         let _ = tx.send(Event::Audit(value));
                     }
                     Err(error) => {
-                        let _ = tx.send(Event::Error(format!("Audit verification failed: {error}")));
+                        let _ =
+                            tx.send(Event::Error(format!("Audit verification failed: {error}")));
                     }
                 }
             }
@@ -707,22 +823,41 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
 fn poll_team(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: &str) {
     for _ in 0..240 {
         match client
-            .get(format!("{}/api/teams/{}", endpoint.trim_end_matches('/'), job_id))
+            .get(format!(
+                "{}/api/teams/{}",
+                endpoint.trim_end_matches('/'),
+                job_id
+            ))
             .send()
             .and_then(|response| response.error_for_status())
             .and_then(|response| response.json::<TeamSnapshot>())
         {
             Ok(status) => {
-                let terminal = matches!(status.status.as_str(), "completed" | "needs_review" | "failed" | "cancelled");
+                let terminal = matches!(
+                    status.status.as_str(),
+                    "completed" | "needs_review" | "failed" | "cancelled"
+                );
                 if let Some(team_id) = status.team_id.clone() {
                     let _ = tx.send(Event::Artifacts(Vec::new()));
                     let _ = client
-                        .get(format!("{}/api/teams/{}/artifacts", endpoint.trim_end_matches('/'), team_id))
+                        .get(format!(
+                            "{}/api/teams/{}/artifacts",
+                            endpoint.trim_end_matches('/'),
+                            team_id
+                        ))
                         .send()
                         .and_then(|response| response.error_for_status())
                         .and_then(|response| response.json::<serde_json::Value>())
                         .ok()
-                        .and_then(|value| serde_json::from_value::<Vec<Artifact>>(value.get("artifacts").cloned().unwrap_or_else(|| serde_json::json!([]))).ok())
+                        .and_then(|value| {
+                            serde_json::from_value::<Vec<Artifact>>(
+                                value
+                                    .get("artifacts")
+                                    .cloned()
+                                    .unwrap_or_else(|| serde_json::json!([])),
+                            )
+                            .ok()
+                        })
                         .map(|artifacts| tx.send(Event::Artifacts(artifacts)));
                 }
                 let _ = tx.send(Event::Status(status));
@@ -737,7 +872,9 @@ fn poll_team(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: &str) 
         }
         thread::sleep(Duration::from_secs(1));
     }
-    let _ = tx.send(Event::Error("Team polling timed out after 240 seconds.".into()));
+    let _ = tx.send(Event::Error(
+        "Team polling timed out after 240 seconds.".into(),
+    ));
 }
 
 fn main() -> eframe::Result {

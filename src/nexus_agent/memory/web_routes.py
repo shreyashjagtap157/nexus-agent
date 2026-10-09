@@ -1,4 +1,5 @@
 """Web API for explicit scoped memory."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -42,7 +43,9 @@ def _memory(state_manager: Any, payload: MemoryStoreRequest | MemorySearchReques
 def _require_local(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Scoped memory access is restricted to local clients.")
+        raise HTTPException(
+            status_code=403, detail="Scoped memory access is restricted to local clients."
+        )
 
 
 def register_memory_routes(app: Any, state_manager: Any) -> None:
@@ -56,13 +59,18 @@ def register_memory_routes(app: Any, state_manager: Any) -> None:
         limit: int = 20,
     ):
         _require_local(request)
+
         class Payload:
             agent_id = None
             team_id = None
             session_id = None
+
         memory = _memory(state_manager, Payload())
         try:
-            return {"scope": scope.value, "results": memory.search(query, scopes=[scope], limit=max(1, min(limit, 200)))}
+            return {
+                "scope": scope.value,
+                "results": memory.search(query, scopes=[scope], limit=max(1, min(limit, 200))),
+            }
         finally:
             memory.close()
 
@@ -99,10 +107,12 @@ def register_memory_routes(app: Any, state_manager: Any) -> None:
     @router.get("/api/memory/scoped/stats")
     async def scoped_stats(request: Request):
         _require_local(request)
+
         class Payload:
             agent_id = None
             team_id = None
             session_id = None
+
         memory = _memory(state_manager, Payload())
         try:
             return memory.stats()

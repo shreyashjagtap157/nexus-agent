@@ -57,10 +57,10 @@ class BatchEditTool(Tool):
                         "replacement_content": {
                             "type": "string",
                             "description": "The block of code to replace the target content with.",
-                        }
+                        },
                     },
                     "required": ["path", "target_content", "replacement_content"],
-                }
+                },
             }
         }
 
@@ -79,7 +79,11 @@ class BatchEditTool(Tool):
         for edit in edits:
             if not isinstance(edit, dict):
                 return "Error: Each edit must be a dictionary with path, target_content, and replacement_content."
-            if "path" not in edit or "target_content" not in edit or "replacement_content" not in edit:
+            if (
+                "path" not in edit
+                or "target_content" not in edit
+                or "replacement_content" not in edit
+            ):
                 return "Error: Each edit must have path, target_content, and replacement_content fields."
 
         in_memory_files: dict[Path, str] = {}
@@ -147,10 +151,12 @@ class BatchEditTool(Tool):
 
             summary = []
             for path in completed_paths:
-                summary.append(f"  - Clean replacement completed: {path.relative_to(self.workspace)}")
+                summary.append(
+                    f"  - Clean replacement completed: {path.relative_to(self.workspace)}"
+                )
             return (
-                f"✅ Atomic batch transaction succeeded! Successfully modified {len(completed_paths)} files:\n" +
-                "\n".join(summary)
+                f"✅ Atomic batch transaction succeeded! Successfully modified {len(completed_paths)} files:\n"
+                + "\n".join(summary)
             )
 
         except (ValueError, FileNotFoundError, OSError) as e:

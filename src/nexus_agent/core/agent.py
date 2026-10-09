@@ -51,15 +51,17 @@ logger = logging.getLogger(__name__)
 
 class AgentMode(str, Enum):
     """Agent operating modes."""
-    AUTO = "auto"       # Agent decides when to plan vs execute
-    PLAN = "plan"       # Read-only analysis and planning
-    BUILD = "build"     # Full read/write execution
-    REVIEW = "review"   # Code review mode
+
+    AUTO = "auto"  # Agent decides when to plan vs execute
+    PLAN = "plan"  # Read-only analysis and planning
+    BUILD = "build"  # Full read/write execution
+    REVIEW = "review"  # Code review mode
     RESEARCH = "research"  # Evidence-first source gathering and verification
 
 
 class AgentState(str, Enum):
     """Current state of the agent loop."""
+
     IDLE = "idle"
     THINKING = "thinking"
     TOOL_CALLING = "tool_calling"
@@ -72,17 +74,20 @@ class AgentState(str, Enum):
 @runtime_checkable
 class _ToolLike(Protocol):
     """Protocol for tool-like objects used by the agent."""
+
     name: str
     description: str
     parameters: dict[str, Any]
     required_params: list[str]
     permission_level: str
+
     def execute(self, **kwargs: Any) -> Any: ...
 
 
 @dataclass
 class ToolResult:
     """Result of a tool execution."""
+
     tool_call_id: str
     tool_name: str
     output: str
@@ -93,6 +98,7 @@ class ToolResult:
 
 class AgentEventType(str, Enum):
     """Agent event types for UI updates."""
+
     STATE_CHANGE = "state_change"
     THINKING = "thinking"
     CONTENT = "content"
@@ -107,6 +113,7 @@ class AgentEventType(str, Enum):
 @dataclass
 class AgentEvent:
     """Event emitted by the agent for UI updates."""
+
     type: AgentEventType
     data: Any = None
     timestamp: float = field(default_factory=time.time)
@@ -118,6 +125,7 @@ class AgentLoopConfig:
 
     All parameters have sensible defaults so minimal config is needed.
     """
+
     mode: AgentMode = AgentMode.AUTO
     workspace: Path | None = None
     max_iterations: int = 50
@@ -275,10 +283,16 @@ Current workspace: {workspace}
 
         effort_map = self.EFFORT_CONFIG.get(self.effort_level, self.EFFORT_CONFIG["medium"])
         # Cap the requested effort by the detected tier's max_iterations
-        tier_limit = self.EFFORT_CONFIG.get(detected_tier, self.EFFORT_CONFIG["medium"])["max_iterations"]
+        tier_limit = self.EFFORT_CONFIG.get(detected_tier, self.EFFORT_CONFIG["medium"])[
+            "max_iterations"
+        ]
         self.max_iterations = min(effort_map["max_iterations"], tier_limit)
         self.temperature = effort_map["temperature"]
-        self.max_tokens = min(effort_map["max_tokens"], cfg.max_tokens) if cfg.max_tokens != self.max_tokens else effort_map["max_tokens"]
+        self.max_tokens = (
+            min(effort_map["max_tokens"], cfg.max_tokens)
+            if cfg.max_tokens != self.max_tokens
+            else effort_map["max_tokens"]
+        )
         self._reflection_enabled = effort_map["reflection"]
         self._multi_pass_enabled = effort_map.get("multi_pass", False)
 
@@ -298,6 +312,7 @@ Current workspace: {workspace}
         # Core Architecture telemetry & reflection
         from nexus_agent.core.nla_telemetry import NLATelemetry as _NLATelemetry
         from nexus_agent.core.reflection import ReflectionEngine as _ReflectionEngine
+
         self.nla_telemetry = _NLATelemetry(self.session_id, self.workspace)
         self.reflection_engine = _ReflectionEngine(provider=self.provider)
 
@@ -324,12 +339,14 @@ Current workspace: {workspace}
         """Register tools and create LLM-compatible definitions."""
         for tool in self.tools:
             self._tool_map[tool.name] = tool
-            self._tool_definitions.append(ToolDefinition(
-                name=tool.name,
-                description=tool.description,
-                parameters=tool.parameters,
-                required_params=tool.required_params,
-            ))
+            self._tool_definitions.append(
+                ToolDefinition(
+                    name=tool.name,
+                    description=tool.description,
+                    parameters=tool.parameters,
+                    required_params=tool.required_params,
+                )
+            )
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt with workspace context."""
@@ -340,6 +357,7 @@ Current workspace: {workspace}
         # prompt-injection-guarded).
         try:
             from nexus_agent.core.project_context import ProjectContextLoader
+
             loader = ProjectContextLoader(self.workspace)
             project_ctx = loader.load()
             if project_ctx:
@@ -359,6 +377,7 @@ Current workspace: {workspace}
         elif self.mode == AgentMode.RESEARCH:
             try:
                 from nexus_agent.team.research import policy as research_policy
+
                 depth = research_policy(self.research_depth)
                 prompt += (
                     "\n\n## Mode: RESEARCH\n"
@@ -451,15 +470,17 @@ Current workspace: {workspace}
         self._trace_event(event_type.value, data)
         return event
 
-
     def _get_tool_definitions(self) -> list[ToolDefinition] | None:
         """Get tool definitions based on current mode."""
         disabled = getattr(self, "disabled_tools", set())
         if self.mode == AgentMode.PLAN:
             # Plan mode: only read-only tools
-            return [td for td in self._tool_definitions
-                    if self._tool_map[td.name].permission_level == "read-only"
-                    and td.name not in disabled]
+            return [
+                td
+                for td in self._tool_definitions
+                if self._tool_map[td.name].permission_level == "read-only"
+                and td.name not in disabled
+            ]
 
         if not self._tool_definitions:
             return None
@@ -555,7 +576,7 @@ Current workspace: {workspace}
             system_prompt = self._build_system_prompt()
             self.messages.append(Message(role=Role.SYSTEM, content=system_prompt))
 
-        truncated_input = user_input[:self.max_input_chars]
+        truncated_input = user_input[: self.max_input_chars]
         if self._multi_pass_enabled:
             planning_prompt = f"[Task]\n{truncated_input}\n\n[Plan-First]\nBefore starting, create a clear step-by-step plan for how you will approach this task. Break it down into phases: context gathering, implementation, verification. Then execute each phase."
             self.messages.append(Message(role=Role.USER, content=planning_prompt))
@@ -573,65 +594,80 @@ Current workspace: {workspace}
             self.nla_telemetry.log_iteration(
                 thought_process=response.content or "No thought content",
                 strategy_selected="tool_calling" if response.has_tool_calls else "finish",
-                tools_considered=[tc.name for tc in response.tool_calls] if response.has_tool_calls else [],
-                confidence_score=self.DEFAULT_TOOL_CONFIDENCE if response.has_tool_calls else self.DEFAULT_FINISH_CONFIDENCE,
-                alternative_paths=[]
+                tools_considered=[tc.name for tc in response.tool_calls]
+                if response.has_tool_calls
+                else [],
+                confidence_score=self.DEFAULT_TOOL_CONFIDENCE
+                if response.has_tool_calls
+                else self.DEFAULT_FINISH_CONFIDENCE,
+                alternative_paths=[],
             )
         except (OSError, ValueError) as telemetry_err:
             logger.warning(f"Telemetry log failed: {telemetry_err}")
 
-    def _process_tool_calls(
-        self, tool_calls: list[ToolCall]
-    ) -> Iterator[AgentEvent]:
+    def _process_tool_calls(self, tool_calls: list[ToolCall]) -> Iterator[AgentEvent]:
         with self._lock:
             self.state = AgentState.TOOL_CALLING
 
         for tool_call in tool_calls:
-            yield self._emit_event("tool_call", {
-                "id": tool_call.id,
-                "name": tool_call.name,
-                "arguments": tool_call.arguments,
-            })
+            yield self._emit_event(
+                "tool_call",
+                {
+                    "id": tool_call.id,
+                    "name": tool_call.name,
+                    "arguments": tool_call.arguments,
+                },
+            )
 
             with self._lock:
                 self.state = AgentState.EXECUTING
             result = self._execute_tool(tool_call)
 
-            yield self._emit_event("tool_result", {
-                "id": result.tool_call_id,
-                "name": result.tool_name,
-                "output": result.output[:self.DISPLAY_TRUNCATE_LENGTH],
-                "success": result.success,
-                "error": result.error,
-            })
+            yield self._emit_event(
+                "tool_result",
+                {
+                    "id": result.tool_call_id,
+                    "name": result.tool_name,
+                    "output": result.output[: self.DISPLAY_TRUNCATE_LENGTH],
+                    "success": result.success,
+                    "error": result.error,
+                },
+            )
 
             with self._lock:
-                self.messages.append(Message(
-                    role=Role.TOOL,
-                    content=result.output if result.success else f"Error: {result.error}",
-                    tool_call_id=result.tool_call_id,
-                    name=result.tool_name,
-                ))
+                self.messages.append(
+                    Message(
+                        role=Role.TOOL,
+                        content=result.output if result.success else f"Error: {result.error}",
+                        tool_call_id=result.tool_call_id,
+                        name=result.tool_name,
+                    )
+                )
 
         with self._lock:
             if len(self.messages) > self.WARN_MESSAGE_THRESHOLD:
-                logger.warning(f"Conversation has {len(self.messages)} messages — consider /compact")
+                logger.warning(
+                    f"Conversation has {len(self.messages)} messages — consider /compact"
+                )
 
-    def _handle_reflection(self, user_input: str, response: LLMResponse) -> tuple[bool, list[AgentEvent]]:
+    def _handle_reflection(
+        self, user_input: str, response: LLMResponse
+    ) -> tuple[bool, list[AgentEvent]]:
         if not self._reflection_enabled or not response.content:
             return False, []
         events = [self._emit_event("thinking", "Performing high-effort reflection pass...")]
         critique = self.reflection_engine.evaluate(
-            user_request=user_input,
-            agent_output=response.content
+            user_request=user_input, agent_output=response.content
         )
         if not critique.approved:
-            events.append(self._emit_event("thinking", f"Reflection failed (Score: {critique.score}). Injecting self-correction prompt..."))
+            events.append(
+                self._emit_event(
+                    "thinking",
+                    f"Reflection failed (Score: {critique.score}). Injecting self-correction prompt...",
+                )
+            )
             with self._lock:
-                self.messages.append(Message(
-                    role=Role.USER,
-                    content=critique.to_feedback_prompt()
-                ))
+                self.messages.append(Message(role=Role.USER, content=critique.to_feedback_prompt()))
             return True, events
         return False, events
 
@@ -649,12 +685,18 @@ Current workspace: {workspace}
             policy=policy,
             on_retry=lambda attempt, delay, exc: logger.info(
                 "LLM call retry %d/%d after %.1fs: %s",
-                attempt, policy.max_attempts, delay, exc,
+                attempt,
+                policy.max_attempts,
+                delay,
+                exc,
             ),
         )
         if stats.attempts > 1:
-            logger.info("LLM call succeeded after %d attempts (%.1fs total sleep)",
-                        stats.attempts, stats.total_sleep_s)
+            logger.info(
+                "LLM call succeeded after %d attempts (%.1fs total sleep)",
+                stats.attempts,
+                stats.total_sleep_s,
+            )
         self._record_usage(response)
         return response
 
@@ -674,9 +716,7 @@ Current workspace: {workspace}
         provider_name = ""
         model_name = ""
         if provider_obj is not None:
-            provider_name = (
-                getattr(provider_obj, "name", "") or type(provider_obj).__name__
-            )
+            provider_name = getattr(provider_obj, "name", "") or type(provider_obj).__name__
             model_name = getattr(provider_obj, "model_name", "") or ""
         try:
             self.usage_tracker.record(
@@ -694,7 +734,9 @@ Current workspace: {workspace}
         if promoted_from_auto:
             self.mode = AgentMode.RESEARCH
             self._ensure_research_tools()
-            yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
+            yield self._emit_event(
+                "state_change", {"mode": "research", "reason": "research_intent_detected"}
+            )
         elif self.mode == AgentMode.RESEARCH:
             self._ensure_research_tools()
         truncated_input = self._init_conversation(user_input)
@@ -723,11 +765,13 @@ Current workspace: {workspace}
             self._log_iteration_telemetry(response)
 
             with self._lock:
-                self.messages.append(Message(
-                    role=Role.ASSISTANT,
-                    content=response.content,
-                    tool_calls=response.tool_calls,
-                ))
+                self.messages.append(
+                    Message(
+                        role=Role.ASSISTANT,
+                        content=response.content,
+                        tool_calls=response.tool_calls,
+                    )
+                )
 
             if response.has_tool_calls:
                 yield from self._process_tool_calls(response.tool_calls)
@@ -743,14 +787,16 @@ Current workspace: {workspace}
                         "Research quality guard: no source evidence recorded; gathering sources before completion.",
                     )
                     with self._lock:
-                        self.messages.append(Message(
-                            role=Role.USER,
-                            content=(
-                                "Do not finish this research task yet. You have not recorded any source evidence. "
-                                "Use web/source tools, record exact source snapshots and supporting quotations in the "
-                                "research ledger, verify the resulting claims, then answer."
-                            ),
-                        ))
+                        self.messages.append(
+                            Message(
+                                role=Role.USER,
+                                content=(
+                                    "Do not finish this research task yet. You have not recorded any source evidence. "
+                                    "Use web/source tools, record exact source snapshots and supporting quotations in the "
+                                    "research ledger, verify the resulting claims, then answer."
+                                ),
+                            )
+                        )
                     continue
 
             rework_needed, reflection_events = self._handle_reflection(truncated_input, response)
@@ -776,14 +822,17 @@ Current workspace: {workspace}
             self.mode = AgentMode.AUTO
         with self._lock:
             self.state = AgentState.DONE
-        yield self._emit_event("done", {
-            "iterations": self.iteration_count,
-            "max_reached": True,
-        })
+        yield self._emit_event(
+            "done",
+            {
+                "iterations": self.iteration_count,
+                "max_reached": True,
+            },
+        )
         self._flush_trace_buffer()
 
     def _run_streaming(self) -> Iterator[AgentEvent]:
-        if not getattr(self.provider, 'supports_streaming', False):
+        if not getattr(self.provider, "supports_streaming", False):
             logger.debug("Provider doesn't support streaming, falling back to non-streaming")
             response = self.provider.chat_completion(
                 messages=self.messages,
@@ -821,7 +870,9 @@ Current workspace: {workspace}
         if promoted_from_auto:
             self.mode = AgentMode.RESEARCH
             self._ensure_research_tools()
-            yield self._emit_event("state_change", {"mode": "research", "reason": "research_intent_detected"})
+            yield self._emit_event(
+                "state_change", {"mode": "research", "reason": "research_intent_detected"}
+            )
         elif self.mode == AgentMode.RESEARCH:
             self._ensure_research_tools()
         truncated_input = self._init_conversation(user_input)
@@ -852,29 +903,42 @@ Current workspace: {workspace}
                 yield self._emit_event("content_complete", self._stream_content)
 
             self._log_iteration_telemetry(
-                type('LLMResponse', (), {
-                    'content': self._stream_content,
-                    'has_tool_calls': bool(self._stream_tool_calls),
-                    'tool_calls': self._stream_tool_calls,
-                })()
+                type(
+                    "LLMResponse",
+                    (),
+                    {
+                        "content": self._stream_content,
+                        "has_tool_calls": bool(self._stream_tool_calls),
+                        "tool_calls": self._stream_tool_calls,
+                    },
+                )()
             )
 
             with self._lock:
-                self.messages.append(Message(
-                    role=Role.ASSISTANT,
-                    content=self._stream_content or None,
-                    tool_calls=self._stream_tool_calls or None,
-                ))
+                self.messages.append(
+                    Message(
+                        role=Role.ASSISTANT,
+                        content=self._stream_content or None,
+                        tool_calls=self._stream_tool_calls or None,
+                    )
+                )
 
             if self._stream_tool_calls:
                 yield from self._process_tool_calls(self._stream_tool_calls)
                 continue
 
-            rework_needed, reflection_events = self._handle_reflection(truncated_input, type('LLMResponse', (), {
-                'content': self._stream_content,
-                'has_tool_calls': False,
-                'tool_calls': [],
-            })())
+            rework_needed, reflection_events = self._handle_reflection(
+                truncated_input,
+                type(
+                    "LLMResponse",
+                    (),
+                    {
+                        "content": self._stream_content,
+                        "has_tool_calls": False,
+                        "tool_calls": [],
+                    },
+                )(),
+            )
             yield from reflection_events
             if rework_needed:
                 continue
@@ -904,15 +968,20 @@ Current workspace: {workspace}
                 if self._stream_content:
                     yield self._emit_event("content_complete", self._stream_content)
                     with self._lock:
-                        self.messages.append(Message(
-                            role=Role.ASSISTANT,
-                            content=self._stream_content or None,
-                        ))
+                        self.messages.append(
+                            Message(
+                                role=Role.ASSISTANT,
+                                content=self._stream_content or None,
+                            )
+                        )
 
             self.state = AgentState.DONE
-            yield self._emit_event("done", {
-                "iterations": self.iteration_count,
-            })
+            yield self._emit_event(
+                "done",
+                {
+                    "iterations": self.iteration_count,
+                },
+            )
             if promoted_from_auto:
                 self.mode = AgentMode.AUTO
             self._flush_trace_buffer()
@@ -921,20 +990,36 @@ Current workspace: {workspace}
         if promoted_from_auto:
             self.mode = AgentMode.AUTO
         self.state = AgentState.DONE
-        yield self._emit_event("done", {
-            "iterations": self.iteration_count,
-            "max_reached": True,
-        })
+        yield self._emit_event(
+            "done",
+            {
+                "iterations": self.iteration_count,
+                "max_reached": True,
+            },
+        )
         self._flush_trace_buffer()
 
     @staticmethod
     def _is_research_request(user_input: str) -> bool:
         text = user_input.lower()
         terms = (
-            "research", "literature review", "survey", "investigate", "investigation",
-            "evidence", "sources", "citations", "cite", "papers", "compare sources",
-            "fact check", "fact-check", "verify claims", "authoritative sources",
-            "specification analysis", "what does the literature say",
+            "research",
+            "literature review",
+            "survey",
+            "investigate",
+            "investigation",
+            "evidence",
+            "sources",
+            "citations",
+            "cite",
+            "papers",
+            "compare sources",
+            "fact check",
+            "fact-check",
+            "verify claims",
+            "authoritative sources",
+            "specification analysis",
+            "what does the literature say",
         )
         return any(term in text for term in terms)
 
@@ -952,6 +1037,7 @@ Current workspace: {workspace}
         if required.issubset(names):
             return
         from nexus_agent.team.runtime import build_workspace_tools
+
         catalog = build_workspace_tools(
             self.workspace,
             provider=self.provider,
@@ -976,6 +1062,7 @@ Current workspace: {workspace}
             )
             for tool in self.tools
         ]
+
     def _research_coverage(self) -> dict[str, Any] | None:
         if self.mode != AgentMode.RESEARCH:
             return None
@@ -983,6 +1070,7 @@ Current workspace: {workspace}
             from nexus_agent.research.store import ResearchStore
             from nexus_agent.storage.layout import StorageLayout
             from nexus_agent.team.research import policy as research_policy
+
             store = ResearchStore(StorageLayout(self.workspace).workspace_runtime / "research.db")
             return store.coverage(
                 self.research_session_id or self.session_id,
@@ -990,16 +1078,19 @@ Current workspace: {workspace}
             )
         except (ImportError, OSError, ValueError, RuntimeError):
             return None
+
     def add_context(self, content: str, label: str = "context") -> None:
         """Add additional context to the conversation.
 
         Useful for injecting file contents, search results, or other
         context into the conversation.
         """
-        self.messages.append(Message(
-            role=Role.SYSTEM,
-            content=f"[{label}]\n{content}",
-        ))
+        self.messages.append(
+            Message(
+                role=Role.SYSTEM,
+                content=f"[{label}]\n{content}",
+            )
+        )
 
     def get_conversation_history(self) -> list[dict[str, Any]]:
         """Get the conversation history as serializable dicts."""

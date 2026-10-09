@@ -1,4 +1,5 @@
 """FastAPI routes for the unified NexusAgent multi-agent workbench."""
+
 from __future__ import annotations
 
 import asyncio
@@ -48,7 +49,9 @@ class WorkflowWriteRequest(BaseModel):
     output_format: str = Field(default="markdown", pattern="^(markdown|text|json)$")
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
-    research_source_strategy: str = Field(default="hybrid", pattern="^(user_only|hybrid|autonomous)$")
+    research_source_strategy: str = Field(
+        default="hybrid", pattern="^(user_only|hybrid|autonomous)$"
+    )
     research_max_minutes: int = Field(default=10080, ge=1, le=525600)
     research_idle_rounds: int = Field(default=2, ge=1, le=20)
     agent_ids: list[str] = Field(default_factory=list)
@@ -77,7 +80,9 @@ class TeamStartRequest(BaseModel):
     auto_approve_tools: bool = False
     research_depth: str = "detailed"
     research_collection: str = "until_saturation"
-    research_source_strategy: str = Field(default="hybrid", pattern="^(user_only|hybrid|autonomous)$")
+    research_source_strategy: str = Field(
+        default="hybrid", pattern="^(user_only|hybrid|autonomous)$"
+    )
     research_source_urls: list[str] = Field(default_factory=list, max_length=200)
     research_max_minutes: int = Field(default=10080, ge=1, le=525600)
     research_idle_rounds: int = Field(default=2, ge=1, le=20)
@@ -92,7 +97,9 @@ def _workspace(state_manager: Any) -> Path:
 def _require_local_client(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="Team data access is restricted to local clients.")
+        raise HTTPException(
+            status_code=403, detail="Team data access is restricted to local clients."
+        )
 
 
 def _artifact_root(state_manager: Any, team_id: str) -> Path:
@@ -121,7 +128,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         memory_manager = state_manager.get("memory_manager")
         config = state_manager.get("config") or {}
         mcp_clients, mcp_tools = load_configured_servers(config)
-        tools = build_workspace_tools(workspace, memory_manager, provider=provider, mcp_tools=mcp_tools)
+        tools = build_workspace_tools(
+            workspace, memory_manager, provider=provider, mcp_tools=mcp_tools
+        )
         permission_manager = PermissionManager()
         permission_manager.load_from_config(state_manager.get("config") or {})
         return TeamRuntime(
@@ -144,7 +153,11 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
     @router.get("/api/workflows")
     async def workflows(request: Request):
         _require_local_client(request)
-        return {"workflows": [workflow.__dict__ for workflow in WorkflowRegistry(_workspace(state_manager)).list()]}
+        return {
+            "workflows": [
+                workflow.__dict__ for workflow in WorkflowRegistry(_workspace(state_manager)).list()
+            ]
+        }
 
     @router.put("/api/workflows/{workflow_id}")
     async def save_workflow(workflow_id: str, request: Request, req: WorkflowWriteRequest):
@@ -152,6 +165,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         if workflow_id.strip().lower() != req.id.strip().lower():
             raise HTTPException(status_code=400, detail="Path workflow ID and body ID must match")
         from nexus_agent.workflows.registry import WorkflowSpec
+
         registry = WorkflowRegistry(_workspace(state_manager))
         candidate = WorkflowSpec.from_dict(req.model_dump(), f"{req.scope}:web")
         path = registry.save(candidate, req.scope)
@@ -174,6 +188,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
     async def research_sources(request: Request):
         _require_local_client(request)
         from nexus_agent.research.sources import ResearchSourceRegistry
+
         registry = ResearchSourceRegistry(
             _workspace(state_manager) / ".nexus-agent" / "research-sources.yaml"
         )
@@ -183,6 +198,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
     async def seed_research_sources(request: Request, payload: dict[str, Any]):
         _require_local_client(request)
         from nexus_agent.research.sources import ResearchSourceRegistry
+
         urls = payload.get("urls") if isinstance(payload, dict) else []
         if not isinstance(urls, list):
             raise HTTPException(status_code=422, detail="urls must be a list")
@@ -216,7 +232,11 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 jobs[job_id]["status"] = "running"
             try:
                 runtime = build_runtime()
-                workflow = WorkflowRegistry(_workspace(state_manager)).get(req.workflow_id) if req.workflow_id else None
+                workflow = (
+                    WorkflowRegistry(_workspace(state_manager)).get(req.workflow_id)
+                    if req.workflow_id
+                    else None
+                )
                 cfg = (workflow.configure() if workflow else TeamConfig(mode=req.mode)).normalize()
                 cfg.workflow_id = req.workflow_id or ""
                 cfg.mode = req.mode if not req.workflow_id else cfg.mode
@@ -242,11 +262,13 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
 
                 result = runtime.run_collect(req.goal, cfg)
                 with lock:
-                    jobs[job_id].update({
-                        "status": "completed" if result.success else "needs_review",
-                        "team_id": result.team_id,
-                        "result": result.__dict__,
-                    })
+                    jobs[job_id].update(
+                        {
+                            "status": "completed" if result.success else "needs_review",
+                            "team_id": result.team_id,
+                            "result": result.__dict__,
+                        }
+                    )
             except (RuntimeError, ValueError, OSError, TypeError, KeyError, AttributeError) as exc:
                 logger.exception("Team job failed before completion")
                 with lock:
@@ -420,11 +442,13 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             except ValueError:
                 continue
             if resolved.is_file():
-                artifacts.append({
-                    "name": str(resolved.relative_to(root)),
-                    "size": resolved.stat().st_size,
-                    "path": str(resolved),
-                })
+                artifacts.append(
+                    {
+                        "name": str(resolved.relative_to(root)),
+                        "size": resolved.stat().st_size,
+                        "path": str(resolved),
+                    }
+                )
         return {"team_id": team_id, "artifacts": artifacts}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
@@ -447,8 +471,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         try:
             result = store._audit.verify()
             result["records"] = [
-                record.to_dict()
-                for record in store._audit.read(run_id=team_id, limit=5000)
+                record.to_dict() for record in store._audit.read(run_id=team_id, limit=5000)
             ]
             return result
         finally:
@@ -498,7 +521,12 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                         yield f"data: {json.dumps(event, default=str)}\n\n"
                 else:
                     idle += 1
-                if team and team.get("status") in {"completed", "needs_review", "failed", "cancelled"}:
+                if team and team.get("status") in {
+                    "completed",
+                    "needs_review",
+                    "failed",
+                    "cancelled",
+                }:
                     yield f"data: {json.dumps({'type': 'terminal', 'status': team['status']})}\n\n"
                     return
                 await asyncio.sleep(0.5)

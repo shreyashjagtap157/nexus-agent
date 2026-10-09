@@ -132,7 +132,6 @@ class LocalModelConfig(TypedDict, total=False):
     reasoning_depth: int
 
 
-
 class PermissionsConfig(TypedDict, total=False):
     mode: str
 
@@ -221,8 +220,17 @@ def load_config(
 
 def _strip_secrets(cfg: dict) -> dict:
     """Return a copy of cfg with internal keys and API keys removed."""
-    SECRET_KEYS = {"api_key", "api_secret", "secret_key", "password", "token",
-                   "access_token", "refresh_token", "private_key", "client_secret"}
+    SECRET_KEYS = {
+        "api_key",
+        "api_secret",
+        "secret_key",
+        "password",
+        "token",
+        "access_token",
+        "refresh_token",
+        "private_key",
+        "client_secret",
+    }
     out = {}
     for k, v in cfg.items():
         if k.startswith("_"):

@@ -56,11 +56,15 @@ class Checkpoint:
             try:
                 backup_file = cp_dir / CheckpointManager._safe_filename(file_path)
                 if backup_file.exists():
-                    self._files[file_path] = backup_file.read_text(encoding="utf-8", errors="replace")
+                    self._files[file_path] = backup_file.read_text(
+                        encoding="utf-8", errors="replace"
+                    )
                 else:
                     self._files[file_path] = None
             except (OSError, UnicodeDecodeError, ValueError) as ex:
-                logger.warning("Could not load backup file %s for checkpoint %s: %s", file_path, self.id, ex)
+                logger.warning(
+                    "Could not load backup file %s for checkpoint %s: %s", file_path, self.id, ex
+                )
                 self._files[file_path] = None
 
     def to_dict(self, max_content_length: int | None = None) -> dict[str, Any]:
@@ -112,16 +116,18 @@ class CheckpointManager:
                     try:
                         file_paths = cp_data.get("file_paths", [])
                         files = {fp: None for fp in file_paths}
-                        self._checkpoints.append(Checkpoint(
-                            checkpoint_id=cp_data["id"],
-                            description=cp_data.get("description", ""),
-                            files=files,
-                            timestamp=cp_data["timestamp"],
-                            metadata=cp_data.get("metadata", {}),
-                            data_dir=self.data_dir,
-                        ))
+                        self._checkpoints.append(
+                            Checkpoint(
+                                checkpoint_id=cp_data["id"],
+                                description=cp_data.get("description", ""),
+                                files=files,
+                                timestamp=cp_data["timestamp"],
+                                metadata=cp_data.get("metadata", {}),
+                                data_dir=self.data_dir,
+                            )
+                        )
                     except (KeyError, ValueError, TypeError, OSError) as cp_ex:
-                        logger.warning("Could not load checkpoint %s: %s", cp_data['id'], cp_ex)
+                        logger.warning("Could not load checkpoint %s: %s", cp_data["id"], cp_ex)
                         continue
             except (OSError, ValueError, KeyError) as e:
                 logger.warning("Could not load checkpoint index: %s", e)

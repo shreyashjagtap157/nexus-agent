@@ -216,11 +216,13 @@ class PermissionManager:
         for tool_name, level_str in tools.items():
             try:
                 level = PermissionLevel(level_str)
-                self.add_rule(PermissionRule(
-                    tool_name=tool_name,
-                    level=level,
-                    description=f"From config: {tool_name}={level_str}",
-                ))
+                self.add_rule(
+                    PermissionRule(
+                        tool_name=tool_name,
+                        level=level,
+                        description=f"From config: {tool_name}={level_str}",
+                    )
+                )
             except ValueError:
                 logger.warning(f"Invalid permission level '{level_str}' for tool '{tool_name}'")
 

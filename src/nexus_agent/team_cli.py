@@ -1,4 +1,5 @@
 """NexusAgent team CLI."""
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,9 @@ from .team.store import TeamStore
 from nexus_agent.workflows import WorkflowRegistry
 
 
-def _make_runtime(workspace: Path, provider_name: str | None, model_path: str | None, auto_approve: bool):
+def _make_runtime(
+    workspace: Path, provider_name: str | None, model_path: str | None, auto_approve: bool
+):
     config = load_config(workspace=workspace)
     name = provider_name or config.get("providers", {}).get("active", "local")
     provider = ProviderFactory.create_provider(name, config, model_path)
@@ -54,26 +57,102 @@ def main() -> None:
 
 @main.command("run")
 @click.argument("goal")
-@click.option("--workflow", "workflow_id", type=str, default=None, help="Named workflow policy to use.")
-@click.option("--mode", type=click.Choice([x.value for x in TeamMode]), default="auto", show_default=True)
+@click.option(
+    "--workflow", "workflow_id", type=str, default=None, help="Named workflow policy to use."
+)
+@click.option(
+    "--mode", type=click.Choice([x.value for x in TeamMode]), default="auto", show_default=True
+)
 @click.option("--max-agents", type=int, default=6, show_default=True)
 @click.option("--parallelism", type=int, default=4, show_default=True)
 @click.option("--max-iterations", type=int, default=30, show_default=True)
-@click.option("--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium")
-@click.option("--output", "output_mode", type=click.Choice(["chat", "file", "both"]), default="chat")
-@click.option("--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown")
-@click.option("--depth", "research_depth", type=click.Choice(list(RESEARCH_DEPTHS)), default="detailed", show_default=True)
-@click.option("--collection", "research_collection", type=click.Choice(["bounded", "until_saturation", "continuous"]), default="until_saturation", show_default=True)
-@click.option("--source-strategy", "research_source_strategy", type=click.Choice(["user_only", "hybrid", "autonomous"]), default="hybrid", show_default=True)
-@click.option("--research-max-minutes", type=int, default=10080, show_default=True, help="Safety deadline for continuous research.")
-@click.option("--research-idle-rounds", type=int, default=2, show_default=True, help="No-growth rounds before saturation stop.")
-@click.option("--source", "research_source_urls", multiple=True, help="Seed a research source URL. Repeat for multiple sources.")
-@click.option("--agent", "agent_ids", multiple=True, help="Pin a saved agent profile by ID. Repeat for multiple profiles.")
-@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
+@click.option(
+    "--effort", type=click.Choice(["low", "medium", "high", "xhigh", "max"]), default="medium"
+)
+@click.option(
+    "--output", "output_mode", type=click.Choice(["chat", "file", "both"]), default="chat"
+)
+@click.option(
+    "--format", "output_format", type=click.Choice(["markdown", "text", "json"]), default="markdown"
+)
+@click.option(
+    "--depth",
+    "research_depth",
+    type=click.Choice(list(RESEARCH_DEPTHS)),
+    default="detailed",
+    show_default=True,
+)
+@click.option(
+    "--collection",
+    "research_collection",
+    type=click.Choice(["bounded", "until_saturation", "continuous"]),
+    default="until_saturation",
+    show_default=True,
+)
+@click.option(
+    "--source-strategy",
+    "research_source_strategy",
+    type=click.Choice(["user_only", "hybrid", "autonomous"]),
+    default="hybrid",
+    show_default=True,
+)
+@click.option(
+    "--research-max-minutes",
+    type=int,
+    default=10080,
+    show_default=True,
+    help="Safety deadline for continuous research.",
+)
+@click.option(
+    "--research-idle-rounds",
+    type=int,
+    default=2,
+    show_default=True,
+    help="No-growth rounds before saturation stop.",
+)
+@click.option(
+    "--source",
+    "research_source_urls",
+    multiple=True,
+    help="Seed a research source URL. Repeat for multiple sources.",
+)
+@click.option(
+    "--agent",
+    "agent_ids",
+    multiple=True,
+    help="Pin a saved agent profile by ID. Repeat for multiple profiles.",
+)
+@click.option(
+    "--workspace",
+    "-w",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path.cwd(),
+)
 @click.option("--provider", type=str, default=None)
 @click.option("--model-path", type=click.Path(exists=True, dir_okay=False), default=None)
 @click.option("--yes", is_flag=True, help="Automatically approve team tool requests.")
-def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallelism: int, max_iterations: int, effort: str, output_mode: str, output_format: str, research_depth: str, research_collection: str, research_source_strategy: str, research_max_minutes: int, research_idle_rounds: int, research_source_urls: tuple[str, ...], agent_ids: tuple[str, ...], workspace: Path, provider: str | None, model_path: str | None, yes: bool) -> None:
+def run(
+    goal: str,
+    workflow_id: str | None,
+    mode: str,
+    max_agents: int,
+    parallelism: int,
+    max_iterations: int,
+    effort: str,
+    output_mode: str,
+    output_format: str,
+    research_depth: str,
+    research_collection: str,
+    research_source_strategy: str,
+    research_max_minutes: int,
+    research_idle_rounds: int,
+    research_source_urls: tuple[str, ...],
+    agent_ids: tuple[str, ...],
+    workspace: Path,
+    provider: str | None,
+    model_path: str | None,
+    yes: bool,
+) -> None:
     """Run a dynamically assembled peer team."""
     console = Console()
     runtime, _provider = _make_runtime(workspace.resolve(), provider, model_path, yes)
@@ -127,13 +206,20 @@ def run(goal: str, workflow_id: str | None, mode: str, max_agents: int, parallel
     table.add_column("Profession")
     table.add_column("State")
     for agent in final.get("agents", []):
-        table.add_row(str(agent.get("name")), str(agent.get("profession")), str(agent.get("status")))
+        table.add_row(
+            str(agent.get("name")), str(agent.get("profession")), str(agent.get("status"))
+        )
     console.print(table)
     runtime.close()
 
 
 @main.command("list")
-@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
+@click.option(
+    "--workspace",
+    "-w",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path.cwd(),
+)
 @click.option("--limit", type=int, default=50, show_default=True)
 def list_teams(workspace: Path, limit: int) -> None:
     """List persisted multi-agent team runs."""
@@ -165,7 +251,12 @@ def list_teams(workspace: Path, limit: int) -> None:
 @main.command("control")
 @click.argument("team_id")
 @click.argument("action", type=click.Choice(["pause", "resume", "stop"]))
-@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
+@click.option(
+    "--workspace",
+    "-w",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path.cwd(),
+)
 def control_team(team_id: str, action: str, workspace: Path) -> None:
     """Request pause, resume or stop for a running team."""
     store = TeamStore(StorageLayout(workspace.resolve()).team_db)
@@ -179,7 +270,12 @@ def control_team(team_id: str, action: str, workspace: Path) -> None:
 
 @main.command("show")
 @click.argument("team_id")
-@click.option("--workspace", "-w", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path.cwd())
+@click.option(
+    "--workspace",
+    "-w",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path.cwd(),
+)
 def show(team_id: str, workspace: Path) -> None:
     """Inspect a persisted team run."""
     store = TeamStore(StorageLayout(workspace.resolve()).team_db)
@@ -187,12 +283,19 @@ def show(team_id: str, workspace: Path) -> None:
         team = store.team(team_id)
         if team is None:
             raise click.ClickException(f"Unknown team: {team_id}")
-        console.print_json(json.dumps({
-            "team": team,
-            "agents": store.agents(team_id),
-            "messages": store.messages(team_id),
-            "events": store.events(team_id, limit=5000),
-        }, ensure_ascii=False, indent=2, default=str))
+        console.print_json(
+            json.dumps(
+                {
+                    "team": team,
+                    "agents": store.agents(team_id),
+                    "messages": store.messages(team_id),
+                    "events": store.events(team_id, limit=5000),
+                },
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+        )
     finally:
         store.close()
 

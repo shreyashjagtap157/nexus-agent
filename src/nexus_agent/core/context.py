@@ -23,6 +23,7 @@ DEFAULT_MAX_TOKENS = 4096
 @dataclass
 class ContextStats:
     """Statistics about current context usage."""
+
     total_tokens: int
     max_tokens: int
     usage_percent: float
@@ -123,8 +124,7 @@ class ContextManager:
             return messages  # Not needed
 
         logger.info(
-            f"Compacting context: {stats.usage_percent:.0%} usage, "
-            f"{stats.message_count} messages"
+            f"Compacting context: {stats.usage_percent:.0%} usage, {stats.message_count} messages"
         )
 
         # Separate system prompts, old messages, and recent messages
@@ -135,8 +135,8 @@ class ContextManager:
             return messages
 
         # Keep recent messages intact
-        recent = non_system[-self.min_recent_messages:]
-        old = non_system[:-self.min_recent_messages]
+        recent = non_system[-self.min_recent_messages :]
+        old = non_system[: -self.min_recent_messages]
 
         # Summarize old messages
         summary_parts: list[str] = []
@@ -185,8 +185,4 @@ class ContextManager:
         tail = output[-tail_size:]
         omitted = len(output) - head_size - tail_size
 
-        return (
-            f"{head}\n\n"
-            f"[... {omitted} characters omitted ...]\n\n"
-            f"{tail}"
-        )
+        return f"{head}\n\n[... {omitted} characters omitted ...]\n\n{tail}"

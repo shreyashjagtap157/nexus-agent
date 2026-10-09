@@ -57,9 +57,9 @@ pub fn render_inspector(frame: &mut ratatui::Frame, area: Rect, app: &App, theme
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),       // Tab bar
-            Constraint::Min(1),          // Content
-            Constraint::Length(1),       // Status bar
+            Constraint::Length(1), // Tab bar
+            Constraint::Min(1),    // Content
+            Constraint::Length(1), // Status bar
         ])
         .split(area);
 
@@ -117,12 +117,14 @@ fn render_tab_bar(frame: &mut ratatui::Frame, area: Rect, active: InspectorPanel
             },
         ));
         if i < InspectorPanel::ALL.len() - 1 {
-            spans.push(Span::styled("│", Style::default().fg(theme.colors.muted_col())));
+            spans.push(Span::styled(
+                "│",
+                Style::default().fg(theme.colors.muted_col()),
+            ));
         }
     }
     frame.render_widget(
-        Paragraph::new(Line::from(spans))
-            .style(Style::default().bg(theme.colors.surface_col())),
+        Paragraph::new(Line::from(spans)).style(Style::default().bg(theme.colors.surface_col())),
         area,
     );
 }
@@ -138,21 +140,19 @@ fn render_overview(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Th
     let inner = block.inner(area);
     frame.render_widget(&block, area);
 
-    let mut lines = vec![
-        Line::from(vec![
-            Span::styled(" Status: ", Style::default().fg(theme.colors.muted_col())),
-            Span::styled(
-                format!("{:?}", app.phase),
-                match app.phase {
-                    AppPhase::Ready => Style::default().fg(theme.colors.ok()),
-                    AppPhase::Processing => Style::default().fg(theme.colors.accent()),
-                    AppPhase::Error => Style::default().fg(theme.colors.err()),
-                    AppPhase::Interrupted => Style::default().fg(theme.colors.warn()),
-                    _ => Style::default().fg(theme.colors.muted_col()),
-                },
-            ),
-        ]),
-    ];
+    let mut lines = vec![Line::from(vec![
+        Span::styled(" Status: ", Style::default().fg(theme.colors.muted_col())),
+        Span::styled(
+            format!("{:?}", app.phase),
+            match app.phase {
+                AppPhase::Ready => Style::default().fg(theme.colors.ok()),
+                AppPhase::Processing => Style::default().fg(theme.colors.accent()),
+                AppPhase::Error => Style::default().fg(theme.colors.err()),
+                AppPhase::Interrupted => Style::default().fg(theme.colors.warn()),
+                _ => Style::default().fg(theme.colors.muted_col()),
+            },
+        ),
+    ])];
 
     // Agent state
     let agent_state = if app.agent_state.is_empty() {
@@ -172,18 +172,27 @@ fn render_overview(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Th
     lines.push(Line::from(vec![
         Span::styled(" Model:  ", Style::default().fg(theme.colors.muted_col())),
         Span::styled(
-            if app.model_name.is_empty() { "none" } else { &app.model_name },
+            if app.model_name.is_empty() {
+                "none"
+            } else {
+                &app.model_name
+            },
             Style::default().fg(theme.colors.accent2()),
         ),
     ]));
 
     lines.push(Line::from(vec![
         Span::styled(" Prov:   ", Style::default().fg(theme.colors.muted_col())),
-        Span::styled(&app.provider_name, Style::default().fg(theme.colors.info_col())),
+        Span::styled(
+            &app.provider_name,
+            Style::default().fg(theme.colors.info_col()),
+        ),
     ]));
 
     // Plan steps (simulated from messages)
-    let plan_steps: Vec<&str> = app.messages.iter()
+    let plan_steps: Vec<&str> = app
+        .messages
+        .iter()
         .filter(|m| m.kind == crate::app::MessageKind::Thinking)
         .map(|m| m.content.as_str())
         .take(8)
@@ -191,9 +200,16 @@ fn render_overview(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Th
 
     if !plan_steps.is_empty() {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(" Plan Steps:", Style::default().fg(theme.colors.muted_col()).bold())));
+        lines.push(Line::from(Span::styled(
+            " Plan Steps:",
+            Style::default().fg(theme.colors.muted_col()).bold(),
+        )));
         for (i, step) in plan_steps.iter().enumerate() {
-            let icon = if i < plan_steps.len() - 1 { "  ✓ " } else { "  ▶ " };
+            let icon = if i < plan_steps.len() - 1 {
+                "  ✓ "
+            } else {
+                "  ▶ "
+            };
             lines.push(Line::from(Span::styled(
                 format!("{}{}", icon, step),
                 Style::default().fg(theme.colors.fg()),
@@ -202,19 +218,29 @@ fn render_overview(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Th
     }
 
     // Tools used
-    let tool_count = app.messages.iter()
-        .filter(|m| m.kind == crate::app::MessageKind::ToolCall).count();
+    let tool_count = app
+        .messages
+        .iter()
+        .filter(|m| m.kind == crate::app::MessageKind::ToolCall)
+        .count();
     lines.push(Line::from(""));
     lines.push(Line::from(vec![
         Span::styled(" Tools:  ", Style::default().fg(theme.colors.muted_col())),
-        Span::styled(format!("{tool_count} called"), Style::default().fg(theme.colors.tool_call_col())),
+        Span::styled(
+            format!("{tool_count} called"),
+            Style::default().fg(theme.colors.tool_call_col()),
+        ),
     ]));
 
     // Tokens
     lines.push(Line::from(vec![
         Span::styled(" Tokens: ", Style::default().fg(theme.colors.muted_col())),
         Span::styled(
-            format!("↓ {} in · ↑ {} out", format_count(app.tokens_in), format_count(app.tokens_out)),
+            format!(
+                "↓ {} in · ↑ {} out",
+                format_count(app.tokens_in),
+                format_count(app.tokens_out)
+            ),
             Style::default().fg(theme.colors.fg()),
         ),
     ]));
@@ -242,12 +268,20 @@ fn render_overview(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Th
     let message_count = app.messages.len();
     lines.push(Line::from(vec![
         Span::styled(" Msgs:   ", Style::default().fg(theme.colors.muted_col())),
-        Span::styled(format!("{message_count}"), Style::default().fg(theme.colors.fg())),
-        Span::styled(format!("  (uptime: {})", app.uptime_string()), Style::default().fg(theme.colors.muted_col())),
+        Span::styled(
+            format!("{message_count}"),
+            Style::default().fg(theme.colors.fg()),
+        ),
+        Span::styled(
+            format!("  (uptime: {})", app.uptime_string()),
+            Style::default().fg(theme.colors.muted_col()),
+        ),
     ]));
 
     frame.render_widget(
-        Paragraph::new(lines).wrap(Wrap { trim: false }).block(Block::default()),
+        Paragraph::new(lines)
+            .wrap(Wrap { trim: false })
+            .block(Block::default()),
         inner,
     );
 }
@@ -263,43 +297,50 @@ fn render_trace(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Theme
     let inner = block.inner(area);
     frame.render_widget(&block, area);
 
-    let trace_lines: Vec<Line> = app.messages.iter().enumerate().rev().take(50).map(|(i, msg)| {
-        let (icon, style) = match msg.kind {
-            crate::app::MessageKind::UserInput => (
-                ">", Style::default().fg(theme.colors.accent()).bold(),
-            ),
-            crate::app::MessageKind::AssistantResponse => (
-                " ", Style::default().fg(theme.colors.fg()),
-            ),
-            crate::app::MessageKind::ToolCall => (
-                "⚙", Style::default().fg(theme.colors.tool_call_col()),
-            ),
-            crate::app::MessageKind::ToolResult => (
-                "✓", Style::default().fg(theme.colors.tool_result_col()),
-            ),
-            crate::app::MessageKind::Thinking => (
-                "◦", Style::default().fg(theme.colors.thought()).italic(),
-            ),
-            crate::app::MessageKind::Error => (
-                "✗", Style::default().fg(theme.colors.err()).bold(),
-            ),
-            crate::app::MessageKind::Warning => (
-                "⚠", Style::default().fg(theme.colors.warn()),
-            ),
-            crate::app::MessageKind::System => (
-                "i", Style::default().fg(theme.colors.info_col()).dim(),
-            ),
-        };
-        let preview = if msg.content.len() > 80 {
-            format!("{}...", &msg.content[..80])
-        } else {
-            msg.content.clone()
-        };
-        Line::from(Span::styled(format!(" {icon} [{i:>4}] {preview}"), style))
-    }).collect();
+    let trace_lines: Vec<Line> = app
+        .messages
+        .iter()
+        .enumerate()
+        .rev()
+        .take(50)
+        .map(|(i, msg)| {
+            let (icon, style) = match msg.kind {
+                crate::app::MessageKind::UserInput => {
+                    (">", Style::default().fg(theme.colors.accent()).bold())
+                }
+                crate::app::MessageKind::AssistantResponse => {
+                    (" ", Style::default().fg(theme.colors.fg()))
+                }
+                crate::app::MessageKind::ToolCall => {
+                    ("⚙", Style::default().fg(theme.colors.tool_call_col()))
+                }
+                crate::app::MessageKind::ToolResult => {
+                    ("✓", Style::default().fg(theme.colors.tool_result_col()))
+                }
+                crate::app::MessageKind::Thinking => {
+                    ("◦", Style::default().fg(theme.colors.thought()).italic())
+                }
+                crate::app::MessageKind::Error => {
+                    ("✗", Style::default().fg(theme.colors.err()).bold())
+                }
+                crate::app::MessageKind::Warning => ("⚠", Style::default().fg(theme.colors.warn())),
+                crate::app::MessageKind::System => {
+                    ("i", Style::default().fg(theme.colors.info_col()).dim())
+                }
+            };
+            let preview = if msg.content.len() > 80 {
+                format!("{}...", &msg.content[..80])
+            } else {
+                msg.content.clone()
+            };
+            Line::from(Span::styled(format!(" {icon} [{i:>4}] {preview}"), style))
+        })
+        .collect();
 
     frame.render_widget(
-        Paragraph::new(trace_lines).wrap(Wrap { trim: false }).block(Block::default()),
+        Paragraph::new(trace_lines)
+            .wrap(Wrap { trim: false })
+            .block(Block::default()),
         inner,
     );
 }
@@ -316,19 +357,28 @@ fn render_memory(frame: &mut ratatui::Frame, area: Rect, _app: &App, theme: &The
     frame.render_widget(&block, area);
 
     let lines = vec![
-        Line::from(Span::styled(" Working Memory ", Style::default().fg(theme.colors.accent()).bold())),
+        Line::from(Span::styled(
+            " Working Memory ",
+            Style::default().fg(theme.colors.accent()).bold(),
+        )),
         Line::from(""),
-        Line::from(Span::styled("  (Agent working memory synced from backend)", Style::default().fg(theme.colors.muted_col()).italic())),
+        Line::from(Span::styled(
+            "  (Agent working memory synced from backend)",
+            Style::default().fg(theme.colors.muted_col()).italic(),
+        )),
         Line::from(""),
-        Line::from(Span::styled(" Long-term Memory ", Style::default().fg(theme.colors.accent2()).bold())),
+        Line::from(Span::styled(
+            " Long-term Memory ",
+            Style::default().fg(theme.colors.accent2()).bold(),
+        )),
         Line::from(""),
-        Line::from(Span::styled("  (Long-term memory synced from backend)", Style::default().fg(theme.colors.muted_col()).italic())),
+        Line::from(Span::styled(
+            "  (Long-term memory synced from backend)",
+            Style::default().fg(theme.colors.muted_col()).italic(),
+        )),
     ];
 
-    frame.render_widget(
-        Paragraph::new(lines).block(Block::default()),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default()), inner);
 }
 
 /// Context: visual representation of the current context window.
@@ -359,10 +409,22 @@ fn render_context(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &The
 
     let lines = vec![
         Line::from(Span::styled(
-            format!(" {:.1}% used ({}/{})", pct, format_count(msg_tokens), format_count(max_context)),
-            Style::default().fg(if pct > 85.0 { theme.colors.warn() } else { theme.colors.fg() }),
+            format!(
+                " {:.1}% used ({}/{})",
+                pct,
+                format_count(msg_tokens),
+                format_count(max_context)
+            ),
+            Style::default().fg(if pct > 85.0 {
+                theme.colors.warn()
+            } else {
+                theme.colors.fg()
+            }),
         )),
-        Line::from(Span::styled(bar, Style::default().fg(theme.colors.accent()))),
+        Line::from(Span::styled(
+            bar,
+            Style::default().fg(theme.colors.accent()),
+        )),
         Line::from(""),
         Line::from(Span::styled(
             format!(" {} messages in context", app.messages.len()),
@@ -374,10 +436,7 @@ fn render_context(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &The
         )),
     ];
 
-    frame.render_widget(
-        Paragraph::new(lines).block(Block::default()),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default()), inner);
 }
 
 /// Diff: running diff of every file modified in this session.
@@ -392,19 +451,25 @@ fn render_diff(frame: &mut ratatui::Frame, area: Rect, _app: &App, theme: &Theme
     frame.render_widget(&block, area);
 
     let lines = vec![
-        Line::from(Span::styled(" Files Modified ", Style::default().fg(theme.colors.accent()).bold())),
+        Line::from(Span::styled(
+            " Files Modified ",
+            Style::default().fg(theme.colors.accent()).bold(),
+        )),
         Line::from(""),
-        Line::from(Span::styled("  (No files modified yet)", Style::default().fg(theme.colors.muted_col()).italic())),
+        Line::from(Span::styled(
+            "  (No files modified yet)",
+            Style::default().fg(theme.colors.muted_col()).italic(),
+        )),
         Line::from(""),
-        Line::from(Span::styled(" Diff Stats ", Style::default().fg(theme.colors.accent2()).bold())),
+        Line::from(Span::styled(
+            " Diff Stats ",
+            Style::default().fg(theme.colors.accent2()).bold(),
+        )),
         Line::from(""),
         Line::from(format!("  +{} added lines    -{} removed lines", 0, 0)),
     ];
 
-    frame.render_widget(
-        Paragraph::new(lines).block(Block::default()),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default()), inner);
 }
 
 /// Cost: token usage breakdown per model, per agent.
@@ -424,15 +489,30 @@ fn render_cost(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Theme)
             Span::styled(&app.model_name, Style::default().fg(theme.colors.accent())),
         ]),
         Line::from(vec![
-            Span::styled(" Tokens in:  ", Style::default().fg(theme.colors.muted_col())),
-            Span::styled(format_count(app.tokens_in), Style::default().fg(theme.colors.fg())),
+            Span::styled(
+                " Tokens in:  ",
+                Style::default().fg(theme.colors.muted_col()),
+            ),
+            Span::styled(
+                format_count(app.tokens_in),
+                Style::default().fg(theme.colors.fg()),
+            ),
         ]),
         Line::from(vec![
-            Span::styled(" Tokens out: ", Style::default().fg(theme.colors.muted_col())),
-            Span::styled(format_count(app.tokens_out), Style::default().fg(theme.colors.fg())),
+            Span::styled(
+                " Tokens out: ",
+                Style::default().fg(theme.colors.muted_col()),
+            ),
+            Span::styled(
+                format_count(app.tokens_out),
+                Style::default().fg(theme.colors.fg()),
+            ),
         ]),
         Line::from(vec![
-            Span::styled(" Total:      ", Style::default().fg(theme.colors.muted_col())),
+            Span::styled(
+                " Total:      ",
+                Style::default().fg(theme.colors.muted_col()),
+            ),
             Span::styled(
                 format_count(app.tokens_in + app.tokens_out),
                 Style::default().fg(theme.colors.accent2()),
@@ -445,10 +525,7 @@ fn render_cost(frame: &mut ratatui::Frame, area: Rect, app: &App, theme: &Theme)
         )),
     ];
 
-    frame.render_widget(
-        Paragraph::new(lines).block(Block::default()),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default()), inner);
 }
 
 /// Graph: live agent graph showing nodes and edges.
@@ -464,20 +541,44 @@ fn render_graph(frame: &mut ratatui::Frame, area: Rect, _app: &App, theme: &Them
 
     // Simple ASCII agent graph
     let lines = vec![
-        Line::from(Span::styled(" ┌─────────────┐", Style::default().fg(theme.colors.accent()))),
-        Line::from(Span::styled(" │ Orchestrator │", Style::default().fg(theme.colors.accent()).bold())),
-        Line::from(Span::styled(" └──────┬──────┘", Style::default().fg(theme.colors.accent()))),
-        Line::from(Span::styled("    ┌───┼───┐", Style::default().fg(theme.colors.muted_col()))),
-        Line::from(Span::styled("    │   │   │", Style::default().fg(theme.colors.muted_col()))),
+        Line::from(Span::styled(
+            " ┌─────────────┐",
+            Style::default().fg(theme.colors.accent()),
+        )),
+        Line::from(Span::styled(
+            " │ Orchestrator │",
+            Style::default().fg(theme.colors.accent()).bold(),
+        )),
+        Line::from(Span::styled(
+            " └──────┬──────┘",
+            Style::default().fg(theme.colors.accent()),
+        )),
+        Line::from(Span::styled(
+            "    ┌───┼───┐",
+            Style::default().fg(theme.colors.muted_col()),
+        )),
+        Line::from(Span::styled(
+            "    │   │   │",
+            Style::default().fg(theme.colors.muted_col()),
+        )),
         Line::from(vec![
             Span::styled(" ┌──┴──┐", Style::default().fg(theme.colors.accent2())),
             Span::styled(" ┌──┴──┐", Style::default().fg(theme.colors.accent2())),
             Span::styled(" ┌──┴──┐", Style::default().fg(theme.colors.accent2())),
         ]),
         Line::from(vec![
-            Span::styled(" │Plan │", Style::default().fg(theme.colors.accent2()).bold()),
-            Span::styled(" │Code │", Style::default().fg(theme.colors.accent2()).bold()),
-            Span::styled(" │Review│", Style::default().fg(theme.colors.accent2()).bold()),
+            Span::styled(
+                " │Plan │",
+                Style::default().fg(theme.colors.accent2()).bold(),
+            ),
+            Span::styled(
+                " │Code │",
+                Style::default().fg(theme.colors.accent2()).bold(),
+            ),
+            Span::styled(
+                " │Review│",
+                Style::default().fg(theme.colors.accent2()).bold(),
+            ),
         ]),
         Line::from(vec![
             Span::styled(" └─────┘", Style::default().fg(theme.colors.accent2())),
@@ -486,10 +587,7 @@ fn render_graph(frame: &mut ratatui::Frame, area: Rect, _app: &App, theme: &Them
         ]),
     ];
 
-    frame.render_widget(
-        Paragraph::new(lines).block(Block::default()),
-        inner,
-    );
+    frame.render_widget(Paragraph::new(lines).block(Block::default()), inner);
 }
 
 /// Format a token count for display.

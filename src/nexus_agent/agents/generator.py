@@ -1,4 +1,5 @@
 """LLM-assisted user agent generator."""
+
 from __future__ import annotations
 
 import json

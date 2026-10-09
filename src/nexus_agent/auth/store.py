@@ -1,4 +1,5 @@
 """Secure local credential store with optional OS keychain integration."""
+
 from __future__ import annotations
 
 import json
@@ -94,7 +95,11 @@ class AuthStore:
         provider_id = provider.strip().lower()
         with self._lock:
             item = self._read().get(provider_id, {})
-        return dict(item.get("metadata", {})) if isinstance(item, dict) and isinstance(item.get("metadata"), dict) else {}
+        return (
+            dict(item.get("metadata", {}))
+            if isinstance(item, dict) and isinstance(item.get("metadata"), dict)
+            else {}
+        )
 
     def list(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -102,7 +107,13 @@ class AuthStore:
         rows = []
         for provider, item in sorted(data.items()):
             item_type = item.get("type", "api_key") if isinstance(item, dict) else "api_key"
-            rows.append({"provider": provider, "type": item_type, "key": "[keyring]" if item_type == "keyring" else "[stored]"})
+            rows.append(
+                {
+                    "provider": provider,
+                    "type": item_type,
+                    "key": "[keyring]" if item_type == "keyring" else "[stored]",
+                }
+            )
         return rows
 
     def remove(self, provider: str) -> bool:
@@ -111,7 +122,12 @@ class AuthStore:
             data = self._read()
             item = data.get(provider_id)
             existed = provider_id in data
-            if existed and isinstance(item, dict) and item.get("type") == "keyring" and keyring is not None:
+            if (
+                existed
+                and isinstance(item, dict)
+                and item.get("type") == "keyring"
+                and keyring is not None
+            ):
                 try:
                     keyring.delete_password(self._KEYRING_SERVICE, provider_id)
                 except Exception:

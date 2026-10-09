@@ -80,7 +80,11 @@ impl AcpRequest {
 
     /// Search memories by query text.
     pub fn memory_search(id: u64, query: &str, limit: usize) -> Self {
-        Self::new(id, "memory_search", Some(serde_json::json!({"query": query, "limit": limit})))
+        Self::new(
+            id,
+            "memory_search",
+            Some(serde_json::json!({"query": query, "limit": limit})),
+        )
     }
 
     /// Get memory system statistics.
@@ -166,11 +170,7 @@ impl AcpEvent {
             })
         } else {
             let response: AcpResponse = serde_json::from_value(value)?;
-            let id = response
-                .id
-                .as_ref()
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
+            let id = response.id.as_ref().and_then(|v| v.as_u64()).unwrap_or(0);
             Ok(AcpEvent::Response {
                 id,
                 result: response.result,

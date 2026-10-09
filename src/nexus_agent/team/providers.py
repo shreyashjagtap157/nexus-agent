@@ -1,4 +1,5 @@
 """Provider routing for dynamically generated team roles."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -51,9 +52,7 @@ def make_provider_selector(
         fallback_specs = list(profile.fallbacks or [])
         if not fallback_specs:
             fallback_specs = [
-                str(item).strip()
-                for item in spec.get("fallbacks", [])
-                if str(item).strip()
+                str(item).strip() for item in spec.get("fallbacks", []) if str(item).strip()
             ]
 
         if not provider_name:
