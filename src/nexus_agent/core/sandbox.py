@@ -347,7 +347,7 @@ class Sandbox:
         name = parsed_args[0].lower()
 
         if name == "echo":
-            output = " ".join(parsed_args[1:]) + "\\n"
+            output = " ".join(parsed_args[1:]) + "\n"
             return subprocess.CompletedProcess(parsed_args, 0, output, "")
 
         if name == "dir":
@@ -371,9 +371,9 @@ class Sandbox:
                     f"<DIR> {item.name}" if item.is_dir() else item.name
                     for item in entries
                 ]
-                output = "\\n".join(lines)
+                output = "\n".join(lines)
                 if output:
-                    output += "\\n"
+                    output += "\n"
                 return subprocess.CompletedProcess(parsed_args, 0, output, "")
             except (OSError, ValueError, RuntimeError) as exc:
                 return subprocess.CompletedProcess(
