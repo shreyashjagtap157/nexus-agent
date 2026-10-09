@@ -155,24 +155,19 @@ class SimplePlugin(NexusPlugin):
         assert "failed_ep" in res
         assert "failed to load" in res["failed_ep"].error
 
-    def test_fallback_entry_points_for_older_python(self):
-        # Mock importlib_metadata as a whole to avoid ModuleNotFoundError during patch
-        mock_md = MagicMock()
-        mock_eps = MagicMock()
-        mock_md.entry_points = MagicMock(return_value=mock_eps)
-
+    def test_entry_points_are_loaded_with_the_supported_metadata_api(self):
         mock_ep = MagicMock()
         mock_ep.name = "legacy_ep"
+        mock_module = types.ModuleType("legacy_ep_module")
+        mock_module.register_plugin = lambda manager: manager.register_command(
+            "legacy_ep", "/legacy", lambda data, args: None
+        )
+        mock_ep.load.return_value = mock_module
 
-        # Depending on python 3.9 implementation details of importlib.metadata.entry_points
-        # Either it's a dict-like obj where `.get("nexus_agent.plugins", [])` works,
-        # or it has a `.select(group="...")` method
-        mock_eps.get.return_value = [mock_ep]
-        mock_eps.select.return_value = [mock_ep]
+        with patch("importlib.metadata.entry_points", return_value=[mock_ep]) as entry_points:
+            res = self.pm.discover_and_load()
 
-        with patch("sys.version_info", (3, 9)):
-            with patch("importlib.metadata.entry_points") as mock_entry_points:
-                mock_entry_points.return_value = mock_eps
-                res = self.pm.discover_and_load()
-
+        entry_points.assert_called_once_with(group="nexus_agent.plugins")
         assert "legacy_ep" in res
+        assert res["legacy_ep"].error is None
+        assert "/legacy" in res["legacy_ep"].commands

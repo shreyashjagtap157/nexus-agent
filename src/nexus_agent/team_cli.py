@@ -223,6 +223,7 @@ def run(
 @click.option("--limit", type=int, default=50, show_default=True)
 def list_teams(workspace: Path, limit: int) -> None:
     """List persisted multi-agent team runs."""
+    console = Console()
     store = TeamStore(StorageLayout(workspace.resolve()).team_db)
     try:
         rows = store.list_teams(limit=max(1, min(limit, 1000)))
@@ -259,6 +260,7 @@ def list_teams(workspace: Path, limit: int) -> None:
 )
 def control_team(team_id: str, action: str, workspace: Path) -> None:
     """Request pause, resume or stop for a running team."""
+    console = Console()
     store = TeamStore(StorageLayout(workspace.resolve()).team_db)
     try:
         if not store.request_control(team_id, action):
@@ -278,6 +280,7 @@ def control_team(team_id: str, action: str, workspace: Path) -> None:
 )
 def show(team_id: str, workspace: Path) -> None:
     """Inspect a persisted team run."""
+    console = Console()
     store = TeamStore(StorageLayout(workspace.resolve()).team_db)
     try:
         team = store.team(team_id)

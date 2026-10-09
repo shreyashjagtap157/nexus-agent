@@ -321,9 +321,10 @@ impl eframe::App for NexusDesktop {
             });
         });
 
+        let context = ui.ctx().clone();
         egui::Panel::left("control")
             .resizable(true)
-            .show(ctx, |ui| {
+            .show(&context, |ui| {
                 ui.heading("Task Control");
                 ui.label("Local server");
                 ui.text_edit_singleline(&mut self.endpoint);
@@ -524,7 +525,7 @@ impl eframe::App for NexusDesktop {
             });
         });
 
-        egui::CentralPanel::default().show_inside(ui, |ui| match self.view {
+        egui::CentralPanel::default().show(ui.ctx(), |ui| match self.view {
             View::Overview => {
                 ui.heading("Team Overview");
                 ui.label(format!(
@@ -823,15 +824,16 @@ fn worker_loop(rx: Receiver<Command>, tx: Sender<Event>) {
 
 fn spawn_team_poll(client: &Client, tx: &Sender<Event>, endpoint: &str, job_id: &str) {
     let client = client.clone();
-    let tx = tx.clone();
+    let worker_tx = tx.clone();
+    let error_tx = tx.clone();
     let endpoint = endpoint.to_string();
     let job_id = job_id.to_string();
     let thread_name = format!("nexus-team-poll-{job_id}");
 
     if let Err(error) = thread::Builder::new().name(thread_name).spawn(move || {
-        poll_team(&client, &tx, &endpoint, &job_id);
+        poll_team(&client, &worker_tx, &endpoint, &job_id);
     }) {
-        let _ = tx.send(Event::Error(format!(
+        let _ = error_tx.send(Event::Error(format!(
             "Unable to start team status polling: {error}"
         )));
     }

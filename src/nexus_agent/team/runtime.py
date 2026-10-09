@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import queue
 import time
 import uuid
@@ -642,7 +643,6 @@ Team protocol:
             if hasattr(tool, "set_provider"):
                 tool.set_provider(worker_provider)
 
-        chunks: list[str] = []
         round_results: list[str] = []
         try:
             research_mode = "research" in profile.tool_categories
@@ -957,8 +957,6 @@ Team protocol:
             path = artifact_dir / "result.txt"
             path.write_text(content, encoding="utf-8")
         elif config.output_format == "json":
-            import json
-
             path = artifact_dir / "result.json"
             path.write_text(
                 json.dumps(
@@ -1426,18 +1424,20 @@ Team protocol:
                 break
 
         stored = store.agents(team_id)
-        results = [
-            {
-                "agent_id": row["agent_id"],
-                "name": row["name"],
-                "profession": row["profession"],
-                "status": row["state"],
-                "result": row.get("result") or "",
-                "error": row.get("error"),
-                "reviewer": bool(json_load(row.get("role_json")).get("reviewer", False)),
-            }
-            for row in stored
-        ]
+        results: list[dict[str, Any]] = []
+        for row in stored:
+            role_data = json_load(row.get("role_json"))
+            results.append(
+                {
+                    "agent_id": str(role_data.get("role_id") or row["agent_id"]),
+                    "name": row["name"],
+                    "profession": row["profession"],
+                    "status": row["state"],
+                    "result": row.get("result") or "",
+                    "error": row.get("error"),
+                    "reviewer": bool(role_data.get("reviewer", False)),
+                }
+            )
 
         failures = [
             str(item.get("error") or "agent failed")

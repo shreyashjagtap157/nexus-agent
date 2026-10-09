@@ -18,7 +18,7 @@ class FakeProvider(LLMProvider):
     def get_capabilities(self):
         return ProviderCapabilities(
             supports_tool_calling=False,
-            supports_streaming=True,
+            supports_streaming=False,
             supports_system_message=True,
             max_context_length=32000,
             max_output_tokens=4096,
@@ -55,6 +55,7 @@ def test_team_runtime_executes_dependency_waves_and_outputs_artifact(tmp_path: P
             max_iterations_per_agent=2,
             output_mode="file",
             output_format="json",
+            use_saved_agents=False,
             require_reviewer=True,
         ),
     )
@@ -152,6 +153,7 @@ def test_team_runtime_markdown_artifact_serializes_quality_gate(tmp_path: Path):
             max_iterations_per_agent=2,
             output_mode="file",
             output_format="markdown",
+            use_saved_agents=False,
             require_reviewer=True,
         ),
     )
@@ -200,6 +202,7 @@ def test_unknown_dependency_is_failed_before_worker_submission(tmp_path, monkeyp
             max_iterations_per_agent=1,
             auto_synthesize=False,
             require_reviewer=False,
+            use_saved_agents=False,
         ),
     )
 

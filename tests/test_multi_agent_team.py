@@ -19,7 +19,7 @@ class FakeProvider(LLMProvider):
     def get_capabilities(self) -> ProviderCapabilities:
         return ProviderCapabilities(
             supports_tool_calling=False,
-            supports_streaming=True,
+            supports_streaming=False,
             supports_system_message=True,
             max_context_length=32000,
             max_output_tokens=4096,
@@ -59,6 +59,7 @@ def test_team_runtime_executes_real_agent_loops_in_parallel(tmp_path: Path):
             parallelism=3,
             max_iterations_per_agent=3,
             workspace=str(tmp_path),
+            use_saved_agents=False,
             require_reviewer=True,
             auto_synthesize=True,
             auto_approve_tools=False,
@@ -84,12 +85,13 @@ def test_team_runtime_persists_blackboard_messages(tmp_path: Path):
             parallelism=2,
             max_iterations_per_agent=2,
             workspace=str(tmp_path),
+            use_saved_agents=False,
         ),
     )
 
     from nexus_agent.team.store import TeamStore
 
-    store = TeamStore(tmp_path / ".nexus" / "teams.db")
+    store = TeamStore(runtime.data_dir / "teams.db")
     try:
         messages = store.messages(result.team_id)
         assert any(m["message_type"] == "TASK_ASSIGNMENT" for m in messages)
@@ -103,7 +105,7 @@ def test_team_runtime_persists_blackboard_messages(tmp_path: Path):
 def test_team_roles_do_not_collide_between_runs(tmp_path: Path):
     provider = FakeProvider()
     runtime = TeamRuntime(provider=provider, tools=[], workspace=tmp_path)
-    cfg = TeamConfig(mode=TeamMode.ANALYSIS, max_agents=2, parallelism=2, max_iterations_per_agent=2)
+    cfg = TeamConfig(mode=TeamMode.ANALYSIS, max_agents=2, parallelism=2, max_iterations_per_agent=2, use_saved_agents=False)
     first = runtime.run_collect("Analyze task one.", cfg)
     second = runtime.run_collect("Analyze task two.", cfg)
 
