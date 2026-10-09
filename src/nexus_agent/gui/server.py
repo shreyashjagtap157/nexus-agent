@@ -598,9 +598,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         )
         return
     if not _allowed_websocket_origin(websocket.headers):
-        await websocket.close(
-            code=1008, reason="Agent WebSocket origin is not trusted."
-        )
+        await websocket.close(code=1008, reason="Agent WebSocket origin is not trusted.")
         return
     await websocket.accept()
     logger.info(f"WebSocket client connected for session: {session_id}")
