@@ -67,11 +67,11 @@ A release is eligible only when all are satisfied:
 
 Preview a release bump without changing files:
 
-`python scripts/set_version.py 0.3.0-alpha.4 --dry-run`
+`python scripts/set_version.py 0.3.0-alpha.6 --dry-run`
 
 Apply the bump:
 
-`python scripts/set_version.py 0.3.0-alpha.4`
+`python scripts/set_version.py 0.3.0-alpha.6`
 
 The utility updates only the synchronized release manifests. Changelog edits remain explicit so release notes describe the actual changes. No tag is created automatically.
 
@@ -93,4 +93,4 @@ Never force-push or rewrite a published tag.
 
 ## Current repository state
 
-The current development snapshot is `0.3.0-alpha.4`. It is an unreleased prerelease and MUST NOT be represented as a stable `0.3.0` release or tag.
+The current development snapshot is `0.3.0-alpha.5`. It is an unreleased prerelease and MUST NOT be represented as a stable `0.3.0` release or tag.
