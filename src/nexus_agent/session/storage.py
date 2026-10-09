@@ -117,8 +117,17 @@ class SessionStorage(SQLiteStore):
             conn.execute(
                 "INSERT OR IGNORE INTO sessions (id, title, model, provider, workspace, mode, created_at, updated_at, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (session_id, title, model, provider, workspace, mode, now, now,
-                 json.dumps(metadata or {})),
+                (
+                    session_id,
+                    title,
+                    model,
+                    provider,
+                    workspace,
+                    mode,
+                    now,
+                    now,
+                    json.dumps(metadata or {}),
+                ),
             )
             conn.commit()
 
@@ -153,10 +162,17 @@ class SessionStorage(SQLiteStore):
             cursor = conn.execute(
                 "INSERT INTO messages (session_id, role, type, content, tool_calls, tool_call_id, name, created_at, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (session_id, role, type, content,
-                 json.dumps(tool_calls) if tool_calls is not None else None,
-                 tool_call_id, name, time.time(),
-                 json.dumps(metadata or {})),
+                (
+                    session_id,
+                    role,
+                    type,
+                    content,
+                    json.dumps(tool_calls) if tool_calls is not None else None,
+                    tool_call_id,
+                    name,
+                    time.time(),
+                    json.dumps(metadata or {}),
+                ),
             )
             conn.execute(
                 "UPDATE sessions SET updated_at = ?, message_count = message_count + 1 WHERE id = ?",
@@ -399,13 +415,13 @@ class SessionStorage(SQLiteStore):
     def get_session_event_tree(self, session_id: str) -> list[dict[str, Any]]:
         """Get session events structured as a tree (parent → children).
 
-        Useful for visualizing the call chain during replay.
+                Useful for visualizing the call chain during replay.
 
-        Args:
-            session_id: Session ID.
+                Args:
+                    session_id: Session ID.
 
-n        Returns:
-            List of root events, each with a 'children' list.
+        n        Returns:
+                    List of root events, each with a 'children' list.
         """
         events = self.get_session_events(session_id)
         event_map: dict[int, dict[str, Any]] = {}
@@ -438,5 +454,3 @@ n        Returns:
             )
             conn.commit()
             return cursor.rowcount
-
-

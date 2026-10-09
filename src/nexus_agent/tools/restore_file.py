@@ -1,4 +1,5 @@
 """Restore files from NexusAgent's reversible runtime trash."""
+
 from __future__ import annotations
 
 import shutil
@@ -11,7 +12,9 @@ from nexus_agent.tools.base import Tool
 class RestoreFileTool(Tool):
     def __init__(self, workspace: Path | None = None, trash_dir: Path | None = None):
         self.workspace = (workspace or Path.cwd()).resolve()
-        self.trash_dir = (trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")).resolve()
+        self.trash_dir = (
+            trash_dir or (self.workspace / ".nexus-agent" / "runtime" / "trash")
+        ).resolve()
 
     @property
     def name(self) -> str:
@@ -26,23 +29,29 @@ class RestoreFileTool(Tool):
         return {
             "action": {"type": "string", "description": "list or restore"},
             "trash_name": {"type": "string", "description": "Trash filename returned by list"},
-            "destination": {"type": "string", "description": "Workspace-relative restore destination; required for restore"},
+            "destination": {
+                "type": "string",
+                "description": "Workspace-relative restore destination; required for restore",
+            },
         }
 
     @property
     def permission_level(self) -> str:
         return "read-write"
 
-    def execute(self, action: str, trash_name: str = "", destination: str = "", **kwargs: Any) -> str:
+    def execute(
+        self, action: str, trash_name: str = "", destination: str = "", **kwargs: Any
+    ) -> str:
         self.trash_dir.mkdir(parents=True, exist_ok=True)
         action = action.strip().lower()
         if action == "list":
             items = sorted(self.trash_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
-            return "\n".join(
-                f"{p.name} ({p.stat().st_size} bytes)"
-                for p in items[:500]
-                if p.is_file()
-            ) or "Trash is empty."
+            return (
+                "\n".join(
+                    f"{p.name} ({p.stat().st_size} bytes)" for p in items[:500] if p.is_file()
+                )
+                or "Trash is empty."
+            )
         if action != "restore":
             return "Error: action must be list or restore."
         if not trash_name or not destination:

@@ -1,4 +1,5 @@
 """SQLite persistence for multi-agent teams."""
+
 from __future__ import annotations
 
 import json
@@ -7,9 +8,9 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
 from nexus_agent.audit import AuditLog
-from typing import Any
 
 
 class TeamStore:
@@ -92,8 +93,7 @@ class TeamStore:
         """Apply additive schema migrations safely."""
         with self._lock:
             columns = {
-                row["name"]
-                for row in self._conn.execute("PRAGMA table_info(teams)").fetchall()
+                row["name"] for row in self._conn.execute("PRAGMA table_info(teams)").fetchall()
             }
             if "config_json" not in columns:
                 self._conn.execute(
@@ -102,10 +102,7 @@ class TeamStore:
             self._conn.commit()
 
     def _ensure_migrations(self) -> None:
-        columns = {
-            row["name"]
-            for row in self._conn.execute("PRAGMA table_info(teams)").fetchall()
-        }
+        columns = {row["name"] for row in self._conn.execute("PRAGMA table_info(teams)").fetchall()}
         if "quality_json" not in columns:
             self._conn.execute(
                 "ALTER TABLE teams ADD COLUMN quality_json TEXT NOT NULL DEFAULT '{}'"

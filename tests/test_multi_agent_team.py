@@ -19,7 +19,7 @@ class FakeProvider(LLMProvider):
     def get_capabilities(self) -> ProviderCapabilities:
         return ProviderCapabilities(
             supports_tool_calling=False,
-            supports_streaming=True,
+            supports_streaming=False,
             supports_system_message=True,
             max_context_length=32000,
             max_output_tokens=4096,
@@ -59,13 +59,14 @@ def test_team_runtime_executes_real_agent_loops_in_parallel(tmp_path: Path):
             parallelism=3,
             max_iterations_per_agent=3,
             workspace=str(tmp_path),
+            use_saved_agents=False,
             require_reviewer=True,
             auto_synthesize=True,
             auto_approve_tools=False,
         ),
     )
 
-    assert result.success is True
+    assert result.success is True, {"agents": result.agents, "failures": result.failures}
     assert result.team_id
     assert len(result.agents) == 3
     assert sum(a["status"] == "completed" for a in result.agents) == 3
@@ -84,16 +85,17 @@ def test_team_runtime_persists_blackboard_messages(tmp_path: Path):
             parallelism=2,
             max_iterations_per_agent=2,
             workspace=str(tmp_path),
+            use_saved_agents=False,
         ),
     )
 
     from nexus_agent.team.store import TeamStore
 
-    store = TeamStore(tmp_path / ".nexus" / "teams.db")
+    store = TeamStore(runtime.data_dir / "teams.db")
     try:
         messages = store.messages(result.team_id)
         assert any(m["message_type"] == "TASK_ASSIGNMENT" for m in messages)
-        assert any(m["message_type"] == "COMPLETION" for m in messages)
+        assert any(m["message_type"] == "COMPLETION" for m in messages), {"agents": result.agents, "messages": messages}
         assert any(m["message_type"] == "TEAM_COMPLETE" for m in messages)
         assert store.team(result.team_id)["status"] == "completed"
     finally:
@@ -103,17 +105,17 @@ def test_team_runtime_persists_blackboard_messages(tmp_path: Path):
 def test_team_roles_do_not_collide_between_runs(tmp_path: Path):
     provider = FakeProvider()
     runtime = TeamRuntime(provider=provider, tools=[], workspace=tmp_path)
-    cfg = TeamConfig(mode=TeamMode.ANALYSIS, max_agents=2, parallelism=2, max_iterations_per_agent=2)
+    cfg = TeamConfig(mode=TeamMode.ANALYSIS, max_agents=2, parallelism=2, max_iterations_per_agent=2, use_saved_agents=False)
     first = runtime.run_collect("Analyze task one.", cfg)
     second = runtime.run_collect("Analyze task two.", cfg)
 
     from nexus_agent.team.store import TeamStore
 
-    store = TeamStore(tmp_path / ".nexus" / "teams.db")
+    store = TeamStore(runtime.data_dir / "teams.db")
     try:
         first_agents = store.agents(first.team_id)
         second_agents = store.agents(second.team_id)
-        assert len(first_agents) == len(second_agents) == 2
+        assert len(first_agents) == len(second_agents) == 2, {"first": first_agents, "second": second_agents, "db_path": str(runtime.data_dir / 'teams.db')}
         assert {a["agent_id"] for a in first_agents}.isdisjoint({a["agent_id"] for a in second_agents})
     finally:
         store.close()

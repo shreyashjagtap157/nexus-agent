@@ -47,7 +47,9 @@ class OllamaProvider(OpenAIProvider):
         # We will return common defaults or read from config if provided
         configured = self._config.get("available_models")
         if configured:
-            return [{"id": m, "name": f"{m} (Configured)", "provider": "ollama"} for m in configured]
+            return [
+                {"id": m, "name": f"{m} (Configured)", "provider": "ollama"} for m in configured
+            ]
         return [
             {"id": "llama3", "name": "Llama 3", "provider": "ollama"},
             {"id": "mistral", "name": "Mistral", "provider": "ollama"},

@@ -1,4 +1,5 @@
 """Safe declarative MCP configuration API."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,10 +13,7 @@ from nexus_agent.core.config import load_config, save_user_config
 
 def _secret_env_keys(values: dict[str, str]) -> list[str]:
     markers = ("key", "token", "secret", "password", "credential", "auth")
-    return [
-        key for key in values
-        if any(marker in key.lower() for marker in markers)
-    ]
+    return [key for key in values if any(marker in key.lower() for marker in markers)]
 
 
 class MCPServerDefinition(BaseModel):
@@ -31,16 +29,16 @@ class MCPServerDefinition(BaseModel):
 def _require_local(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
-        raise HTTPException(status_code=403, detail="MCP configuration is restricted to local clients.")
+        raise HTTPException(
+            status_code=403, detail="MCP configuration is restricted to local clients."
+        )
 
 
 def register_mcp_routes(app: Any, state_manager: Any) -> None:
     @app.get("/api/mcp")
     async def mcp_config_get(request: Request):
         _require_local(request)
-        config = load_config(
-            workspace=Path(state_manager.get("workspace") or Path.cwd())
-        )
+        config = load_config(workspace=Path(state_manager.get("workspace") or Path.cwd()))
         raw = config.get("mcp", {})
         servers = raw.get("servers", []) if isinstance(raw, dict) else []
         return {
@@ -51,10 +49,10 @@ def register_mcp_routes(app: Any, state_manager: Any) -> None:
     @app.post("/api/mcp/validate")
     async def mcp_validate(request: Request):
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="MCP configuration is restricted to local clients.")
-        config = load_config(
-            workspace=Path(state_manager.get("workspace") or Path.cwd())
-        )
+            raise HTTPException(
+                status_code=403, detail="MCP configuration is restricted to local clients."
+            )
+        config = load_config(workspace=Path(state_manager.get("workspace") or Path.cwd()))
         servers = config.get("mcp", {}).get("servers", [])
         results = []
         for item in servers if isinstance(servers, list) else []:
@@ -62,15 +60,16 @@ def register_mcp_routes(app: Any, state_manager: Any) -> None:
                 continue
             command = str(item.get("command") or "")
             valid = bool(command) and not any(
-                token in command
-                for token in [";", "&&", "||", "|", ">", "<", "$", chr(96)]
+                token in command for token in [";", "&&", "||", "|", ">", "<", "$", chr(96)]
             )
             results.append(
                 {
                     "name": str(item.get("name") or command),
                     "command": command,
                     "valid": valid,
-                    "reason": "safe declarative command" if valid else "shell-control characters detected",
+                    "reason": "safe declarative command"
+                    if valid
+                    else "shell-control characters detected",
                 }
             )
         return {"results": results}
@@ -78,7 +77,9 @@ def register_mcp_routes(app: Any, state_manager: Any) -> None:
     @app.put("/api/mcp")
     async def mcp_save(request: Request, servers: list[MCPServerDefinition]):
         if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(status_code=403, detail="MCP configuration is restricted to local clients.")
+            raise HTTPException(
+                status_code=403, detail="MCP configuration is restricted to local clients."
+            )
         payload = [server.model_dump() for server in servers]
         plaintext_secret_keys = {
             server.name: _secret_env_keys(server.env)

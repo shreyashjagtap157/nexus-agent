@@ -18,6 +18,7 @@ from typing import Any
 
 class Role(str, Enum):
     """Message roles in a conversation."""
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -30,6 +31,7 @@ class ToolDefinition:
 
     Follows the OpenAI function calling schema for maximum compatibility.
     """
+
     name: str
     description: str
     parameters: dict[str, Any]  # JSON Schema
@@ -63,6 +65,7 @@ class ToolDefinition:
 @dataclass
 class ToolCall:
     """A tool call requested by the LLM."""
+
     id: str
     name: str
     arguments: dict[str, Any]
@@ -87,6 +90,7 @@ class ToolCall:
 @dataclass
 class Message:
     """A message in a conversation."""
+
     role: Role
     content: str | None = None
     tool_calls: list[ToolCall] | None = None
@@ -126,6 +130,7 @@ class Message:
 @dataclass
 class LLMResponse:
     """Response from an LLM provider."""
+
     content: str | None = None
     tool_calls: list[ToolCall] | None = None
     finish_reason: str | None = None
@@ -142,6 +147,7 @@ class LLMResponse:
 @dataclass
 class StreamChunk:
     """A chunk of a streaming response."""
+
     content: str | None = None
     tool_calls: list[ToolCall] | None = None
     finish_reason: str | None = None
@@ -151,6 +157,7 @@ class StreamChunk:
 @dataclass
 class ProviderCapabilities:
     """Capabilities of an LLM provider."""
+
     supports_tool_calling: bool = False
     supports_vision: bool = False
     supports_streaming: bool = True

@@ -19,8 +19,14 @@ logger = logging.getLogger(__name__)
 class MCPProxyTool(Tool):
     """A dynamic Tool proxy that executes its action via an external MCP server."""
 
-    def __init__(self, name: str, description: str, parameters: dict[str, Any],
-                 required_params: list[str], client: MCPClient):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        parameters: dict[str, Any],
+        required_params: list[str],
+        client: MCPClient,
+    ):
         super().__init__()
         self._name = name
         self._description = description
@@ -31,10 +37,10 @@ class MCPProxyTool(Tool):
     @property
     def name(self) -> str:
         return self._name
+
     @property
     def is_mcp(self) -> bool:
         return True
-
 
     @property
     def description(self) -> str:
@@ -105,7 +111,12 @@ class MCPClient:
     tools dynamically to expand the agent's capabilities.
     """
 
-    def __init__(self, command: list[str], env: dict[str, str] | None = None, allowed_secret_env: list[str] | None = None):
+    def __init__(
+        self,
+        command: list[str],
+        env: dict[str, str] | None = None,
+        allowed_secret_env: list[str] | None = None,
+    ):
         """Initialize MCP client.
 
         Args:
@@ -114,7 +125,19 @@ class MCPClient:
         """
         # Sanitize command to prevent shell escape or arbitrary command execution
         sanitized_command = []
-        allowed_executables = {"node", "npx", "python", "python3", "pip", "pip3", "pipx", "uv", "ruby", "git", "deno"}
+        allowed_executables = {
+            "node",
+            "npx",
+            "python",
+            "python3",
+            "pip",
+            "pip3",
+            "pipx",
+            "uv",
+            "ruby",
+            "git",
+            "deno",
+        }
         for idx, arg in enumerate(command):
             # Reject any argument containing shell control characters
             if any(char in arg for char in (";", "&", "|", ">", "<", "$", "`", "\n")):
@@ -133,20 +156,31 @@ class MCPClient:
                             raise ValueError(f"Absolute path is not a valid executable file: {arg}")
                     else:
                         if not path_obj.exists():
-                            raise ValueError(f"Unauthorized or non-existent MCP server executable: {arg}")
+                            raise ValueError(
+                                f"Unauthorized or non-existent MCP server executable: {arg}"
+                            )
             sanitized_command.append(arg)
         self.command = sanitized_command
 
         # Sanitize and restrict passed environment variables (allowlist)
         allowed_env_keys = {
-            "PATH", "HOME", "USER", "LANG", "COMSPEC", "SYSTEMROOT", "WINDIR",
-            "TEMP", "TMP", "USERNAME", "USERPROFILE", "LOGNAME", "PWD"
+            "PATH",
+            "HOME",
+            "USER",
+            "LANG",
+            "COMSPEC",
+            "SYSTEMROOT",
+            "WINDIR",
+            "TEMP",
+            "TMP",
+            "USERNAME",
+            "USERPROFILE",
+            "LOGNAME",
+            "PWD",
         }
         sanitized_env = {}
         allowed_secret_env = {
-            str(name).strip()
-            for name in (allowed_secret_env or [])
-            if str(name).strip()
+            str(name).strip() for name in (allowed_secret_env or []) if str(name).strip()
         }
         if env:
             for k, v in env.items():
@@ -208,7 +242,9 @@ class MCPClient:
             if self._initialize(timeout=startup_timeout):
                 # Discover tools
                 self.discovered_tools = self._list_tools()
-                logger.info(f"MCP server initialized. Discovered {len(self.discovered_tools)} tools.")
+                logger.info(
+                    f"MCP server initialized. Discovered {len(self.discovered_tools)} tools."
+                )
                 return True
 
             logger.error("MCP server initialization failed, cleaning up")
@@ -261,7 +297,9 @@ class MCPClient:
         with self._lock:
             response = self._responses.pop(req_id, {})
         if "error" in response:
-            raise RuntimeError(f"MCP Server error: {response['error'].get('message', 'Unknown error')}")
+            raise RuntimeError(
+                f"MCP Server error: {response['error'].get('message', 'Unknown error')}"
+            )
 
         return response.get("result", {})
 
@@ -306,13 +344,15 @@ class MCPClient:
 
             for rt in raw_tools:
                 schema = rt.get("inputSchema", {})
-                tools.append(MCPProxyTool(
-                    name=rt["name"],
-                    description=rt.get("description", "No description provided"),
-                    parameters=schema.get("properties", {}),
-                    required_params=schema.get("required", []),
-                    client=self,
-                ))
+                tools.append(
+                    MCPProxyTool(
+                        name=rt["name"],
+                        description=rt.get("description", "No description provided"),
+                        parameters=schema.get("properties", {}),
+                        required_params=schema.get("required", []),
+                        client=self,
+                    )
+                )
             return tools
         except (ValueError, RuntimeError, OSError) as e:
             logger.error(f"Failed to list MCP tools: {e}")
@@ -356,7 +396,9 @@ class MCPClient:
                     self._process.wait(timeout=5.0)  # Increase timeout to 5 seconds
                 except subprocess.TimeoutExpired:
                     # Force kill if graceful termination fails
-                    logger.warning("MCP server process did not exit gracefully. Killing process tree...")
+                    logger.warning(
+                        "MCP server process did not exit gracefully. Killing process tree..."
+                    )
                     self._process.kill()
                     self._process.wait(timeout=2.0)
             except (OSError, subprocess.TimeoutExpired) as e:

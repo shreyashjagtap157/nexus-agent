@@ -10,10 +10,10 @@
 // Allow dead_code for Phase 1a — command() and AcpError::Backend will be used in Phase 1b.
 #![allow(dead_code)]
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStdin, ChildStdout};
 use tokio::sync::mpsc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::protocol::{AcpEvent, AcpRequest};
 

@@ -22,7 +22,9 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
+use ratatui::widgets::{
+    Block, BorderType, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+};
 use ratatui::Terminal;
 use tokio::sync::mpsc;
 
@@ -56,16 +58,15 @@ pub struct TuiEngine {
 impl TuiEngine {
     /// Create a new TUI engine and enter raw mode.
     pub fn new() -> Result<(Self, mpsc::Receiver<AppEvent>), String> {
-        terminal::enable_raw_mode()
-            .map_err(|e| format!("Failed to enable raw mode: {e}"))?;
+        terminal::enable_raw_mode().map_err(|e| format!("Failed to enable raw mode: {e}"))?;
 
         let mut stdout = std::io::stdout();
         crossterm::execute!(stdout, EnterAlternateScreen)
             .map_err(|e| format!("Failed to enter alternate screen: {e}"))?;
 
         let backend = CrosstermBackend::new(stdout);
-        let terminal = Terminal::new(backend)
-            .map_err(|e| format!("Failed to create terminal: {e}"))?;
+        let terminal =
+            Terminal::new(backend).map_err(|e| format!("Failed to create terminal: {e}"))?;
 
         let (event_tx, event_rx) = mpsc::channel(EVENT_CHANNEL_SIZE);
 
@@ -87,7 +88,8 @@ impl TuiEngine {
                 if let Ok(event) = event::read() {
                     match event {
                         Event::Key(key)
-                            if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat =>
+                            if key.kind == KeyEventKind::Press
+                                || key.kind == KeyEventKind::Repeat =>
                         {
                             let _ = tx.send(AppEvent::KeyPressed(key)).await;
                         }
@@ -193,7 +195,11 @@ impl TuiEngine {
 
         let left = format!(
             " {status_icon} {} | {} | {} | {} ",
-            if app.model_name.is_empty() { "no-model" } else { &app.model_name },
+            if app.model_name.is_empty() {
+                "no-model"
+            } else {
+                &app.model_name
+            },
             app.provider_name,
             app.layout,
             phase,
@@ -216,10 +222,7 @@ impl TuiEngine {
             Span::styled(right, Style::default().fg(theme.colors.fg()).bg(bg)),
         ]);
 
-        frame.render_widget(
-            Paragraph::new(line).style(Style::default().bg(bg)),
-            area,
-        );
+        frame.render_widget(Paragraph::new(line).style(Style::default().bg(bg)), area);
     }
 
     // ── Chat Pane (content-type aware) ─────────────────────────────
@@ -240,9 +243,11 @@ impl TuiEngine {
         let inner = block.inner(area);
 
         // Build chat lines with content-type-aware styling via block detector
-        let lines: Vec<Line> = app.messages.iter().flat_map(|msg| {
-            Self::render_message_blocks(msg, theme)
-        }).collect();
+        let lines: Vec<Line> = app
+            .messages
+            .iter()
+            .flat_map(|msg| Self::render_message_blocks(msg, theme))
+            .collect();
 
         let scrollback: Vec<Line> = if lines.len() > MAX_CHAT_LINES {
             lines[lines.len() - MAX_CHAT_LINES..].to_vec()
@@ -261,15 +266,18 @@ impl TuiEngine {
             let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
                 .begin_symbol(Some("↑"))
                 .end_symbol(Some("↓"));
-            let mut state = ScrollbarState::new(
-                app.messages.len().saturating_sub(inner.height as usize),
-            ).position(app.chat_scroll);
+            let mut state =
+                ScrollbarState::new(app.messages.len().saturating_sub(inner.height as usize))
+                    .position(app.chat_scroll);
             frame.render_stateful_widget(scrollbar, inner, &mut state);
         }
     }
 
     /// Render a message as one or more styled lines based on content blocks.
-    fn render_message_blocks<'a>(msg: &'a crate::app::ChatMessage, theme: &'a Theme) -> Vec<Line<'a>> {
+    fn render_message_blocks<'a>(
+        msg: &'a crate::app::ChatMessage,
+        theme: &'a Theme,
+    ) -> Vec<Line<'a>> {
         match msg.kind {
             MessageKind::AssistantResponse => {
                 // Use block detector to decompose into semantic blocks
@@ -286,16 +294,19 @@ impl TuiEngine {
                         Style::default().fg(theme.colors.fg()),
                     ))]
                 } else {
-                    blocks.iter().map(|block| {
-                        let style = Self::block_type_style(&block.block_type, theme);
-                        let prefix = Self::block_type_icon(&block.block_type, theme);
-                        let text = if prefix.is_empty() {
-                            block.content.clone()
-                        } else {
-                            format!(" {prefix} {}", block.content)
-                        };
-                        Line::from(Span::styled(text, style))
-                    }).collect()
+                    blocks
+                        .iter()
+                        .map(|block| {
+                            let style = Self::block_type_style(&block.block_type, theme);
+                            let prefix = Self::block_type_icon(&block.block_type, theme);
+                            let text = if prefix.is_empty() {
+                                block.content.clone()
+                            } else {
+                                format!(" {prefix} {}", block.content)
+                            };
+                            Line::from(Span::styled(text, style))
+                        })
+                        .collect()
                 }
             }
             _ => {
@@ -307,35 +318,25 @@ impl TuiEngine {
     /// Get style for a block type.
     fn block_type_style(block_type: &BlockType, theme: &Theme) -> Style {
         match block_type {
-            BlockType::Prose | BlockType::System => {
-                Style::default().fg(theme.colors.fg())
-            }
-            BlockType::Code { .. } => {
-                Style::default()
-                    .fg(theme.colors.fg())
-                    .bg(theme.colors.code_bg())
-            }
-            BlockType::InlineCode => {
-                Style::default().fg(theme.colors.accent())
-            }
-            BlockType::ToolCall => {
-                Style::default().fg(theme.colors.tool_call_col())
-            }
+            BlockType::Prose | BlockType::System => Style::default().fg(theme.colors.fg()),
+            BlockType::Code { .. } => Style::default()
+                .fg(theme.colors.fg())
+                .bg(theme.colors.code_bg()),
+            BlockType::InlineCode => Style::default().fg(theme.colors.accent()),
+            BlockType::ToolCall => Style::default().fg(theme.colors.tool_call_col()),
             BlockType::ToolResult | BlockType::FileDiff => {
                 Style::default().fg(theme.colors.tool_result_col())
             }
-            BlockType::Thinking | BlockType::MemoryAccess => {
-                Style::default().fg(theme.colors.thought()).add_modifier(Modifier::ITALIC)
-            }
-            BlockType::ModelSwitch | BlockType::PlanStep => {
-                Style::default().fg(theme.colors.info_col()).add_modifier(Modifier::DIM)
-            }
-            BlockType::Warning => {
-                Style::default().fg(theme.colors.warn())
-            }
-            BlockType::Error => {
-                Style::default().fg(theme.colors.err()).add_modifier(Modifier::BOLD)
-            }
+            BlockType::Thinking | BlockType::MemoryAccess => Style::default()
+                .fg(theme.colors.thought())
+                .add_modifier(Modifier::ITALIC),
+            BlockType::ModelSwitch | BlockType::PlanStep => Style::default()
+                .fg(theme.colors.info_col())
+                .add_modifier(Modifier::DIM),
+            BlockType::Warning => Style::default().fg(theme.colors.warn()),
+            BlockType::Error => Style::default()
+                .fg(theme.colors.err())
+                .add_modifier(Modifier::BOLD),
         }
     }
 
@@ -359,12 +360,11 @@ impl TuiEngine {
         let (icon, style) = match msg.kind {
             MessageKind::UserInput => (
                 ">",
-                Style::default().fg(theme.colors.accent()).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.colors.accent())
+                    .add_modifier(Modifier::BOLD),
             ),
-            MessageKind::AssistantResponse => (
-                "",
-                Style::default().fg(theme.colors.fg()),
-            ),
+            MessageKind::AssistantResponse => ("", Style::default().fg(theme.colors.fg())),
             MessageKind::ToolCall => (
                 theme.icons.tool.as_str(),
                 Style::default().fg(theme.colors.tool_call_col()),
@@ -375,11 +375,15 @@ impl TuiEngine {
             ),
             MessageKind::Thinking => (
                 theme.icons.thinking.as_str(),
-                Style::default().fg(theme.colors.thought()).add_modifier(Modifier::ITALIC),
+                Style::default()
+                    .fg(theme.colors.thought())
+                    .add_modifier(Modifier::ITALIC),
             ),
             MessageKind::Error => (
                 theme.icons.task_error.as_str(),
-                Style::default().fg(theme.colors.err()).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.colors.err())
+                    .add_modifier(Modifier::BOLD),
             ),
             MessageKind::Warning => (
                 theme.icons.warning.as_str(),
@@ -387,7 +391,9 @@ impl TuiEngine {
             ),
             MessageKind::System => (
                 theme.icons.model.as_str(),
-                Style::default().fg(theme.colors.info_col()).add_modifier(Modifier::DIM),
+                Style::default()
+                    .fg(theme.colors.info_col())
+                    .add_modifier(Modifier::DIM),
             ),
         };
 
@@ -408,11 +414,17 @@ impl TuiEngine {
             .style(Style::default().bg(theme.colors.surface_col()));
         let inner = block.inner(area);
 
-        let diff_lines: Vec<Line> = app.messages.iter()
+        let diff_lines: Vec<Line> = app
+            .messages
+            .iter()
             .filter(|m| m.kind == MessageKind::ToolResult || m.kind == MessageKind::ToolCall)
             .map(|m| {
                 let is_success = m.kind == MessageKind::ToolResult;
-                let icon = if is_success { &theme.icons.task_complete } else { &theme.icons.tool };
+                let icon = if is_success {
+                    &theme.icons.task_complete
+                } else {
+                    &theme.icons.tool
+                };
                 let style = if is_success {
                     Style::default().fg(theme.colors.tool_result_col())
                 } else {
@@ -424,7 +436,8 @@ impl TuiEngine {
                     m.content.clone()
                 };
                 Line::from(Span::styled(format!(" {icon} {preview}"), style))
-            }).collect();
+            })
+            .collect();
 
         frame.render_widget(
             Paragraph::new(if diff_lines.is_empty() {
@@ -434,7 +447,9 @@ impl TuiEngine {
                 ))]
             } else {
                 diff_lines
-            }).block(block).wrap(Wrap { trim: false }),
+            })
+            .block(block)
+            .wrap(Wrap { trim: false }),
             inner,
         );
     }
@@ -450,8 +465,16 @@ impl TuiEngine {
         let inner = block.inner(area);
 
         let msg_count = app.messages.len();
-        let token_info = format!(" Tokens: {} in / {} out", Self::format_tokens(app.tokens_in), Self::format_tokens(app.tokens_out));
-        let last_kind = app.messages.last().map(|m| format!("{:?}", m.kind)).unwrap_or_default();
+        let token_info = format!(
+            " Tokens: {} in / {} out",
+            Self::format_tokens(app.tokens_in),
+            Self::format_tokens(app.tokens_out)
+        );
+        let last_kind = app
+            .messages
+            .last()
+            .map(|m| format!("{:?}", m.kind))
+            .unwrap_or_default();
 
         let lines = vec![
             Line::from(Span::styled(
@@ -495,7 +518,10 @@ impl TuiEngine {
 
         let lines = vec![
             Line::from(Span::styled(" ┌──────────────┐", theme.colors.accent())),
-            Line::from(Span::styled(" │ Orchestrator  │", Style::default().fg(theme.colors.accent()).bold())),
+            Line::from(Span::styled(
+                " │ Orchestrator  │",
+                Style::default().fg(theme.colors.accent()).bold(),
+            )),
             Line::from(Span::styled(" └──────┬───────┘", theme.colors.accent())),
             Line::from(Span::styled("    ┌───┼───┐", theme.colors.muted_col())),
             Line::from(Span::styled("    │   │   │", theme.colors.muted_col())),
@@ -505,9 +531,18 @@ impl TuiEngine {
                 Span::styled(" ┌──┴──┐", theme.colors.accent2()),
             ]),
             Line::from(vec![
-                Span::styled(" │Plan │", Style::default().fg(theme.colors.accent2()).bold()),
-                Span::styled(" │Code │", Style::default().fg(theme.colors.accent2()).bold()),
-                Span::styled(" │Review│", Style::default().fg(theme.colors.accent2()).bold()),
+                Span::styled(
+                    " │Plan │",
+                    Style::default().fg(theme.colors.accent2()).bold(),
+                ),
+                Span::styled(
+                    " │Code │",
+                    Style::default().fg(theme.colors.accent2()).bold(),
+                ),
+                Span::styled(
+                    " │Review│",
+                    Style::default().fg(theme.colors.accent2()).bold(),
+                ),
             ]),
             Line::from(vec![
                 Span::styled(" └─────┘", theme.colors.accent2()),
@@ -564,7 +599,10 @@ impl TuiEngine {
             Line::from(Span::styled(cpu_line, cpu_style)),
             Line::from(Span::styled(mem_line, mem_style)),
             Line::from(Span::styled(
-                format!(" Cores: {} | Procs: {} | {}", res.cpu_cores, res.process_count, res.host_name),
+                format!(
+                    " Cores: {} | Procs: {} | {}",
+                    res.cpu_cores, res.process_count, res.host_name
+                ),
                 Style::default().fg(theme.colors.muted_col()),
             )),
         ];
@@ -576,11 +614,7 @@ impl TuiEngine {
     fn progress_bar(pct: u8, width: usize) -> String {
         let filled = ((pct as usize * width).saturating_add(50)) / 100;
         let empty = width.saturating_sub(filled);
-        format!(
-            "[{}{}]",
-            "█".repeat(filled.min(width)),
-            "░".repeat(empty)
-        )
+        format!("[{}{}]", "█".repeat(filled.min(width)), "░".repeat(empty))
     }
 
     // ── Analytics Pane (for monitor layout) ────────────────────────
@@ -594,8 +628,14 @@ impl TuiEngine {
         let inner = block.inner(area);
 
         let lines = vec![
-            Line::from(format!(" Tokens in:  {}", Self::format_tokens(app.tokens_in))),
-            Line::from(format!(" Tokens out: {}", Self::format_tokens(app.tokens_out))),
+            Line::from(format!(
+                " Tokens in:  {}",
+                Self::format_tokens(app.tokens_in)
+            )),
+            Line::from(format!(
+                " Tokens out: {}",
+                Self::format_tokens(app.tokens_out)
+            )),
             Line::from(format!(" Messages:   {}", app.messages.len())),
             Line::from(format!(" Uptime:     {}", app.uptime_string())),
         ];
@@ -663,7 +703,9 @@ impl TuiEngine {
         };
 
         frame.render_widget(
-            Paragraph::new(input_line).block(block).wrap(Wrap { trim: false }),
+            Paragraph::new(input_line)
+                .block(block)
+                .wrap(Wrap { trim: false }),
             area,
         );
 
@@ -692,7 +734,12 @@ impl TuiEngine {
         let browser_h = area.height.saturating_sub(4).min(30);
         let x = (area.width - browser_w) / 2;
         let y = (area.height - browser_h) / 3;
-        let browser_area = Rect { x, y, width: browser_w, height: browser_h };
+        let browser_area = Rect {
+            x,
+            y,
+            width: browser_w,
+            height: browser_h,
+        };
 
         let block = Block::default()
             .title(" Memory Browser [Ctrl+M] ")
@@ -733,17 +780,47 @@ impl TuiEngine {
                 Style::default().fg(theme.colors.accent()).bold(),
             )),
             Line::from(""),
-            Line::from(Span::styled("  /help      Show help and available commands", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /quit      Exit session", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /clear     Clear chat history", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /status    Show agent status", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /model     Change active model", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /effort    Set effort level: low/medium/high/xhigh/max", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /fork      Branch current session", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /theme     Change theme", Style::default().fg(theme.colors.fg()))),
-            Line::from(Span::styled("  /layout    Change layout: minimal/developer/researcher/orchestrator/monitor", Style::default().fg(theme.colors.fg()))),
+            Line::from(Span::styled(
+                "  /help      Show help and available commands",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /quit      Exit session",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /clear     Clear chat history",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /status    Show agent status",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /model     Change active model",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /effort    Set effort level: low/medium/high/xhigh/max",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /fork      Branch current session",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /theme     Change theme",
+                Style::default().fg(theme.colors.fg()),
+            )),
+            Line::from(Span::styled(
+                "  /layout    Change layout: minimal/developer/researcher/orchestrator/monitor",
+                Style::default().fg(theme.colors.fg()),
+            )),
             Line::from(""),
-            Line::from(Span::styled("  Ctrl+P: Close  |  ↑↓: Navigate  |  Enter: Execute", Style::default().fg(theme.colors.muted_col()).dim())),
+            Line::from(Span::styled(
+                "  Ctrl+P: Close  |  ↑↓: Navigate  |  Enter: Execute",
+                Style::default().fg(theme.colors.muted_col()).dim(),
+            )),
         ];
 
         let block = Block::default()
@@ -751,10 +828,7 @@ impl TuiEngine {
             .border_type(BorderType::Double)
             .style(Style::default().bg(theme.colors.surface_col()));
 
-        frame.render_widget(
-            Paragraph::new(commands).block(block),
-            palette_area,
-        );
+        frame.render_widget(Paragraph::new(commands).block(block), palette_area);
     }
 
     // ── Interrupt Dialog Overlay ───────────────────────────────────
@@ -776,11 +850,23 @@ impl TuiEngine {
                 Style::default().fg(theme.colors.warn()).bold(),
             )),
             Line::from(""),
-            Line::from(Span::styled(" What would you like to do?", Style::default().fg(theme.colors.fg()))),
+            Line::from(Span::styled(
+                " What would you like to do?",
+                Style::default().fg(theme.colors.fg()),
+            )),
             Line::from(""),
-            Line::from(Span::styled("  [C] Cancel execution", Style::default().fg(theme.colors.err()))),
-            Line::from(Span::styled("  [R] Redirect with new input", Style::default().fg(theme.colors.info_col()))),
-            Line::from(Span::styled("  [Esc] Continue", Style::default().fg(theme.colors.muted_col()))),
+            Line::from(Span::styled(
+                "  [C] Cancel execution",
+                Style::default().fg(theme.colors.err()),
+            )),
+            Line::from(Span::styled(
+                "  [R] Redirect with new input",
+                Style::default().fg(theme.colors.info_col()),
+            )),
+            Line::from(Span::styled(
+                "  [Esc] Continue",
+                Style::default().fg(theme.colors.muted_col()),
+            )),
         ];
 
         let block = Block::default()
@@ -788,10 +874,7 @@ impl TuiEngine {
             .border_type(BorderType::Double)
             .style(Style::default().bg(theme.colors.surface_col()));
 
-        frame.render_widget(
-            Paragraph::new(lines).block(block),
-            dialog_area,
-        );
+        frame.render_widget(Paragraph::new(lines).block(block), dialog_area);
     }
 
     // ── Helpers ────────────────────────────────────────────────────

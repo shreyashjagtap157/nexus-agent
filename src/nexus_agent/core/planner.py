@@ -45,11 +45,15 @@ Be analytical, meticulous, and think through edge cases before outputting your p
             tools: All workspace tools.
             agent_kwargs: Extra agent config arguments.
         """
-        self.read_only_tools = [t for t in tools if getattr(t, "permission_level", "dangerous") == "read-only"]
+        self.read_only_tools = [
+            t for t in tools if getattr(t, "permission_level", "dangerous") == "read-only"
+        ]
         # Filter out keys that conflict with AgentLoopConfig constructor
         conflicting_keys = {"mode", "system_prompt_extra"}
         filtered_kwargs = {k: v for k, v in agent_kwargs.items() if k not in conflicting_keys}
-        cfg = AgentLoopConfig(mode=AgentMode.PLAN, system_prompt_extra=self.SYSTEM_PROMPT, **filtered_kwargs)
+        cfg = AgentLoopConfig(
+            mode=AgentMode.PLAN, system_prompt_extra=self.SYSTEM_PROMPT, **filtered_kwargs
+        )
         self.agent = AgentLoop(
             provider=provider,
             tools=self.read_only_tools,
@@ -67,7 +71,7 @@ Be analytical, meticulous, and think through edge cases before outputting your p
         """
         prompt = (
             f"Please generate a complete, step-by-step Technical Implementation Plan for the following task:\n"
-            f"\"\"\"\n{task}\n\"\"\"\n"
+            f'"""\n{task}\n"""\n'
             f"First, gather necessary codebase context (list directories, read relevant code files) to understand "
             f"the implementation details before drawing up the plan."
         )

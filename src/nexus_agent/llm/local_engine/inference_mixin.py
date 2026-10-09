@@ -22,8 +22,7 @@ class InferenceMixin:
     _llm: Any
     _model_name_str: str
 
-    def _ensure_loaded(self) -> None:
-        ...
+    def _ensure_loaded(self) -> None: ...
 
     def chat_completion(
         self,
@@ -131,8 +130,7 @@ class InferenceMixin:
 
             if finish and finish == "tool_calls" and accumulated_tool_calls:
                 chunk_tool_calls = [
-                    BaseToolCall.from_openai_format(tc)
-                    for tc in accumulated_tool_calls.values()
+                    BaseToolCall.from_openai_format(tc) for tc in accumulated_tool_calls.values()
                 ]
 
             yield StreamChunk(

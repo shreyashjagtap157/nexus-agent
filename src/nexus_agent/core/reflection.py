@@ -29,18 +29,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CritiqueIssue:
     """A single issue identified during critique."""
-    category: str          # correctness, completeness, quality, security, performance
-    severity: str          # critical, major, minor, suggestion
+
+    category: str  # correctness, completeness, quality, security, performance
+    severity: str  # critical, major, minor, suggestion
     description: str
-    location: str = ""     # file:line or general area
+    location: str = ""  # file:line or general area
     fix_suggestion: str = ""
 
 
 @dataclass
 class CritiqueResult:
     """Result of a critic evaluation pass."""
-    score: int                                     # 0-100 quality score
-    approved: bool                                 # True if score >= threshold
+
+    score: int  # 0-100 quality score
+    approved: bool  # True if score >= threshold
     issues: list[CritiqueIssue] = field(default_factory=list)
     suggestions: list[str] = field(default_factory=list)
     summary: str = ""
@@ -78,9 +80,7 @@ class CritiqueResult:
                     "minor": "🟡",
                     "suggestion": "💡",
                 }.get(issue.severity, "•")
-                lines.append(
-                    f"{i}. {severity_icon} **[{issue.category}]** {issue.description}"
-                )
+                lines.append(f"{i}. {severity_icon} **[{issue.category}]** {issue.description}")
                 if issue.fix_suggestion:
                     lines.append(f"   → Fix: {issue.fix_suggestion}")
 
@@ -89,10 +89,12 @@ class CritiqueResult:
             for s in self.suggestions:
                 lines.append(f"- {s}")
 
-        lines.extend([
-            "",
-            "**Please address the issues above and regenerate your response.**",
-        ])
+        lines.extend(
+            [
+                "",
+                "**Please address the issues above and regenerate your response.**",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -197,13 +199,15 @@ def _parse_critique_response(response_text: str) -> CritiqueResult:
     # Parse issues
     issues: list[CritiqueIssue] = []
     for issue_data in data.get("issues", []):
-        issues.append(CritiqueIssue(
-            category=issue_data.get("category", "quality"),
-            severity=issue_data.get("severity", "minor"),
-            description=issue_data.get("description", ""),
-            location=issue_data.get("location", ""),
-            fix_suggestion=issue_data.get("fix_suggestion", ""),
-        ))
+        issues.append(
+            CritiqueIssue(
+                category=issue_data.get("category", "quality"),
+                severity=issue_data.get("severity", "minor"),
+                description=issue_data.get("description", ""),
+                location=issue_data.get("location", ""),
+                fix_suggestion=issue_data.get("fix_suggestion", ""),
+            )
+        )
 
     score = max(0, min(100, int(data.get("score") or 50)))
 
@@ -319,22 +323,26 @@ class ReflectionEngine:
 
         # Check for empty or too-short responses
         if not output or len(output.strip()) < 20:
-            issues.append(CritiqueIssue(
-                category="completeness",
-                severity="critical",
-                description="Response is empty or extremely short",
-            ))
+            issues.append(
+                CritiqueIssue(
+                    category="completeness",
+                    severity="critical",
+                    description="Response is empty or extremely short",
+                )
+            )
             score -= 40
 
         # Check for error indicators
         error_indicators = ["Error:", "Failed:", "Exception:", "Traceback"]
         for indicator in error_indicators:
             if indicator in output:
-                issues.append(CritiqueIssue(
-                    category="correctness",
-                    severity="major",
-                    description=f"Response contains error indicator: '{indicator}'",
-                ))
+                issues.append(
+                    CritiqueIssue(
+                        category="correctness",
+                        severity="major",
+                        description=f"Response contains error indicator: '{indicator}'",
+                    )
+                )
                 score -= 15
                 break
 
@@ -342,11 +350,13 @@ class ReflectionEngine:
         placeholder_indicators = ["TODO", "FIXME", "placeholder", "not implemented"]
         for indicator in placeholder_indicators:
             if indicator.lower() in output.lower():
-                issues.append(CritiqueIssue(
-                    category="completeness",
-                    severity="minor",
-                    description=f"Response contains placeholder: '{indicator}'",
-                ))
+                issues.append(
+                    CritiqueIssue(
+                        category="completeness",
+                        severity="minor",
+                        description=f"Response contains placeholder: '{indicator}'",
+                    )
+                )
                 score -= 5
 
         score = max(0, min(100, score))
@@ -394,8 +404,7 @@ class ReflectionEngine:
 
             if critique.approved:
                 logger.info(
-                    f"Reflection passed at round {round_num + 1} "
-                    f"with score {critique.score}"
+                    f"Reflection passed at round {round_num + 1} with score {critique.score}"
                 )
                 break
 
@@ -408,13 +417,11 @@ class ReflectionEngine:
                 )
                 output = generate_fn(correction_prompt)
                 logger.info(
-                    f"Reflection round {round_num + 1}: score={critique.score}, "
-                    f"regenerating..."
+                    f"Reflection round {round_num + 1}: score={critique.score}, regenerating..."
                 )
             else:
                 logger.info(
-                    f"Reflection max rounds reached. "
-                    f"Accepting output with score {critique.score}"
+                    f"Reflection max rounds reached. Accepting output with score {critique.score}"
                 )
 
         return output, critiques

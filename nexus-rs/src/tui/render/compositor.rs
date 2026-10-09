@@ -128,9 +128,9 @@ fn layout_minimal(area: Rect) -> LayoutResult {
     let main = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),    // Status bar
-            Constraint::Min(3),       // Chat
-            Constraint::Length(3),    // Input bar
+            Constraint::Length(1), // Status bar
+            Constraint::Min(3),    // Chat
+            Constraint::Length(3), // Input bar
         ])
         .split(area);
 
@@ -154,17 +154,17 @@ fn layout_developer(area: Rect) -> LayoutResult {
     let top_bottom = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),    // Status bar
-            Constraint::Min(3),       // Main content
-            Constraint::Length(3),    // Input bar
+            Constraint::Length(1), // Status bar
+            Constraint::Min(3),    // Main content
+            Constraint::Length(3), // Input bar
         ])
         .split(area);
 
     let content = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(50),  // Chat
-            Constraint::Percentage(50),  // Diff
+            Constraint::Percentage(50), // Chat
+            Constraint::Percentage(50), // Diff
         ])
         .split(top_bottom[1]);
 
@@ -197,9 +197,9 @@ fn layout_researcher(area: Rect) -> LayoutResult {
     let content = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(40),  // Chat
-            Constraint::Percentage(30),  // Memory
-            Constraint::Percentage(30),  // Web results
+            Constraint::Percentage(40), // Chat
+            Constraint::Percentage(30), // Memory
+            Constraint::Percentage(30), // Web results
         ])
         .split(top_bottom[1]);
 
@@ -232,9 +232,9 @@ fn layout_orchestrator(area: Rect) -> LayoutResult {
     let content = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(40),  // Chat
-            Constraint::Percentage(30),  // Agent graph
-            Constraint::Percentage(30),  // Task inspector
+            Constraint::Percentage(40), // Chat
+            Constraint::Percentage(30), // Agent graph
+            Constraint::Percentage(30), // Task inspector
         ])
         .split(top_bottom[1]);
 
@@ -267,9 +267,9 @@ fn layout_monitor(area: Rect) -> LayoutResult {
     let content = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(45),  // Chat
-            Constraint::Percentage(30),  // Resource monitor
-            Constraint::Percentage(25),  // Analytics
+            Constraint::Percentage(45), // Chat
+            Constraint::Percentage(30), // Resource monitor
+            Constraint::Percentage(25), // Analytics
         ])
         .split(top_bottom[1]);
 

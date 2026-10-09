@@ -22,9 +22,10 @@ class PermissionLevel(str, Enum):
 
     These map 1:1 to opencode's allow/ask/deny permission model.
     """
-    ALLOW = "allow"    # Always allowed, no prompt
-    ASK = "ask"        # Prompt user for approval
-    DENY = "deny"      # Always denied
+
+    ALLOW = "allow"  # Always allowed, no prompt
+    ASK = "ask"  # Prompt user for approval
+    DENY = "deny"  # Always denied
 
 
 @dataclass
@@ -34,11 +35,12 @@ class PermissionRule:
     Rules match against tool names and optionally against
     specific argument patterns.
     """
-    tool_name: str                          # Tool name or '*' for all
-    level: PermissionLevel                  # allow, ask, deny
-    description: str = ""                   # Human-readable description
+
+    tool_name: str  # Tool name or '*' for all
+    level: PermissionLevel  # allow, ask, deny
+    description: str = ""  # Human-readable description
     arg_patterns: dict[str, str] = field(default_factory=dict)  # Argument pattern constraints
-    project: str | None = None              # Project-specific rule (None = global)
+    project: str | None = None  # Project-specific rule (None = global)
 
     def matches(self, tool_name: str, arguments: dict[str, Any] | None = None) -> bool:
         """Check if this rule matches a tool call.

@@ -23,7 +23,10 @@ pub enum BackendState {
     /// Process is running but in a degraded state.
     Degraded { pid: u32, error: String },
     /// Process exited unexpectedly.
-    Crashed { exit_code: Option<i32>, stderr: String },
+    Crashed {
+        exit_code: Option<i32>,
+        stderr: String,
+    },
     /// Process was deliberately stopped.
     Stopped,
 }
@@ -68,9 +71,7 @@ pub fn find_python() -> Result<String, String> {
             return Ok(candidate.to_string());
         }
     }
-    Err(
-        "Python 3.10+ not found on PATH. Install it from https://python.org".to_string(),
-    )
+    Err("Python 3.10+ not found on PATH. Install it from https://python.org".to_string())
 }
 
 // ── Process Lifecycle ─────────────────────────────────────────────
@@ -93,8 +94,8 @@ impl PythonProcess {
             .arg("--acp")
             .arg("--workspace")
             .arg(workspace)
-            .stdin(std::process::Stdio::piped())   // ACP reads stdin for commands
-            .stdout(std::process::Stdio::piped())  // ACP writes events/responses to stdout
+            .stdin(std::process::Stdio::piped()) // ACP reads stdin for commands
+            .stdout(std::process::Stdio::piped()) // ACP writes events/responses to stdout
             .stderr(std::process::Stdio::inherit()); // Python stderr goes to terminal
 
         if let Some(m) = model {
@@ -104,7 +105,9 @@ impl PythonProcess {
             cmd.arg("--provider").arg(p);
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn Python backend: {e}"))?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Failed to spawn Python backend: {e}"))?;
 
         let pid = child.id().ok_or("Failed to get child PID")?;
         let stdin = child.stdin.take().ok_or("Failed to open stdin")?;

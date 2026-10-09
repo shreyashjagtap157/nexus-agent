@@ -1,4 +1,5 @@
 """Optional cached Models.dev-compatible provider/model catalog."""
+
 from __future__ import annotations
 
 import json

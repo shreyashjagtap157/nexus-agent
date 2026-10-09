@@ -1,15 +1,30 @@
 """SQLite-backed evidence ledger for research-mode teams."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import sqlite3
+import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+
+class _ClosingConnection(sqlite3.Connection):
+    """SQLite connection context that commits/rolls back and always closes."""
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Literal[False]:
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
 
 
 class ResearchStore:
+    _schema_locks: dict[str, Any] = {}
+    _schema_locks_guard = threading.Lock()
+
     SCHEMA = """
     CREATE TABLE IF NOT EXISTS research_sources (
         source_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,10 +86,15 @@ class ResearchStore:
     """
 
     def __init__(self, db_path: str | Path):
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path).expanduser().resolve()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._ensure_schema()
-        self._ensure_migrations()
+        with self._schema_locks_guard:
+            schema_lock = self._schema_locks.setdefault(str(self.db_path), threading.RLock())
+        # WAL initialization, DDL and migrations must not race when several
+        # team workers open a new ledger for the first time.
+        with schema_lock:
+            self._ensure_schema()
+            self._ensure_migrations()
 
     def _ensure_migrations(self) -> None:
         with self._connect() as conn:
@@ -89,14 +109,23 @@ class ResearchStore:
                 conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path), timeout=30)
+        conn = sqlite3.connect(
+            str(self.db_path),
+            timeout=30,
+            factory=_ClosingConnection,
+        )
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
+    def close(self) -> None:
+        """Compatibility no-op; each operation owns and closes its connection."""
+        return None
+
     def _ensure_schema(self) -> None:
         with self._connect() as conn:
+            conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(self.SCHEMA)
             conn.commit()
 
@@ -126,7 +155,9 @@ class ResearchStore:
                 (team_id, digest),
             ).fetchone()
             if row is None:
-                raise RuntimeError("Research source insert completed without a persisted source row.")
+                raise RuntimeError(
+                    "Research source insert completed without a persisted source row."
+                )
             return {
                 "source_id": int(row["source_id"]),
                 "duplicate": not inserted,
@@ -149,9 +180,7 @@ class ResearchStore:
             ).fetchone()
             if source is None:
                 raise ValueError("Unknown research source for this team.")
-            quote_present = int(
-                bool(quote.strip()) and quote.strip() in str(source["content"])
-            )
+            quote_present = int(bool(quote.strip()) and quote.strip() in str(source["content"]))
             cur = conn.execute(
                 """INSERT INTO research_claims(
                     team_id,statement,claim_type,created_by,status,created_at
@@ -165,7 +194,10 @@ class ResearchStore:
                     time.time(),
                 ),
             )
-            claim_id = int(cur.lastrowid)
+            inserted_claim_id = cur.lastrowid
+            if inserted_claim_id is None:
+                raise RuntimeError("Claim insert did not return a persisted claim ID.")
+            claim_id = inserted_claim_id
             conn.execute(
                 """INSERT INTO research_claim_evidence(
                     claim_id,source_id,quote,quote_present
@@ -199,9 +231,7 @@ class ResearchStore:
             ).fetchone()
             if source is None:
                 raise ValueError("Unknown research source for this team.")
-            quote_present = int(
-                bool(quote.strip()) and quote.strip() in str(source["content"])
-            )
+            quote_present = int(bool(quote.strip()) and quote.strip() in str(source["content"]))
             conn.execute(
                 """INSERT INTO research_claim_evidence(
                     claim_id,source_id,quote,quote_present
@@ -211,9 +241,37 @@ class ResearchStore:
                     quote_present=excluded.quote_present""",
                 (claim_id, source_id, quote, quote_present),
             )
+            evidence_counts = conn.execute(
+                """SELECT COUNT(*) AS total, COALESCE(SUM(quote_present), 0) AS present
+                   FROM research_claim_evidence WHERE claim_id=?""",
+                (claim_id,),
+            ).fetchone()
+            evidence_complete = (
+                evidence_counts is not None
+                and int(evidence_counts["total"]) > 0
+                and int(evidence_counts["present"]) == int(evidence_counts["total"])
+            )
+            # Any evidence mutation invalidates previous verifier decisions. Keep
+            # the records for auditability, but mark them stale so coverage and
+            # synthesis cannot count them toward the current evidence set.
             conn.execute(
-                "UPDATE research_claims SET status=? WHERE claim_id=? AND status='unverified'",
-                ("quote_present" if quote_present else "unverified", claim_id),
+                """UPDATE research_verifications
+                   SET verdict='stale',
+                       note=CASE WHEN note='' THEN
+                           'Superseded because claim evidence changed.'
+                           ELSE note || char(10) ||
+                           'Superseded because claim evidence changed.'
+                       END
+                   WHERE claim_id=? AND verdict='verified'""",
+                (claim_id,),
+            )
+            conn.execute(
+                "UPDATE research_claims SET status=? WHERE claim_id=? AND team_id=?",
+                (
+                    "quote_present" if evidence_complete else "unverified",
+                    claim_id,
+                    team_id,
+                ),
             )
             conn.commit()
             return {
@@ -222,7 +280,9 @@ class ResearchStore:
                 "quote_present": bool(quote_present),
             }
 
-    def verify_claim(self, team_id: str, claim_id: int, verifier_id: str, note: str = "") -> dict[str, Any]:
+    def verify_claim(
+        self, team_id: str, claim_id: int, verifier_id: str, note: str = ""
+    ) -> dict[str, Any]:
         with self._connect() as conn:
             claim = conn.execute(
                 "SELECT * FROM research_claims WHERE claim_id=? AND team_id=?",
@@ -264,7 +324,12 @@ class ResearchStore:
                 (verdict, claim_id),
             )
             conn.commit()
-            return {"claim_id": claim_id, "verdict": verdict, "evidence_count": len(evidence), "source_ids": source_ids}
+            return {
+                "claim_id": claim_id,
+                "verdict": verdict,
+                "evidence_count": len(evidence),
+                "source_ids": source_ids,
+            }
 
     def record_conflict(
         self,
@@ -291,8 +356,11 @@ class ResearchStore:
                 (team_id, claim_a, claim_b, conflict_type, agent_id, time.time()),
             )
             conn.commit()
+            conflict_id = cur.lastrowid
+            if conflict_id is None:
+                raise RuntimeError("Conflict insert did not return a persisted conflict ID.")
             return {
-                "conflict_id": int(cur.lastrowid),
+                "conflict_id": conflict_id,
                 "status": "unresolved",
             }
 
@@ -306,7 +374,9 @@ class ResearchStore:
     ) -> dict[str, Any]:
         normalized = status.strip().lower()
         if normalized not in {"adjudicated", "accepted_uncertainty", "rejected"}:
-            raise ValueError("Conflict status must be adjudicated, accepted_uncertainty or rejected.")
+            raise ValueError(
+                "Conflict status must be adjudicated, accepted_uncertainty or rejected."
+            )
         if not resolution.strip():
             raise ValueError("A conflict resolution explanation is required.")
         with self._connect() as conn:
@@ -335,10 +405,7 @@ class ResearchStore:
         return [dict(row) for row in rows]
 
     def unresolved_conflicts(self, team_id: str) -> list[dict[str, Any]]:
-        return [
-            item for item in self.conflicts(team_id)
-            if item["status"] == "unresolved"
-        ]
+        return [item for item in self.conflicts(team_id) if item["status"] == "unresolved"]
 
     def verified_claims(self, team_id: str) -> list[dict[str, Any]]:
         """Return only claims that passed the persisted verification gate, with provenance."""
@@ -462,9 +529,7 @@ class ResearchStore:
             "claim_count": total_claims,
             "verified_claims": verified_claims,
             "verified_claim_ids": [
-                int(row["claim_id"])
-                for row in claim_rows
-                if row["status"] == "verified"
+                int(row["claim_id"]) for row in claim_rows if row["status"] == "verified"
             ],
             "rejected_claims": rejected_claims,
             "unresolved_claims": unresolved_claims,
@@ -473,4 +538,3 @@ class ResearchStore:
             "conflicts": unresolved_conflicts,
             "passed": passed and not unresolved_conflicts,
         }
-

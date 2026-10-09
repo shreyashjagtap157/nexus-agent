@@ -1,4 +1,5 @@
 """Runtime control registry for multi-agent teams."""
+
 from __future__ import annotations
 
 import threading

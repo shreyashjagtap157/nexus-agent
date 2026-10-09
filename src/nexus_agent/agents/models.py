@@ -1,9 +1,13 @@
 """Typed agent profile models and scope semantics."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from nexus_agent.team.models import AgentProfile
 
 
 class AgentScope(str, Enum):
@@ -61,8 +65,9 @@ class AgentSpec:
             "source_path": self.source_path,
         }
 
-    def to_team_profile(self):
+    def to_team_profile(self) -> AgentProfile:
         from nexus_agent.team.models import AgentProfile
+
         return AgentProfile(
             role_id=self.id,
             name=self.name,
@@ -81,12 +86,19 @@ class AgentSpec:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], scope: AgentScope, source_path: str | None = None) -> "AgentSpec":
+    def from_dict(
+        cls, data: dict[str, Any], scope: AgentScope, source_path: str | None = None
+    ) -> AgentSpec:
         identifier = str(data.get("id") or "").strip().lower()
         if not identifier:
             raise ValueError("Agent definition requires a non-empty id.")
-        if not all(str(data.get(key) or "").strip() for key in ("name", "profession", "mission", "instructions")):
+        if not all(
+            str(data.get(key) or "").strip()
+            for key in ("name", "profession", "mission", "instructions")
+        ):
             raise ValueError(f"Agent {identifier!r} is missing required descriptive fields.")
+        raw_metadata = data.get("metadata")
+        metadata: dict[str, Any] = raw_metadata if isinstance(raw_metadata, dict) else {}
         return cls(
             id=identifier,
             name=str(data["name"]).strip(),
@@ -96,16 +108,20 @@ class AgentSpec:
             instructions=str(data["instructions"]).strip(),
             scope=scope,
             enabled=bool(data.get("enabled", True)),
-            tool_categories=[str(x).strip() for x in data.get("tool_categories", ["read"]) if str(x).strip()],
+            tool_categories=[
+                str(x).strip() for x in data.get("tool_categories", ["read"]) if str(x).strip()
+            ],
             write_access=bool(data.get("write_access", False)),
             reviewer=bool(data.get("reviewer", False)),
-            dependencies=[str(x).strip().lower() for x in data.get("dependencies", []) if str(x).strip()],
+            dependencies=[
+                str(x).strip().lower() for x in data.get("dependencies", []) if str(x).strip()
+            ],
             model_role=str(data.get("model_role") or identifier),
             provider=str(data["provider"]).strip() if data.get("provider") else None,
             model=str(data["model"]).strip() if data.get("model") else None,
             fallbacks=[str(x).strip() for x in data.get("fallbacks", []) if str(x).strip()],
             tags=[str(x).strip() for x in data.get("tags", []) if str(x).strip()],
             skill_ids=[str(x).strip().lower() for x in data.get("skill_ids", []) if str(x).strip()],
-            metadata=data.get("metadata") if isinstance(data.get("metadata"), dict) else {},
+            metadata=metadata,
             source_path=source_path,
         )

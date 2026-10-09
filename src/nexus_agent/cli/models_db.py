@@ -79,6 +79,7 @@ class ModelsDB:
             try:
                 if self._path.exists():
                     import shutil
+
                     shutil.copy2(str(self._path), str(self._path) + ".bak")
                     logger.warning(f"Corrupted models database backed up to {self._path}.bak")
             except (OSError, ValueError) as backup_ex:
@@ -88,7 +89,8 @@ class ModelsDB:
         try:
             fd, tmp_path = tempfile.mkstemp(
                 dir=str(self._path.parent),
-                prefix="models_db_", suffix=".tmp",
+                prefix="models_db_",
+                suffix=".tmp",
             )
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(self._models, f, indent=2)
@@ -109,7 +111,8 @@ class ModelsDB:
             "path_or_id": path_or_id,
             "provider": provider,
             "context_size": context_size,
-            "capabilities": capabilities or {
+            "capabilities": capabilities
+            or {
                 "vision": False,
                 "tool_calling": True,
                 "streaming": True,
@@ -121,8 +124,14 @@ class ModelsDB:
             "added": now,
         }
 
-    def add(self, name: str, path_or_id: str = "", provider: str = "local",
-            context_size: int = 0, capabilities: dict[str, bool] | None = None):
+    def add(
+        self,
+        name: str,
+        path_or_id: str = "",
+        provider: str = "local",
+        context_size: int = 0,
+        capabilities: dict[str, bool] | None = None,
+    ):
         """Add or update a model entry with extended metadata."""
         existing = self._models.get(name)
         if existing:
@@ -238,8 +247,9 @@ class ModelsDB:
         """Get usage statistics for all models."""
         return [self.get_stats(name) for name in self._models]
 
-    def refresh_details(self, name: str, context_size: int = 0,
-                       capabilities: dict[str, bool] | None = None):
+    def refresh_details(
+        self, name: str, context_size: int = 0, capabilities: dict[str, bool] | None = None
+    ):
         """Update model details (e.g. after re-fetching from API).
 
         Args:

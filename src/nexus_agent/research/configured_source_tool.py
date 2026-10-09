@@ -1,4 +1,5 @@
 """Explicit configured-source research tool."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -45,10 +46,7 @@ class ResearchConfiguredSourceTool(Tool):
     def execute(self, action: str, source_id: str = "", **kwargs: Any) -> Any:
         mode = action.strip().lower()
         if mode == "list":
-            return [
-                source.to_dict()
-                for source in self.registry.list(enabled_only=True)
-            ]
+            return [source.to_dict() for source in self.registry.list(enabled_only=True)]
         if mode != "fetch":
             return "Error: action must be list or fetch."
         source = self.registry.get(source_id)

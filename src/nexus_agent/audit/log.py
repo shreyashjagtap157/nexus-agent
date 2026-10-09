@@ -1,4 +1,5 @@
 """Append-only JSONL hash-chain audit log."""
+
 from __future__ import annotations
 
 import csv
@@ -14,7 +15,6 @@ from typing import Any, TextIO
 
 from filelock import FileLock
 
-
 _SECRET_PATTERNS = (
     re.compile(r"nvapi-[A-Za-z0-9_-]{12,}"),
     re.compile(r"sk-[A-Za-z0-9_-]{12,}"),
@@ -25,10 +25,21 @@ _SECRET_PATTERNS = (
 
 def redact(value: Any) -> Any:
     if isinstance(value, dict):
-        return {str(k): redact(v) for k, v in value.items() if str(k).lower() not in {
-            "api_key", "api_secret", "secret_key", "password", "token",
-            "access_token", "refresh_token", "private_key",
-        }}
+        return {
+            str(k): redact(v)
+            for k, v in value.items()
+            if str(k).lower()
+            not in {
+                "api_key",
+                "api_secret",
+                "secret_key",
+                "password",
+                "token",
+                "access_token",
+                "refresh_token",
+                "private_key",
+            }
+        }
     if isinstance(value, list):
         return [redact(item) for item in value]
     if isinstance(value, str):
@@ -66,7 +77,9 @@ class AuditLog:
 
     @staticmethod
     def _canonical(record: dict[str, Any]) -> str:
-        return json.dumps(record, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
+        return json.dumps(
+            record, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str
+        )
 
     def _last_hash(self) -> str:
         if not self.path.exists():
@@ -145,7 +158,7 @@ class AuditLog:
                     except (json.JSONDecodeError, TypeError):
                         continue
         if limit is not None:
-            return records[-max(0, limit):]
+            return records[-max(0, limit) :]
         return records
 
     def verify(self) -> dict[str, Any]:
@@ -169,9 +182,7 @@ class AuditLog:
                         }
                     body = dict(data)
                     record_hash = body.pop("record_hash", "")
-                    actual = hashlib.sha256(
-                        self._canonical(body).encode("utf-8")
-                    ).hexdigest()
+                    actual = hashlib.sha256(self._canonical(body).encode("utf-8")).hexdigest()
                     if actual != record_hash:
                         return {
                             "valid": False,
@@ -185,16 +196,30 @@ class AuditLog:
 
     def export_csv(self, stream: TextIO, run_id: str | None = None) -> None:
         writer = csv.writer(stream)
-        writer.writerow(["event_id", "timestamp", "scope", "run_id", "actor", "event_type", "payload", "previous_hash", "record_hash"])
+        writer.writerow(
+            [
+                "event_id",
+                "timestamp",
+                "scope",
+                "run_id",
+                "actor",
+                "event_type",
+                "payload",
+                "previous_hash",
+                "record_hash",
+            ]
+        )
         for record in self.read(run_id=run_id):
-            writer.writerow([
-                record.event_id,
-                record.timestamp,
-                record.scope,
-                record.run_id,
-                record.actor,
-                record.event_type,
-                json.dumps(record.payload, ensure_ascii=False, default=str),
-                record.previous_hash,
-                record.record_hash,
-            ])
+            writer.writerow(
+                [
+                    record.event_id,
+                    record.timestamp,
+                    record.scope,
+                    record.run_id,
+                    record.actor,
+                    record.event_type,
+                    json.dumps(record.payload, ensure_ascii=False, default=str),
+                    record.previous_hash,
+                    record.record_hash,
+                ]
+            )

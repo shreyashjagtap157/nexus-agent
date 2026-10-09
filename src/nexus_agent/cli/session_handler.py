@@ -19,6 +19,7 @@ from nexus_agent.cli.renderer import (
 )
 from nexus_agent.core.agent import AgentLoop, AgentLoopConfig
 from nexus_agent.core.config import load_config
+from nexus_agent.core.plugins import PluginManager
 from nexus_agent.core.usage import UsageTracker
 from nexus_agent.llm.model_manager import ModelManager
 from nexus_agent.llm.runtime_manager import RuntimeManager
@@ -27,7 +28,6 @@ from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.permissions.rules import PermissionLevel
 from nexus_agent.session.checkpoint import CheckpointManager
 from nexus_agent.session.manager import SessionManager
-from nexus_agent.core.plugins import PluginManager
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,11 @@ class SessionOrchestratorMixin:
                 logger.info(f"Dynamically prepended custom runtime path: {path_dir}")
 
         if getattr(self, "_model_path_passed", False):
-            self._model_path = self._model_path or self._config.get("model_path") or os.environ.get("NEXUS_MODEL_PATH")
+            self._model_path = (
+                self._model_path
+                or self._config.get("model_path")
+                or os.environ.get("NEXUS_MODEL_PATH")
+            )
         else:
             self._model_path = None
 
@@ -66,16 +70,18 @@ class SessionOrchestratorMixin:
         project_mem_dir = self.workspace / ".nexus" / "memory"
         self._project_memory = MemoryManager(data_dir=str(project_mem_dir))
         self._session_mgr = SessionManager(data_dir=f"{data_dir_path}/sessions")
-        self._checkpoint_mgr = CheckpointManager(os.path.join(data_dir_path, "checkpoints")) if self._session_mgr else None
-        self._usage_tracker = UsageTracker(
-            path=Path(data_dir_path) / "usage.json"
+        self._checkpoint_mgr = (
+            CheckpointManager(os.path.join(data_dir_path, "checkpoints"))
+            if self._session_mgr
+            else None
         )
+        self._usage_tracker = UsageTracker(path=Path(data_dir_path) / "usage.json")
         self._plugin_manager = PluginManager(
             workspace=self.workspace,
             plugin_dirs=[
                 self.workspace / ".nexus" / "plugins",
                 Path(data_dir_path) / "plugins",
-            ]
+            ],
         )
         self._plugin_manager.discover_and_load()
 
@@ -145,8 +151,10 @@ class SessionOrchestratorMixin:
                 continue
             try:
                 from nexus_agent.mcp.client import MCPClient
-                client = MCPClient(command=[command] + server_cfg.get("args", []),
-                                   env=server_cfg.get("env"))
+
+                client = MCPClient(
+                    command=[command] + server_cfg.get("args", []), env=server_cfg.get("env")
+                )
                 if client.start():
                     self._mcp_clients.append(client)
                     self._mcp_tools.extend(client.discovered_tools)
@@ -157,6 +165,7 @@ class SessionOrchestratorMixin:
     def _init_skills(self):
         try:
             from nexus_agent.skills.skill_registry import SkillRegistry
+
             skill_dirs = self._config.get("skills", {}).get("search_dirs")
             self._skill_registry = SkillRegistry(
                 search_dirs=skill_dirs,
@@ -205,8 +214,12 @@ class SessionOrchestratorMixin:
             effort_level=self._config.get("agent", {}).get("effort_level", "medium"),
             goal=self._config.get("agent", {}).get("goal", ""),
             research_depth=self._config.get("research", {}).get("depth", "detailed"),
-            research_collection=self._config.get("research", {}).get("collection", "until_saturation"),
-            research_source_strategy=self._config.get("research", {}).get("source_strategy", "hybrid"),
+            research_collection=self._config.get("research", {}).get(
+                "collection", "until_saturation"
+            ),
+            research_source_strategy=self._config.get("research", {}).get(
+                "source_strategy", "hybrid"
+            ),
             research_session_id=self._session_id,
         )
 
@@ -235,6 +248,7 @@ class SessionOrchestratorMixin:
                 if s_data and "mode" in s_data:
                     try:
                         from nexus_agent.core.agent import AgentMode
+
                         self._current_mode = AgentMode(s_data["mode"])
                         if self._agent:
                             self._agent.mode = self._current_mode
@@ -251,7 +265,11 @@ class SessionOrchestratorMixin:
                 )
 
         mcp_count = len(self._mcp_tools) if self._mcp_tools else 0
-        skills_count = len(self._skill_registry.list_skills()) if self._skill_registry and hasattr(self._skill_registry, 'list_skills') else 0
+        skills_count = (
+            len(self._skill_registry.list_skills())
+            if self._skill_registry and hasattr(self._skill_registry, "list_skills")
+            else 0
+        )
         self._context.update_from_agent(
             agent=self._agent,
             engine=self._engine,
@@ -264,7 +282,7 @@ class SessionOrchestratorMixin:
         self.plugin_manager = getattr(self, "_plugin_manager", None)
 
         if self._engine:
-            prov_name = getattr(self._engine, 'name', self._provider_name or 'local')
+            prov_name = getattr(self._engine, "name", self._provider_name or "local")
             self._tokens.provider_name = prov_name
             self._tokens.context_window = self._context.max_context
 
@@ -304,7 +322,13 @@ class SessionOrchestratorMixin:
         tokens_short = self._tokens.display_short()
         ctx_display = self._tokens.display_context()
 
-        items = [f"[bold]{model[:40]}[/bold]", f"Mode: [bold]{mode}[/bold]", f"/{effort}", tokens_short, ctx_display]
+        items = [
+            f"[bold]{model[:40]}[/bold]",
+            f"Mode: [bold]{mode}[/bold]",
+            f"/{effort}",
+            tokens_short,
+            ctx_display,
+        ]
 
         cost = self._tokens.estimated_cost
         if cost > 0:
@@ -328,6 +352,7 @@ class SessionOrchestratorMixin:
         parts = []
         try:
             import psutil
+
             cpu = psutil.cpu_percent(interval=0.1)
             parts.append(f"CPU:{cpu:.0f}%")
             ram = psutil.virtual_memory()
@@ -339,6 +364,7 @@ class SessionOrchestratorMixin:
             pass
         try:
             import torch
+
             if torch.cuda.is_available():
                 gpu_mem = torch.cuda.memory_allocated() / (1024**3)
                 torch.cuda.memory_reserved() / (1024**3)
@@ -359,9 +385,10 @@ class SessionOrchestratorMixin:
             res_info = self._get_resource_info()
         else:
             res_info = ""
-        if hasattr(self.r, 'rebuild_welcome'):
+        if hasattr(self.r, "rebuild_welcome"):
             self.r.rebuild_welcome(
-                self._tokens, self._metrics,
+                self._tokens,
+                self._metrics,
                 model_status=self._model_status,
                 resource_info=res_info,
                 active_agents=len(self._sub_agents),
@@ -474,19 +501,21 @@ class SessionOrchestratorMixin:
             tool_call_id = msg.get("tool_call_id")
             name = msg.get("name")
 
-            restored.append(Message(
-                role=role,
-                content=content,
-                tool_calls=tool_calls,
-                tool_call_id=tool_call_id,
-                name=name,
-            ))
+            restored.append(
+                Message(
+                    role=role,
+                    content=content,
+                    tool_calls=tool_calls,
+                    tool_call_id=tool_call_id,
+                    name=name,
+                )
+            )
 
         if restored:
             self._agent.messages = restored
             logger.info(f"Restored {len(restored)} messages to agent context")
 
-            if self._engine and hasattr(self._engine, 'count_message_tokens'):
+            if self._engine and hasattr(self._engine, "count_message_tokens"):
                 try:
                     total_tokens = self._engine.count_message_tokens(restored)
                     self._tokens.input_tokens = total_tokens

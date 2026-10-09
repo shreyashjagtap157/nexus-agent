@@ -18,9 +18,17 @@ class MCPServer:
     Claude Desktop) over stdio streams using JSON-RPC 2.0.
     """
 
-    def __init__(self, tools: list[Any], permission_callback=None, protocol_version: str = "2025-11-25"):
+    def __init__(
+        self, tools: list[Any], permission_callback=None, protocol_version: str = "2025-11-25"
+    ):
         """Initialize MCP server with optional permission and legacy protocol settings."""
-        if protocol_version not in {"2024-10-07", "2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}:
+        if protocol_version not in {
+            "2024-10-07",
+            "2024-11-05",
+            "2025-03-26",
+            "2025-06-18",
+            "2025-11-25",
+        }:
             raise ValueError(f"Unsupported legacy MCP protocol version: {protocol_version}")
         self.protocol_version = protocol_version
         self.tools = tools
@@ -60,15 +68,17 @@ class MCPServer:
             elif method == "tools/list":
                 tool_list = []
                 for t in self.tools:
-                    tool_list.append({
-                        "name": t.name,
-                        "description": t.description,
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": t.parameters,
-                            "required": t.required_params,
+                    tool_list.append(
+                        {
+                            "name": t.name,
+                            "description": t.description,
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": t.parameters,
+                                "required": t.required_params,
+                            },
                         }
-                    })
+                    )
                 self._send_response(req_id, {"tools": tool_list})
 
             elif method == "tools/call":
@@ -94,29 +104,36 @@ class MCPServer:
                     approved = level in {"read-only", "allow"}
 
                 if not approved:
-                    self._send_response(req_id, {
-                        "isError": True,
-                        "content": [
-                            {"type": "text", "text": f"Permission denied for tool: {tool_name}"}
-                        ]
-                    })
+                    self._send_response(
+                        req_id,
+                        {
+                            "isError": True,
+                            "content": [
+                                {"type": "text", "text": f"Permission denied for tool: {tool_name}"}
+                            ],
+                        },
+                    )
                     return
 
                 # Execute tool
                 try:
                     res = tool.execute(**tool_args)
-                    self._send_response(req_id, {
-                        "content": [
-                            {"type": "text", "text": str(res) if res is not None else "Success"}
-                        ]
-                    })
+                    self._send_response(
+                        req_id,
+                        {
+                            "content": [
+                                {"type": "text", "text": str(res) if res is not None else "Success"}
+                            ]
+                        },
+                    )
                 except (ValueError, RuntimeError, OSError) as te:
-                    self._send_response(req_id, {
-                        "isError": True,
-                        "content": [
-                            {"type": "text", "text": f"Execution error: {te}"}
-                        ]
-                    })
+                    self._send_response(
+                        req_id,
+                        {
+                            "isError": True,
+                            "content": [{"type": "text", "text": f"Execution error: {te}"}],
+                        },
+                    )
 
             else:
                 self._send_error(req_id, -32601, f"Method not found: {method}")
@@ -140,6 +157,6 @@ class MCPServer:
             "error": {
                 "code": code,
                 "message": message,
-            }
+            },
         }
         self._transport.send_message(payload)

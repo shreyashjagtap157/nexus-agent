@@ -1,4 +1,5 @@
 """Secure local credential store with optional OS keychain integration."""
+
 from __future__ import annotations
 
 import json
@@ -21,9 +22,20 @@ class AuthStore:
 
     _KEYRING_SERVICE = "NexusAgent"
 
-    def __init__(self, path: Path | None = None):
+    def __init__(self, path: Path | None = None, *, backend: str = "auto"):
+        normalized_backend = str(backend).strip().lower()
+        if normalized_backend not in {"auto", "file", "keyring"}:
+            raise ValueError("Credential backend must be auto, file or keyring.")
+        if normalized_backend == "keyring" and keyring is None:
+            raise RuntimeError(
+                "The OS keyring backend was requested but keyring support is unavailable."
+            )
+
         self.path = path or StorageLayout(Path.cwd()).auth_file
-        self._use_keyring = keyring is not None and path is None
+        self._backend = normalized_backend
+        self._use_keyring = normalized_backend == "keyring" or (
+            normalized_backend == "auto" and keyring is not None and path is None
+        )
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
 
@@ -69,8 +81,11 @@ class AuthStore:
                     data[provider_id] = {"type": "keyring", "metadata": metadata or {}}
                     self._write(data)
                     return
-                except Exception:
-                    pass
+                except Exception as exc:
+                    if self._backend == "keyring":
+                        raise RuntimeError(
+                            "The OS keyring could not store the credential."
+                        ) from exc
             data[provider_id] = {"type": "api_key", "key": key, "metadata": metadata or {}}
             self._write(data)
 
@@ -94,7 +109,11 @@ class AuthStore:
         provider_id = provider.strip().lower()
         with self._lock:
             item = self._read().get(provider_id, {})
-        return dict(item.get("metadata", {})) if isinstance(item, dict) and isinstance(item.get("metadata"), dict) else {}
+        return (
+            dict(item.get("metadata", {}))
+            if isinstance(item, dict) and isinstance(item.get("metadata"), dict)
+            else {}
+        )
 
     def list(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -102,7 +121,13 @@ class AuthStore:
         rows = []
         for provider, item in sorted(data.items()):
             item_type = item.get("type", "api_key") if isinstance(item, dict) else "api_key"
-            rows.append({"provider": provider, "type": item_type, "key": "[keyring]" if item_type == "keyring" else "[stored]"})
+            rows.append(
+                {
+                    "provider": provider,
+                    "type": item_type,
+                    "key": "[keyring]" if item_type == "keyring" else "[stored]",
+                }
+            )
         return rows
 
     def remove(self, provider: str) -> bool:
@@ -111,7 +136,12 @@ class AuthStore:
             data = self._read()
             item = data.get(provider_id)
             existed = provider_id in data
-            if existed and isinstance(item, dict) and item.get("type") == "keyring" and keyring is not None:
+            if (
+                existed
+                and isinstance(item, dict)
+                and item.get("type") == "keyring"
+                and keyring is not None
+            ):
                 try:
                     keyring.delete_password(self._KEYRING_SERVICE, provider_id)
                 except Exception:

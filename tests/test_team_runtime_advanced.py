@@ -18,7 +18,7 @@ class FakeProvider(LLMProvider):
     def get_capabilities(self):
         return ProviderCapabilities(
             supports_tool_calling=False,
-            supports_streaming=True,
+            supports_streaming=False,
             supports_system_message=True,
             max_context_length=32000,
             max_output_tokens=4096,
@@ -55,10 +55,11 @@ def test_team_runtime_executes_dependency_waves_and_outputs_artifact(tmp_path: P
             max_iterations_per_agent=2,
             output_mode="file",
             output_format="json",
+            use_saved_agents=False,
             require_reviewer=True,
         ),
     )
-    assert result.success
+    assert result.success, {"agents": result.agents, "failures": result.failures}
     assert len(result.agents) == 2
     assert result.artifact_paths
     artifact = Path(result.artifact_paths[0])
@@ -152,14 +153,17 @@ def test_team_runtime_markdown_artifact_serializes_quality_gate(tmp_path: Path):
             max_iterations_per_agent=2,
             output_mode="file",
             output_format="markdown",
+            use_saved_agents=False,
             require_reviewer=True,
         ),
     )
-    assert result.success
+    assert result.success, {"agents": result.agents, "failures": result.failures}
     artifact = Path(result.artifact_paths[0])
     content = artifact.read_text(encoding="utf-8")
     assert "## Evidence Quality Gate" in content
-    assert "{}" in content
+    assert '"workers_complete"' in content
+    assert '"reviewer_present"' in content
+    assert '"score"' in content
 
 
 def test_unknown_dependency_is_failed_before_worker_submission(tmp_path, monkeypatch):
@@ -200,6 +204,7 @@ def test_unknown_dependency_is_failed_before_worker_submission(tmp_path, monkeyp
             max_iterations_per_agent=1,
             auto_synthesize=False,
             require_reviewer=False,
+            use_saved_agents=False,
         ),
     )
 

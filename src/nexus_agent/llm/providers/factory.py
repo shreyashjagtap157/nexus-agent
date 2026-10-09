@@ -18,7 +18,6 @@ from nexus_agent.llm.base import (
     StreamChunk,
     ToolDefinition,
 )
-
 from nexus_agent.llm.providers.catalog import get as get_provider_descriptor
 
 logger = logging.getLogger(__name__)
@@ -110,9 +109,7 @@ class FallbackProvider(LLMProvider):
                 return result
             except (RuntimeError, ConnectionError, TimeoutError, OSError) as e:
                 last_exc = e
-                logger.warning(
-                    f"FallbackProvider: {op_name} failed on '{provider.name}': {e}"
-                )
+                logger.warning(f"FallbackProvider: {op_name} failed on '{provider.name}': {e}")
                 continue
         if last_exc is not None:
             raise last_exc
@@ -203,7 +200,11 @@ class ProviderFactory:
         env_value = os.environ.get(env_key) if env_key else None
         if not provider_config.get("api_key"):
             provider_config["api_key"] = auth_key or env_value or provider_config.get("api_key")
-        if name not in _PROVIDER_MAP and descriptor is not None and descriptor.protocol == "openai_compatible":
+        if (
+            name not in _PROVIDER_MAP
+            and descriptor is not None
+            and descriptor.protocol == "openai_compatible"
+        ):
             provider_config.setdefault("api_url", descriptor.base_url or "")
             provider_config.setdefault("model", "custom-model")
         if model_path_or_name:
@@ -222,10 +223,16 @@ class ProviderFactory:
 
         if name == "local":
             from nexus_agent.llm.runtime_manager import RuntimeManager
+
             rm = RuntimeManager(config)
             instance = rm.select_engine(model_path_or_name)
-        elif name not in _PROVIDER_MAP and descriptor is not None and descriptor.protocol == "openai_compatible":
+        elif (
+            name not in _PROVIDER_MAP
+            and descriptor is not None
+            and descriptor.protocol == "openai_compatible"
+        ):
             from nexus_agent.llm.providers.custom_openai_provider import CustomOpenAIProvider
+
             instance = CustomOpenAIProvider(provider_config)
         else:
             provider_cls = ProviderFactory._load_provider_module(name)
@@ -249,19 +256,13 @@ class ProviderFactory:
         If `fallback_names` is empty, this is equivalent to a single-provider
         chain.
         """
-        primary = ProviderFactory.create_provider(
-            primary_name, config, model_path_or_name
-        )
+        primary = ProviderFactory.create_provider(primary_name, config, model_path_or_name)
         fallbacks: list[LLMProvider] = []
         for name in fallback_names:
             try:
-                fallbacks.append(
-                    ProviderFactory.create_provider(name, config, model_path_or_name)
-                )
+                fallbacks.append(ProviderFactory.create_provider(name, config, model_path_or_name))
             except (ValueError, ImportError, OSError, RuntimeError) as e:
-                logger.warning(
-                    f"create_with_fallback: skipping fallback '{name}': {e}"
-                )
+                logger.warning(f"create_with_fallback: skipping fallback '{name}': {e}")
         return FallbackProvider(primary, fallbacks)
 
     @staticmethod

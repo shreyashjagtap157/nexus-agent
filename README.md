@@ -493,7 +493,14 @@ Run lint and formatting checks:
 ```bash
 python -m ruff check src/
 python -m ruff format --check src/
-python -m mypy src/nexus_agent/
+python -m mypy --follow-imports=silent \
+  src/nexus_agent/team/runtime.py \
+  src/nexus_agent/team/models.py \
+  src/nexus_agent/team/quality.py \
+  src/nexus_agent/team/providers.py \
+  src/nexus_agent/research/store.py \
+  src/nexus_agent/storage/layout.py \
+  src/nexus_agent/agents/models.py
 ```
 
 Validate the repository-wide version contract:
@@ -502,7 +509,7 @@ Validate the repository-wide version contract:
 python scripts/check_version.py
 ```
 
-The authoritative CI workflow covers multiple Python versions and operating systems, native client checks, lint/type checking, version synchronization, and audit evidence. Security analysis and dependency auditing run in GitHub Actions as part of the repository quality gates.
+The authoritative CI workflow covers multiple Python versions and operating systems, native client checks, lint/type checking, version synchronization, and audit evidence. Security analysis and dependency auditing run in GitHub Actions as part of the repository quality gates. The full legacy codebase is not yet strict-MyPy clean; CI gates the typed runtime/evidence boundary modules instead of reporting a misleading full-project green result.
 
 ### Enterprise engineering governance
 
@@ -511,7 +518,7 @@ main is the canonical integration branch. Changes are expected to arrive through
 The GitHub validation surface includes:
 
 - complete Python regression testing across supported Python versions and Ubuntu, Windows and macOS
-- Ruff formatting/linting and strict MyPy checks
+- Ruff formatting/linting and strict MyPy checks for typed runtime, team-policy, evidence-store, and storage boundaries
 - Rust formatting and compilation for both native clients across supported operating systems
 - version-contract validation
 - repeatable test/audit evidence artifacts

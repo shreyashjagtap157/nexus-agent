@@ -110,14 +110,16 @@ class StratifiedDataset(IterableDataset):
             cat = row["category"]
             if cat not in by_category:
                 by_category[cat] = []
-            by_category[cat].append({
-                "sample_uid": row["sample_uid"],
-                "content": row["content"],
-                "token_count": row["token_count"],
-                "category": row["category"],
-                "dataset_name": row["dataset_name"],
-                "metadata": json.loads(row["metadata"] or "{}"),
-            })
+            by_category[cat].append(
+                {
+                    "sample_uid": row["sample_uid"],
+                    "content": row["content"],
+                    "token_count": row["token_count"],
+                    "category": row["category"],
+                    "dataset_name": row["dataset_name"],
+                    "metadata": json.loads(row["metadata"] or "{}"),
+                }
+            )
 
         # Create batches from each category
         result: list[tuple[str, dict[str, Any]]] = []
@@ -127,13 +129,13 @@ class StratifiedDataset(IterableDataset):
 
             # Truncate sequences
             for sample in samples:
-                tokens = sample["content"][:self._max_seq_length]
+                tokens = sample["content"][: self._max_seq_length]
                 sample["content"] = tokens
                 sample["token_count"] = len(tokens)
 
             # Create batches
             for i in range(0, len(samples), self._batch_size):
-                batch_samples = samples[i:i + self._batch_size]
+                batch_samples = samples[i : i + self._batch_size]
                 if len(batch_samples) > 0:
                     batch = self._collate_batch(batch_samples)
                     result.append((category, batch))
