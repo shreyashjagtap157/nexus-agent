@@ -364,7 +364,14 @@ class TeamStore:
                    ORDER BY created_at ASC""",
                 (team_id, since, recipient_id, recipient_id),
             ).fetchall()
-        return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]
+
+        # ⚡ Bolt optimization: manual loop avoiding {**dict()} unpacking is faster for large datasets
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(item["payload_json"])
+            result.append(item)
+        return result
 
     def events(self, team_id: str, limit: int = 1000, offset: int = 0) -> list[dict[str, Any]]:
         with self._lock:
@@ -372,4 +379,11 @@ class TeamStore:
                 "SELECT * FROM team_events WHERE team_id=? ORDER BY created_at ASC LIMIT ? OFFSET ?",
                 (team_id, max(1, min(limit, 5000)), max(offset, 0)),
             ).fetchall()
-        return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]
+
+        # ⚡ Bolt optimization: manual loop avoiding {**dict()} unpacking is faster for large datasets
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(item["payload_json"])
+            result.append(item)
+        return result
