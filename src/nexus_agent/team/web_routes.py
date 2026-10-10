@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import threading
 import uuid
 from pathlib import Path
@@ -432,20 +433,36 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         if not root.exists():
             return {"artifacts": []}
         artifacts = []
-        for path in sorted(root.rglob("*")):
-            resolved = path.resolve()
+        # Bolt: Using os.scandir to avoid pathlib.Path overhead for performance optimization.
+        root_str = str(root.resolve())
+
+        def _scan(dpath: str):
             try:
-                resolved.relative_to(root)
-            except ValueError:
-                continue
-            if resolved.is_file():
-                artifacts.append(
-                    {
-                        "name": str(resolved.relative_to(root)),
-                        "size": resolved.stat().st_size,
-                        "path": str(resolved),
-                    }
-                )
+                with os.scandir(dpath) as it:
+                    for entry in it:
+                        try:
+                            if entry.is_file(follow_symlinks=True):
+                                # Ensure we don't escape the root dir
+                                real_path = os.path.realpath(entry.path)
+                                if os.path.commonpath([root_str, real_path]) != root_str:
+                                    continue
+                                rel_path = os.path.relpath(real_path, root_str)
+                                artifacts.append(
+                                    {
+                                        "name": rel_path,
+                                        "size": entry.stat(follow_symlinks=True).st_size,
+                                        "path": real_path,
+                                    }
+                                )
+                            elif entry.is_dir(follow_symlinks=False):
+                                _scan(entry.path)
+                        except OSError:
+                            continue
+            except OSError:
+                pass
+
+        _scan(root_str)
+        artifacts.sort(key=lambda x: x["path"])
         return {"team_id": team_id, "artifacts": artifacts}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
