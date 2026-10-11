@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import threading
 import uuid
 from pathlib import Path
@@ -431,22 +432,41 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         root = _artifact_root(state_manager, team_id)
         if not root.exists():
             return {"artifacts": []}
-        artifacts = []
-        for path in sorted(root.rglob("*")):
-            resolved = path.resolve()
+
+        artifacts_list = []
+        root_str = str(root.resolve())
+
+        # Performance Optimization: Replaced pathlib.Path.rglob() with os.scandir()
+        # to significantly reduce overhead when traversing large artifact directories.
+        # os.path.commonpath prevents escaping root via symlinks safely.
+        def _scan(dir_path: str) -> None:
             try:
-                resolved.relative_to(root)
-            except ValueError:
-                continue
-            if resolved.is_file():
-                artifacts.append(
-                    {
-                        "name": str(resolved.relative_to(root)),
-                        "size": resolved.stat().st_size,
-                        "path": str(resolved),
-                    }
-                )
-        return {"team_id": team_id, "artifacts": artifacts}
+                with os.scandir(dir_path) as it:
+                    for entry in it:
+                        try:
+                            resolved_path = os.path.realpath(entry.path)
+                            if os.path.commonpath([root_str, resolved_path]) != root_str:
+                                continue
+                        except ValueError:
+                            continue
+
+                        if entry.is_dir(follow_symlinks=False):
+                            _scan(entry.path)
+                        elif entry.is_file(follow_symlinks=False):
+                            rel_path = os.path.relpath(resolved_path, root_str)
+                            artifacts_list.append(
+                                {
+                                    "name": rel_path,
+                                    "size": entry.stat(follow_symlinks=False).st_size,
+                                    "path": resolved_path,
+                                }
+                            )
+            except OSError:
+                pass
+
+        _scan(root_str)
+        artifacts_list.sort(key=lambda x: x["name"])
+        return {"team_id": team_id, "artifacts": artifacts_list}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
     async def download_team_artifact(request: Request, team_id: str, artifact_path: str):
