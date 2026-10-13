@@ -217,10 +217,10 @@ def test_http_origin_policy(headers, scheme, allowed):
     assert _allowed_local_http_origin(headers, scheme) is allowed
 
 
-def test_api_middleware_rejects_cross_origin_request():
+def test_api_middleware_blocks_cross_origin_mutation_before_handler():
     client = TestClient(app, client=("127.0.0.1", 12345))
-    response = client.get(
-        "/api/status",
+    response = client.post(
+        "/api/commit",
         headers={"Origin": "https://attacker.example"},
     )
     assert response.status_code == 403
