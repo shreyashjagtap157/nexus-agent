@@ -5,10 +5,11 @@ from starlette.websockets import WebSocketDisconnect
 
 from nexus_agent.agents.web_routes import _require_local as require_agent_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
+import nexus_agent.gui.server as gui_server
 from nexus_agent.gui.server import (
     _allowed_websocket_origin,
-    _require_local_bind_host,
     _require_local_client,
+    _require_loopback_bind_host,
     app,
 )
 from nexus_agent.mcp.web_routes import _require_local as require_mcp_local
@@ -113,16 +114,28 @@ def test_sensitive_guards_fail_closed_when_client_address_is_missing(guard):
         guard(request)
     assert exc.value.status_code == 403
 
-@pytest.mark.parametrize("host", ["127.0.0.1", "127.0.0.2", "::1", "localhost", "localhost."])
+@pytest.mark.parametrize(
+    "host",
+    ("127.0.0.1", "127.0.0.2", "::1", "localhost", "localhost."),
+)
 def test_gui_bind_policy_accepts_only_loopback_targets(host):
-    _require_local_bind_host(host)
+    _require_loopback_bind_host(host)
 
 
 @pytest.mark.parametrize(
     "host",
-    ["0.0.0.0", "192.168.1.20", "10.0.0.4", "::", "2001:db8::1", "attacker.example", ""],
+    ("0.0.0.0", "192.168.1.20", "10.0.0.4", "::", "2001:db8::1", "attacker.example", ""),
 )
 def test_gui_bind_policy_rejects_network_accessible_targets(host):
     with pytest.raises(ValueError, match="loopback"):
-        _require_local_bind_host(host)
+        _require_loopback_bind_host(host)
+
+
+def test_gui_startup_rejects_configured_remote_bind_before_initializing_runtime(monkeypatch):
+    monkeypatch.setattr(
+        gui_server, "load_config", lambda **_: {"gui": {"host": "0.0.0.0"}}
+    )
+
+    with pytest.raises(ValueError, match="loopback"):
+        gui_server.start_gui_server(open_browser=False)
 
