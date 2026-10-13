@@ -50,6 +50,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+core = []
 
 # CUDA — NVIDIA GPU acceleration via llama.cpp
 cuda = [
