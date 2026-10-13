@@ -221,7 +221,7 @@ def test_http_origin_policy(headers, scheme, allowed):
 def test_api_middleware_blocks_cross_origin_mutation_before_handler():
     client = TestClient(app, client=("127.0.0.1", 12345))
     response = client.post(
-        "/api/commit",
+        "/api/__origin-policy-test__",
         headers={"Origin": "https://attacker.example"},
     )
     assert response.status_code == 403
