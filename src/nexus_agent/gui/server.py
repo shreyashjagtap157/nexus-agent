@@ -650,13 +650,12 @@ def _allowed_websocket_origin(headers: Any) -> bool:
         request_host = urlsplit("//" + host_value)
         origin_host = (origin.hostname or "").lower().rstrip(".")
         request_hostname = (request_host.hostname or "").lower().rstrip(".")
-        allowed_hosts = {"localhost", "127.0.0.1", "::1"}
 
         if origin.scheme.lower() != "http":
             return False
         if origin.username or origin.password or origin.path or origin.query or origin.fragment:
             return False
-        if origin_host not in allowed_hosts or origin_host != request_hostname:
+        if not _is_loopback_host(origin_host) or origin_host != request_hostname:
             return False
         if (origin.port or 80) != (request_host.port or 80):
             return False
@@ -672,7 +671,7 @@ def _allowed_websocket_origin(headers: Any) -> bool:
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
     host = websocket.client.host if websocket.client else None
-    if host not in {"127.0.0.1", "::1", "localhost"}:
+    if not _is_loopback_host(host or ""):
         await websocket.close(
             code=1008, reason="Agent WebSocket access is restricted to local clients."
         )
