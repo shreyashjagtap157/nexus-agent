@@ -42,3 +42,8 @@ The main branch has been created as the canonical integration target and the mul
 
 Branch protection itself is a GitHub administration setting and must be enabled by a repository administrator with administration-level GitHub credentials. The source-controlled policy in this file is the authoritative expected configuration; it is not a substitute for the GitHub-side rule.
 The policy is evaluated against the current main integration head by GitHub pull-request checks; stale cancelled runs are not merge evidence.
+
+
+## Verified repository settings snapshot (2026-10-13)
+
+A live GitHub API read on 2026-10-13 reported the repository default branch as master, the main branch head as f338d8246dfa1d39a9a77cbc33e0996b8ef26432, main protection as disabled, and no repository rulesets. Therefore the policy above is a desired configuration, not an active enforcement guarantee. The default-branch and protection gaps remain unresolved until an administrator changes the GitHub-side settings and a fresh API read confirms the result. Re-check this snapshot before relying on it; it is intentionally dated and must not be treated as permanent state.
