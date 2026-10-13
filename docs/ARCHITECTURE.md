@@ -337,3 +337,53 @@ The repository treats main as the canonical integration branch. Runtime changes,
 The merge-quality surface consists of the complete Python test matrix, Ruff/MyPy checks, native Rust/desktop checks, version synchronization, audit evidence generation, CodeQL and dependency security checks. Release tags are independently verified to point into main history before publication.
 
 Branch protection policy is maintained in .github/BRANCH_PROTECTION.md and is enforced at the GitHub repository-administration layer.
+
+
+## Authoritative target architecture and language decision (2026-10-13)
+
+This section is the current target decision and supersedes conflicting older planning statements. It is based on NexusAgent's product requirements, not on the languages or modules currently present in the repository. It defines the desired boundaries; it does not authorize a wholesale rewrite without an incremental migration plan.
+
+### Product and deployment boundary
+
+NexusAgent must support both local/personal deployment and authenticated multi-user deployment from the initial architecture. “Local-first” describes the ability to run locally and use local models/tools; it does not mean the runtime may assume a single trusted user or that all control APIs can remain unauthenticated loopback-only endpoints.
+
+Deployment profiles may differ in packaging and infrastructure, but share the same domain contracts. Multi-user deployment must not be exposed until identity, authorization, tenant/workspace isolation, secret isolation, audit trails, quotas and recovery semantics pass security qualification.
+
+### Recommended language allocation
+
+- **Python — primary agent, orchestration and research runtime.** Best overall fit for model/provider ecosystem breadth, research/data processing, local-inference integration and fast iteration on agent behavior. Use asynchronous I/O for network/tool-bound concurrency, explicit worker/resource limits, process isolation where appropriate, and typed/validated boundaries.
+- **TypeScript — web frontend.** Use for interactive workflow visualization, activity streams, forms and browser-side state. Share generated/versioned API schemas rather than duplicating domain logic in the UI.
+- **Rust — native desktop/CLI and narrowly scoped system-sensitive services.** Use where native packaging, memory safety or predictable resource use justify it. Keep orchestration and provider semantics in the shared runtime unless benchmarks or security analysis establish a compelling reason to move a specific component.
+- **Language-neutral contracts — API and event envelopes.** Define versioned request/response schemas, canonical IDs, error shapes, event types and compatibility rules. Do not use an implicit in-process object model as the contract between clients or services.
+
+If the agent/orchestration core must use exactly one language, choose Python. Rust is not the best sole language for this entire product because model, research and tool ecosystems and iteration speed dominate the core's trade-offs; TypeScript is not the best sole core language because local inference and research/data-processing integration are central; Go is a credible backend alternative but does not outweigh Python's agent/research ecosystem for this requirement set. This is a requirements-based recommendation, not a statement that current repository code proves the choice.
+
+References: [Python asyncio](https://docs.python.org/3/library/asyncio.html), [official MCP SDK tiers](https://modelcontextprotocol.io/docs/sdk), [official Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk).
+
+### Required logical boundaries
+
+1. **Identity and policy:** authentication, tenant resolution, roles, workspace membership and policy evaluation.
+2. **Application/API:** versioned client contracts; request validation; idempotency for mutating requests; rate/resource limits.
+3. **Run/session service:** lifecycle, cancellation, resume/recovery and ownership checks.
+4. **Orchestration:** bounded planning, dependency DAG, dynamic profile generation, scheduling and result verification.
+5. **Agent execution:** isolated per-run/per-worker context, scoped memory and tool grants.
+6. **Provider/model adapters:** provider-neutral capabilities, secret references, timeouts, retry budgets and normalized errors.
+7. **Tool/MCP gateway:** schema validation, effective authorization, destination/path controls, sandboxing, audit events and bounded execution.
+8. **Persistence:** durable relational records for users/tenants/workspaces/runs/tasks/events; artifact storage with ownership and containment; memory partitioning and migrations.
+9. **Event delivery:** durable or replayable ordered events with stable IDs, run/tenant ownership and reconnect support.
+10. **Clients:** web, CLI/TUI and native desktop; no client bypasses shared policy or implements its own orchestration semantics.
+
+### Multi-user invariants
+
+- Every tenant-owned row, artifact, memory record, run, message and event has an explicit ownership boundary.
+- Authorization is checked server-side on every read, write, download, cancellation and resume operation.
+- Credentials are scoped to the owning user/tenant or explicitly shared by authorized policy; they are never copied into prompts, logs or generated profiles.
+- A task cannot read another tenant's data by guessing identifiers or manipulating paths, filters, URLs or artifact references.
+- One user's resource exhaustion cannot indefinitely starve other tenants; enforce per-tenant concurrency and resource budgets.
+- Local single-user mode uses the same authorization-aware domain services, with a documented local identity/bootstrap policy.
+- Background workers revalidate ownership and authorization; API checks alone are insufficient.
+- Audit logs must avoid storing secrets and must distinguish actor, tenant, action, target and outcome.
+
+### Completion standard
+
+Architecture claims are targets until verified against code and tests. Each target capability needs traceable acceptance tests and workflow evidence. Any migration from existing code must preserve behavior through adapters/contracts, proceed gate by gate, and avoid parallel implementations of the same domain logic.
