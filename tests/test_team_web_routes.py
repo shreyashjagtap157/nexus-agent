@@ -107,7 +107,7 @@ def test_team_artifacts_listing_preserves_hidden_files_and_sorted_order(tmp_path
     assert response.status_code == 200
     payload = response.json()
     assert payload["team_id"] == "team-1"
-    assert [item["name"] for item in payload["artifacts"]] == files
+    assert [item["name"] for item in payload["artifacts"]] == [str(Path(item)) for item in files]
 
 
 def test_team_artifacts_listing_excludes_symlinks_outside_root(tmp_path: Path):
