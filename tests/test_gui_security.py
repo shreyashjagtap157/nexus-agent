@@ -7,7 +7,6 @@ from starlette.websockets import WebSocketDisconnect
 
 import nexus_agent.gui.server as gui_server
 from nexus_agent.agents.web_routes import _require_local as require_agent_local
-from nexus_agent.audit.web_routes import _require_local as require_audit_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
 from nexus_agent.gui.server import (
     _allowed_local_http_origin,
@@ -111,7 +110,6 @@ def test_websocket_origin_guard_allows_same_origin_and_nonbrowser_clients(header
     "guard",
     [
         require_agent_local,
-        require_audit_local,
         require_auth_local,
         require_memory_local,
         require_mcp_local,
@@ -230,8 +228,9 @@ def test_api_middleware_blocks_cross_origin_mutation_before_handler():
     assert response.status_code == 403
     assert response.json()["detail"] == "Cross-origin GUI/API requests are blocked."
 
-def test_skill_route_rejects_missing_client_address():
+@pytest.mark.parametrize("path", ("/api/skills", "/api/audit/verify"))
+def test_sensitive_routes_reject_missing_client_address(path):
     client = TestClient(app, client=cast(Any, None))
-    response = client.get("/api/skills")
+    response = client.get(path)
     assert response.status_code == 403
 
