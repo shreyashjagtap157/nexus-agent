@@ -21,11 +21,52 @@ The unified NexusAgent platform currently includes:
 - worker-local tool authorization and fail-closed dependency handling
 - provider/model routing with initialization failover and NVIDIA NIM/OpenAI-compatible support
 - persistent workspace/team/research artifacts with path containment
-- local-only protection for sensitive team-control and team-data APIs
+- current documented limitation: sensitive team-control and team-data APIs are loopback-only; authenticated tenant-scoped access is a target requirement and must not be inferred from the local-only boundary
 - guarded autonomous web fetching with private-target and redirect protection
 - Python CLI/web surfaces plus native Rust CLI and desktop clients
 - cross-platform CI, lint/type validation, native compilation, version contracts and security gates
 - reproducible release validation and provenance-oriented packaging workflow
+
+## Sequential qualification gates (authoritative)
+
+Complete these gates in order. A gate is complete only when its acceptance criteria are demonstrated by tests, exact-commit workflow results, artifact inspection or verified repository settings. Historical status statements do not satisfy a gate.
+
+### Gate 1 — Repository and governance baseline
+- Reconcile default branch `master` versus intended canonical `main`; avoid PRs splitting across the two branches.
+- Verify required CI/Security workflow triggers, check names, latest-head execution and repository protection settings.
+- Inventory current code/spec/test coverage and distinguish verified implementation from target requirements.
+- Exit: one authoritative integration branch, reproducible CI and a documented baseline of blockers.
+
+### Gate 2 — Multi-user identity and isolation
+- Define authentication, tenant/workspace membership, roles, session ownership and a local-mode bootstrap identity.
+- Enforce authorization on APIs, background jobs, memory, provider secrets, artifacts, events, cancellation and resume.
+- Add negative cross-tenant tests, per-tenant concurrency/resource budgets, safe audit events and recovery/migration tests.
+- Exit: tenant isolation is proven by tests; remote/shared access remains disabled until this gate passes.
+
+### Gate 3 — Shared runtime and contracts
+- Specify versioned task/session/API/event contracts shared by web, CLI/TUI and desktop clients.
+- Prove durable task state, cancellation, reconnect/replay, error normalization and ownership enforcement.
+- Exit: the same task semantics and results are observable through each supported client.
+
+### Gate 4 — Agents, tools and orchestration
+- Verify user-defined and generated agent profiles, schema/policy validation, bounded planning and dependency-aware scheduling.
+- Verify tool schemas, permission enforcement, path/network controls, timeouts, retries and auditability.
+- Exit: real multi-agent workflows complete with verified outputs, and unauthorized/failed/cancelled cases behave deterministically.
+
+### Gate 5 — Research, memory and persistence
+- Verify all source and collection modes, configurable depth, local sources, evidence provenance and measurable saturation/deadline behavior.
+- Verify global, user, workspace, project and session boundaries plus concurrent writes, restart recovery and migrations.
+- Exit: each advertised mode and scope has executable positive and negative tests.
+
+### Gate 6 — Client and end-to-end qualification
+- Demonstrate real tasks through web, CLI/TUI and native desktop, with live workflow events, messages, tool results and artifacts.
+- Verify local and authenticated multi-user deployment profiles without duplicating domain logic in clients.
+- Exit: end-to-end acceptance scenarios pass against the same candidate runtime and documented configuration.
+
+### Gate 7 — Release and operational qualification
+- Run full platform test, lint, type, native, security, dependency and version-contract checks on the exact candidate commit.
+- Verify README/setup documentation, backups/recovery, release provenance and branch protection.
+- Exit: all required checks pass, blockers are resolved or explicitly release-blocking, and an authorized repository administrator confirms governance settings.
 
 ## Alpha.5 hardening priorities
 
