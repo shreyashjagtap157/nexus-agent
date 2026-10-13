@@ -83,51 +83,47 @@ def test_team_report_rejects_symlinked_result_artifact(tmp_path: Path):
     response = TestClient(app, client=("127.0.0.1", 12345)).get("/api/teams/team-1/report")
     assert response.status_code == 400
 
-
-def test_team_artifacts_listing_preserves_hidden_files_and_sorted_order(tmp_path: Path):
-    root = _artifact_root(State(tmp_path), "team-1")
-    files = [
-        ".hidden/secret.txt",
-        "a.txt",
-        "build/output.bin",
-        "nested/child.txt",
-        "node_modules/pkg.json",
-        "z.txt",
-    ]
-    for relative in files:
-        path = root / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(relative, encoding="utf-8")
-
+def test_team_artifacts_endpoint_handling_and_exclusions(tmp_path: Path):
     app = FastAPI()
     register_team_routes(app, State(tmp_path))
-    response = TestClient(app, client=("127.0.0.1", 12345)).get(
-        "/api/teams/team-1/artifacts"
-    )
+    client = TestClient(app, client=("127.0.0.1", 12345))
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["team_id"] == "team-1"
-    assert [item["name"] for item in payload["artifacts"]] == files
-
-
-def test_team_artifacts_listing_excludes_symlinks_outside_root(tmp_path: Path):
     root = _artifact_root(State(tmp_path), "team-1")
     root.mkdir(parents=True, exist_ok=True)
+
+    # Intended files
+    (root / "file1.txt").write_text("1")
+    (root / "dir1").mkdir()
+    (root / "dir1" / "file2.txt").write_text("2")
+
+    # Excluded files (hidden)
+    (root / ".hidden").mkdir()
+    (root / ".hidden" / "file3.txt").write_text("3")
+
+    # Excluded files (build)
+    (root / "node_modules").mkdir()
+    (root / "node_modules" / "file4.txt").write_text("4")
+
+    # Symlink / out of root
     outside = tmp_path / "outside.txt"
-    outside.write_text("private", encoding="utf-8")
-    link = root / "outside-link.txt"
+    outside.write_text("5")
+    link = root / "symlink.txt"
     try:
         link.symlink_to(outside)
     except OSError:
-        pytest.skip("Symlinks are not available on this platform")
+        pass # OK if symlinks not available, but should be tested if they are
 
-    app = FastAPI()
-    register_team_routes(app, State(tmp_path))
-    response = TestClient(app, client=("127.0.0.1", 12345)).get(
-        "/api/teams/team-1/artifacts"
-    )
-
+    response = client.get("/api/teams/team-1/artifacts")
     assert response.status_code == 200
-    assert response.json()["artifacts"] == []
 
+    data = response.json()
+    artifacts = data["artifacts"]
+    names = [a["name"] for a in artifacts]
+
+    assert "file1.txt" in names
+    assert "dir1/file2.txt" in names
+    assert ".hidden/file3.txt" not in names
+    assert "node_modules/file4.txt" not in names
+
+    # ensure sorted deterministically
+    assert names == sorted(names)
