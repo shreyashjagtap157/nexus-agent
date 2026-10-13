@@ -235,10 +235,10 @@ The gates above define qualification order. This section maps them to current so
 2. Represent each run/task with explicit context, permissions, provider route, budget and cancellation signal.
 3. Move mutable planner/session/provider selection out of process-global state and into run/request-scoped contexts.
 4. Make task transitions validated and durable; introduce worker heartbeat/lease and restart reconciliation.
-5. Route every tool call through argument-schema validation and a current policy decision.
-6. Bound agent count, plan revisions, concurrency, tool calls, retries, time, provider cost and output volume. Define behavior at every limit.
-7. Make side-effecting operations idempotent or recovery-aware before allowing automatic retries.
-8. Record final synthesis separately from worker outputs and require reviewers/verifiers for workflows that declare them.
+5. Define a typed `WorkflowExecutor` interface, then integrate LangGraph behind it as the single graph-execution/checkpoint adapter. Keep policy, providers, tools, storage contracts and API services in NexusAgent; do not operate two schedulers against the same tasks.
+6. Define an explicit serializable graph-state schema with stable IDs, bounded results and artifact references only. Set `LANGGRAPH_STRICT_MSGPACK=true` in `.env.example` and CI, configure a safe MessagePack type allowlist and disable pickle fallback. Pin and audit LangGraph and checkpoint-backend dependencies.
+7. Keep the existing `TeamRuntime` behind a compatibility adapter while capturing parity fixtures. Migrate one workflow family at a time and compare task states, tool grants, peer messages, source evidence, verification outcomes and artifacts before switching the default.
+8. Route every tool call through argument-schema validation and a current policy decision; bound agents, plan revisions, concurrency, tool calls, retries, duration, provider cost and output volume. Make side-effecting operations idempotent/recovery-aware, and record synthesis separately from worker outputs.
 
 **Exit tests**
 - DAG success/failure/cycle/missing-dependency cases.
@@ -257,14 +257,16 @@ The gates above define qualification order. This section maps them to current so
 5. Ensure memory candidate retrieval filters by authorized scope before ranking and retrieval. Isolate user, project, workspace, agent, team and session scopes.
 6. Ensure provider credentials stay in a secret store; ordinary rows/config contain references and non-secret metadata only.
 7. Preserve evidence-first research: immutable source snapshot, exact quote, claim record, verification record, contradiction state and final evidence gate.
-8. Define schema/data upgrades, import of legacy local data, backup/restore, delete/retention and secret rotation.
+8. Resolve the live collection-mode mismatch before claiming product parity: requirements call for `single`, `timed`, `until_saturation` and `continuous`, while current TeamConfig/CLI/web/native controls expose `bounded`, `until_saturation` and `continuous`. Define semantics and migration before changing enums: `single` means one collection pass; `timed` ends at its configured deadline; `until_saturation` uses measurable marginal yield over configurable idle rounds plus hard ceilings; `continuous` runs until cancellation, safety deadline or quota. Preserve the old depth-dependent fixed-round `bounded` behavior as a backward-compatible value until existing workflows are intentionally migrated.
+9. Define schema/data upgrades, import of legacy local data, backup/restore, delete/retention and secret rotation.
 
 **Exit tests**
 - Repository contract tests for create/read/update/delete/list, transaction rollback, concurrent writes and uniqueness constraints.
 - Migration from a previous supported local data layout without loss or accidental sharing.
 - Backup/restore and crash/restart tests.
 - Cross-tenant memory, artifact, source and credential negative tests.
-- timed and until_saturation modes stop at their real deadlines/budgets; user_only never gains autonomous fetch capability; evidence output links to stored sources.
+- Tests prove each collection value has its defined behavior; timed runs stop at the deadline even when a tool blocks; saturation stops at its measurable yield threshold; continuous respects cancellation/safety deadline/quotas; legacy bounded settings stay compatible.
+- user_only never gains autonomous fetch capability; evidence output links to stored snapshots and exact supporting quotes.
 
 ### Gate 6 work package — modern clients without duplicated domain logic
 
