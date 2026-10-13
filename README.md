@@ -632,7 +632,7 @@ The web application, CLI/TUI and native desktop client are separate user experie
 - Multi-user mode must enforce authentication, authorization, tenant/workspace isolation, per-user or per-tenant credential boundaries, auditability, resource limits and safe session/artifact access before it is exposed.
 - Agents operate autonomously within the effective configured permissions. Approval is not required for every action, but policy enforcement is mandatory and cannot be overridden by agent-generated instructions.
 - The user can author/configure agents and ask NexusAgent to generate reusable agent profiles. The planner may generate missing specialists when needed, subject to validation, bounded budgets and policy.
-- Research modes remain explicit: `user_only`, `hybrid`, `autonomous`; collection modes remain `single`, `timed`, `until_saturation`, `continuous`. These settings must affect runtime behavior, not only prompts or UI controls.
+- Research source modes are `user_only`, `hybrid`, `autonomous`; the target collection contract is `single`, `timed`, `until_saturation`, `continuous`. The live implementation currently exposes `bounded`, `until_saturation`, `continuous`; `single` and `timed` are still parity gaps, and `bounded` must remain compatible until existing workflows are intentionally migrated. These settings must affect runtime behavior, not only prompts or UI controls. LangGraph checkpoint execution with `LANGGRAPH_STRICT_MSGPACK=true` is also a target not yet declared in the current package/config; the implementation plan requires strict deserialization tests before persistent checkpoints are enabled.
 
 ### Language and implementation recommendation
 
