@@ -279,6 +279,9 @@ The gates above define qualification order. This section maps them to current so
 - Keep nexus-rs/ as native CLI/TUI and nexus-desktop/ as a native desktop client. Each is a presentation/control surface over shared contracts.
 - Add Rust unit/integration tests; existing cargo fmt/check gates only validate formatting/compilation.
 - Test backend startup/termination, protocol error handling, large/Unicode payloads, reconnection, token expiry and graceful shutdown across supported operating systems.
+- Resolve the command-name collision before distribution: pyproject.toml currently installs a Python `nexus` console script while nexus-rs/Cargo.toml names its Rust binary `nexus`. Keep Rust as a distinct preview/development executable until feature parity, compatibility migration and install/upgrade/uninstall tests pass.
+- Reconcile the current Rust ACP request model with src/nexus_agent/mcp/acp_server.py. Add a method-by-method contract test; the Rust builder has a `command` method but the inspected Python dispatcher does not implement that method.
+- Harden the ACP frame reader/writer: serialized writes, explicit request IDs, bounded line size and event-channel capacity, prompt concurrency rules, cancellation, stop/drain behavior and child-process failure handling. Verify the backend retains and closes the SessionManager/runtime resources it initializes.
 
 **Exit tests**
 - Same acceptance scenario passes through web, CLI/TUI and desktop with the same persisted run result.
