@@ -7,6 +7,7 @@ from starlette.websockets import WebSocketDisconnect
 
 import nexus_agent.gui.server as gui_server
 from nexus_agent.agents.web_routes import _require_local as require_agent_local
+from nexus_agent.audit.web_routes import _require_local as require_audit_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
 from nexus_agent.gui.server import (
     _allowed_local_http_origin,
@@ -20,6 +21,7 @@ from nexus_agent.mcp.web_routes import (
     _require_local as require_mcp_local,
     register_mcp_routes,
 )
+from nexus_agent.team.web_routes import _require_local_client as require_team_local
 from nexus_agent.memory.web_routes import _require_local as require_memory_local
 from nexus_agent.research.web_routes import _require_local as require_research_local
 
@@ -109,10 +111,12 @@ def test_websocket_origin_guard_allows_same_origin_and_nonbrowser_clients(header
     "guard",
     [
         require_agent_local,
+        require_audit_local,
         require_auth_local,
         require_memory_local,
         require_mcp_local,
         require_research_local,
+        require_team_local,
         _require_local_client,
     ],
 )
@@ -225,4 +229,9 @@ def test_api_middleware_blocks_cross_origin_mutation_before_handler():
     )
     assert response.status_code == 403
     assert response.json()["detail"] == "Cross-origin GUI/API requests are blocked."
+
+def test_skill_route_rejects_missing_client_address():
+    client = TestClient(app, client=cast(Any, None))
+    response = client.get("/api/skills")
+    assert response.status_code == 403
 
