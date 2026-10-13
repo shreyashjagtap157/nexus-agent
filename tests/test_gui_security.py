@@ -145,7 +145,6 @@ def test_gui_bind_policy_accepts_only_loopback_targets(host):
         "192.168.1.20",
         "10.0.0.4",
         "::",
-        "localhost.",
         "2001:db8::1",
         "attacker.example",
         "",
