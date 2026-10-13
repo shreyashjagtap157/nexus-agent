@@ -1,5 +1,22 @@
 > **Supersession notice (2026-10-13):** This file contains historical context captured on 2026-05-31. Its claims about phase completion, production readiness, paths, language constraints and feature status are not authoritative for the current project. Use the live repository, current tests/workflows and the current requirements in `docs/ARCHITECTURE.md`, `docs/MULTI_AGENT_PLATFORM.md`, `docs/ORCHESTRATION.md` and `docs/ROADMAP.md`. The current target includes local and authenticated multi-user operation from the initial architecture, autonomous agents within enforced permissions, requirements-first language selection (Python core, TypeScript web, Rust native/specific system boundaries), and sequential evidence-based qualification gates. Do not treat this historical snapshot as proof of implementation status.
 
+## Current handoff snapshot — 2026-10-13
+
+This section supersedes the historical status claims below; the rest of this file is retained as a legacy context/design record, not as current completion evidence.
+
+- **Current version:** `0.3.0-alpha.5`, prerelease and not a stable API commitment or 1.0 release.
+- **Authoritative sources:** live source tree, tests, workflow definitions and exact-head workflow results. Use `docs/ROADMAP.md` for sequential qualification gates, `docs/ARCHITECTURE.md` and `docs/MULTI_AGENT_PLATFORM.md` for runtime/product requirements, `docs/STORAGE_AND_GOVERNANCE.md` for tenant/session storage contracts, `.github/workflows/ci.yml` and `.github/workflows/security.yml` for automated gates.
+- **Branch governance:** GitHub still reports `master` as the default branch while `main` is intended canonical integration. PR #381 is synchronizing the qualified `master` content into `main` without rewriting history. GitHub currently reports both branches unprotected and the rulesets endpoint empty; repository administration is required to change the default and enable the documented rules.
+- **Security boundary:** GUI/API binding is restricted to supported loopback hosts until Gate 2 is qualified. Browser-originated API requests and WebSocket origins have local-origin checks. These are exposure/CSRF mitigations only; they do not establish authenticated user identity or tenant authorization. Do not expose remote/shared operation.
+- **Gate 2 status:** not complete. The new principal/tenant/session specification is documented in `docs/STORAGE_AND_GOVERNANCE.md`, but sessions and credentials are not yet fully tenant-scoped and the GUI still has process-global runtime state. No claim of multi-tenant isolation should be made until implementation, migrations and cross-tenant negative tests pass.
+- **Recent qualified changes:** provider/credential remote-access regression tests, artifact-listing compatibility/performance hardening, the Gate 2 design contract, and loopback/browser-origin hardening were merged only after their exact PR-head CI and Security gates passed. Current-head status must still be rechecked before every later merge/release.
+- **Next work:** complete the history-preserving branch sync and administrator-only default/protection migration; then implement Gate 2 in stages—principal/session foundation, service authorization, tenant-owned persistence migration, secret isolation, and two-tenant cross-surface proof tests. Continue provider, research, team lifecycle, recovery and cross-client qualification according to the roadmap.
+
+Do not infer that a feature is complete because an old phase below has a checkmark. Those are historical statements from the 2026-05-31 snapshot.
+
+---
+
+
 # NexusAgent — Project Context & Continuation Guide
 
 > **Last Updated:** 2026-05-31
