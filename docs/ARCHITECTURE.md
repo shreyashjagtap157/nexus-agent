@@ -373,6 +373,8 @@ References: [Python asyncio](https://docs.python.org/3/library/asyncio.html), [o
 9. **Event delivery:** durable or replayable ordered events with stable IDs, run/tenant ownership and reconnect support.
 10. **Clients:** web, CLI/TUI and native desktop; no client bypasses shared policy or implements its own orchestration semantics.
 
+The detailed proposed principal, tenant, session, local-bootstrap and migration contract is maintained in `docs/STORAGE_AND_GOVERNANCE.md` under “Gate 2 principal, tenant and session contract”. Treat that contract as a pre-exposure implementation requirement; it is not proof that current runtime code already enforces the model.
+
 ### Multi-user invariants
 
 - Every tenant-owned row, artifact, memory record, run, message and event has an explicit ownership boundary.
