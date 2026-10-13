@@ -332,11 +332,11 @@ do not pass.
 
 ## 22. Engineering and CI Governance
 
-The repository treats main as the canonical integration branch. Runtime changes, research behavior, native clients and release infrastructure are validated through GitHub Actions rather than depending on a local validation result.
+The intended governance target is main as the canonical integration branch, but the live repository state checked on 2026-10-13 reports master as the default branch and main also exists. Resolve that default-branch migration and the split PR targets before treating main as the active canonical branch. The branch listing reported both branches as unprotected; the rulesets endpoint was empty, and the integration could not read branch-protection settings (HTTP 403). A repository administrator must verify and apply the policy.
 
-The merge-quality surface consists of the complete Python test matrix, Ruff/MyPy checks, native Rust/desktop checks, version synchronization, audit evidence generation, CodeQL and dependency security checks. Release tags are independently verified to point into main history before publication.
+Runtime changes, research behavior, native clients and release infrastructure must be validated through GitHub Actions against the exact candidate commit rather than depending only on local validation. The intended merge-quality surface consists of the Python test matrix, Ruff/MyPy checks, native Rust/desktop checks, version synchronization, audit evidence generation, CodeQL and dependency security checks. Release tags must be verified to point into the history of the verified canonical integration branch before publication.
 
-Branch protection policy is maintained in .github/BRANCH_PROTECTION.md and is enforced at the GitHub repository-administration layer.
+Branch-protection policy is documented in .github/BRANCH_PROTECTION.md; documentation alone does not enforce GitHub settings.
 
 
 ## Authoritative target architecture and language decision (2026-10-13)
