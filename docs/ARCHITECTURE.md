@@ -608,27 +608,52 @@ Required layers:
 
 A required workflow must run against the exact proposed merge head. Queued, skipped, cancelled or stale-head checks are not passes. Keep dependency/security gates and version-contract validation in the required merge gate, and qualify releases from saved test evidence.
 
-### 13. Incremental delivery plan and gates
+### 13. Incremental delivery plan mapped to the authoritative roadmap gates
 
-**Gate A — Repository truth and governance.** Reconcile main/master history with ordinary, CI-gated merges; have an administrator verify default-branch and protection settings. Record an accurate baseline of code, tests, config, workflows and existing data. Do not mark this gate done on the strength of documentation alone.
+Use the seven sequential gates in docs/ROADMAP.md as the only release qualification sequence. The substeps below expand their implementation detail; they are not a competing roadmap or a claim that any gate has passed.
 
-**Gate B — Security boundary and authenticated principal.** Keep non-loopback binds blocked. Implement the shared principal/session/membership contract, service authorization and local-bootstrap identity. Add tenant-scoped negative tests before refactoring broad application behavior. Resolve global active-session/workspace/provider state so concurrent requests cannot overwrite one another. Entry and exit criteria are in docs/STORAGE_AND_GOVERNANCE.md.
+**Gate 1 — Repository and governance baseline**
+- Keep master as the effective integration target until the default-branch migration to main is verified. Use ordinary, CI-gated, history-preserving merges; never force-push or rewrite history.
+- Inspect current code, docs, tests, CI and live branch settings. Distinguish proven functionality from documented targets.
+- Extend qualification so the exact merge head runs Python tests, lint/format, typed checks, Rust tests/builds, version checks and Security. A workflow that is queued, skipped, cancelled or tied to a previous head is not a pass.
+- Exit evidence: one verified integration path, reproducible checks and administrator-confirmed branch settings.
 
-**Gate C — Domain and contract isolation.** Extract typed service/repository boundaries from FastAPI handlers, shared mutable globals and direct store calls. Add versioned API/OpenAPI/event contracts, canonical error/status enums and compatibility tests. The first result should be a documented seam, not a full rewrite.
+**Gate 2 — Multi-user identity and isolation**
+- Define principal, tenant, membership, workspace grants and session/revocation semantics in accordance with docs/STORAGE_AND_GOVERNANCE.md. Integrate a maintained OIDC provider for hosted identity rather than building an ad hoc identity provider.
+- Replace connection-peer checks as the authorization concept with verified identity and resource-policy checks. Keep the non-loopback bind guard until the tests pass.
+- Introduce ownership metadata and scoped repository methods. Test every operation category across API, worker, event, memory, artifact and credential access.
+- Eliminate unsafe implicit local trust and the global active principal/workspace/session model. Personal mode must also create and enforce an explicit local principal.
+- Exit evidence: negative cross-tenant tests pass for guessed IDs, forged tenant selectors, revoked sessions/memberships, background jobs, subscriptions, artifact downloads and provider secret references.
 
-**Gate D — Durable run lifecycle.** Implement run/task ownership, atomic plan creation, validated status transitions, persisted events, idempotency, worker leases, cancellation and restart recovery. Use bounded workers. Prove local SQLite and PostgreSQL repository semantics; do not expose shared mode until this is qualified.
+**Gate 3 — Shared runtime and contracts**
+- Extract request handling from domain behavior, beginning with run/session lifecycle and repository access. Do not move everything to new packages at once.
+- Define a single API contract with validated Pydantic models and generated OpenAPI; version new routes and maintain compatibility adapters for existing local clients.
+- Define durable event envelopes, status/error enums, idempotent mutation behavior, reconnect/replay and protocol-version negotiation.
+- Exit evidence: web, Rust CLI/TUI and desktop observe the same run states, errors, results and access rules from the same backend contracts.
 
-**Gate E — Tool/provider isolation.** Route every tool through one effective-policy gateway. Add provider secret references, rate limits, retry classification, budget accounting, MCP authorization and SSRF/path sandboxing. Add security tests for cross-tenant and privilege-revocation races.
+**Gate 4 — Agents, tools and orchestration**
+- Preserve the current planner/team behavior while validating plans as typed DAGs. Fail missing prerequisites/cycles explicitly; bound planning, agent count, concurrency, tool calls, retries, time and cost.
+- Build task-scoped worker contexts, worker leases, cancellation propagation and deterministic terminal states. Make retryable failures explicit and account for side effects before retry.
+- Use one policy gateway for file, shell, Git, browser/web, research, memory and MCP tools. Re-evaluate permission at each invocation.
+- Exit evidence: integration tests cover normal completion, dependency failure, policy denial, human approval, provider/tool timeout, worker crash, cancel/pause/resume and budget exhaustion without deadlocks or unbounded retries.
 
-**Gate F — Multi-agent and research parity.** Preserve workflows, dynamic agent generation, role-level provider routing, peer communication, research depth/collection/source modes and evidence quality gates. Test real persisted runs end-to-end with bounded scheduling, verifiers, failures and recovery.
+**Gate 5 — Research, memory and persistence**
+- Retain local SQLite for supported offline/personal operation. Add PostgreSQL repositories and migrations for hosted multi-user operation; shared deployment must not rely on a single process-global session manager or workspace database as its ownership boundary.
+- Add artifact-store adapters, owner metadata, retention/deletion and migrations without breaking the current local storage layout. Keep credentials in a dedicated secret store.
+- Preserve user_only/hybrid/autonomous source modes and single/timed/until_saturation/continuous collection modes as enforced runtime policy. Depth must change actual budgets, source breadth and verification rules.
+- Exit evidence: storage/recovery/migration and memory-scope tests pass; source/claim evidence can be traced to captured snapshots; all collection modes respect caps and deadlines.
 
-**Gate G — Web modernization.** Introduce TypeScript/React incrementally after contract stabilization. Generate client types, migrate screens one-by-one, add UI CI and browser tests, maintain asset packaging and accessible state transitions. Do not rewrite the backend in TypeScript.
+**Gate 6 — Client and end-to-end qualification**
+- Modernize the current static HTML/CSS/JavaScript UI incrementally to TypeScript + React + Vite after the API/event contracts stabilize. Start with one low-risk screen and maintain functional static packaging until each replacement qualifies.
+- Generate browser-client types from OpenAPI, add strict TypeScript compilation and browser tests, and implement timeline reconnection/replay, error/loading/empty states, accessible navigation and explicit approval controls.
+- Keep the Rust CLI/TUI and eframe desktop as presentation clients. Add Rust tests for protocol framing, invalid messages, reconnection, backend failure, cancellation and large/Unicode event streams.
+- Exit evidence: acceptance scenarios for create-run, progress/event display, tool/approval state, artifact viewing, cancellation, reconnect and session expiry pass across clients.
 
-**Gate H — Native-client and packaging qualification.** Verify Rust CLI/TUI and desktop behavior using the same contracts; add Rust tests, reconnect handling, backend supervision, release packaging and supported-platform tests. Keep domain logic in the Python runtime.
-
-**Gate I — Operational/release qualification.** Verify observability/redaction, backup/restore, migration, quotas, secret rotation, cancellation/shutdown and dependency security. Require exact-commit CI/Security, version sync, change log, release provenance and verified repository governance. Only then consider enabling authenticated remote/shared deployment.
-
-The order is intentional: authenticated ownership precedes multi-user persistence and remote exposure; contracts precede UI/client duplication; durable lifecycle precedes long-running hosted orchestration; profiling precedes low-level rewrites.
+**Gate 7 — Release and operational qualification**
+- Add structured logs, trace correlation, metrics, redaction, readiness/liveness, graceful shutdown, backup/restore, retention, credential rotation and quota dashboards.
+- Run the full supported Python/OS matrix, static analysis, OpenAPI/TypeScript build/tests, Rust fmt/test/check/build, dependency/security audits and version contract on the exact release candidate.
+- Publish only from the verified canonical branch with an immutable tag and verified provenance. Resolve all security blockers and document remaining limitations.
+- Exit evidence: exact-commit workflows pass, recovery procedures are exercised, the version/changelog is correct and repository settings are confirmed by an administrator.
 
 ### 14. Performance and optimization rules
 
