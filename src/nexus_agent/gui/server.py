@@ -94,23 +94,13 @@ state_manager = StateManager(
 
 
 def _require_loopback_bind_host(host: str) -> None:
-    """Reject network-accessible binds until authenticated tenant isolation is qualified."""
+    """Allow only bind hosts supported by the local-client route guards."""
     candidate = str(host).strip().lower().rstrip(".")
-    if candidate == "localhost":
-        return
-    try:
-        address = ipaddress.ip_address(candidate)
-    except ValueError as exc:
+    if candidate not in {"127.0.0.1", "::1", "localhost"}:
         raise ValueError(
-            "NexusAgent GUI/API binding is restricted to loopback addresses until "
-            "authenticated multi-user identity and tenant isolation pass Gate 2. "
-            "Use 127.0.0.1 or ::1; remote and LAN bindings are disabled."
-        ) from exc
-    if not address.is_loopback:
-        raise ValueError(
-            "NexusAgent GUI/API binding is restricted to loopback addresses until "
-            "authenticated multi-user identity and tenant isolation pass Gate 2. "
-            "Use 127.0.0.1 or ::1; remote and LAN bindings are disabled."
+            "NexusAgent GUI/API binding is restricted to the supported local hosts "
+            "127.0.0.1, ::1, or localhost until authenticated identity and tenant "
+            "isolation pass Gate 2. Remote, LAN, and alternate loopback binds are disabled."
         )
 
 
