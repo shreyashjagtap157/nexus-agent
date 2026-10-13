@@ -205,3 +205,16 @@ Preserve these modes as behavioral contracts:
 - Evidence: retain source provenance and snapshots where appropriate; distinguish source content, extracted claims, agent interpretations and verified conclusions.
 
 The UI must show real runtime events, not simulated activity. Users should be able to inspect role generation, task dependencies, peer messages, tool calls, transferred artifacts, retries, verification and final results.
+
+## Implementation status reconciliation (2026-10-13)
+
+The product contract above is normative, but the following items are not yet implemented to that full contract in the current source:
+
+- **Collection modes:** `TeamConfig.normalize`, team CLI flags, and web/native controls currently accept `bounded`, `until_saturation`, and `continuous`. The requested `single` and `timed` modes are missing. The current `bounded` value means a depth-dependent fixed-round budget; do not silently map it to `single` or `timed`. Define the four requested semantics, add parity tests across CLI/web/native/config, and retain `bounded` as a compatibility value until saved workflows are migrated.
+- **Graph checkpointing:** the live team runtime uses a custom bounded thread-pool scheduler and workspace SQLite stores; LangGraph is not yet a declared runtime dependency and `LANGGRAPH_STRICT_MSGPACK` is not present in the current environment template. The target is to integrate LangGraph behind a single `WorkflowExecutor` interface, preserve current behavior through golden parity fixtures, and use strict deserialization before persistent graph checkpoints are enabled.
+- **Strict checkpoint serialization:** set `LANGGRAPH_STRICT_MSGPACK=true` before LangGraph serializer import, use a safe MessagePack allowlist and disable pickle fallback; checkpoint reads/resume/streaming still require tenant/run authorization. Strict serialization does not itself provide access control.
+- **Optional browser support:** preserve the existing Playwright path with an HTTPX/static extraction fallback. Browser automation remains optional and runs through the same tool permissions, URL/redirect/private-network checks, timeouts and output limits as any other research tool.
+- **Preferred model route:** keep NVIDIA NIM as a first-class configurable provider adapter using the current provider catalog's endpoint/model defaults; resolve `NVIDIA_NIM_API_KEY` or an authorized AuthStore secret reference without writing raw credentials to profiles, prompts, source snapshots or logs.
+
+These items must be implemented and validated through the sequential roadmap gates. A profile/UI option or documentation entry is not implementation evidence.
+
