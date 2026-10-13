@@ -122,13 +122,17 @@ def _require_local_client(request: Request) -> None:
         )
 
 
-def get_free_port() -> int:
-    """Get a free port on localhost."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+def get_free_port(host: str = "127.0.0.1") -> int:
+    """Get a free port for a loopback address, including IPv6 loopback."""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    family = socket.AF_INET6 if isinstance(address, ipaddress.IPv6Address) else socket.AF_INET
+    bind_address = (host, 0, 0, 0) if family == socket.AF_INET6 else (host, 0)
+    with socket.socket(family, socket.SOCK_STREAM) as sock:
+        sock.bind(bind_address)
+        return int(sock.getsockname()[1])
 
 
 app = FastAPI(
@@ -897,14 +901,27 @@ def start_gui_server(
     # Set up the port; bind_host was validated before subsystem initialization.
     bind_port = port or srv_config.get("port", 7860)
 
-    # Verify if port is available, find a free one if occupied
+    # Verify if the port is available on the selected loopback address.
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((bind_host, bind_port))
-        s.close()
+        try:
+            address = ipaddress.ip_address(bind_host)
+        except ValueError:
+            address = None
+        family = (
+            socket.AF_INET6
+            if isinstance(address, ipaddress.IPv6Address)
+            else socket.AF_INET
+        )
+        bind_address = (
+            (bind_host, bind_port, 0, 0)
+            if family == socket.AF_INET6
+            else (bind_host, bind_port)
+        )
+        with socket.socket(family, socket.SOCK_STREAM) as sock:
+            sock.bind(bind_address)
     except OSError:
         old_port = bind_port
-        bind_port = get_free_port()
+        bind_port = get_free_port(bind_host)
         logger.warning(f"Port {old_port} occupied. Dynamic fallback to port {bind_port}.")
 
     url = f"http://{bind_host}:{bind_port}"
