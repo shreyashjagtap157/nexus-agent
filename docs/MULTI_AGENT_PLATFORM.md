@@ -164,9 +164,11 @@ Artifact-serving API routes resolve team artifact roots beneath the canonical ru
 Autonomous source capture also rejects credential-bearing URLs and common loopback, localhost, link-local, private, reserved and multicast IP targets to prevent research tools from becoming an SSRF primitive. Explicitly configured `user_only` sources remain under the user's explicit source policy.
 
 
-## API data boundary
+## API data boundary and deployment qualification
 
-Team control and persisted team-data endpoints are loopback-only. Remote clients are rejected from team history, status, messages, events, reports, artifacts, audit records, research exports and live team streams. This prevents the multi-agent runtime from becoming an unauthenticated remote data-exfiltration surface when the web service is exposed beyond localhost.
+**Current documented limitation:** team control and persisted team-data endpoints are described as loopback-only, and remote clients are rejected from team history, status, messages, events, reports, artifacts, audit records, research exports and live team streams. Treat this as a local-only safety boundary, not as evidence that authenticated multi-user operation is implemented.
+
+**Target requirement:** local/personal and authenticated multi-user deployments are both in scope from the initial architecture. Multi-user access must use authenticated identity, server-side tenant/workspace authorization, per-user/per-tenant secret and artifact boundaries, audit events, quotas and reconnect-safe run ownership. Loopback origin is not a user identity and must not be the sole authorization mechanism. Do not expose remote/shared access until these controls are implemented and pass negative cross-tenant tests. Preserve local-only restrictions until the authenticated path is qualified; do not weaken them merely to enable remote access.
 
 
 ## Authoritative platform requirements (2026-10-13)
