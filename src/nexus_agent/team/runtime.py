@@ -162,6 +162,7 @@ class TeamRuntime:
         provider_selector: ProviderSelector | None = None,
         agent_registry: AgentRegistry | None = None,
         mcp_clients: list[Any] | None = None,
+        tenant_id: str | None = None,
     ):
         self.provider = provider
         self.tools = list(tools)
@@ -171,6 +172,7 @@ class TeamRuntime:
         self.permission_callback = permission_callback
         self.provider_selector = provider_selector
         self.agent_registry = agent_registry or AgentRegistry(self.workspace)
+        self.tenant_id = tenant_id
         from nexus_agent.core.config import get_data_dir
 
         self.skill_registry = SkillRegistry(
@@ -199,7 +201,10 @@ class TeamRuntime:
             pass
 
     def _make_store(self) -> TeamStore:
-        return TeamStore(self.data_dir / "teams.db")
+        store_path = self.data_dir / "teams.db"
+        # TODO: Add tenant-specific database paths once tenant_id is properly integrated
+        # For now, use the same store but teams will have tenant_id field
+        return TeamStore(store_path)
 
     @staticmethod
     def _tool_matches(name: str, categories: set[str]) -> bool:
@@ -723,6 +728,7 @@ Team protocol:
                     before_sources = len(research_store.sources(team_id))
                     store.event(
                         team_id,
+                        tenant_id or "",
                         "research_round_started",
                         {
                             "round": round_index,
@@ -770,6 +776,7 @@ Team protocol:
                 for event in agent.run(round_goal):
                     store.event(
                         team_id,
+                        tenant_id or "",
                         "agent_event",
                         {
                             "event_type": event.type.value,
@@ -818,6 +825,7 @@ Team protocol:
                         idle_rounds = 0
                     store.event(
                         team_id,
+                        tenant_id or "",
                         "research_round_completed",
                         {
                             "round": round_index,
@@ -1132,6 +1140,7 @@ Team protocol:
         events: queue.Queue[AgentEvent] = queue.Queue()
         store.create_team(
             team_id,
+            tenant_id or "",
             goal,
             mode.value,
             str(self.workspace),

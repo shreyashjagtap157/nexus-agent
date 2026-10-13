@@ -17,6 +17,7 @@ class TeamStore:
     SCHEMA = """
     CREATE TABLE IF NOT EXISTS teams (
         team_id TEXT PRIMARY KEY,
+        tenant_id TEXT DEFAULT '',
         goal TEXT NOT NULL,
         mode TEXT NOT NULL,
         workspace TEXT NOT NULL,
@@ -28,6 +29,7 @@ class TeamStore:
     );
     CREATE TABLE IF NOT EXISTS team_agents (
         agent_id TEXT PRIMARY KEY,
+        tenant_id TEXT DEFAULT '',
         team_id TEXT NOT NULL,
         name TEXT NOT NULL,
         profession TEXT NOT NULL,
@@ -44,6 +46,7 @@ class TeamStore:
     );
     CREATE TABLE IF NOT EXISTS team_messages (
         message_id TEXT PRIMARY KEY,
+        tenant_id TEXT DEFAULT '',
         team_id TEXT NOT NULL,
         sender_id TEXT NOT NULL,
         recipient_id TEXT,
@@ -56,6 +59,7 @@ class TeamStore:
     );
     CREATE TABLE IF NOT EXISTS team_events (
         event_id TEXT PRIMARY KEY,
+        tenant_id TEXT DEFAULT '',
         team_id TEXT NOT NULL,
         agent_id TEXT,
         event_type TEXT NOT NULL,
@@ -65,9 +69,12 @@ class TeamStore:
     );
     CREATE INDEX IF NOT EXISTS idx_team_agents_team ON team_agents(team_id);
     CREATE INDEX IF NOT EXISTS idx_team_messages_team_time ON team_messages(team_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_team_messages_tenant ON team_messages(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_team_events_team_time ON team_events(team_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_team_events_tenant ON team_events(tenant_id);
     CREATE TABLE IF NOT EXISTS team_controls (
         team_id TEXT PRIMARY KEY,
+        tenant_id TEXT DEFAULT '',
         action TEXT NOT NULL,
         requested_at REAL NOT NULL,
         FOREIGN KEY(team_id) REFERENCES teams(team_id)

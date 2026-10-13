@@ -36,12 +36,18 @@ class SessionStorage(SQLiteStore):
             provider TEXT DEFAULT '',
             workspace TEXT DEFAULT '',
             mode TEXT DEFAULT 'auto',
+            tenant_id TEXT DEFAULT '',
+            created_at REAL NOT NULL,
+            mode TEXT DEFAULT 'auto',
             created_at REAL NOT NULL,
             updated_at REAL NOT NULL,
             message_count INTEGER DEFAULT 0,
             status TEXT DEFAULT 'active',
             metadata TEXT DEFAULT '{}'
         );
+            session_id TEXT NOT NULL,
+            tenant_id TEXT DEFAULT '',
+            role TEXT NOT NULL,
 
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +58,9 @@ class SessionStorage(SQLiteStore):
             tool_calls TEXT,
             tool_call_id TEXT,
             name TEXT,
+            session_id TEXT NOT NULL,
+            tenant_id TEXT DEFAULT '',
+            file_path TEXT NOT NULL,
             created_at REAL NOT NULL,
             metadata TEXT DEFAULT '{}',
             FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
@@ -61,6 +70,9 @@ class SessionStorage(SQLiteStore):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
             file_path TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            tenant_id TEXT DEFAULT '',
+            event_type TEXT NOT NULL,
             change_type TEXT NOT NULL,
             original_content TEXT,
             new_content TEXT,
@@ -70,7 +82,15 @@ class SessionStorage(SQLiteStore):
 
         -- Session replay trace: records every action for replay/debug
         CREATE TABLE IF NOT EXISTS session_events (
+        CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_tenant ON messages(tenant_id);
+        CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id);
+        CREATE INDEX IF NOT EXISTS idx_file_changes_tenant ON file_changes(tenant_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);
+        CREATE INDEX IF NOT EXISTS idx_sessions_tenant ON sessions(tenant_id);
+        CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id);
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE INDEX IF NOT EXISTS idx_session_events_tenant ON session_events(tenant_id);
             session_id TEXT NOT NULL,
             event_type TEXT NOT NULL,
             event_data TEXT NOT NULL DEFAULT '{}',

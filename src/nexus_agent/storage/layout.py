@@ -107,6 +107,35 @@ class StorageLayout:
     def todos(self) -> Path:
         return self.workspace_runtime / "todos.json"
 
+    # Tenant-specific paths
+    @property
+    def tenants_dir(self) -> Path:
+        return self.user_root / "tenants"
+
+    def tenant_path(self, tenant_id: str) -> Path:
+        """Get tenant-specific directory path."""
+        return self.tenants_dir / tenant_id
+
+    def tenant_memory(self, tenant_id: str) -> Path:
+        """Get tenant-specific memory directory."""
+        return self.tenant_path(tenant_id) / "memory"
+
+    def tenant_sessions(self, tenant_id: str) -> Path:
+        """Get tenant-specific sessions directory."""
+        return self.tenant_path(tenant_id) / "sessions"
+
+    def tenant_auth(self, tenant_id: str) -> Path:
+        """Get tenant-specific auth file."""
+        return self.tenant_path(tenant_id) / "auth.json"
+
+    def tenant_artifacts(self, tenant_id: str) -> Path:
+        """Get tenant-specific artifacts directory."""
+        return self.workspace_runtime / "tenants" / tenant_id / "artifacts"
+
+    def tenant_workspace_memory(self, tenant_id: str) -> Path:
+        """Get tenant-specific workspace memory directory."""
+        return self.tenant_path(tenant_id) / "workspace-memory"
+
     def ensure(self) -> None:
         for path in (
             self.user_root,

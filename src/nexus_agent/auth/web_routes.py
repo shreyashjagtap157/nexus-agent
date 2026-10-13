@@ -17,6 +17,72 @@ from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
 from nexus_agent.storage.layout import StorageLayout
 
 
+from nexus_agent.auth.key_manager import TenantCredentialManager
+from nexus_agent.auth.store import AuthStore
+
+
+class UserRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    tenant_id: str = Field(min_length=1, max_length=100)
+    profile: dict[str, Any] = Field(default_factory=dict)
+
+
+class TenantRequest(BaseModel):
+    tenant_id: str = Field(min_length=1, max_length=100)
+
+
+class RoleRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    tenant_id: str = Field(min_length=1, max_length=100)
+    role: dict[str, Any]
+
+
+class PermissionRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    tenant_id: str = Field(min_length=1, max_length=100)
+    resource: str = Field(min_length=1, max_length=200)
+    permission: str = Field(min_length=1, max_length=100)
+    value: bool = Field(default=True)
+
+
+class TenantCredentialRequest(BaseModel):
+    tenant_id: str = Field(min_length=1, max_length=100)
+    provider: str = Field(min_length=1, max_length=100)
+    api_key: str = Field(min_length=1, max_length=10000)
+    description: str | None = Field(default=None, max_length=500)
+from nexus_agent.auth.key_manager import TenantCredentialManager
+from nexus_agent.auth.store import AuthStore
+
+
+class UserRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    tenant_id: str = Field(min_length=1, max_length=100)
+    profile: dict[str, Any] = Field(default_factory=dict)
+
+
+class TenantRequest(BaseModel):
+    tenant_id: str = Field(min_length=1, max_length=100)
+
+
+class RoleRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    tenant_id: str = Field(min_length=1, max_length=100)
+    role: dict[str, Any]
+
+
+class PermissionRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    tenant_id: str = Field(min_length=1, max_length=100)
+    resource: str = Field(min_length=1, max_length=200)
+    permission: str = Field(min_length=1, max_length=100)
+    value: bool = Field(default=True)
+
+
+class TenantCredentialRequest(BaseModel):
+    tenant_id: str = Field(min_length=1, max_length=100)
+    provider: str = Field(min_length=1, max_length=100)
+    api_key: str = Field(min_length=1, max_length=10000)
+    description: str | None = Field(default=None, max_length=500)
 class CredentialRequest(BaseModel):
     api_key: str = Field(min_length=1, max_length=10000)
 
