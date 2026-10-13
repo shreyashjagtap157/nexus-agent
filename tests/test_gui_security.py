@@ -1,18 +1,23 @@
+from typing import Any, cast
+
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+import nexus_agent.gui.server as gui_server
 from nexus_agent.agents.web_routes import _require_local as require_agent_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
-import nexus_agent.gui.server as gui_server
 from nexus_agent.gui.server import (
     _allowed_websocket_origin,
     _require_local_client,
     _require_loopback_bind_host,
     app,
 )
-from nexus_agent.mcp.web_routes import _require_local as require_mcp_local
+from nexus_agent.mcp.web_routes import (
+    _require_local as require_mcp_local,
+    register_mcp_routes,
+)
 from nexus_agent.memory.web_routes import _require_local as require_memory_local
 from nexus_agent.research.web_routes import _require_local as require_research_local
 
@@ -153,4 +158,30 @@ def test_gui_startup_rejects_configured_remote_bind_before_initializing_runtime(
 
     with pytest.raises(ValueError, match="loopback"):
         gui_server.start_gui_server(open_browser=False)
+
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    (
+        ("post", "/api/mcp/validate", None),
+        ("put", "/api/mcp", []),
+    ),
+)
+def test_mcp_mutation_routes_reject_missing_client_address(
+    method, path, payload, tmp_path, monkeypatch
+):
+    isolated_app = FastAPI()
+    register_mcp_routes(isolated_app, {"workspace": str(tmp_path)})
+    monkeypatch.setattr(
+        "nexus_agent.mcp.web_routes.load_config",
+        lambda **_: {"mcp": {"servers": []}},
+    )
+    monkeypatch.setattr("nexus_agent.mcp.web_routes.save_user_config", lambda *_: None)
+
+    client = TestClient(isolated_app, client=cast(Any, None))
+    if method == "post":
+        response = client.post(path)
+    else:
+        response = client.put(path, json=payload)
+
+    assert response.status_code == 403
 
