@@ -167,3 +167,10 @@ Autonomous source capture also rejects credential-bearing URLs and common loopba
 ## API data boundary
 
 Team control and persisted team-data endpoints are loopback-only. Remote clients are rejected from team history, status, messages, events, reports, artifacts, audit records, research exports and live team streams. This prevents the multi-agent runtime from becoming an unauthenticated remote data-exfiltration surface when the web service is exposed beyond localhost.
+
+
+## Normative team and agent requirements
+
+The canonical functional contract is docs/PRODUCT_SPECIFICATION.md; collaboration and handoffs are defined in root TEAM.md. Agents may be user-authored or generated. Generated profiles must be validated and inspectable; selecting or generating a role never grants tool privileges. Reuse existing suitable profiles, bound generated-team growth, and make the orchestrator task graph, resource budgets, cancellation and completion conditions explicit.
+
+The runtime must preserve structured task/message/artifact provenance and independent verification. The UI must display actual events, not simulated activity. A successful synthesis is not sufficient if required evidence or acceptance checks failed.
