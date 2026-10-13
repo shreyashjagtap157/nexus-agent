@@ -525,7 +525,7 @@ The GitHub validation surface includes:
 - CodeQL and dependency security checks
 - automated dependency update pull requests through Dependabot
 
-The expected GitHub-side protection policy for main is documented in [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md). The policy requires pull-request review, Code Owner review, required status checks, conversation resolution, no force-pushes, and administrator enforcement.
+The intended GitHub-side protection policy for main is documented in [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md). Documentation is not proof that GitHub enforcement is active; verify live repository protection settings and required-check runs before claiming the branch is protected.
 
 All release tags are validated against main history before release publication. Release artifacts are built and provenance-attested in GitHub Actions.
 
@@ -586,6 +586,9 @@ scripts/               Release/versioning utilities
 
 | Document | Purpose |
 |---|---|
+| [docs/PRODUCT_SPECIFICATION.md](docs/PRODUCT_SPECIFICATION.md) | Normative product requirements and acceptance gates |
+| [docs/LANGUAGE_DECISION.md](docs/LANGUAGE_DECISION.md) | Independent language/runtime assessment |
+| [TEAM.md](TEAM.md) | Team operating model and agent handoffs |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime architecture and data flow |
 | [docs/PROJECT_COMPLETION_AND_QUALIFICATION.md](docs/PROJECT_COMPLETION_AND_QUALIFICATION.md) | Implementation backlog, testing, deployment and release qualification |
 | [docs/API.md](docs/API.md) | HTTP/MCP/API surfaces |
