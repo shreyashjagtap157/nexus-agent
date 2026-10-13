@@ -594,6 +594,100 @@ For browser clients, enforce the authenticated session, origin/CSRF policy and r
 
 For existing Rust/Python stdio IPC, keep newline-delimited JSON/JSON-RPC only as a local process protocol with explicit method schemas, request IDs, cancellation, bounded message sizes and stdout reserved for protocol frames. Keep diagnostics on stderr. Do not create two competing APIs (one REST and one ACP) with different business semantics.
 
+#### 8.1 Concrete API and event contract examples
+
+The final schemas should be defined in Pydantic and exported through OpenAPI. These illustrative envelopes describe required semantics; they are not a claim that these exact versioned routes are already implemented.
+
+**Illustrative run creation**
+
+```http
+POST /api/v1/runs
+Idempotency-Key: 934e9f0c-8d23-4e8d-8c46-9e7a5f8d2a15
+Content-Type: application/json
+```
+
+```json
+{
+  "workspace_id": "ws_01J...",
+  "goal": "Review the repository for correctness and security",
+  "workflow_id": "repository-audit",
+  "mode": "review",
+  "agent_profile_ids": ["security-reviewer", "independent-verifier"],
+  "provider_overrides": {},
+  "budgets": {
+    "max_agents": 4,
+    "max_parallel_workers": 2,
+    "max_duration_seconds": 1800,
+    "max_tool_calls": 120,
+    "max_output_bytes": 2000000
+  },
+  "output": {
+    "mode": "both",
+    "format": "markdown"
+  }
+}
+```
+
+The server resolves the authenticated principal and active tenant, proves membership and workspace access, applies user/tenant limits, validates selected workflows and profiles, captures configuration and creates a plan. It must ignore or reject a caller-supplied tenant override. Retrying the same idempotency key with an identical request returns the original run reference; reusing the key with a different request fingerprint returns a conflict.
+
+**Illustrative response**
+
+```json
+{
+  "run_id": "run_01J...",
+  "status": "planned",
+  "event_cursor": 1,
+  "created_at": "2026-10-13T07:00:00Z",
+  "links": {
+    "self": "/api/v1/runs/run_01J...",
+    "events": "/api/v1/runs/run_01J.../events"
+  }
+}
+```
+
+Every resource read/list/filter, message, artifact download/export, subscription/replay, cancel, resume and delete operation repeats the ownership decision. Prefer opaque cursor pagination with tenant-bound queries, bounded page sizes and an allowlist of filter fields.
+
+**Illustrative durable event envelope**
+
+```json
+{
+  "schema_version": 1,
+  "event_id": "evt_01J...",
+  "run_id": "run_01J...",
+  "tenant_id": "tenant_01J...",
+  "sequence": 42,
+  "occurred_at": "2026-10-13T07:00:03.141Z",
+  "type": "task.status_changed",
+  "actor": {
+    "kind": "agent",
+    "id": "agent_01J..."
+  },
+  "correlation_id": "corr_01J...",
+  "payload": {
+    "task_id": "task_01J...",
+    "previous_status": "ready",
+    "status": "running",
+    "reason_code": "worker_claimed"
+  }
+}
+```
+
+Never put access tokens, provider secrets or unrestricted tool output in event payloads. Store large outputs as ownership-bound artifacts or bounded message references. Consumers track `sequence`, deduplicate by `event_id`, detect gaps and fetch a snapshot or replay the missing range. Persist the authoritative event before publishing it to clients.
+
+**Illustrative lifecycle transition policy**
+
+| Current state | Allowed next states | Rule |
+|---|---|---|
+| planned | queued, blocked, cancelled | Validate plan, requested grants and budgets before dispatch. |
+| queued | ready, blocked, cancelled | Dependencies and available global/tenant slots determine readiness. |
+| ready | running, blocked, cancelled | Worker claim and lease occur transactionally. |
+| running | waiting_approval, waiting_input, completed, needs_review, failed, cancel_requested | Tool outcomes, verification and cancellation are distinct states. |
+| waiting_approval / waiting_input | ready, blocked, cancelled | Re-check ownership, approval/input validity, current policy and budgets before resuming. |
+| cancel_requested | cancelled, completed, failed | Do not imply rollback of side effects already committed. |
+| completed / needs_review / failed / cancelled | no ordinary transition | Recovery/retry creates a new attempt/revision rather than rewriting terminal history. |
+
+Reconcile this state machine against existing enums before migration. Explicitly map old persisted values; do not silently relabel legacy states. New versioned API routes should return stable machine error codes, safe messages, a request/correlation ID and structured validation details. Clients branch on error code, not English wording. Never return tracebacks, secret-store paths or raw credential/provider errors to callers.
+
 ### 9. Web UI implementation
 
 The current static HTML/CSS/JavaScript pages are a useful migration baseline and must remain functional during the transition. Do not perform a simultaneous big-bang rewrite.
