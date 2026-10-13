@@ -54,7 +54,7 @@ Implement behavior in the owning layer and reuse it across surfaces. Do not impl
 | HTTP/MCP contracts | web_routes.py files and src/nexus_agent/mcp/ | Validation, access policy, authorization, status codes and output schemas are explicit and tested. |
 | Package/release | pyproject.toml, VERSION, scripts/, .github/workflows/ | Versions agree; outputs are traceable to a tested tag commit; no release uses an unqualified tree. |
 
-Architecture and user contracts are documented in docs/ARCHITECTURE.md, docs/API.md, docs/MULTI_AGENT_PLATFORM.md, docs/ORCHESTRATION.md, docs/PROVIDERS.md, docs/STORAGE_AND_GOVERNANCE.md and docs/VERSIONING.md. Update the owning document whenever behavior or a public contract changes.
+The normative product contract is docs/PRODUCT_SPECIFICATION.md. The independent language assessment is docs/LANGUAGE_DECISION.md and the team handoff policy is TEAM.md. Architecture and user contracts are documented in docs/ARCHITECTURE.md, docs/API.md, docs/MULTI_AGENT_PLATFORM.md, docs/ORCHESTRATION.md, docs/PROVIDERS.md, docs/STORAGE_AND_GOVERNANCE.md and docs/VERSIONING.md. Update the owning document whenever behavior or a public contract changes. Product requirements describe the target; the code, tests and exact-candidate CI runs establish what is actually implemented.
 
 ## 4. Implementation program and exit criteria
 
