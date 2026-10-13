@@ -43,7 +43,7 @@ Complete these gates in order. A gate is complete only when its acceptance crite
 - Add negative cross-tenant tests, per-tenant concurrency/resource budgets, safe audit events and recovery/migration tests.
 - Exit: tenant isolation is proven by tests; remote/shared access remains disabled until this gate passes.
 
-**Current implemented mitigation (2026-10-13):** GUI/API startup now rejects non-loopback bind addresses before initializing shared runtime state. This reduces accidental network exposure, but the route-level loopback checks are not authentication or tenant authorization. Gate 2 remains open until identity, ownership-aware persistence, credential isolation and cross-tenant tests qualify.
+**Current implemented mitigation (2026-10-13):** GUI/API startup now rejects non-loopback bind addresses before initializing shared runtime state. This reduces accidental network exposure. Browser-originated API calls also require an exact loopback origin match, and WebSocket origin checks reject foreign origins; these are defense-in-depth/CSRF controls, not authentication or tenant authorization. Gate 2 remains open until identity, ownership-aware persistence, credential isolation and cross-tenant tests qualify.
 
 ### Gate 3 — Shared runtime and contracts
 - Specify versioned task/session/API/event contracts shared by web, CLI/TUI and desktop clients.
