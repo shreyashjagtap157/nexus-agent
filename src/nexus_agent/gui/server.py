@@ -8,6 +8,7 @@ web-based dashboard, allowing real-time LLM interaction and agent control.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import os
@@ -90,6 +91,27 @@ state_manager = StateManager(
         "web_agent_lock": threading.RLock(),
     }
 )
+
+
+def _require_loopback_bind_host(host: str) -> None:
+    """Reject network-accessible binds until authenticated tenant isolation is qualified."""
+    candidate = str(host).strip().lower().rstrip(".")
+    if candidate == "localhost":
+        return
+    try:
+        address = ipaddress.ip_address(candidate)
+    except ValueError as exc:
+        raise ValueError(
+            "NexusAgent GUI/API binding is restricted to loopback addresses until "
+            "authenticated multi-user identity and tenant isolation pass Gate 2. "
+            "Use 127.0.0.1 or ::1; remote and LAN bindings are disabled."
+        ) from exc
+    if not address.is_loopback:
+        raise ValueError(
+            "NexusAgent GUI/API binding is restricted to loopback addresses until "
+            "authenticated multi-user identity and tenant isolation pass Gate 2. "
+            "Use 127.0.0.1 or ::1; remote and LAN bindings are disabled."
+        )
 
 
 def _require_local_client(request: Request) -> None:
@@ -826,17 +848,19 @@ def start_gui_server(
     open_browser: bool = True,
 ):
     """Bootstrap and start the local FastAPI web server."""
-    # Load configuration
+    # Resolve the effective bind address before initializing models or mutating shared state.
     workspace_path = workspace or Path.cwd()
-    state_manager.set("workspace", workspace_path)
-    state_manager.set(
-        "config",
-        load_config(
-            config_path=config_path,
-            workspace=workspace_path,
-            data_dir=data_dir,
-        ),
+    config = load_config(
+        config_path=config_path,
+        workspace=workspace_path,
+        data_dir=data_dir,
     )
+    srv_config = config.get("gui", {})
+    bind_host = host or srv_config.get("host", "127.0.0.1")
+    _require_loopback_bind_host(bind_host)
+
+    state_manager.set("workspace", workspace_path)
+    state_manager.set("config", config)
 
     # Initialize shared subsystems
     data_dir_path = state_manager.get("config").get("_data_dir", "~/.nexus-agent")
@@ -870,9 +894,7 @@ def start_gui_server(
     except (ImportError, ValueError, OSError, RuntimeError) as e:
         logger.warning(f"Failed to preload LLM provider '{active_provider}': {e}")
 
-    # Set up host/port
-    srv_config = state_manager.get("config").get("gui", {})
-    bind_host = host or srv_config.get("host", "127.0.0.1")
+    # Set up the port; bind_host was validated before subsystem initialization.
     bind_port = port or srv_config.get("port", 7860)
 
     # Verify if port is available, find a free one if occupied
