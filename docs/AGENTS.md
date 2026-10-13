@@ -31,3 +31,8 @@ Each worker gets an isolated AgentLoop, a shared blackboard, scoped tools and op
 A saved specialist can be executed directly:
 
 nexus agent run <agent-id> "<goal>"
+
+
+## Validation and authority
+
+This document describes agent profile behavior; docs/PRODUCT_SPECIFICATION.md is the normative product contract and root TEAM.md defines team handoffs. Profile validation must reject invalid fields and unsupported capabilities. A profile's requested tool categories are not permission grants; runtime policy decides the effective authorization for each invocation. Generated profiles must be inspectable, bounded and validated before use. Prefer existing reusable profiles when suitable and record provider/model incompatibility explicitly.
