@@ -1,6 +1,6 @@
 # NexusAgent Architecture
 
-> **Version:** 0.3.0-alpha.4  
+> **Version:** 0.3.0-alpha.5  
 > **Status:** Active Alpha / multi-agent platform integration hardening  
 
 ---
