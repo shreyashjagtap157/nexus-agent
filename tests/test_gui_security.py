@@ -114,9 +114,16 @@ def test_sensitive_guards_fail_closed_when_client_address_is_missing(guard):
         guard(request)
     assert exc.value.status_code == 403
 
+
 @pytest.mark.parametrize(
     "host",
-    ("127.0.0.1", "127.0.0.2", "::1", "localhost", "localhost."),
+    (
+        "127.0.0.1",
+        "127.0.0.2",
+        "::1",
+        "localhost",
+        "localhost.",
+    ),
 )
 def test_gui_bind_policy_accepts_only_loopback_targets(host):
     _require_loopback_bind_host(host)
@@ -124,7 +131,15 @@ def test_gui_bind_policy_accepts_only_loopback_targets(host):
 
 @pytest.mark.parametrize(
     "host",
-    ("0.0.0.0", "192.168.1.20", "10.0.0.4", "::", "2001:db8::1", "attacker.example", ""),
+    (
+        "0.0.0.0",
+        "192.168.1.20",
+        "10.0.0.4",
+        "::",
+        "2001:db8::1",
+        "attacker.example",
+        "",
+    ),
 )
 def test_gui_bind_policy_rejects_network_accessible_targets(host):
     with pytest.raises(ValueError, match="loopback"):
