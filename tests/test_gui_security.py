@@ -10,6 +10,7 @@ from nexus_agent.agents.web_routes import _require_local as require_agent_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
 from nexus_agent.gui.server import (
     _allowed_websocket_origin,
+    _format_gui_url,
     _require_local_client,
     _require_loopback_bind_host,
     app,
@@ -184,4 +185,15 @@ def test_mcp_mutation_routes_reject_missing_client_address(
         response = client.put(path, json=payload)
 
     assert response.status_code == 403
+
+@pytest.mark.parametrize(
+    ("host", "expected"),
+    (
+        ("127.0.0.1", "http://127.0.0.1:7860"),
+        ("localhost", "http://localhost:7860"),
+        ("::1", "http://[::1]:7860"),
+    ),
+)
+def test_gui_url_formats_loopback_addresses(host, expected):
+    assert _format_gui_url(host, 7860) == expected
 
