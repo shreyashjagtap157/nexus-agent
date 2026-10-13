@@ -96,6 +96,7 @@ def test_websocket_origin_guard_rejects_untrusted_origins(headers):
     [
         {"origin": "http://localhost:8765", "host": "localhost:8765"},
         {"origin": "http://127.0.0.1:8765", "host": "127.0.0.1:8765"},
+        {"origin": "http://127.0.0.2:8765", "host": "127.0.0.2:8765"},
         {"origin": "http://[::1]:8765", "host": "[::1]:8765"},
         {},
     ],
