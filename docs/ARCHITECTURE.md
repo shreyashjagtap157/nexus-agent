@@ -501,6 +501,37 @@ The relational source of truth should eventually represent at least the followin
 
 **Memory:** preserve the existing scopes but resolve access by principal/tenant/workspace before retrieval. A user-scoped entry must never become visible to every user simply because the process shares one memory directory. Retrieval ranking, embeddings or full-text search happen only after the authorized candidate set is determined. Treat imported documents and retrieved memory as untrusted input and retain provenance/retention metadata.
 
+#### 4.1 Suggested canonical relational model
+
+The following is a logical schema target for migrations and repository contract tests, not a literal SQL migration to apply before examining existing data. Use immutable UUID/ULID-like primary keys, UTC timestamps, explicit foreign keys and bounded indexed query patterns. Keep provider credentials outside ordinary rows; store only a secret reference.
+
+| Relation | Minimum ownership/identity columns | Important constraints and purpose |
+|---|---|---|
+| `principals` | `principal_id`, `kind`, `status`, `created_at` | Stable human/service identity; display name is never an authorization key. |
+| `tenants` | `tenant_id`, `status`, `created_at` | Top-level quota and security boundary. |
+| `tenant_memberships` | `tenant_id`, `principal_id`, `role`, `status`, `valid_until` | Unique principal/tenant pair; status and expiry checked on requests and worker claims. |
+| `workspaces` | `tenant_id`, `workspace_id`, `owner_principal_id`, `storage_key`, `status` | Unique storage key within its namespace; hosted mode must not accept an arbitrary client path as authority. |
+| `sessions` | `tenant_id`, `session_id`, `owner_principal_id`, `workspace_id`, `status`, timestamps | Messages and checkpoints refer to an explicitly owned session. |
+| `runs` | `tenant_id`, `run_id`, `requester_principal_id`, `workspace_id`, `session_id`, `status`, `plan_revision`, `config_snapshot`, `budget`, `idempotency_key` | Unique tenant/idempotency key; contains enough data to recover without trusting the client. |
+| `tasks` | `tenant_id`, `task_id`, `run_id`, `status`, `attempt_count`, `deadline_at`, `lease_owner`, `lease_expires_at` | Index ready tasks and lease expiry; each task belongs to an authorized run/tenant. |
+| `task_dependencies` | `tenant_id`, `run_id`, `task_id`, `depends_on_task_id` | Composite uniqueness; both dependency endpoints belong to the same run; detect cycles before dispatch. |
+| `worker_attempts` | `tenant_id`, `attempt_id`, `task_id`, lease data, timestamps, result/error category | Immutable attempt history; exclude secrets and unlimited tool output. |
+| `messages` | `tenant_id`, `message_id`, `run_id` or `session_id`, `sender_id`, optional recipient, type, bounded payload/reference | Read through an authorized run/session; broadcast only inside the permitted team/run. |
+| `run_events` | `tenant_id`, `run_id`, `sequence`, `event_id`, `event_type`, timestamp, safe payload | Unique `(run_id, sequence)` and `event_id`; append-only application behavior; owner-checked replay. |
+| `artifacts` | `tenant_id`, `artifact_id`, `run_id`, `workspace_id`, `storage_key`, relative name, media type, size, hash, retention/deletion status | Unique storage key; never derive storage paths from untrusted IDs/names; re-check ownership on every download. |
+| `memory_entries` | `tenant_id`, `entry_id`, scope, owner/workspace/run/session references, provenance, classification, expiry | Filter candidate records by authorized scope before ranking/search. |
+| `provider_connections` | `tenant_id`, connection ID, owner, sharing policy, provider/model metadata, `secret_ref` | Sharing is explicit and auditable; raw secret values stay in a dedicated secret store. |
+| `agent_profiles` | `tenant_id` where tenant-scoped, profile ID, scope/owner, version, content hash, declared capabilities | Built-in global profiles are an explicit immutable scope, not an accidental default. |
+| `approvals` | `tenant_id`, approval ID, requester/approver, run/task/action/target, expiry, consumed state | Approval bound to exact action and target; single-use and expiry checked. |
+| `audit_events` | tenant, actor, action, target, outcome, policy version, timestamp, correlation ID | Append-only access; avoid tokens, secrets or unlimited prompt payloads. |
+| `idempotency_records` | tenant, principal, operation, key, request fingerprint, response/resource reference, expiry | Reuse with a different request fingerprint is a conflict. |
+
+**Tenant-aware query rule:** repositories expose methods such as `get_run(principal, run_id)`, `list_runs(principal, filters, cursor)` and `cancel_run(principal, run_id)`, not public methods that trust an arbitrary tenant ID. Verified principal context and current membership determine authorized tenants; the resource ID only selects a target within that scope. Bind tenant and owner predicates in the SQL query itself instead of fetching a global row and hoping every caller remembers a second check.
+
+**Transaction rule:** run creation commits the run, plan revision, task/dependency rows, configuration snapshot and initial events atomically. A task claim updates state and lease in one transaction. Completing an attempt, changing task/run status and appending transition events should share a transaction when they form one domain transition. Artifact bytes may live outside the database; use pending/uploaded/verified state so the DB never claims an artifact is complete before its hash and size are verified.
+
+**Schema evolution:** add migrations tested against an empty DB and each supported prior schema. For local SQLite migration, back up first, assign existing data to one explicit personal tenant/principal, verify record counts/content hashes, and document rollback/recovery. Hosted PostgreSQL migrations should use expand/backfill/contract for large tables and never expose rows with partially populated owner columns.
+
 ### 5. Identity, authentication and authorization
 
 The current loopback bind/origin controls are exposure and browser-CSRF mitigations; they are not authentication. Do not enable LAN, reverse-proxy, tunnel or public access while Gate 2 remains open.
