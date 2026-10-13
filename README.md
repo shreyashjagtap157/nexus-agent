@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/ci.yml)
 [![Security](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml)
-[![Version](https://img.shields.io/badge/version-0.3.0--alpha.4-orange.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-0.3.0--alpha.5-orange.svg)](VERSION)
 [![Versioning Policy](https://img.shields.io/badge/versioning-SemVer-8A2BE2.svg)](docs/VERSIONING.md)
 
 NexusAgent is a **local-first, general-purpose multi-agent platform** for software development, research, analysis and automation. It combines user-configured and dynamically generated specialist agents over a shared runtime, and is designed for both personal local use and authenticated multi-user deployment.
@@ -23,7 +23,7 @@ It supports:
 - evidence-first research with source/claim verification
 - scoped persistent memory and explicit runtime storage boundaries
 
-The active development version is **0.3.0-alpha.4**. This is an unreleased prerelease and is not a stable API commitment.
+The active development version is **0.3.0-alpha.5**. This is an unreleased prerelease and is not a stable API commitment.
 
 ---
 
@@ -541,7 +541,7 @@ The repository-root `VERSION` file is canonical. Python, Rust, configuration and
 Current snapshot:
 
 ```
-0.3.0-alpha.4
+0.3.0-alpha.5
 ```
 
 Development sequence:
