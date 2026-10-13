@@ -1,8 +1,10 @@
 # Hybrid Rust/Python Architecture — Nexus
 
-> **Date:** June 8, 2026
-> **Status:** Design Document — Ready for Implementation
-> **Decision:** Rust for CLI/render/inference dispatch, Python for agents/memory/tools
+> **Historical design snapshot:** June 8, 2026. This document records an earlier implementation proposal and is retained for context, not as the current architecture authority.
+>
+> **Superseding decision — 2026-10-13:** Follow the language allocation and migration plan in [docs/ARCHITECTURE.md](ARCHITECTURE.md) and [docs/ROADMAP.md](ROADMAP.md): Python is the authoritative agent/orchestration/research/provider runtime; TypeScript + React + Vite is the target web frontend; Rust remains the native CLI/TUI and desktop client. Do not move inference dispatch to Rust or rewrite the backend based solely on the estimates below.
+>
+> The startup, first-token, frame-rate and memory-latency figures in this historical document are hypotheses, not current measured results. Any performance claim or runtime migration requires a reproducible benchmark on the exact workload and a parity test. The current static HTML/CSS/JavaScript frontend is not yet a TypeScript application. Do not use this document alone as an implementation task list.
 
 ---
 
