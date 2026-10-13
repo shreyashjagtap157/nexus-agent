@@ -432,6 +432,15 @@ Do not add Go, a Rust web server, a TypeScript backend, or additional microservi
 
 Implement these as logical boundaries inside the current repository first. Split them into processes or deployable services only when an explicit threat, scaling or availability requirement warrants it.
 
+**Immediate code findings that must shape the first implementation slices:**
+
+- The live GUI server has a process-global StateManager containing workspace, config, engine, memory manager, session manager, permission manager and active-session state. Treat these as single-process bootstrap services or defaults, not as per-user/per-run mutable context. The first multi-user-capable refactor must move current actor, selected workspace, provider route and active run/session into explicit request/run context.
+- The WebSocket endpoint accepts a session ID in its URL and updates the global active-session field, but the shared SessionManager has its own single mutable _active_session_id. Its save_message, auto_title, file-change tracking and checkpoint operations target that internal active ID. These two active-session concepts are not an ownership-safe binding. Add a regression test with two sessions and interleaved messages before changing the code; then pass the authorized session ID explicitly through service calls instead of switching a shared active ID around each request.
+- The team runtime constructs workspace tools around a selected workspace and stores team records in a SQLite database whose current schema identifies teams but does not establish a tenant/user ownership relation. This is workable for local personal mode, but is not a shared multi-user boundary. Keep the local adapter and add ownership-aware repository/service contracts before hosted mode.
+- The current Python team runtime uses a bounded ThreadPoolExecutor-style worker approach and workspace-local SQLite stores. Preserve it as the local execution adapter, but do not assume threads or workspace folders provide process isolation, durable queue leases or tenant separation.
+
+Prioritize tests that prove these are isolated before broad service extraction. A security contract is only useful when the regression suite would fail against the unsafe behavior.
+
 1. **Identity and policy:** validate a local principal or authenticated session; resolve the active tenant/workspace from server-side records; check membership, role and resource-specific grants; return an auditable allow/deny decision. Never trust a tenant ID supplied in a body/header as authority.
 2. **API/application layer:** parse versioned requests, validate limits, apply idempotency to suitable mutations, call domain services, translate typed domain errors into stable HTTP errors, and never contain orchestration loops.
 3. **Run/session service:** create runs, record requester and ownership, capture a configuration snapshot, issue cancellation/resume requests, expose authorized state and recover interrupted runs.
