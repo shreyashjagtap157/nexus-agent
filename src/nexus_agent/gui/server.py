@@ -171,9 +171,16 @@ MAX_BODY_SIZE = 10 * 1024 * 1024  # 10MB
 
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
-    """Combined security middleware: rate limiting, body size check, and CSP headers."""
-    # Rate limiting by client IP
+    """Apply local-origin, rate-limit, body-size, and browser-security controls."""
     if request.url.path.startswith("/api/"):
+        origin = request.headers.get("origin")
+        if origin and not _allowed_local_http_origin(request.headers, request.url.scheme):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Cross-origin GUI/API requests are blocked."},
+            )
+
+        # Rate limiting by client IP
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()
         window_start = now - RATE_LIMIT_WINDOW
@@ -583,6 +590,44 @@ async def trigger_commit(request: Request):
     )
     msg = tool.execute()
     return {"message": msg}
+
+
+def _is_loopback_host(host: str) -> bool:
+    normalized = str(host).lower().rstrip(".")
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _allowed_local_http_origin(headers: Any, request_scheme: str) -> bool:
+    """Permit browser-originated API traffic only from the exact local origin."""
+    origin_value = headers.get("origin")
+    if not origin_value:
+        return True  # CLI and non-browser clients do not send Origin.
+    host_value = headers.get("host")
+    if not host_value:
+        return False
+
+    try:
+        origin = urlsplit(origin_value)
+        request_host = urlsplit("//" + host_value)
+        origin_host = (origin.hostname or "").lower().rstrip(".")
+        request_hostname = (request_host.hostname or "").lower().rstrip(".")
+        scheme = request_scheme.lower()
+        if scheme != "http" or origin.scheme.lower() != scheme:
+            return False
+        if origin.username or origin.password or origin.path or origin.query or origin.fragment:
+            return False
+        if not _is_loopback_host(origin_host) or origin_host != request_hostname:
+            return False
+        origin_port = origin.port or 80
+        request_port = request_host.port or 80
+        return origin_port == request_port
+    except ValueError:
+        return False
 
 
 def _allowed_websocket_origin(headers: Any) -> bool:
