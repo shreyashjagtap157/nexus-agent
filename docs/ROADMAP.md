@@ -23,7 +23,7 @@ The unified NexusAgent platform currently includes:
 - cross-platform CI, lint/type validation, native compilation, version contracts and security gates
 - reproducible release validation and provenance-oriented packaging workflow
 
-## Alpha.4 hardening priorities
+## Alpha.5 hardening and qualification priorities
 
 ### 1. Authoritative CI qualification
 
