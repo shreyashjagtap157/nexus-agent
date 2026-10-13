@@ -222,7 +222,8 @@ class AuthStore:
             # Merge updates (preserve sensitive fields)
             user_profile = dict(users[user_id])
             safe_updates = {
-                key: value for key, value in updates.items()
+                key: value
+                for key, value in updates.items()
                 if key not in {"tenant_id", "user_id", "created_at", "profile_version"}
             }
 
@@ -314,11 +315,13 @@ class AuthStore:
                 roles[idx] = {**existing_role, **role, "updated_at": time.time()}
             else:
                 # Add new role
-                roles.append({
-                    **role,
-                    "assigned_at": time.time(),
-                    "role_version": 1,
-                })
+                roles.append(
+                    {
+                        **role,
+                        "assigned_at": time.time(),
+                        "role_version": 1,
+                    }
+                )
 
             user_profile["roles"] = roles
             user_profile["updated_at"] = time.time()
@@ -436,9 +439,7 @@ class AuthStore:
 
             return bool(permissions.get(resource, {}).get(permission, False))
 
-    def get_tenant_users_by_role(
-        self, tenant_id: str, role_name: str
-    ) -> list[dict[str, Any]]:
+    def get_tenant_users_by_role(self, tenant_id: str, role_name: str) -> list[dict[str, Any]]:
         """Get all users in tenant with specific role."""
         tenant_id = tenant_id.strip().lower()
 
@@ -457,11 +458,13 @@ class AuthStore:
                 user_roles = [r.get("name") for r in roles if isinstance(r, dict)]
 
                 if role_name in user_roles:
-                    result.append({
-                        "user_id": user_id,
-                        "profile": dict(profile),
-                        "roles": user_roles,
-                    })
+                    result.append(
+                        {
+                            "user_id": user_id,
+                            "profile": dict(profile),
+                            "roles": user_roles,
+                        }
+                    )
 
             return result
 

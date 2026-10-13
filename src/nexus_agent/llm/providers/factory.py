@@ -10,7 +10,6 @@ import threading
 from collections.abc import Iterator
 from typing import Any
 
-from nexus_agent.auth import AuthStore
 from nexus_agent.llm.base import (
     LLMProvider,
     LLMResponse,
@@ -195,6 +194,10 @@ class ProviderFactory:
 
         provider_config = dict(config.get("providers", {}).get(name, {}) or {})
         descriptor = get_provider_descriptor(name)
+        # Import lazily to avoid a circular import: nexus_agent.auth.store pulls
+        # in the storage layout and core config chain, which imports this module.
+        from nexus_agent.auth import AuthStore
+
         auth_key = AuthStore().get(name)
         env_key = descriptor.env_key if descriptor is not None else None
         env_value = os.environ.get(env_key) if env_key else None

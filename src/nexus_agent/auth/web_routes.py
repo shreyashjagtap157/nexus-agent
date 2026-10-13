@@ -1,4 +1,9 @@
-"""Web endpoints for provider catalog and credential lifecycle."""
+"""Web endpoints for provider catalog, credential lifecycle and tenant management.
+
+The provider/credential endpoints manage the local user auth store. The tenant
+endpoints expose the multi-user identity foundation from ``AuthStore`` so that
+the implemented user/role/permission operations are reachable over the API.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
 
-from nexus_agent.auth import AuthStore
+from nexus_agent.auth.store import AuthStore
 from nexus_agent.core.config import _strip_secrets, load_config, save_user_config
 from nexus_agent.llm.base import Message, Role
 from nexus_agent.llm.providers.catalog import all_providers
@@ -17,72 +22,27 @@ from nexus_agent.llm.providers.models_dev import ModelsDevCatalog
 from nexus_agent.storage.layout import StorageLayout
 
 
-from nexus_agent.auth.key_manager import TenantCredentialManager
-from nexus_agent.auth.store import AuthStore
-
-
 class UserRequest(BaseModel):
     user_id: str = Field(min_length=1, max_length=100)
-    tenant_id: str = Field(min_length=1, max_length=100)
     profile: dict[str, Any] = Field(default_factory=dict)
 
 
-class TenantRequest(BaseModel):
-    tenant_id: str = Field(min_length=1, max_length=100)
-
-
 class RoleRequest(BaseModel):
-    user_id: str = Field(min_length=1, max_length=100)
-    tenant_id: str = Field(min_length=1, max_length=100)
     role: dict[str, Any]
 
 
 class PermissionRequest(BaseModel):
-    user_id: str = Field(min_length=1, max_length=100)
-    tenant_id: str = Field(min_length=1, max_length=100)
     resource: str = Field(min_length=1, max_length=200)
     permission: str = Field(min_length=1, max_length=100)
     value: bool = Field(default=True)
 
 
-class TenantCredentialRequest(BaseModel):
-    tenant_id: str = Field(min_length=1, max_length=100)
-    provider: str = Field(min_length=1, max_length=100)
-    api_key: str = Field(min_length=1, max_length=10000)
-    description: str | None = Field(default=None, max_length=500)
-from nexus_agent.auth.key_manager import TenantCredentialManager
-from nexus_agent.auth.store import AuthStore
-
-
-class UserRequest(BaseModel):
+class UpdateUserRequest(BaseModel):
     user_id: str = Field(min_length=1, max_length=100)
     tenant_id: str = Field(min_length=1, max_length=100)
-    profile: dict[str, Any] = Field(default_factory=dict)
+    updates: dict[str, Any] = Field(default_factory=dict)
 
 
-class TenantRequest(BaseModel):
-    tenant_id: str = Field(min_length=1, max_length=100)
-
-
-class RoleRequest(BaseModel):
-    user_id: str = Field(min_length=1, max_length=100)
-    tenant_id: str = Field(min_length=1, max_length=100)
-    role: dict[str, Any]
-
-
-class PermissionRequest(BaseModel):
-    user_id: str = Field(min_length=1, max_length=100)
-    tenant_id: str = Field(min_length=1, max_length=100)
-    resource: str = Field(min_length=1, max_length=200)
-    permission: str = Field(min_length=1, max_length=100)
-    value: bool = Field(default=True)
-
-
-class TenantCredentialRequest(BaseModel):
-    tenant_id: str = Field(min_length=1, max_length=100)
-    provider: str = Field(min_length=1, max_length=100)
-    api_key: str = Field(min_length=1, max_length=10000)
-    description: str | None = Field(default=None, max_length=500)
 class CredentialRequest(BaseModel):
     api_key: str = Field(min_length=1, max_length=10000)
 
@@ -301,4 +261,117 @@ def register_auth_routes(app: Any, state_manager: Any | None = None) -> None:
         return {
             "provider": provider.lower(),
             "removed": AuthStore().remove(provider),
+        }
+
+    # ── Multi-user tenant / identity management ────────────────────────────
+    # These routes wire up the tenant-scoped AuthStore operations (users,
+    # roles, permissions) that were previously implemented but unreachable.
+
+    @app.get("/api/tenants/{tenant_id}")
+    async def tenant_stats(tenant_id: str, request: Request):
+        _local_only(request)
+        return AuthStore().get_tenant_stats(tenant_id)
+
+    @app.get("/api/tenants/{tenant_id}/users")
+    async def tenant_users(tenant_id: str, request: Request):
+        _local_only(request)
+        return {"users": AuthStore().list_users(tenant_id)}
+
+    @app.post("/api/tenants/{tenant_id}/users")
+    async def tenant_add_user(tenant_id: str, request: Request, payload: UserRequest):
+        _local_only(request)
+        store = AuthStore()
+        try:
+            store.add_user(payload.user_id, tenant_id, payload.profile)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        user = store.get_user(payload.user_id, tenant_id)
+        return {"user_id": payload.user_id, "tenant_id": tenant_id, "user": user}
+
+    @app.get("/api/tenants/{tenant_id}/users/{user_id}")
+    async def tenant_get_user(tenant_id: str, user_id: str, request: Request):
+        _local_only(request)
+        user = AuthStore().get_user(user_id, tenant_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found.")
+        return {"user_id": user_id, "tenant_id": tenant_id, "user": user}
+
+    @app.patch("/api/tenants/{tenant_id}/users/{user_id}")
+    async def tenant_update_user(
+        tenant_id: str, user_id: str, request: Request, payload: UpdateUserRequest
+    ):
+        _local_only(request)
+        updated = AuthStore().update_user(payload.user_id, payload.tenant_id, payload.updates)
+        if not updated:
+            raise HTTPException(status_code=404, detail="User or tenant not found.")
+        return {
+            "user_id": payload.user_id,
+            "tenant_id": payload.tenant_id,
+            "updated": True,
+        }
+
+    @app.delete("/api/tenants/{tenant_id}/users/{user_id}")
+    async def tenant_delete_user(tenant_id: str, user_id: str, request: Request):
+        _local_only(request)
+        removed = AuthStore().delete_user(user_id, tenant_id)
+        if not removed:
+            raise HTTPException(status_code=404, detail="User not found.")
+        return {"user_id": user_id, "tenant_id": tenant_id, "removed": True}
+
+    @app.put("/api/tenants/{tenant_id}/users/{user_id}/roles")
+    async def tenant_add_role(tenant_id: str, user_id: str, request: Request, payload: RoleRequest):
+        _local_only(request)
+        assigned = AuthStore().add_role(user_id, tenant_id, payload.role)
+        if not assigned:
+            raise HTTPException(status_code=404, detail="User or tenant not found.")
+        return {"user_id": user_id, "tenant_id": tenant_id, "assigned": True}
+
+    @app.delete("/api/tenants/{tenant_id}/users/{user_id}/roles/{role_name}")
+    async def tenant_remove_role(tenant_id: str, user_id: str, role_name: str, request: Request):
+        _local_only(request)
+        store = AuthStore()
+        if store.get_user(user_id, tenant_id) is None:
+            raise HTTPException(status_code=404, detail="User or tenant not found.")
+        # Role removal is idempotent: removing an absent role is a no-op success.
+        store.remove_role(user_id, tenant_id, role_name)
+        return {"user_id": user_id, "tenant_id": tenant_id, "role": role_name, "removed": True}
+
+    @app.put("/api/tenants/{tenant_id}/users/{user_id}/permissions")
+    async def tenant_set_permission(
+        tenant_id: str, user_id: str, request: Request, payload: PermissionRequest
+    ):
+        _local_only(request)
+        granted = AuthStore().set_user_permission(
+            user_id,
+            tenant_id,
+            payload.resource,
+            payload.permission,
+            payload.value,
+        )
+        if not granted:
+            raise HTTPException(status_code=404, detail="User or tenant not found.")
+        return {
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "resource": payload.resource,
+            "permission": payload.permission,
+            "value": payload.value,
+        }
+
+    @app.get("/api/tenants/{tenant_id}/users/{user_id}/permissions")
+    async def tenant_get_permission(
+        tenant_id: str,
+        user_id: str,
+        request: Request,
+        resource: str,
+        permission: str,
+    ):
+        _local_only(request)
+        value = AuthStore().get_user_permission(user_id, tenant_id, resource, permission)
+        return {
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "resource": resource,
+            "permission": permission,
+            "value": value,
         }

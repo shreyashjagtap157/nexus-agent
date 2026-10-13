@@ -58,6 +58,16 @@ class TestCoreImports:
         from nexus_agent.core.reflection import ReflectionEngine, CritiqueResult
         assert callable(ReflectionEngine)
 
+    def test_no_broken_training_package(self):
+        # The legacy `nexus_agent.training` package imported 7 non-existent
+        # modules and had zero consumers; it was removed. Guard against a
+        # regression that reintroduces a broken top-level subpackage.
+        import importlib.util
+
+        assert importlib.util.find_spec("nexus_agent.training") is None
+        training_dir = Path(__file__).resolve().parents[1] / "src" / "nexus_agent" / "training"
+        assert not training_dir.exists()
+
     def test_import_self_heal(self):
         from nexus_agent.core.self_heal import SelfHealingExecutor, FailureClassifier
         assert callable(SelfHealingExecutor)

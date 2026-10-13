@@ -123,12 +123,15 @@ class TeamStore:
         mode: str,
         workspace: str,
         config: dict[str, Any],
+        tenant_id: str = "",
     ) -> None:
         with self._lock:
             self._conn.execute(
-                "INSERT INTO teams(team_id,goal,mode,workspace,config_json,status,created_at) VALUES(?,?,?,?,?,?,?)",
+                "INSERT INTO teams(team_id,tenant_id,goal,mode,workspace,config_json,status,created_at) "
+                "VALUES(?,?,?,?,?,?,?,?)",
                 (
                     team_id,
+                    tenant_id or "",
                     goal,
                     mode,
                     workspace,
@@ -250,15 +253,17 @@ class TeamStore:
         event_type: str,
         payload: dict[str, Any],
         agent_id: str | None = None,
+        tenant_id: str = "",
     ) -> str:
         event_id = uuid.uuid4().hex[:16]
         with self._lock:
             created_at = time.time()
             self._conn.execute(
-                "INSERT INTO team_events(event_id,team_id,agent_id,event_type,payload_json,created_at) VALUES(?,?,?,?,?,?)",
+                "INSERT INTO team_events(event_id,team_id,tenant_id,agent_id,event_type,payload_json,created_at) VALUES(?,?,?,?,?,?,?)",
                 (
                     event_id,
                     team_id,
+                    tenant_id or "",
                     agent_id,
                     event_type,
                     json.dumps(payload, ensure_ascii=False, default=str),

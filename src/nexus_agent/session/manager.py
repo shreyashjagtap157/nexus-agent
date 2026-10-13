@@ -132,7 +132,7 @@ class SessionManager:
 
         session_metadata = dict(metadata or {})
         if tenant_id:
-            session_metadata[\"tenant_id\"] = tenant_id
+            session_metadata["tenant_id"] = tenant_id
 
         self.storage.create_session(
             session_id=session_id,

@@ -728,7 +728,6 @@ Team protocol:
                     before_sources = len(research_store.sources(team_id))
                     store.event(
                         team_id,
-                        tenant_id or "",
                         "research_round_started",
                         {
                             "round": round_index,
@@ -741,6 +740,7 @@ Team protocol:
                             "source_count_before": before_sources,
                         },
                         profile.role_id,
+                        tenant_id=self.tenant_id or "",
                     )
 
                 round_chunks: list[str] = []
@@ -776,7 +776,6 @@ Team protocol:
                 for event in agent.run(round_goal):
                     store.event(
                         team_id,
-                        tenant_id or "",
                         "agent_event",
                         {
                             "event_type": event.type.value,
@@ -785,6 +784,7 @@ Team protocol:
                             "round": round_index,
                         },
                         profile.role_id,
+                        tenant_id=self.tenant_id or "",
                     )
                     events.put(
                         AgentEvent(
@@ -825,7 +825,6 @@ Team protocol:
                         idle_rounds = 0
                     store.event(
                         team_id,
-                        tenant_id or "",
                         "research_round_completed",
                         {
                             "round": round_index,
@@ -839,6 +838,7 @@ Team protocol:
                             "idle_rounds": idle_rounds,
                         },
                         profile.role_id,
+                        tenant_id=self.tenant_id or "",
                     )
                     if (
                         config.research_collection == "until_saturation"
@@ -1140,11 +1140,11 @@ Team protocol:
         events: queue.Queue[AgentEvent] = queue.Queue()
         store.create_team(
             team_id,
-            tenant_id or "",
             goal,
             mode.value,
             str(self.workspace),
             cfg.__dict__,
+            tenant_id=self.tenant_id or "",
         )
         if mode == TeamMode.RESEARCH:
             from .research import policy as research_policy
