@@ -114,6 +114,16 @@ def _require_loopback_bind_host(host: str) -> None:
         )
 
 
+def _format_gui_url(host: str, port: int) -> str:
+    """Format a local GUI URL with brackets for IPv6 literals."""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    display_host = f"[{host}]" if isinstance(address, ipaddress.IPv6Address) else host
+    return f"http://{display_host}:{port}"
+
+
 def _require_local_client(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
@@ -918,7 +928,7 @@ def start_gui_server(
         bind_port = get_free_port(bind_host)
         logger.warning(f"Port {old_port} occupied. Dynamic fallback to port {bind_port}.")
 
-    url = f"http://{bind_host}:{bind_port}"
+    url = _format_gui_url(bind_host, bind_port)
     logger.info(f"Starting {__app_name__} GUI server!")
     logger.info(f"Dashboard URL: {url}")
     logger.info(f"Workspace: {workspace_path}")
