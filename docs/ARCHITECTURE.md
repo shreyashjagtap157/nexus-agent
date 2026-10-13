@@ -1,6 +1,6 @@
 # NexusAgent Architecture
 
-> **Version:** 0.3.0-alpha.4  
+> **Version:** 0.3.0-alpha.5  
 > **Status:** Active Alpha / multi-agent platform integration hardening  
 
 ---
@@ -337,3 +337,10 @@ The repository treats main as the canonical integration branch. Runtime changes,
 The merge-quality surface consists of the complete Python test matrix, Ruff/MyPy checks, native Rust/desktop checks, version synchronization, audit evidence generation, CodeQL and dependency security checks. Release tags are independently verified to point into main history before publication.
 
 Branch protection policy is maintained in .github/BRANCH_PROTECTION.md and is enforced at the GitHub repository-administration layer.
+
+
+## 23. Normative product and language boundaries
+
+The normative functional contract is docs/PRODUCT_SPECIFICATION.md. Client surfaces are presentation/control layers; orchestration, permissions, provider routing, persistence and event semantics must have one authoritative implementation. The independent language assessment is in docs/LANGUAGE_DECISION.md; it recommends Python for the central AI/research orchestration layer, TypeScript for the browser UI, and Rust only for justified native or systems-security boundaries. This is a design decision based on requirements, not a statement that every boundary is already implemented.
+
+Architecture changes must preserve cancellation, bounded retries, explicit permissions, durable state, traceable artifacts and runtime-validated external/model data. See the product specification for full requirements and acceptance gates.
