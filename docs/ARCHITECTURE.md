@@ -338,6 +338,8 @@ Runtime changes, research behavior, native clients and release infrastructure mu
 
 Branch-protection policy is documented in .github/BRANCH_PROTECTION.md; documentation alone does not enforce GitHub settings.
 
+**Runtime exposure guard (2026-10-13):** The GUI/API startup path rejects non-loopback bind addresses before model/runtime initialization while authenticated identity and tenant isolation are unqualified. Browser-originated API requests must match the exact loopback origin, and WebSocket origin checks reject foreign origins. Loopback and origin checks are local-mode/CSRF safeguards, not proof of authenticated multi-user authorization. Do not re-enable LAN/shared binds until Gate 2 passes its ownership, secret isolation, worker authorization and cross-tenant negative-test requirements.
+
 
 ## Authoritative target architecture and language decision (2026-10-13)
 
@@ -372,6 +374,8 @@ References: [Python asyncio](https://docs.python.org/3/library/asyncio.html), [o
 8. **Persistence:** durable relational records for users/tenants/workspaces/runs/tasks/events; artifact storage with ownership and containment; memory partitioning and migrations.
 9. **Event delivery:** durable or replayable ordered events with stable IDs, run/tenant ownership and reconnect support.
 10. **Clients:** web, CLI/TUI and native desktop; no client bypasses shared policy or implements its own orchestration semantics.
+
+The detailed proposed principal, tenant, session, local-bootstrap and migration contract is maintained in `docs/STORAGE_AND_GOVERNANCE.md` under “Gate 2 principal, tenant and session contract”. Treat that contract as a pre-exposure implementation requirement; it is not proof that current runtime code already enforces the model.
 
 ### Multi-user invariants
 

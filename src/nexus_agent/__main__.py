@@ -136,7 +136,13 @@ def chat(
 
 
 @cli.command("serve")
-@click.option("--host", "-h", type=str, default=None, help="Host to bind the local agent API")
+@click.option(
+    "--host",
+    "-h",
+    type=str,
+    default=None,
+    help="Loopback host only; remote binding is disabled until Gate 2 is qualified.",
+)
 @click.option("--port", type=int, default=None, help="Port for the local agent API")
 @click.option(
     "--workspace", "-w", type=click.Path(exists=True), default=".", help="Working directory"
@@ -155,20 +161,29 @@ def serve(
     """Run the NexusAgent local API/web server without opening a browser."""
     from nexus_agent.gui.server import start_gui_server
 
-    start_gui_server(
-        model_path=model_path or ctx.obj.get("model"),
-        provider=provider or ctx.obj.get("provider"),
-        workspace=Path(workspace).resolve(),
-        config_path=ctx.obj.get("config_path"),
-        data_dir=ctx.obj.get("data_dir"),
-        host=host,
-        port=port,
-        open_browser=False,
-    )
+    try:
+        start_gui_server(
+            model_path=model_path or ctx.obj.get("model"),
+            provider=provider or ctx.obj.get("provider"),
+            workspace=Path(workspace).resolve(),
+            config_path=ctx.obj.get("config_path"),
+            data_dir=ctx.obj.get("data_dir"),
+            host=host,
+            port=port,
+            open_browser=False,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @cli.command()
-@click.option("--host", "-h", type=str, default=None, help="Host to bind to")
+@click.option(
+    "--host",
+    "-h",
+    type=str,
+    default=None,
+    help="Loopback host only; remote binding is disabled until Gate 2 is qualified.",
+)
 @click.option("--port", type=int, default=None, help="Port to bind to")
 @click.option("--no-browser", is_flag=True, default=False, help="Don't open browser automatically")
 @click.option(
@@ -182,16 +197,19 @@ def gui(
     from nexus_agent.gui.server import start_gui_server
 
     workspace_path = Path(workspace).resolve()
-    start_gui_server(
-        model_path=ctx.obj.get("model"),
-        provider=ctx.obj.get("provider"),
-        workspace=workspace_path,
-        config_path=ctx.obj.get("config_path"),
-        data_dir=ctx.obj.get("data_dir"),
-        host=host,
-        port=port,
-        open_browser=not no_browser,
-    )
+    try:
+        start_gui_server(
+            model_path=ctx.obj.get("model"),
+            provider=ctx.obj.get("provider"),
+            workspace=workspace_path,
+            config_path=ctx.obj.get("config_path"),
+            data_dir=ctx.obj.get("data_dir"),
+            host=host,
+            port=port,
+            open_browser=not no_browser,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @cli.group()

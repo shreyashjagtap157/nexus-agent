@@ -8,6 +8,7 @@ web-based dashboard, allowing real-time LLM interaction and agent control.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import os
@@ -92,6 +93,27 @@ state_manager = StateManager(
 )
 
 
+def _require_loopback_bind_host(host: str) -> None:
+    """Allow only bind hosts supported by the local-client route guards."""
+    candidate = str(host).strip().lower().rstrip(".")
+    if candidate not in {"127.0.0.1", "::1", "localhost"}:
+        raise ValueError(
+            "NexusAgent GUI/API binding is restricted to the supported local hosts "
+            "127.0.0.1, ::1, or localhost until authenticated identity and tenant "
+            "isolation pass Gate 2. Remote, LAN, and alternate loopback binds are disabled."
+        )
+
+
+def _format_gui_url(host: str, port: int) -> str:
+    """Format a local GUI URL with brackets for IPv6 literals."""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    display_host = f"[{host}]" if isinstance(address, ipaddress.IPv6Address) else host
+    return f"http://{display_host}:{port}"
+
+
 def _require_local_client(request: Request) -> None:
     host = request.client.host if request.client else None
     if host not in {"127.0.0.1", "::1", "localhost"}:
@@ -100,13 +122,17 @@ def _require_local_client(request: Request) -> None:
         )
 
 
-def get_free_port() -> int:
-    """Get a free port on localhost."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+def get_free_port(host: str = "127.0.0.1") -> int:
+    """Get a free port for a loopback address, including IPv6 loopback."""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    family = socket.AF_INET6 if isinstance(address, ipaddress.IPv6Address) else socket.AF_INET
+    bind_address = (host, 0, 0, 0) if family == socket.AF_INET6 else (host, 0)
+    with socket.socket(family, socket.SOCK_STREAM) as sock:
+        sock.bind(bind_address)
+        return int(sock.getsockname()[1])
 
 
 app = FastAPI(
@@ -135,9 +161,16 @@ MAX_BODY_SIZE = 10 * 1024 * 1024  # 10MB
 
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
-    """Combined security middleware: rate limiting, body size check, and CSP headers."""
-    # Rate limiting by client IP
+    """Apply local-origin, rate-limit, body-size, and browser-security controls."""
     if request.url.path.startswith("/api/"):
+        origin = request.headers.get("origin")
+        if origin and not _allowed_local_http_origin(request.headers, request.url.scheme):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Cross-origin GUI/API requests are blocked."},
+            )
+
+        # Rate limiting by client IP
         client_ip = request.client.host if request.client else "unknown"
         now = time.time()
         window_start = now - RATE_LIMIT_WINDOW
@@ -549,6 +582,44 @@ async def trigger_commit(request: Request):
     return {"message": msg}
 
 
+def _is_loopback_host(host: str) -> bool:
+    normalized = str(host).lower().rstrip(".")
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _allowed_local_http_origin(headers: Any, request_scheme: str) -> bool:
+    """Permit browser-originated API traffic only from the exact local origin."""
+    origin_value = headers.get("origin")
+    if not origin_value:
+        return True  # CLI and non-browser clients do not send Origin.
+    host_value = headers.get("host")
+    if not host_value:
+        return False
+
+    try:
+        origin = urlsplit(origin_value)
+        request_host = urlsplit("//" + host_value)
+        origin_host = (origin.hostname or "").lower().rstrip(".")
+        request_hostname = (request_host.hostname or "").lower().rstrip(".")
+        scheme = request_scheme.lower()
+        if scheme != "http" or origin.scheme.lower() != scheme:
+            return False
+        if origin.username or origin.password or origin.path or origin.query or origin.fragment:
+            return False
+        if not _is_loopback_host(origin_host) or origin_host != request_hostname:
+            return False
+        origin_port = origin.port or 80
+        request_port = request_host.port or 80
+        return origin_port == request_port
+    except ValueError:
+        return False
+
+
 def _allowed_websocket_origin(headers: Any) -> bool:
     """Allow only same-origin local browser WebSockets; permit non-browser clients without Origin.
 
@@ -569,13 +640,12 @@ def _allowed_websocket_origin(headers: Any) -> bool:
         request_host = urlsplit("//" + host_value)
         origin_host = (origin.hostname or "").lower().rstrip(".")
         request_hostname = (request_host.hostname or "").lower().rstrip(".")
-        allowed_hosts = {"localhost", "127.0.0.1", "::1"}
 
         if origin.scheme.lower() != "http":
             return False
         if origin.username or origin.password or origin.path or origin.query or origin.fragment:
             return False
-        if origin_host not in allowed_hosts or origin_host != request_hostname:
+        if not _is_loopback_host(origin_host) or origin_host != request_hostname:
             return False
         if (origin.port or 80) != (request_host.port or 80):
             return False
@@ -591,7 +661,7 @@ def _allowed_websocket_origin(headers: Any) -> bool:
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """WebSocket connection for real-time chat streaming and agent logs."""
     host = websocket.client.host if websocket.client else None
-    if host not in {"127.0.0.1", "::1", "localhost"}:
+    if not _is_loopback_host(host or ""):
         await websocket.close(
             code=1008, reason="Agent WebSocket access is restricted to local clients."
         )
@@ -826,17 +896,19 @@ def start_gui_server(
     open_browser: bool = True,
 ):
     """Bootstrap and start the local FastAPI web server."""
-    # Load configuration
+    # Resolve the effective bind address before initializing models or mutating shared state.
     workspace_path = workspace or Path.cwd()
-    state_manager.set("workspace", workspace_path)
-    state_manager.set(
-        "config",
-        load_config(
-            config_path=config_path,
-            workspace=workspace_path,
-            data_dir=data_dir,
-        ),
+    config = load_config(
+        config_path=config_path,
+        workspace=workspace_path,
+        data_dir=data_dir,
     )
+    srv_config = config.get("gui", {})
+    bind_host = str(host or srv_config.get("host", "127.0.0.1")).strip().lower().rstrip(".")
+    _require_loopback_bind_host(bind_host)
+
+    state_manager.set("workspace", workspace_path)
+    state_manager.set("config", config)
 
     # Initialize shared subsystems
     data_dir_path = state_manager.get("config").get("_data_dir", "~/.nexus-agent")
@@ -870,22 +942,27 @@ def start_gui_server(
     except (ImportError, ValueError, OSError, RuntimeError) as e:
         logger.warning(f"Failed to preload LLM provider '{active_provider}': {e}")
 
-    # Set up host/port
-    srv_config = state_manager.get("config").get("gui", {})
-    bind_host = host or srv_config.get("host", "127.0.0.1")
+    # Set up the port; bind_host was validated before subsystem initialization.
     bind_port = port or srv_config.get("port", 7860)
 
-    # Verify if port is available, find a free one if occupied
+    # Verify if the port is available on the selected loopback address.
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((bind_host, bind_port))
-        s.close()
+        try:
+            address = ipaddress.ip_address(bind_host)
+        except ValueError:
+            address = None
+        family = socket.AF_INET6 if isinstance(address, ipaddress.IPv6Address) else socket.AF_INET
+        bind_address = (
+            (bind_host, bind_port, 0, 0) if family == socket.AF_INET6 else (bind_host, bind_port)
+        )
+        with socket.socket(family, socket.SOCK_STREAM) as sock:
+            sock.bind(bind_address)
     except OSError:
         old_port = bind_port
-        bind_port = get_free_port()
+        bind_port = get_free_port(bind_host)
         logger.warning(f"Port {old_port} occupied. Dynamic fallback to port {bind_port}.")
 
-    url = f"http://{bind_host}:{bind_port}"
+    url = _format_gui_url(bind_host, bind_port)
     logger.info(f"Starting {__app_name__} GUI server!")
     logger.info(f"Dashboard URL: {url}")
     logger.info(f"Workspace: {workspace_path}")
