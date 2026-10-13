@@ -391,3 +391,282 @@ The detailed proposed principal, tenant, session, local-bootstrap and migration 
 ### Completion standard
 
 Architecture claims are targets until verified against code and tests. Each target capability needs traceable acceptance tests and workflow evidence. Any migration from existing code must preserve behavior through adapters/contracts, proceed gate by gate, and avoid parallel implementations of the same domain logic.
+
+## Exhaustive implementation blueprint (authoritative review, 2026-10-13)
+
+### Decision status and scope
+
+This section translates the target architecture above into implementable boundaries, migration order and acceptance tests. It does not claim that target components already exist. The live codebase is a Python runtime with FastAPI, provider/tool/memory/research/team modules; it also contains a Python CLI, a static HTML/CSS/JavaScript web frontend, a Rust CLI/TUI, and a Rust eframe desktop client. The web frontend is not yet a TypeScript application, and the target multi-user identity/tenant model is not yet qualified.
+
+The current version baseline is 0.3.0-alpha.5. As observed on 2026-10-13, GitHub still reports master as the repository default while main exists separately. Use the live repository state and current workflows as evidence; do not assume the branch migration or branch protections have been applied.
+
+The architecture decision is to keep one authoritative domain runtime and put client-specific presentation outside it. The objective is not to maximize the number of languages, frameworks, services or abstractions. Every additional boundary must earn its cost through isolation, performance, packaging, reliability or maintainability.
+
+### 1. Programming-language allocation
+
+| Area | Language and recommended stack | Responsibility | Current state and migration rule |
+|---|---|---|---|
+| Agent runtime and domain services | Python, typed gradually with strict checks on critical modules | Runs, planning, workers, policies, tools, providers, research, memory and workflows | This is the existing core. Keep it authoritative; refactor by boundary, not rewrite. |
+| HTTP API | Python, FastAPI, Pydantic request/response models | Authentication dependencies, schema validation, policy calls, run/session endpoints, health and admin operations | Existing FastAPI surface is useful but mostly unversioned and local-first. Harden it, then migrate clients through adapters. |
+| Scheduling and research | Python | Dependency DAG, bounded planner, tool execution, source capture, evidence checks, synthesis and stopping rules | Existing team/research modules should be incrementally made run-scoped, durable and testable. |
+| Provider adapters and local inference | Python | Hosted API adapters, OpenAI-compatible endpoints, NVIDIA NIM, local GGUF/ONNX/Ollama integration, retry/timeout normalization | Keep the current provider layer as the single source of truth. Do not duplicate provider semantics in Rust. |
+| Tool and MCP gateway | Python | Tool schemas, effective permission evaluation, MCP client integration, policy enforcement, sandbox dispatch and audit events | Extend the shared tool plane. A prompt, agent profile or client must never grant itself permissions. |
+| Persistence/domain repositories | Python + SQL; SQLite locally and PostgreSQL for shared multi-user deployments | Durable records, transactional state transitions, ownership filters and migrations | Existing SQLite stores remain suitable for local/offline operation. Introduce production-grade tenant-aware repositories before shared deployment. |
+| Web application | TypeScript + React + Vite; a shared component system and accessible design tokens | Workflow graph, agent builder, activity timeline, task controls, provider/configuration screens, memory/research inspection and responsive UX | Target modernization only: current web files are static HTML/CSS/JavaScript. Migrate one screen at a time and keep FastAPI as the backend. |
+| Native CLI/TUI | Rust, retaining the existing Rust workspace and TUI framework | Process lifecycle, terminal input/rendering, keyboard handling, local configuration UI and robust backend-client behavior | Continue using the current Rust client over a documented protocol. Do not move planning, policy or provider routing into it. |
+| Native desktop | Rust with the existing eframe client | Desktop shell, windowing, navigation, notifications and API/event consumption | Treat it as a client of shared contracts, not a second application core. |
+| Cross-language client contracts | OpenAPI-generated TypeScript types/client plus explicit JSON event envelopes; documented NDJSON/JSON-RPC only where subprocess IPC is required | Stable API/event schemas, compatibility and client parity | Existing in-process Python object shapes are not cross-process contracts. Generate or validate client types from one source. |
+| Build, CI and release automation | GitHub Actions YAML, shell/PowerShell and Python/Rust build tools | Repeatable checks, packaging, supply-chain evidence and release provenance | Keep the workflow reproducible and tied to the exact candidate commit. |
+
+**Python is the one-language choice for the agent backend.** It offers the most practical fit for fast-changing model/provider integrations, local inference bindings, web/research/data processing, and the existing codebase. This is not a claim that Python automatically provides concurrency or isolation: use bounded async I/O, finite worker pools, process isolation for risky or CPU-bound work, and explicit resource limits.
+
+**TypeScript is for the web UI, not a second backend.** React is the recommended component model, Vite is sufficient for a compiled single-page application, and TypeScript types should be generated from the API contract rather than manually copied. The initial migration does not require Next.js or server-side rendering: the app can be built as static assets and served by the existing FastAPI deployment. Adopt a more complex web framework only if an evidenced requirement appears.
+
+**Rust is for native presentation and selected system boundaries, not the orchestration core.** The Rust CLI/TUI and eframe desktop client are real existing investment. Use them for terminal rendering, native packaging, process supervision, OS integration and predictable client behavior. They should consume the same HTTP/WebSocket contracts or an explicitly versioned local IPC protocol. Do not reimplement the Python planner, tenant authorization, memory semantics, provider catalog or team scheduler in Rust.
+
+**Do not move inference dispatch to Rust merely to avoid the Python GIL.** Most hosted model latency is network/provider-bound, and local inference cost depends heavily on the inference engine, GPU backend, model, context and quantization. The existing Python local engine already calls native inference code. A Rust inference adapter is a future option only if reproducible benchmarks identify a material bottleneck and the proposed adapter passes behavioral parity tests.
+
+Do not add Go, a Rust web server, a TypeScript backend, or additional microservices now. No additional language improves the current domain boundaries enough to justify duplicated logic and build/release complexity. SQL and deployment configuration are supporting technologies, not separate application runtimes.
+
+### 2. Logical architecture and ownership of responsibilities
+
+Implement these as logical boundaries inside the current repository first. Split them into processes or deployable services only when an explicit threat, scaling or availability requirement warrants it.
+
+1. **Identity and policy:** validate a local principal or authenticated session; resolve the active tenant/workspace from server-side records; check membership, role and resource-specific grants; return an auditable allow/deny decision. Never trust a tenant ID supplied in a body/header as authority.
+2. **API/application layer:** parse versioned requests, validate limits, apply idempotency to suitable mutations, call domain services, translate typed domain errors into stable HTTP errors, and never contain orchestration loops.
+3. **Run/session service:** create runs, record requester and ownership, capture a configuration snapshot, issue cancellation/resume requests, expose authorized state and recover interrupted runs.
+4. **Planner and workflow registry:** translate a goal into a validated DAG; select saved agent profiles; generate missing profiles only within limits; reject unknown dependencies/cycles; record the approved plan before starting side effects.
+5. **Scheduler and worker supervisor:** claim ready tasks, obey tenant and global concurrency limits, lease work, monitor timeouts/heartbeats, propagate cancellation and persist final outcomes. Every retry must be bounded and justified by a retryable failure class.
+6. **Agent execution:** create an independent run/task context with the assigned role, permitted tool handles, provider route, budget and scoped memory. Do not pass mutable process-global state to parallel workers.
+7. **Tool/MCP gateway:** validate tool arguments against schemas; derive effective permission from the authenticated principal, tenant/workspace, run, agent grants, tool risk and current policy; execute with bounded privileges; redact outputs; record audit events.
+8. **Provider and credential plane:** resolve the model/provider/fallback for the role, retrieve a secret reference through the authorized credential store, apply timeout/rate-limit/retry/cost policy and normalize provider errors.
+9. **Research/evidence plane:** capture provenance-bearing source snapshots, quotes, claims, verifier decisions, contradictions and quality-gate outcomes. Keep evidence records separate from an LLM's unsupported assertions.
+10. **Persistence and artifact plane:** own transactions, migrations, row ownership, artifact metadata, storage containment and retention. Domain services use repository interfaces rather than opening databases ad hoc.
+11. **Event and observability plane:** append durable ordered events before notifying subscribers; support reconnect/replay; emit correlated logs, metrics and traces with secret-safe structured fields.
+12. **Client adapters:** the web UI, Rust CLI/TUI, desktop client and automation/MCP entrypoints display state and send commands. They do not own policy decisions or create an alternative scheduler.
+
+### 3. End-to-end run lifecycle
+
+The ordinary run path should be deterministic enough to inspect and recover:
+
+1. The client submits a goal, workspace selection, execution mode, output preference and optional provider/agent overrides to the API.
+2. The API resolves the actor and tenant from a verified local identity/session, authorizes workspace access and validates the request against tenant/user limits.
+3. The run service creates a run record and immutable configuration snapshot. An idempotency key prevents duplicate run creation on client retries.
+4. The planner uses the goal, selected workflow and allowed agent registry to produce a typed DAG. It validates dependency references, cycles, duplicate/contradictory responsibilities, writable capabilities and budget estimates.
+5. Policy validation rejects or narrows any requested capability that exceeds the actor's grants. Approval-required work is represented as an explicit waiting state; an agent prompt cannot bypass that state.
+6. The scheduler persists the plan, task rows and dependency edges, then claims only ready tasks within global and tenant concurrency/budget limits.
+7. Each worker receives an immutable task input plus a fresh mutable context, provider route, bounded memory view, permission-filtered tools, cancellation signal and budget account. It does not receive credentials belonging to unrelated actors.
+8. Before each tool call, the gateway validates the arguments, checks the current permission decision, enforces path/network/process policy, applies timeout/output limits, records the attempt and executes the tool.
+9. Worker results, messages, artifacts, state transitions and tool outcomes are committed to durable storage. Events are appended in sequence and published only after persistence succeeds.
+10. Independent verifier/reviewer passes check output correctness, claims, artifact integrity, policy compliance and unresolved failures. Research work additionally passes the evidence/contradiction gate.
+11. The run reaches one canonical terminal outcome. A successful worker alone does not mean a run succeeded if required verification failed; explicit states such as needs-review or partially-completed should not be disguised as success.
+12. Clients can reconnect and reconstruct current state from the snapshot plus events after a known sequence/ID. A resume request must be re-authorized against the run owner, tenant and current membership.
+
+The scheduler must never loop indefinitely because a planner or worker requests another round. Enforce hard maxima on plan revisions, agents, dependency waves, concurrency, tool calls, retries, wall-clock time, token/cost spend and artifact size. For research, the selected depth changes these budgets and verifier/contradiction requirements; it must not merely change prompt wording.
+
+### 4. Domain records and persistence strategy
+
+The relational source of truth should eventually represent at least the following concepts. Names are conceptual; migrate existing tables through repository adapters rather than creating parallel versions of every existing store.
+
+- **Identity:** users/service principals, tenants, memberships, roles and revocations.
+- **Workspace:** tenant owner, canonical workspace identifier, local-path mapping if in local mode, grants and lifecycle state.
+- **Configuration:** tenant/user/project configuration revisions, provider/model references, policy revision and run snapshots.
+- **Agents and workflows:** profile identity, scope/owner, version, validated schema, declared capabilities, reviewer flag, dependencies and workflow version.
+- **Runs and tasks:** run owner/tenant/workspace, requester, goal reference, status, plan revision, resource budget, timestamps, cancellation state and final result.
+- **Task graph:** task rows, dependency edges, attempts, worker leases, checkpoints and verification results.
+- **Conversation and collaboration:** messages, agent-to-agent messages, explicit recipients/scope, tool invocation references and session metadata.
+- **Events and audit:** stable event ID, per-run sequence, actor, tenant/resource ownership, event type, outcome, time and correlation/trace IDs; separate security audit records from verbose debug logs.
+- **Artifacts and source evidence:** opaque artifact IDs, owning tenant/workspace/run, normalized relative name, content hash, size, media type, storage key, retention status, source URL/snapshot metadata and verified claims.
+- **Memory:** scope, owner, tenant/workspace/agent/team/session association, content classification, provenance, retention/expiry and searchable representation.
+- **Secrets:** non-secret credential metadata and a reference to a secret provider. Raw secret values are not ordinary configuration rows and do not enter prompts or artifact exports.
+- **Usage/quotas:** per-tenant/user run slots, tokens/cost, tool runtime, artifact storage, rate counters and policy revisions.
+- **Idempotency and approvals:** caller/key/resource/result for deduplicated mutations; approval requester, approver, allowed action, scope, expiry and consumed status.
+
+**Local mode:** retain a small single-user SQLite footprint for offline use and existing workspace-local runtime files. Preserve current data layout where practical; add explicit ownership metadata and migrations rather than requiring users to lose or manually rebuild their history.
+
+**Shared multi-user mode:** use PostgreSQL as the transactional source of truth. The local SQLite store is not the primary shared-server concurrency/ownership strategy. Add a migration tool and repository implementations, and test the same repository contracts against SQLite and PostgreSQL where their behavior differs. Use database constraints and transactions as well as service-level ownership checks. PostgreSQL row-level security may be added as defense in depth, but it does not replace application authorization, review of privileged database roles or negative tests.
+
+**Artifacts:** introduce an ArtifactStore interface with a local filesystem adapter for personal use and a private object-store adapter for a hosted deployment when needed. Keep metadata and tenant ownership in the database. Use canonical path containment, symlink handling, safe generated storage keys, maximum-size rules, content-type handling and retention/deletion policy. An opaque or random ID is a locator, never authorization.
+
+**Transactions and migrations:** use versioned schema migrations, foreign keys, uniqueness constraints and explicit transaction boundaries. Multi-row state transitions such as run creation, task creation and event append must be atomic where needed. Test backup/restore, upgrade from a supported previous schema, concurrent writers, crash recovery and interrupted migrations.
+
+**Memory:** preserve the existing scopes but resolve access by principal/tenant/workspace before retrieval. A user-scoped entry must never become visible to every user simply because the process shares one memory directory. Retrieval ranking, embeddings or full-text search happen only after the authorized candidate set is determined. Treat imported documents and retrieved memory as untrusted input and retain provenance/retention metadata.
+
+### 5. Identity, authentication and authorization
+
+The current loopback bind/origin controls are exposure and browser-CSRF mitigations; they are not authentication. Do not enable LAN, reverse-proxy, tunnel or public access while Gate 2 remains open.
+
+For the first shared-deployment path, prefer integration with a maintained OpenID Connect identity provider rather than inventing a full identity provider in the application. Use standards-based authorization code flows and PKCE for public/native clients, exact redirect URIs, short-lived access credentials and secure refresh/session handling. If self-hosted local accounts are later required, define password hashing, MFA, account recovery, rate limits, session revocation and anti-enumeration requirements explicitly rather than implementing ad hoc login routes.
+
+For browser sessions, use server-validated opaque sessions in secure HttpOnly cookies, an explicit SameSite policy, CSRF controls for state-changing requests, exact origin validation and rotation/revocation semantics. For native CLI clients, use a secure local identity/token store and an appropriate interactive authorization flow; do not place long-lived tokens in command lines, URLs, config files under a repository, debug logs or IPC output.
+
+Every request must resolve a verified principal. Authorization then checks both the action and the target resource. At minimum, policy decisions consider tenant membership, workspace grant, resource ownership, role, operation, tool risk, profile capability and current policy version. Read/list/search/download/export/subscribe/replay/modify/delete/cancel/resume are separate operations to authorize. The server must derive tenant identity from trusted session/principal context and reject user-supplied tenant overrides.
+
+Background tasks must store the initiating principal and tenant, then revalidate resource ownership and revocation-sensitive grants when claiming or resuming work. API-only authorization is insufficient because a worker, delayed message, artifact download or replay path can otherwise bypass request-time checks.
+
+Personal mode creates an explicit local principal and personal tenant during bootstrap and passes through the same domain authorization services as shared mode. Avoid a hidden “loopback means trusted administrator” exception. Local CLI bootstrap is a trusted device action with documented constraints, not an implicit multi-user policy.
+
+### 6. Tool safety and permission model
+
+Tool permission is a server-side runtime decision, not a prompt convention.
+
+- Assign every tool a stable ID, argument/result schema, risk category, side-effect declaration, resource scope and default grant.
+- Compute effective permission on every invocation from the verified actor, tenant/workspace, run, agent profile grants, tool metadata and current policy.
+- Deny by default on missing context, malformed arguments, unavailable policy or unknown tool IDs.
+- Keep user-defined agent profiles declarative. A profile may request a capability but cannot grant it, select another tenant's secret, change the authenticated actor or switch to an unauthorized workspace.
+- Require approval only for policy-defined high-impact actions. Routine work within the explicit grant may proceed autonomously. Persist approval scope and expiry, and ensure an approval is not replayable for a different action or target.
+- Run shell and other risky tools with a minimal environment, controlled working directory, process timeout, output cap, cancellation/termination policy and configurable network access. Prefer argv-based execution over an interpolated shell string.
+- Use filesystem allowlists and canonical containment checks, and re-check after resolving symlinks. Protect system paths, secrets, credentials, Git internals and files outside an authorized workspace.
+- Treat browser/web tools as SSRF-capable: validate schemes, redirects, resolved addresses, private/link-local destinations and allowed network scopes; apply response-size/time limits and content sanitization.
+- MCP tools enter through the same validation and authorization gateway. Transport-level MCP auth is not the same as NexusAgent tenant authorization; tool server identity, credentials and grants must remain explicit.
+- Redact secrets and sensitive payloads before logging or sending tool results to sibling agents. Store bounded audit metadata by default, not unlimited prompts/credentials/output blobs.
+- Apply per-tool CPU/time/memory/output limits and global/per-tenant concurrency quotas. A crashed or hung tool must not retain a run slot forever.
+
+### 7. Orchestration and agent runtime
+
+The existing planner/team runtime is the starting point, not a justification for a full rewrite. Preserve the current role generation, dependency-aware scheduling, peer messaging, provider routing, research modes and quality gates, while extracting state from globals and direct SQLite operations into well-defined services.
+
+**Planner contract:** input is a validated goal plus policy/profile/workflow context; output is a typed plan with stable task IDs, dependencies, required capabilities, completion criteria, verifier requirements and budget estimate. Parse model output into a schema, validate it, and record the chosen plan revision. If validation fails, ask for a bounded repair or fail explicitly.
+
+**Agent profile contract:** a profile defines role, mission, system instructions, permitted tool categories, write intent, model role/provider preference, dependency constraints and review responsibility. Validate identifiers, lengths, scopes and unknown fields before saving. Generated profiles pass the same validator as user-authored profiles and are stored without credential material.
+
+**Worker contract:** each task executes with a fresh context containing task/run IDs, a scoped memory view, the task's data access rights, tool handles, provider selection, budget counter, event sink and cancellation token. Context objects are immutable unless the field is explicitly task-local mutable state. Avoid process-global active session IDs, active principal, provider selection or workspace path in shared multi-user workers.
+
+**Scheduling:** validate the full graph before scheduling; detect cycles and missing prerequisites. A failed dependency yields an explicit blocked/failed downstream state, not a hung ready queue. Record attempt numbers, retry classification, backoff, lease, deadline and last error. Retry only transient failures within bounds. A worker lease expires safely after process loss, but reconciliation must avoid executing the same side-effecting operation twice; use idempotency and tool-specific recovery where possible.
+
+**Lifecycle:** define one canonical status enum for API, database and all clients. At minimum it needs planned/queued, ready, running, waiting-for-approval or external input, blocked, completed, needs-review, failed and cancelled. Do not infer status from a UI spinner or thread existence. State transitions are validated centrally and recorded as events.
+
+**Cancellation and recovery:** persist the cancel request; notify active workers; cancel cancellable async operations; terminate owned subprocesses after a grace period; record which operations may have side effects. On process restart, recover expired leases, inspect unfinished attempts, persist interrupted outcomes and resume only work proven safe to resume. The native/web clients must not be the authority for whether a run exists or is complete.
+
+**Research:** maintain source policy modes user_only, hybrid and autonomous; collection policies single, timed, until_saturation and continuous; and depth policies from surface through maximal. Enforce source/tool availability before execution. Timed collection has a hard deadline. Until-saturation uses measurable marginal novelty/yield plus a hard cap. Continuous work requires cancellation, budget and retention policy. Persist source snapshots and exact quoted evidence so deterministic verifiers can check the source, not trust an LLM's claim that verification occurred.
+
+### 8. API, events and client compatibility
+
+Use FastAPI and Pydantic as the current API implementation. The API contract must be versioned and language-neutral. Establish a versioned route namespace for new contracts, migrate old endpoints through compatibility adapters and remove old routes only under documented deprecation rules. Avoid breaking the currently used local GUI and CLI while the contracts are being formalized.
+
+Use one authoritative schema source. Pydantic models can define request/response structures initially; OpenAPI is then generated and used to generate TypeScript client types. The web UI must not hand-maintain another copy of the same domain types. Runtime validation remains mandatory because TypeScript's compile-time types do not validate untrusted JSON arriving over HTTP or WebSocket.
+
+Mutating requests should support idempotency for run creation, tool action submission and other operations where retries can duplicate side effects. Use resource revisions or conditional updates where concurrent controls could conflict. Return stable error codes and non-sensitive details rather than leaking stack traces, file paths, database errors or credential metadata.
+
+**Event envelope requirements:** every event has schema version, event ID, per-run sequence, event type, occurrence time, run/task/resource references, and a validated payload. The persisted event is authoritative; the stream is a delivery mechanism. Clients reconnect with a last-seen sequence/event ID and recover gaps from the event store or a state snapshot. Duplicates are permitted at-least-once delivery and clients deduplicate using event IDs; event ordering must be stable within a run. Never send secret values in event payloads.
+
+For browser clients, enforce the authenticated session, origin/CSRF policy and resource ownership before upgrading/subscribing to a WebSocket. An arbitrary session or run ID in a URL does not establish access. For native clients, define reconnection, backoff, heartbeat, message size, protocol version and graceful shutdown behavior.
+
+For existing Rust/Python stdio IPC, keep newline-delimited JSON/JSON-RPC only as a local process protocol with explicit method schemas, request IDs, cancellation, bounded message sizes and stdout reserved for protocol frames. Keep diagnostics on stderr. Do not create two competing APIs (one REST and one ACP) with different business semantics.
+
+### 9. Web UI implementation
+
+The current static HTML/CSS/JavaScript pages are a useful migration baseline and must remain functional during the transition. Do not perform a simultaneous big-bang rewrite.
+
+Recommended progression:
+1. Define the API and event envelopes first, including status/error semantics and pagination.
+2. Introduce the TypeScript build and strict compiler settings alongside the current frontend assets.
+3. Migrate one low-risk screen first, such as provider/model catalog or agent profile inspection; verify packaged assets and local installation still work.
+4. Migrate configuration and scoped-memory pages using generated API types and server validation.
+5. Migrate the team/workflow console: DAG view, agent roster, timeline, messages, tool invocations, verifier decisions, budgets, approval prompts and output/artifact viewer.
+6. Add reconnect/replay and empty/error/loading states; do not assume the WebSocket never disconnects.
+7. Migrate session/chat and security-sensitive provider credential management only after API auth/session contracts are ready.
+8. Remove the legacy page only when equivalent acceptance tests pass and release packaging includes the compiled asset set.
+
+Build a consistent component library with design tokens for color, typography, spacing, status, motion and contrast. Prioritize keyboard navigation, screen-reader semantics, reduced-motion settings, visible approval state, high-density but readable activity timelines and responsive layouts. The UI may visualize policy and collect user choices, but the backend must validate those choices. Keep secrets masked, never include them in browser storage/localStorage, and never treat hidden controls as authorization.
+
+### 10. Rust client implementation
+
+Keep the Python backend authoritative. Use the existing Rust workspace for the terminal UX and eframe desktop client. First document and test the current protocol; do not assume a proposed protocol method exists until it is visible in the code and covered by tests.
+
+The Rust terminal client should own terminal lifecycle, rendering, keyboard input, input history, client-side navigation, graceful exit and backend process health display. It should send commands to the same run API/IPC service used by the web client, consume stable events and request snapshots when it detects a gap. It must not own run/task persistence or independently schedule agents.
+
+The desktop client should own window layout, navigation, accessibility, notifications and client-side caches. It must use the shared authentication model and API contracts, keep session tokens in an appropriate OS-protected store, validate server messages and handle expiry/revocation. It should not connect directly to the database or share the CLI's in-process scheduler.
+
+Before investing in deeper Rust work, add actual Rust unit/integration tests to CI. The live CI workflow currently validates Rust formatting and compilation; formatting/compilation alone do not qualify runtime behavior. Add tests for protocol framing, malformed messages, backend crash/restart, cancellation, timeouts, UTF-8/large event streams and client reconnection.
+
+### 11. Observability, operations and reliability
+
+Use structured logs and stable correlation identifiers for request, run, task, tool invocation and provider request. Redact provider secrets, authorization tokens and sensitive prompt/tool payloads. Record actor, tenant, action, target, outcome and policy revision for security-significant actions. Keep audit events separately protected from ordinary application logs.
+
+Define metrics for queue depth, active runs, ready/blocked tasks, worker lease expiry, provider latency/error/rate-limit, token and cost consumption, tool failure/timeout, cancellation latency, event delivery lag, artifact volume and tenant quota denials. Instrument traces across API → run service → worker → provider/tool. OpenTelemetry is the recommended neutral instrumentation interface; the chosen exporter/backend may differ by deployment.
+
+Readiness/liveness probes must distinguish process health from ability to accept new runs and ability to reach configured dependencies. Provide graceful shutdown: stop accepting new runs, persist state, signal cancellation or checkpoint workers, wait a bounded grace period and release leases. Define backup, restore, retention, secret rotation, deletion and disaster-recovery procedures before production release.
+
+### 12. Test and CI qualification strategy
+
+The current workflow is useful but does not yet fully prove the target design. It runs a cross-platform Python test matrix, Ruff, a strict MyPy subset, Rust format/check, synchronized version checks and security/audit jobs. The web frontend has no TypeScript build/test gate yet, and Rust compilation is not a substitute for Rust tests.
+
+Required layers:
+
+- **Unit:** schemas, status transitions, policy decisions, provider normalization, retry classification, ID parsing, artifact naming/containment, memory scope routing and source-policy enforcement.
+- **Property/fuzz:** path and URL normalization, event parsing, malformed provider output, graph cycle detection, schema limits and protocol frame boundaries.
+- **Repository contract tests:** the same ownership, transaction, migration and query behavior against local SQLite and shared PostgreSQL adapters.
+- **API integration:** unauthenticated, expired, revoked, wrong-tenant and wrong-workspace requests; all CRUD/list/export/download/stream/cancel/resume endpoints; idempotent retries; CSRF/origin; error redaction.
+- **Tenant negative tests:** User A cannot read, mutate, resume, cancel, subscribe to or export User B's runs, tasks, messages, memory, source snapshots, artifacts, agent profiles, audit logs or credentials by guessing IDs, switching request fields or racing membership revocation.
+- **Orchestration integration:** dependency DAG, parallel waves, worker crash, hung tool, retry bounds, cancel/pause/resume, lease expiry, duplicate delivery, partial completion, budget exhaustion and recovery after restart.
+- **Research quality:** every cited claim ties to a stored source/quote, rejected evidence is not synthesized as verified, contradiction/verification gates fail closed, source policy is enforced, and all stopping modes obey time/budget ceilings.
+- **Tool security:** traversal and symlink escapes, disallowed network destinations/redirects, environment leakage, shell injection, oversized output, timeout, process cleanup and permission changes between planning and execution.
+- **Frontend:** strict TypeScript compilation, component/unit tests, browser-level flows for create/run/control/reconnect/approval/artifact viewing, accessibility checks and responsive smoke tests.
+- **Rust clients:** unit/integration tests plus cross-platform compilation/packaging, protocol tests, crash/reconnect and secret-storage behavior.
+- **Performance/load:** benchmark rather than guess startup, first event/token, scheduler throughput, DB contention, memory growth, event lag and isolation under concurrent tenants. Publish workload and machine details with results.
+
+A required workflow must run against the exact proposed merge head. Queued, skipped, cancelled or stale-head checks are not passes. Keep dependency/security gates and version-contract validation in the required merge gate, and qualify releases from saved test evidence.
+
+### 13. Incremental delivery plan and gates
+
+**Gate A — Repository truth and governance.** Reconcile main/master history with ordinary, CI-gated merges; have an administrator verify default-branch and protection settings. Record an accurate baseline of code, tests, config, workflows and existing data. Do not mark this gate done on the strength of documentation alone.
+
+**Gate B — Security boundary and authenticated principal.** Keep non-loopback binds blocked. Implement the shared principal/session/membership contract, service authorization and local-bootstrap identity. Add tenant-scoped negative tests before refactoring broad application behavior. Resolve global active-session/workspace/provider state so concurrent requests cannot overwrite one another. Entry and exit criteria are in docs/STORAGE_AND_GOVERNANCE.md.
+
+**Gate C — Domain and contract isolation.** Extract typed service/repository boundaries from FastAPI handlers, shared mutable globals and direct store calls. Add versioned API/OpenAPI/event contracts, canonical error/status enums and compatibility tests. The first result should be a documented seam, not a full rewrite.
+
+**Gate D — Durable run lifecycle.** Implement run/task ownership, atomic plan creation, validated status transitions, persisted events, idempotency, worker leases, cancellation and restart recovery. Use bounded workers. Prove local SQLite and PostgreSQL repository semantics; do not expose shared mode until this is qualified.
+
+**Gate E — Tool/provider isolation.** Route every tool through one effective-policy gateway. Add provider secret references, rate limits, retry classification, budget accounting, MCP authorization and SSRF/path sandboxing. Add security tests for cross-tenant and privilege-revocation races.
+
+**Gate F — Multi-agent and research parity.** Preserve workflows, dynamic agent generation, role-level provider routing, peer communication, research depth/collection/source modes and evidence quality gates. Test real persisted runs end-to-end with bounded scheduling, verifiers, failures and recovery.
+
+**Gate G — Web modernization.** Introduce TypeScript/React incrementally after contract stabilization. Generate client types, migrate screens one-by-one, add UI CI and browser tests, maintain asset packaging and accessible state transitions. Do not rewrite the backend in TypeScript.
+
+**Gate H — Native-client and packaging qualification.** Verify Rust CLI/TUI and desktop behavior using the same contracts; add Rust tests, reconnect handling, backend supervision, release packaging and supported-platform tests. Keep domain logic in the Python runtime.
+
+**Gate I — Operational/release qualification.** Verify observability/redaction, backup/restore, migration, quotas, secret rotation, cancellation/shutdown and dependency security. Require exact-commit CI/Security, version sync, change log, release provenance and verified repository governance. Only then consider enabling authenticated remote/shared deployment.
+
+The order is intentional: authenticated ownership precedes multi-user persistence and remote exposure; contracts precede UI/client duplication; durable lifecycle precedes long-running hosted orchestration; profiling precedes low-level rewrites.
+
+### 14. Performance and optimization rules
+
+Do not publish guessed performance targets as current results. Establish benchmark baselines with reproducible task inputs, provider/model, concurrency, host platform, output size and warm/cold state. Measure p50/p95/p99 latency, throughput, memory, queue wait, error rates and cost.
+
+Optimize in this order:
+1. correctness, isolation and observability;
+2. identify measured bottlenecks;
+3. reduce duplicate provider calls and unnecessary serialized planning;
+4. introduce bounded concurrency and appropriate I/O overlap;
+5. improve database indexes/transactions and event batching;
+6. optimize artifact traversal and large payload handling;
+7. only then evaluate alternate runtimes or Rust/native acceleration.
+
+Do not trade away permission checks, ownership predicates, deterministic evidence or event durability to improve a benchmark. Every performance change must include a compatibility test demonstrating that visible result sets and security boundaries remain unchanged.
+
+### 15. Architecture decisions to reject
+
+- A Rust rewrite of the agent core because Rust is present in the repository.
+- A second TypeScript backend while Python continues to own tools, providers and runs.
+- Multi-user exposure protected only by loopback, IP allowlists, CORS or Origin checks.
+- A tenant ID chosen by the browser, a random-looking resource ID treated as authorization, or authorization performed only at the route and skipped by workers/repositories.
+- Separate orchestration implementations in GUI, CLI/TUI and desktop.
+- A planner loop with no hard budget or deterministic terminal state.
+- In-memory events or thread maps as the sole source of truth for durable runs.
+- Unlimited tool output, shell execution, retries, browser navigation or continuous research.
+- Credentials stored in plain project config, agent profiles, prompts, logs, WebSocket events or exported artifacts.
+- A framework/microservice/queue migration without a measurable need and an incremental compatibility plan.
+- Release qualification based on a single Linux run, a green check on an old head, a skipped job or untested documentation claims.
+
+### 16. References for implementation details
+
+- Python asynchronous I/O: https://docs.python.org/3/library/asyncio.html
+- TypeScript language/type system: https://www.typescriptlang.org/docs/handbook/intro.html
+- React with TypeScript: https://react.dev/learn/typescript
+- Rust ownership and resource safety: https://doc.rust-lang.org/stable/book/ch04-00-understanding-ownership.html
+- PostgreSQL row-level security: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+- OAuth 2.0 security best current practice: https://www.rfc-editor.org/rfc/rfc9700.html
+- Model Context Protocol authorization: https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
+- OpenTelemetry: https://opentelemetry.io/docs/
+
