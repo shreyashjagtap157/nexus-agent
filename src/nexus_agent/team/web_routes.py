@@ -18,6 +18,7 @@ from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
 from nexus_agent.storage.layout import StorageLayout
+from nexus_agent.utils.fs import iter_files
 from nexus_agent.workflows import WorkflowRegistry
 
 from .control import control as control_team_request
@@ -432,7 +433,9 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         if not root.exists():
             return {"artifacts": []}
         artifacts = []
-        for path in sorted(root.rglob("*")):
+        # Optimization: use iter_files instead of rglob to prevent OOM
+        # and reduce overhead from excessive Path instantiations
+        for path in iter_files(root):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
@@ -446,6 +449,7 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                         "path": str(resolved),
                     }
                 )
+        artifacts.sort(key=lambda x: x["name"])
         return {"team_id": team_id, "artifacts": artifacts}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
