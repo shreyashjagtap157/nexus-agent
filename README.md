@@ -517,7 +517,7 @@ The authoritative CI workflow covers multiple Python versions and operating syst
 
 ### Enterprise engineering governance
 
-main is the canonical integration branch. Changes are expected to arrive through pull requests and pass the repository CI/security gates before merge.
+`main` is the intended canonical integration branch, but GitHub currently reports `master` as the default branch and that migration/protection configuration is not yet verified. Until the administrator completes and confirms the migration, target PRs to the actively maintained integration branch and keep the histories content-synchronized with ordinary, CI-gated merges. Do not force-push, rewrite history or assume documentation enables branch protection. Changes are expected to arrive through pull requests and pass the repository CI/security gates before merge.
 
 The GitHub validation surface includes:
 
