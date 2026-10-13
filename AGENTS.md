@@ -156,3 +156,22 @@ Validation includes:
 The separate .github/workflows/security.yml workflow provides CodeQL, dependency auditing and dependency review.
 
 CI workflows are intentionally read-only and never push commits to protected integration branches.
+
+
+## Normative project requirements and operating rules
+
+Read docs/PRODUCT_SPECIFICATION.md, docs/LANGUAGE_DECISION.md and TEAM.md before making architecture-level changes. docs/PRODUCT_SPECIFICATION.md is the normative functional target; current code, tests and workflow results establish implementation status. Never infer completion from documentation, issue descriptions or historical assistant summaries.
+
+### Execution and agent behavior
+- Keep web, CLI/TUI and native clients on one semantic runtime; do not duplicate orchestration or permission policy in clients.
+- User-authored and generated agents must be reusable, validated, scoped and inspectable. Agent instructions do not grant privileges.
+- Bound team size, nested generation, retries, re-planning and resource use. Preserve cancellation and explicit terminal states.
+- Treat model output, retrieved content and MCP/tool output as untrusted; validate at runtime and authorize every tool invocation.
+- Preserve evidence, artifact and task provenance. Distinguish source retrieval, claims, verification and synthesis.
+- Keep conversation history, session state, durable memory, profiles, workflow definitions, artifacts and credentials separate.
+- Update the relevant spec and component documentation when decisions or behavior change.
+
+### Validation and delivery
+Inspect live GitHub state and the actual changed files before relying on historical summaries. Run focused tests and all applicable regression, type, lint, Rust and security checks. CI must run on the exact candidate commit. Do not weaken a required gate to make a change appear green. Preserve history; never force-push or rewrite shared history. Use pull requests and the canonical integration branch specified by live repository policy. Confirm CI, merge and branch-protection state directly before reporting success.
+
+Use root TEAM.md for role order, independent verification and handoff requirements. If a requirement cannot be implemented or verified, record it as blocked or incomplete with evidence rather than inventing success.
