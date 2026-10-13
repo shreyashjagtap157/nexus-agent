@@ -52,3 +52,10 @@ Research source policy is enforced before worker tool construction. In `user_onl
 Dynamic worker tools are permission-checked against the actual worker-local tool catalog. This prevents dynamically added research, MCP or skill tools from being misclassified because they are absent from the parent runtime's original tool list.
 
 Provider routing supports ordered fallbacks and also fails over during provider initialization when the selected primary cannot be constructed.
+
+
+## Required execution contract
+
+For every run, resolve the user goal into deliverables, constraints and acceptance criteria before scheduling. Validate the dependency graph before dispatch; unknown dependencies and cycles must fail explicitly. Execute only ready tasks, respect configured concurrency and tool permissions, and persist lifecycle transitions. Tool calls and inter-agent transfers must have observable outcomes and correlation to the task/agent.
+
+Retries and re-planning must have explicit budgets and stop conditions. Cancellation must stop new dispatch and propagate to active work where supported. Finalization requires checking the requested deliverable against its acceptance criteria; unresolved or unverified results must be reported as such. The full normative behavior is specified in docs/PRODUCT_SPECIFICATION.md.
