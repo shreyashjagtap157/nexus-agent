@@ -48,3 +48,21 @@ def test_agent_generate_route_initializes_provider_for_local_request(tmp_path: P
     payload = response.json()
     assert payload["agents"][0]["id"] == "generated-reviewer"
     assert (tmp_path / ".nexus-agent" / "agents" / "generated-reviewer.md").exists()
+
+def test_agent_generate_rejects_missing_client_address(tmp_path: Path, monkeypatch):
+    app = FastAPI()
+    state = _State(workspace=str(tmp_path), config={"providers": {"active": "local"}}, engine=_Provider())
+    register_agent_routes(app, state)
+    monkeypatch.setattr(
+        "nexus_agent.agents.web_routes.AgentGenerator.generate",
+        lambda self, request, max_agents=6: [],
+    )
+
+    client = TestClient(app, client=None)
+    response = client.post(
+        "/api/agents/generate",
+        json={"request": "Create a reviewer", "max_agents": 1, "scope": "workspace"},
+    )
+
+    assert response.status_code == 403
+
