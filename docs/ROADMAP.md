@@ -242,6 +242,9 @@ The gates above define qualification order. This section maps them to current so
 
 **Exit tests**
 - DAG success/failure/cycle/missing-dependency cases.
+- Strict MessagePack mode is asserted at startup and in CI; an unapproved type in checkpoint data cannot import or instantiate arbitrary Python code.
+- Checkpoint read/resume/stream access is owner-scoped; changing a thread/checkpoint ID cannot cross tenant/run boundaries.
+- Current TeamRuntime and LangGraph adapter produce compatible outcomes on shared golden fixtures; only one scheduler can claim a task.
 - Worker crash, lease expiry, hung subprocess, partial result, repeated delivery and resume-after-restart.
 - Cancellation terminates cancellable work and records non-cancellable side effects.
 - A generated agent cannot grant itself shell/write/network/credential access.
