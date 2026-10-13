@@ -962,9 +962,7 @@ def start_gui_server(
         except ValueError:
             address = None
         family = socket.AF_INET6 if isinstance(address, ipaddress.IPv6Address) else socket.AF_INET
-        bind_address = (
-            (bind_host, bind_port, 0, 0) if family == socket.AF_INET6 else (bind_host, bind_port)
-        )
+        bind_address = (bind_host, bind_port, 0, 0) if family == socket.AF_INET6 else (bind_host, bind_port)
         with socket.socket(family, socket.SOCK_STREAM) as sock:
             sock.bind(bind_address)
     except OSError:
