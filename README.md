@@ -473,10 +473,14 @@ nexus gui
 
 ### Native clients
 
+The Rust CLI/TUI and desktop client are development/preview surfaces over the shared Python runtime. During development, launch them from source:
+
 ```bash
 cargo run --manifest-path nexus-rs/Cargo.toml
 cargo run --manifest-path nexus-desktop/Cargo.toml
 ```
+
+**Packaging note:** the current Python package and Rust Cargo project both use the executable name `nexus`. Do not install both into the same PATH under that name yet. Keep the Python CLI canonical and use a distinct Rust preview executable until the Rust command set, backend protocol, install/upgrade behavior and compatibility route have passed the native-client qualification gate.
 
 ---
 
