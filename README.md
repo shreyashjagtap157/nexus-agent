@@ -23,7 +23,7 @@ It supports:
 - evidence-first research with source/claim verification
 - scoped persistent memory and explicit runtime storage boundaries
 
-The active development version is **0.3.0-alpha.4**. This is an unreleased prerelease and is not a stable API commitment.
+The active development version is **0.3.0-alpha.5**. This is an unreleased prerelease and is not a stable API commitment.
 
 ---
 
@@ -525,7 +525,7 @@ The GitHub validation surface includes:
 - CodeQL and dependency security checks
 - automated dependency update pull requests through Dependabot
 
-The expected GitHub-side protection policy for main is documented in [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md). The policy requires pull-request review, Code Owner review, required status checks, conversation resolution, no force-pushes, and administrator enforcement.
+The intended GitHub-side protection policy for main is documented in [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md). Documentation is not proof that GitHub enforcement is active; verify the live repository protection settings and required-check runs before claiming the branch is protected.
 
 All release tags are validated against main history before release publication. Release artifacts are built and provenance-attested in GitHub Actions.
 
@@ -541,7 +541,7 @@ The repository-root `VERSION` file is canonical. Python, Rust, configuration and
 Current snapshot:
 
 ```
-0.3.0-alpha.4
+0.3.0-alpha.5
 ```
 
 Development sequence:
@@ -586,6 +586,9 @@ scripts/               Release/versioning utilities
 
 | Document | Purpose |
 |---|---|
+| [docs/PRODUCT_SPECIFICATION.md](docs/PRODUCT_SPECIFICATION.md) | Normative product requirements and acceptance gates |
+| [docs/LANGUAGE_DECISION.md](docs/LANGUAGE_DECISION.md) | Independent language/runtime assessment |
+| [TEAM.md](TEAM.md) | Team operating model and agent handoffs |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime architecture and data flow |
 | [docs/API.md](docs/API.md) | HTTP/MCP/API surfaces |
 | [docs/AGENTS.md](docs/AGENTS.md) | Reusable and generated agents |
