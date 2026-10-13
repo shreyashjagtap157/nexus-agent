@@ -1,6 +1,6 @@
 # NexusAgent Execution Roadmap
 
-> **Current baseline:** 0.3.0-alpha.4
+> **Current baseline:** 0.3.0-alpha.5
 > **Status:** Active hardening and release qualification
 > **Canonical integration branch:** `main`
 
@@ -96,7 +96,7 @@ Historical audits and planning documents must identify their snapshot date and m
 
 ## Release progression
 
-The current snapshot is `0.3.0-alpha.4` and remains unreleased.
+The current snapshot is `0.3.0-alpha.5` and remains unreleased.
 
 The next release decision should be based on current CI/security evidence and end-to-end qualification, not on elapsed time or historical task completion percentages.
 
@@ -114,3 +114,10 @@ After alpha stabilization, larger initiatives can be considered without treating
 - reproducible build and benchmarking infrastructure
 
 These are subordinate to correctness, security, compatibility and maintainability of the existing platform.
+
+
+## Normative target and qualification sequence
+
+The target product requirements are defined by docs/PRODUCT_SPECIFICATION.md; the independent implementation-language assessment is docs/LANGUAGE_DECISION.md; team responsibilities and handoffs are defined in TEAM.md. These documents describe intended behavior and must not be read as evidence that the implementation already satisfies it.
+
+Prioritize qualification in this order: (1) establish the live repository/CI/governance baseline; (2) prove shared runtime and client parity with real end-to-end tasks; (3) qualify providers, tools and permissions; (4) qualify generated agents, dependency-aware orchestration and bounded recovery; (5) qualify research modes, evidence integrity, memory scopes and session recovery; (6) reconcile UI, README and component docs with behavior; (7) complete security, release and repository governance gates. Each phase must record exact commits, tests, CI runs, failures and remaining gaps. Do not claim alpha readiness from stale audits or partial checks.
