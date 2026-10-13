@@ -18,7 +18,6 @@ from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
 from nexus_agent.storage.layout import StorageLayout
-from nexus_agent.utils.fs import iter_files
 from nexus_agent.workflows import WorkflowRegistry
 
 from .control import control as control_team_request
@@ -432,9 +431,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         root = _artifact_root(state_manager, team_id)
         if not root.exists():
             return {"artifacts": []}
-        artifacts = []
-        # Performance optimization: use fast iter_files (os.scandir wrapper) to avoid OOM from rglob
-        for path in iter_files(root):
+        # Keep traversal lazy: sorting root.rglob("*") materializes directories as well as files.
+        # Retain the original path as the sort key so symlink resolution cannot change ordering.
+        artifacts: list[tuple[Path, dict[str, Any]]] = []
+        for path in root.rglob("*"):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
@@ -442,15 +442,17 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 continue
             if resolved.is_file():
                 artifacts.append(
-                    {
-                        "name": str(resolved.relative_to(root)),
-                        "size": resolved.stat().st_size,
-                        "path": str(resolved),
-                    }
+                    (
+                        path,
+                        {
+                            "name": str(resolved.relative_to(root)),
+                            "size": resolved.stat().st_size,
+                            "path": str(resolved),
+                        },
+                    )
                 )
-        # Ensure consistent ordering as original behavior by sorting final list of dicts explicitly by path string
-        artifacts.sort(key=lambda x: x["path"])
-        return {"team_id": team_id, "artifacts": artifacts}
+        artifacts.sort(key=lambda item: item[0])
+        return {"team_id": team_id, "artifacts": [item for _, item in artifacts]}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
     async def download_team_artifact(request: Request, team_id: str, artifact_path: str):
