@@ -127,10 +127,8 @@ def test_sensitive_guards_fail_closed_when_client_address_is_missing(guard):
     "host",
     (
         "127.0.0.1",
-        "127.0.0.2",
         "::1",
         "localhost",
-        "localhost.",
     ),
 )
 def test_gui_bind_policy_accepts_only_loopback_targets(host):
@@ -141,9 +139,11 @@ def test_gui_bind_policy_accepts_only_loopback_targets(host):
     "host",
     (
         "0.0.0.0",
+        "127.0.0.2",
         "192.168.1.20",
         "10.0.0.4",
         "::",
+        "localhost.",
         "2001:db8::1",
         "attacker.example",
         "",
