@@ -196,6 +196,8 @@ The gates above define qualification order. This section maps them to current so
 - src/nexus_agent/gui/server.py and the route registrars in agents, team, MCP, memory, audit and research: centralize principal resolution and enforce policy before data access.
 - src/nexus_agent/storage/layout.py, src/nexus_agent/session/manager.py, src/nexus_agent/team/store.py and src/nexus_agent/memory/scoped.py: make ownership and run context explicit; do not assume existing filesystem scopes equal tenants.
 
+**Priority-zero session-binding regression:** In src/nexus_agent/gui/server.py, the WebSocket handler receives a session ID and writes it to the global StateManager, while src/nexus_agent/session/manager.py persists messages and titles using the manager's separate mutable _active_session_id. Treat this as a concrete cross-session consistency risk to pin with a regression test before refactoring: interleave two session connections and prove each user/assistant message, title, checkpoint and file-change record is attached to the correct session. Fix by passing an authorized session ID explicitly to session-service operations rather than changing shared active-session state per request.
+
 **Required acceptance tests**
 - No principal, expired session, revoked session and invalid/rotated session fail closed on every protected operation.
 - Tenant/user A cannot list, read, update, delete, download, export, search, stream, replay, cancel or resume tenant/user B data by guessing IDs or changing body/query/header values.
