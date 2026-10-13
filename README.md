@@ -586,7 +586,8 @@ scripts/               Release/versioning utilities
 
 | Document | Purpose |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime architecture and data flow |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime architecture, language allocation and exhaustive implementation blueprint |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Sequential qualification gates, work packages and acceptance tests |
 | [docs/API.md](docs/API.md) | HTTP/MCP/API surfaces |
 | [docs/AGENTS.md](docs/AGENTS.md) | Reusable and generated agents |
 | [docs/MULTI_AGENT_PLATFORM.md](docs/MULTI_AGENT_PLATFORM.md) | Team architecture and coordination |
@@ -631,14 +632,17 @@ The web application, CLI/TUI and native desktop client are separate user experie
 
 ### Language and implementation recommendation
 
-The language decision is based on product requirements, ecosystem support and operational trade-offs—not on which languages are already present in this repository:
+The choice is requirements-first, and each language has one clear responsibility:
 
-- **Python is the recommended primary language for the agent/orchestration and research runtime.** It has the strongest practical fit for rapidly evolving model/provider integrations, research/data processing, local inference bindings and agent workflows. Its async I/O model is suitable for coordinating network- and tool-bound work when resource limits and worker isolation are designed correctly.
-- **TypeScript is recommended for the web frontend** and may be used for browser-facing contracts and UI tooling.
-- **Rust is recommended for native desktop/CLI components and narrowly scoped system-sensitive components** where native packaging, predictable resource use or memory safety justify it. It should not duplicate the agent planner or provider orchestration.
-- Use language-neutral, versioned API/event schemas between components. Do not split the core across languages without a demonstrated boundary and contract tests.
+- **Python — authoritative backend runtime.** Use for the agent loop, planner/scheduler, tool and MCP gateway, provider adapters, research/evidence, memory/domain services and FastAPI API. Keep this as the single implementation of orchestration, provider routing and policy. Bound concurrency and isolate risky subprocesses; do not assume async syntax itself provides resource safety.
+- **TypeScript + React + Vite — web frontend target.** Use for the interactive workflow graph, agent/profile editor, run timeline, messages, tool/approval state, reports, artifacts and responsive/accessibility behavior. The frontend is currently static HTML/CSS/JavaScript; migrate it screen by screen only after API/event contracts are stable. Generate client types from OpenAPI instead of copying backend models by hand.
+- **Rust — existing native CLI/TUI and desktop client.** Use for terminal rendering, keyboard/input handling, native windows, process supervision, packaging and selected system-boundary work. Keep planning, permissions, provider semantics and durable task state in the shared Python runtime; do not create a second backend.
+- **SQL/storage — SQLite for local/offline mode; PostgreSQL as the shared multi-user source of truth.** Preserve current local data through migrations and repository adapters. Shared mode needs explicit tenant ownership, transaction/recovery semantics and credential references. Private artifact storage is behind a storage interface.
+- **Language-neutral contracts** — versioned API schemas, stable domain statuses/errors and durable event envelopes. Existing unversioned local APIs should be migrated through compatibility adapters.
 
-If one language had to be selected for the core product alone, select Python. This is not a recommendation to implement every client in Python or to put all privileged operations in the same process. See [Architecture](docs/ARCHITECTURE.md) and [Hybrid Architecture](docs/HYBRID_ARCHITECTURE.md).
+Do not add Go, a second TypeScript backend or a Rust rewrite of the agent core. Rust inference dispatch is not a default direction: the existing Python local engine already calls native inference code, and any alternate inference implementation must first beat a reproducible end-to-end benchmark while preserving behavior.
+
+The live repository does **not** yet have the target TypeScript build/test pipeline or a qualified authenticated multi-user model. Non-loopback GUI/API binding remains blocked until Gate 2 passes. See the [exhaustive implementation blueprint](docs/ARCHITECTURE.md#exhaustive-implementation-blueprint-authoritative-review-2026-10-13), [qualification roadmap](docs/ROADMAP.md), [storage and tenant contract](docs/STORAGE_AND_GOVERNANCE.md) and [historical hybrid design with superseding decision](docs/HYBRID_ARCHITECTURE.md).
 
 ### Delivery and evidence
 
