@@ -1,8 +1,12 @@
+> **Authoritative product decision update — 2026-10-13:** NexusAgent must support local/personal and authenticated multi-user deployment from the initial architecture. Do not defer tenant-aware identity, authorization, storage, credential isolation, quotas, auditability or recovery design. Remote exposure remains gated on qualification of those controls. Agents operate autonomously within configured permissions; the runtime enforces those permissions. The language recommendation is requirements-first: Python core, TypeScript web UI, Rust native/system-sensitive components where justified. Work proceeds through sequential qualification gates, each supported by evidence tied to the exact candidate commit.
+>
+> **GitHub governance discrepancy:** GitHub currently reports `master` as the default branch; `main` also exists. The intended canonical branch and protection configuration must be reconciled as an explicit migration, not assumed from this document.
+
 # NexusAgent Execution Roadmap
 
 > **Current baseline:** 0.3.0-alpha.4
 > **Status:** Active hardening and release qualification
-> **Canonical integration branch:** `main`
+> **Intended canonical integration branch:** `main` (live GitHub default is currently `master`; reconcile the migration before relying on branch policy)
 
 This roadmap supersedes the original 0.2.x planning document. Historical implementation estimates from that document are no longer authoritative; the repository state, tests, CI workflows and current architecture documentation are authoritative.
 
