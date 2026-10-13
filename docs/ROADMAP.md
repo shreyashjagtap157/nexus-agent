@@ -4,7 +4,7 @@
 
 # NexusAgent Execution Roadmap
 
-> **Current baseline:** 0.3.0-alpha.4
+> **Current baseline:** 0.3.0-alpha.5
 > **Status:** Active hardening and release qualification
 > **Intended canonical integration branch:** `main` (live GitHub default is currently `master`; reconcile the migration before relying on branch policy)
 
@@ -27,7 +27,7 @@ The unified NexusAgent platform currently includes:
 - cross-platform CI, lint/type validation, native compilation, version contracts and security gates
 - reproducible release validation and provenance-oriented packaging workflow
 
-## Alpha.4 hardening priorities
+## Alpha.5 hardening priorities
 
 ### 1. Authoritative CI qualification
 
@@ -100,7 +100,7 @@ Historical audits and planning documents must identify their snapshot date and m
 
 ## Release progression
 
-The current snapshot is `0.3.0-alpha.4` and remains unreleased.
+The current snapshot is `0.3.0-alpha.5` and remains unreleased.
 
 The next release decision should be based on current CI/security evidence and end-to-end qualification, not on elapsed time or historical task completion percentages.
 
