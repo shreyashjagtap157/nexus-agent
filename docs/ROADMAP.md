@@ -45,3 +45,10 @@ A phase is complete only when its acceptance criteria can be traced to actual te
 
 Older audit and implementation documents remain as historical reference. Their snapshots, estimates, file counts and feature-status assertions must not override current main, current tests or the detailed completion guide.
 
+
+
+## Normative target and qualification sequence
+
+The target product requirements are defined by docs/PRODUCT_SPECIFICATION.md; the independent implementation-language assessment is docs/LANGUAGE_DECISION.md; team responsibilities and handoffs are defined in TEAM.md. These documents describe intended behavior and must not be read as evidence that the implementation already satisfies it.
+
+Prioritize qualification in this order: (1) establish the live repository/CI/governance baseline; (2) prove shared runtime and client parity with real end-to-end tasks; (3) qualify providers, tools and permissions; (4) qualify generated agents, dependency-aware orchestration and bounded recovery; (5) qualify research modes, evidence integrity, memory scopes and session recovery; (6) reconcile UI, README and component docs with behavior; (7) complete security, release and repository governance gates. Each phase must record exact commits, tests, CI runs, failures and remaining gaps. Do not claim alpha readiness from stale audits or partial checks.
