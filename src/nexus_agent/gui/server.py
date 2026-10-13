@@ -914,7 +914,7 @@ def start_gui_server(
         data_dir=data_dir,
     )
     srv_config = config.get("gui", {})
-    bind_host = host or srv_config.get("host", "127.0.0.1")
+    bind_host = str(host or srv_config.get("host", "127.0.0.1")).strip().lower().rstrip(".")
     _require_loopback_bind_host(bind_host)
 
     state_manager.set("workspace", workspace_path)
