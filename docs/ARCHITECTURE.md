@@ -338,6 +338,8 @@ Runtime changes, research behavior, native clients and release infrastructure mu
 
 Branch-protection policy is documented in .github/BRANCH_PROTECTION.md; documentation alone does not enforce GitHub settings.
 
+**Runtime exposure guard (2026-10-13):** The GUI/API startup path rejects non-loopback bind addresses before model/runtime initialization while authenticated identity and tenant isolation are unqualified. Browser-originated API requests must match the exact loopback origin, and WebSocket origin checks reject foreign origins. Loopback and origin checks are local-mode/CSRF safeguards, not proof of authenticated multi-user authorization. Do not re-enable LAN/shared binds until Gate 2 passes its ownership, secret isolation, worker authorization and cross-tenant negative-test requirements.
+
 
 ## Authoritative target architecture and language decision (2026-10-13)
 

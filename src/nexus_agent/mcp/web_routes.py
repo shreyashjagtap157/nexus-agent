@@ -48,10 +48,7 @@ def register_mcp_routes(app: Any, state_manager: Any) -> None:
 
     @app.post("/api/mcp/validate")
     async def mcp_validate(request: Request):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(
-                status_code=403, detail="MCP configuration is restricted to local clients."
-            )
+        _require_local(request)
         config = load_config(workspace=Path(state_manager.get("workspace") or Path.cwd()))
         servers = config.get("mcp", {}).get("servers", [])
         results = []
@@ -76,10 +73,7 @@ def register_mcp_routes(app: Any, state_manager: Any) -> None:
 
     @app.put("/api/mcp")
     async def mcp_save(request: Request, servers: list[MCPServerDefinition]):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(
-                status_code=403, detail="MCP configuration is restricted to local clients."
-            )
+        _require_local(request)
         payload = [server.model_dump() for server in servers]
         plaintext_secret_keys = {
             server.name: _secret_env_keys(server.env)
