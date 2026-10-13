@@ -701,6 +701,6 @@ Do not trade away permission checks, ownership predicates, deterministic evidenc
 - Rust ownership and resource safety: https://doc.rust-lang.org/stable/book/ch04-00-understanding-ownership.html
 - PostgreSQL row-level security: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
 - OAuth 2.0 security best current practice: https://www.rfc-editor.org/rfc/rfc9700.html
-- Model Context Protocol authorization: https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
+- Model Context Protocol authorization: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
 - OpenTelemetry: https://opentelemetry.io/docs/
 
