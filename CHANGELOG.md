@@ -6,7 +6,10 @@ Release precedence and compatibility are governed by Semantic Versioning.
 
 ## [Unreleased]
 
-Changes not yet assigned to a release.
+- Define the normative product specification for shared-runtime clients, generated agents, tool authorization, research modes, scoped memory, observability, persistence and acceptance gates.
+- Record an independent language assessment recommending Python for central AI/research orchestration, TypeScript for the web frontend and Rust for justified native/security-sensitive boundaries.
+- Add the team operating model and evidence-first agent handoff rules; align README, architecture, orchestration, roadmap and agent guidance.
+- Record the live main-branch protection gap observed on 2026-10-13.
 
 ## [0.3.0-alpha.5] - 2026-10-09
 
