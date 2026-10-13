@@ -9,6 +9,7 @@ import nexus_agent.gui.server as gui_server
 from nexus_agent.agents.web_routes import _require_local as require_agent_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
 from nexus_agent.gui.server import (
+    _allowed_local_http_origin,
     _allowed_websocket_origin,
     _format_gui_url,
     _require_local_client,
@@ -196,4 +197,31 @@ def test_mcp_mutation_routes_reject_missing_client_address(
 )
 def test_gui_url_formats_loopback_addresses(host, expected):
     assert _format_gui_url(host, 7860) == expected
+
+@pytest.mark.parametrize(
+    ("headers", "scheme", "allowed"),
+    (
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.1:7860"}, "http", True),
+        ({"host": "[::1]:7860", "origin": "http://[::1]:7860"}, "http", True),
+        ({"host": "localhost:7860", "origin": "http://localhost:7860"}, "http", True),
+        ({"host": "127.0.0.1:7860"}, "http", True),
+        ({"host": "127.0.0.1:7860", "origin": "https://127.0.0.1:7860"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.2:7860"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://evil.example:7860"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.1:3000"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.1:7860/path"}, "http", False),
+    ),
+)
+def test_http_origin_policy(headers, scheme, allowed):
+    assert _allowed_local_http_origin(headers, scheme) is allowed
+
+
+def test_api_middleware_rejects_cross_origin_request():
+    client = TestClient(app, client=("127.0.0.1", 12345))
+    response = client.get(
+        "/api/status",
+        headers={"Origin": "https://attacker.example"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Cross-origin GUI/API requests are blocked."
 
