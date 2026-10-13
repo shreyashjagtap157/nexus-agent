@@ -44,3 +44,16 @@ Never commit API keys, OAuth tokens, passwords or other secrets.
 ## Memory Workbench
 
 The local Memory Workbench at `/memory.html` exposes scoped persistent memory without requiring direct database manipulation. The same scopes are available through the scoped memory tool and web API.
+
+
+## Tenant-aware storage requirements (2026-10-13)
+
+Local/personal and authenticated multi-user operation are both initial requirements. Storage design must make ownership explicit for users, tenants, workspaces, sessions, runs, task graphs, messages, events, artifacts, memory and provider credential references.
+
+- Enforce ownership in the service/data-access layer for every lookup and mutation; random or guessed IDs are not authorization.
+- Use transaction boundaries and concurrency control appropriate for simultaneous users and workers. SQLite may remain suitable for local mode, but multi-user deployment must not assume that a single-user SQLite file is a sufficient shared production database without validated concurrency, migration, backup and recovery behavior.
+- Partition memory by declared scope (global, user, workspace, project and session) and reject unauthorized cross-scope access.
+- Apply per-tenant limits for concurrent tasks, storage, artifacts, provider spend and tool runtime.
+- Keep secrets outside ordinary configuration and artifacts; use tenant-scoped secret references and safe rotation/revocation.
+- Record auditable mutations without storing secrets or unrestricted prompt/tool payloads by default.
+- Test concurrent writes, interrupted transactions, cancellation, migration, backup/restore and tenant isolation with negative tests.

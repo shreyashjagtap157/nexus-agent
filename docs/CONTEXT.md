@@ -1,3 +1,5 @@
+> **Supersession notice (2026-10-13):** This file contains historical context captured on 2026-05-31. Its claims about phase completion, production readiness, paths, language constraints and feature status are not authoritative for the current project. Use the live repository, current tests/workflows and the current requirements in `docs/ARCHITECTURE.md`, `docs/MULTI_AGENT_PLATFORM.md`, `docs/ORCHESTRATION.md` and `docs/ROADMAP.md`. The current target includes local and authenticated multi-user operation from the initial architecture, autonomous agents within enforced permissions, requirements-first language selection (Python core, TypeScript web, Rust native/specific system boundaries), and sequential evidence-based qualification gates. Do not treat this historical snapshot as proof of implementation status.
+
 # NexusAgent — Project Context & Continuation Guide
 
 > **Last Updated:** 2026-05-31

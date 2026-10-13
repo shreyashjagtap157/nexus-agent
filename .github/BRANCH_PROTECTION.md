@@ -1,6 +1,8 @@
+> **Live-state notice (checked 2026-10-13):** GitHub reports `master` as the default branch and also exposes a `main` branch. The branch listing reports both as unprotected, and the repository rulesets endpoint returned an empty list. The integration could not read the branch-protection endpoint (HTTP 403), so the complete settings require verification by a repository administrator. This file describes intended policy, not proof that the policy is active. The current CI and Security workflows only trigger for `main`; this PR adds temporary `master` triggers as well, but GitHub evaluates pull-request workflow triggers from the base branch, so a PR targeting `master` may not run those updated definitions until they are present on the base. Resolve the default-branch migration before applying required checks so PRs cannot split between `master` and `main`.
+
 # Main branch governance
 
-main is the canonical integration branch for NexusAgent.
+`main` is the intended canonical integration branch for NexusAgent after the documented default-branch migration is completed.
 
 ## Required repository settings
 

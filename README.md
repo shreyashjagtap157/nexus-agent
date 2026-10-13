@@ -4,10 +4,10 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/ci.yml)
 [![Security](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml/badge.svg)](https://github.com/shreyashjagtap157/nexus-agent/actions/workflows/security.yml)
-[![Version](https://img.shields.io/badge/version-0.3.0--alpha.4-orange.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-0.3.0--alpha.5-orange.svg)](VERSION)
 [![Versioning Policy](https://img.shields.io/badge/versioning-SemVer-8A2BE2.svg)](docs/VERSIONING.md)
 
-NexusAgent is a **local-first, multi-agent development and research workbench** designed to provide the capabilities users expect from modern agentic coding tools while allowing multiple professional agents to work together on one task.
+NexusAgent is a **local-first, general-purpose multi-agent platform** for software development, research, analysis and automation. It combines user-configured and dynamically generated specialist agents over a shared runtime, and is designed for both personal local use and authenticated multi-user deployment.
 
 It supports:
 
@@ -23,7 +23,7 @@ It supports:
 - evidence-first research with source/claim verification
 - scoped persistent memory and explicit runtime storage boundaries
 
-The active development version is **0.3.0-alpha.4**. This is an unreleased prerelease and is not a stable API commitment.
+The active development version is **0.3.0-alpha.5**. This is an unreleased prerelease and is not a stable API commitment.
 
 ---
 
@@ -541,7 +541,7 @@ The repository-root `VERSION` file is canonical. Python, Rust, configuration and
 Current snapshot:
 
 ```
-0.3.0-alpha.4
+0.3.0-alpha.5
 ```
 
 Development sequence:
@@ -610,3 +610,34 @@ Security-sensitive capabilities should be explicitly reviewed before enabling au
 ## License
 
 NexusAgent is released under the MIT License. See [LICENSE](LICENSE).
+
+
+## Authoritative product direction (2026-10-13)
+
+NexusAgent is a general-purpose multi-agent platform with first-class research and software-development workflows. It is not limited to a research-only workbench or a single-user localhost application. The product must support both local/personal operation and authenticated multi-user operation from the initial architecture.
+
+The web application, CLI/TUI and native desktop client are separate user experiences over shared runtime contracts. They must not independently implement orchestration, authorization, provider routing, durable task state or agent execution.
+
+### Multi-user and local deployment
+
+- Local single-user mode remains a first-class deployment.
+- Authenticated multi-user mode is in scope from the beginning; it is not a future architectural rewrite.
+- Multi-user mode must enforce authentication, authorization, tenant/workspace isolation, per-user or per-tenant credential boundaries, auditability, resource limits and safe session/artifact access before it is exposed.
+- Agents operate autonomously within the effective configured permissions. Approval is not required for every action, but policy enforcement is mandatory and cannot be overridden by agent-generated instructions.
+- The user can author/configure agents and ask NexusAgent to generate reusable agent profiles. The planner may generate missing specialists when needed, subject to validation, bounded budgets and policy.
+- Research modes remain explicit: `user_only`, `hybrid`, `autonomous`; collection modes remain `single`, `timed`, `until_saturation`, `continuous`. These settings must affect runtime behavior, not only prompts or UI controls.
+
+### Language and implementation recommendation
+
+The language decision is based on product requirements, ecosystem support and operational trade-offs—not on which languages are already present in this repository:
+
+- **Python is the recommended primary language for the agent/orchestration and research runtime.** It has the strongest practical fit for rapidly evolving model/provider integrations, research/data processing, local inference bindings and agent workflows. Its async I/O model is suitable for coordinating network- and tool-bound work when resource limits and worker isolation are designed correctly.
+- **TypeScript is recommended for the web frontend** and may be used for browser-facing contracts and UI tooling.
+- **Rust is recommended for native desktop/CLI components and narrowly scoped system-sensitive components** where native packaging, predictable resource use or memory safety justify it. It should not duplicate the agent planner or provider orchestration.
+- Use language-neutral, versioned API/event schemas between components. Do not split the core across languages without a demonstrated boundary and contract tests.
+
+If one language had to be selected for the core product alone, select Python. This is not a recommendation to implement every client in Python or to put all privileged operations in the same process. See [Architecture](docs/ARCHITECTURE.md) and [Hybrid Architecture](docs/HYBRID_ARCHITECTURE.md).
+
+### Delivery and evidence
+
+Implementation proceeds through sequential qualification gates. A feature is not complete because it is described in documentation, present in a UI, or merged without relevant checks. Record the exact test/workflow evidence, limitations and next gate. Audit current GitHub state before relying on historical snapshots. The repository currently reports `master` as its default branch while `main` also exists; reconcile that migration deliberately before treating branch-governance documentation as enforced policy.

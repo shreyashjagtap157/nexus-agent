@@ -52,3 +52,32 @@ Research source policy is enforced before worker tool construction. In `user_onl
 Dynamic worker tools are permission-checked against the actual worker-local tool catalog. This prevents dynamically added research, MCP or skill tools from being misclassified because they are absent from the parent runtime's original tool list.
 
 Provider routing supports ordered fallbacks and also fails over during provider initialization when the selected primary cannot be constructed.
+
+
+## Qualification and policy contract (2026-10-13)
+
+### Planning and execution bounds
+
+Planning is allowed to select saved profiles and generate missing specialists, but generation and delegation must have explicit limits for agent count, depth, time, token/cost, parallelism, tool calls and retries. Detect duplicate roles and cycles. Use a deterministic terminal outcome when the plan is complete or the budget is exhausted; do not continue indefinitely because an agent asks to re-plan.
+
+Every run owns its mutable planner state, task graph, cancellation token, budget counters and event stream. Shared data between workers must be explicit, versioned and concurrency-safe.
+
+### Autonomy and permissions
+
+The default product policy is autonomous execution within configured permissions. The runtime resolves effective permissions for each tool invocation using the authenticated actor, tenant/workspace, profile grants, tool risk and current policy. Prompts and generated agent profiles are untrusted inputs and cannot grant permission. High-impact actions may require approval according to configured policy; routine allowed work should not be blocked by unnecessary approval prompts.
+
+### Multi-user execution
+
+Task, team, worker, artifact, memory and event IDs are not authorization. Every API, background job and storage query must enforce ownership. Use tenant-aware quotas for concurrent runs, provider spending, tool execution and artifact size. Cancellation and resume requests must be checked against run ownership.
+
+### Durable events and recovery
+
+Record state transitions and tool outcomes with stable event IDs and timestamps. Clients must be able to reconnect and recover a coherent view of the run from persisted state/event replay. Cancellation must be propagated; failed workers must not leave dependencies permanently pending. Retry only transient/retryable failures within a bounded budget, and retain the final reason when a run cannot complete.
+
+### Research stopping conditions
+
+- `user_only`: never autonomously discover or fetch unapproved external sources.
+- `timed`: enforce the configured wall-clock deadline even if workers are blocked.
+- `until_saturation`: use explicit measurable marginal-yield/novelty criteria and a hard maximum budget.
+- `continuous`: require cancellation, retention and resource-limit policies.
+- Research depth must alter concrete collection/verification policies rather than only changing a prompt.
