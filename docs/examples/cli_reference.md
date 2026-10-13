@@ -50,7 +50,7 @@ Launch the web-based GUI dashboard.
 ```bash
 nexus gui                   # Default port 7860
 nexus gui --port 9000     # Custom port
-nexus gui --host 0.0.0.0  # Bind to all interfaces
+# Non-loopback binds (including 0.0.0.0) are refused until Gate 2 is qualified
 nexus gui --no-browser    # Don't auto-open browser
 nexus gui --workspace /path
 nexus gui --provider openai
