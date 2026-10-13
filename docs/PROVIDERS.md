@@ -40,3 +40,12 @@ NIM credentials can come from NVIDIA_NIM_API_KEY or NexusAgent AuthStore.
 ## Provider Vault
 
 The local web Provider Vault at `/providers.html` manages non-secret model/endpoint configuration and local credential lifecycle. API keys are masked in UI responses and stored separately through AuthStore.
+
+
+## Multi-user provider and credential isolation (2026-10-13)
+
+Provider configuration and credentials must be distinct records with explicit ownership. A credential may belong to a user, a tenant/workspace, or a deliberately shared provider connection with an auditable grant. Never make one user's credentials available to another user by default, and never expose raw credentials in API responses, logs, agent profiles, prompts, tool results or exported artifacts.
+
+At request time, resolve the provider/model configuration and credential reference in the authenticated ownership context. Background jobs must retain a validated credential reference and recheck authorization rather than relying on an unscoped provider name or a client-supplied tenant identifier.
+
+Provider adapters must normalize timeouts, rate limits, authentication failures, unsupported capabilities and transient errors. Retries and fallbacks must respect run budgets and must not silently switch to a provider with different data-sharing or residency expectations. A custom endpoint must be validated against the applicable network/SSRF policy.

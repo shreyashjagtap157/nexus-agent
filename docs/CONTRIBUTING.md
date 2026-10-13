@@ -310,3 +310,20 @@ cargo check --manifest-path nexus-rs/Cargo.toml
 cargo fmt --manifest-path nexus-desktop/Cargo.toml -- --check
 cargo check --manifest-path nexus-desktop/Cargo.toml
 ```
+
+
+## Product decisions and qualification gates (2026-10-13)
+
+The authoritative target supports local/personal and authenticated multi-user operation from the initial architecture. Agents operate autonomously within configured permissions enforced by the runtime. User-authored and generated agent profiles, research modes, provider routing and shared web/CLI/native runtime contracts are product requirements; check the current architecture and platform specifications before proposing changes.
+
+For each change:
+1. Inspect the live source, relevant specifications, tests, workflow definitions and current GitHub state.
+2. Identify whether a statement is an implemented fact, a target requirement or historical context.
+3. Define acceptance criteria and tests before changing behavior.
+4. Keep ownership, tenant isolation and tool authorization enforced server-side.
+5. Run the focused tests and all relevant repository checks; validate the exact candidate commit in GitHub Actions.
+6. Update existing specifications and user-facing documentation when decisions or behavior change.
+7. Use a pull request and the repository's verified required checks. Do not assume branch protection is active because it is described in a Markdown file.
+8. Do not call a gate complete until evidence is attached to the exact candidate commit and known limitations are documented.
+
+The language decision is requirements-first: Python for the agent/orchestration/research core, TypeScript for the web frontend, and Rust for native or narrowly scoped system-sensitive components when justified. This decision does not mandate a wholesale rewrite; migrations require a documented benefit and compatibility tests.

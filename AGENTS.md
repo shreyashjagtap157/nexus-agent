@@ -154,3 +154,21 @@ Validation includes:
 The separate .github/workflows/security.yml workflow provides CodeQL, dependency auditing and dependency review.
 
 CI workflows are intentionally read-only and never push commits to protected integration branches.
+
+
+## Authoritative product constraints (2026-10-13)
+
+These requirements supersede stale or conflicting historical snapshots elsewhere in this file. Use the current source tree, current tests, current GitHub workflow runs and live repository settings as implementation evidence.
+
+- Product scope: general-purpose multi-agent development/research platform, not research-only.
+- Deployment scope: support local/personal use and authenticated multi-user use from the initial architecture. Multi-user exposure is blocked until authentication, authorization, tenant/workspace isolation, per-tenant secrets, resource controls and audit trails are tested.
+- Autonomy: agents run autonomously within configured effective permissions. The runtime—not the model prompt—enforces policy. Generated profiles cannot grant themselves capabilities.
+- Agents: support user-authored/configured profiles and validated dynamically generated profiles; let the planner add missing roles only within bounded agent, token, time, concurrency and retry budgets.
+- Shared runtime: web, CLI/TUI and desktop are clients of shared task, session, provider, tool, authorization and persistence contracts.
+- Research: preserve `user_only`, `hybrid`, `autonomous` source modes; `single`, `timed`, `until_saturation`, `continuous` collection modes; configurable depth, local sources, optional browser automation, evidence provenance and deterministic stopping rules.
+- Memory: explicitly isolate global, user, workspace, project and session scopes. Do not permit cross-tenant or cross-workspace reads/writes.
+- Tool execution: validate schemas; enforce permissions at execution time; bound time/resources; record outcomes; protect paths and network destinations; make cancellation and failures observable.
+- Delivery: work in sequential qualification gates. Each gate needs explicit acceptance criteria and reproducible evidence before the next dependent gate is considered complete. Do not declare completion from code presence or a green but stale/skipped workflow.
+- Repository-first: inspect the live tree, specs, tests, workflow definitions, PRs and GitHub state before making changes. Distinguish observed implementation from target requirements and historical claims.
+- Governance: the live repository currently reports `master` as default, with `main` also present. Do not assume the documented desired branch policy is active; resolve the default-branch migration and protection state explicitly.
+- Language decision: the product requirements independently favor Python for the agent/orchestration/research core, TypeScript for the web UI, and Rust for native/system-sensitive components where justified. Keep the core API and event contracts language-neutral; do not rewrite code solely to match this decision without an evidence-backed migration plan.

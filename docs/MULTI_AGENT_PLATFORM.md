@@ -164,6 +164,44 @@ Artifact-serving API routes resolve team artifact roots beneath the canonical ru
 Autonomous source capture also rejects credential-bearing URLs and common loopback, localhost, link-local, private, reserved and multicast IP targets to prevent research tools from becoming an SSRF primitive. Explicitly configured `user_only` sources remain under the user's explicit source policy.
 
 
-## API data boundary
+## API data boundary and deployment qualification
 
-Team control and persisted team-data endpoints are loopback-only. Remote clients are rejected from team history, status, messages, events, reports, artifacts, audit records, research exports and live team streams. This prevents the multi-agent runtime from becoming an unauthenticated remote data-exfiltration surface when the web service is exposed beyond localhost.
+**Current documented limitation:** team control and persisted team-data endpoints are described as loopback-only, and remote clients are rejected from team history, status, messages, events, reports, artifacts, audit records, research exports and live team streams. Treat this as a local-only safety boundary, not as evidence that authenticated multi-user operation is implemented.
+
+**Target requirement:** local/personal and authenticated multi-user deployments are both in scope from the initial architecture. Multi-user access must use authenticated identity, server-side tenant/workspace authorization, per-user/per-tenant secret and artifact boundaries, audit events, quotas and reconnect-safe run ownership. Loopback origin is not a user identity and must not be the sole authorization mechanism. Do not expose remote/shared access until these controls are implemented and pass negative cross-tenant tests. Preserve local-only restrictions until the authenticated path is qualified; do not weaken them merely to enable remote access.
+
+
+## Authoritative platform requirements (2026-10-13)
+
+### General-purpose scope and deployment
+
+The platform supports coding, research, analysis, planning, automation, document/artifact production and other task types through one shared runtime. Research is a first-class subsystem, not the product boundary. Both local/personal and authenticated multi-user deployment are required from the initial architecture.
+
+### User-defined and generated agents
+
+Users may author, configure, inspect, edit, persist, reuse and select agents. A user may also ask NexusAgent to generate a reusable profile from a natural-language role requirement. The planner may generate missing specialists when a task has a real capability gap. Generated profiles must pass schema and policy validation; generation must not request, expose or embed credentials.
+
+A profile describes role and requested capabilities. It does not grant permissions. Effective permissions are resolved by the runtime from user/tenant policy, workspace scope, configured grants and the current task. Agents operate autonomously within those permissions; approval is required only where the configured policy calls for it.
+
+### Bounded execution
+
+Every run must have configurable limits for total agents, generation depth, concurrency, wall-clock time, token/cost budget, tool calls, retries and artifact volume. Dependency cycles and unknown dependencies fail explicitly. A failed task must not trigger unbounded replanning. Cancellation must propagate to workers and child processes where supported.
+
+### Canonical task lifecycle
+
+Use an explicit, documented lifecycle covering planned, ready, running, waiting, blocked, failed, cancelled, completed and verification outcomes. The precise enum may be refined by implementation, but API, persisted state and clients must share one contract. Events must have stable IDs and identify the run, task, actor, tenant/workspace, timestamp and outcome.
+
+### Multi-user isolation
+
+All team, worker, message, artifact, event, session and memory access must enforce ownership on the server. Shared SQLite/workspace storage is suitable only where its locking, ownership and deployment constraints are satisfied; multi-user deployment requires a storage design that supports concurrent access, migrations, durable transactions and tenant isolation. Never assume that a loopback origin alone establishes user identity.
+
+### Research behavior
+
+Preserve these modes as behavioral contracts:
+- Source: `user_only`, `hybrid`, `autonomous`.
+- Collection: `single`, `timed`, `until_saturation`, `continuous`.
+- Depth: configurable from surface-level to extreme thoroughness, with depth affecting actual source breadth, verification, contradiction analysis and stopping rules.
+- Sources: user-supplied documents and authorized local directories; web/browser sources only as permitted by mode and policy.
+- Evidence: retain source provenance and snapshots where appropriate; distinguish source content, extracted claims, agent interpretations and verified conclusions.
+
+The UI must show real runtime events, not simulated activity. Users should be able to inspect role generation, task dependencies, peer messages, tool calls, transferred artifacts, retries, verification and final results.

@@ -676,3 +676,25 @@ nexus-agent/
 | Config format | TOML vs YAML vs JSON | **TOML** | Cleaner than YAML for terminal editing, native Rust serde support |
 | Python subprocess survival | One process vs pool | **Single process** | Agent is stateful; pooling adds complexity without benefit |
 | Inference dispatch | Always go through Python ACP vs direct Rust bindings | **Hybrid** | Phase 1-2: through Python. Phase 3+: optional direct Rust for local models |
+
+
+## Updated language decision — requirements-first (2026-10-13)
+
+The historical proposal above is not a binding instruction to split the entire product into Rust and Python processes or to place inference dispatch in Rust. The language choice below was evaluated from the product requirements independently of the current repository implementation.
+
+**Decision:** Python is the primary language for the agent/orchestration/research core; TypeScript is the web frontend language; Rust is reserved for native clients and specific system-sensitive components when justified. If only one language can be selected for the core, choose Python.
+
+Rationale:
+- Agent orchestration is dominated by rapidly evolving model/provider APIs, structured tool calling, research/data processing, and local-inference ecosystem integration. Python has the best overall fit for these requirements.
+- Python's `asyncio` supports concurrent network I/O, subprocesses, queues and synchronization; concurrency still requires bounded work queues, per-run state, tenant quotas and isolation.
+- TypeScript is a natural fit for the web UI and browser event handling; use shared versioned schemas rather than duplicating domain logic.
+- Rust provides memory safety and native distribution benefits for desktop/CLI and narrowly scoped privileged helpers. Keep it out of the core orchestration path unless measured performance, reliability or security requirements justify the additional IPC and maintenance boundary.
+- A polyglot architecture is justified by distinct client/runtime responsibilities, not by a desire to use more languages.
+
+### Deployment decision
+
+Local/personal and authenticated multi-user deployment are both initial product requirements. Multi-user support must be designed into identity, data ownership, authorization, provider secrets, artifacts, events, memory, quotas and recovery from the start. It is acceptable to gate public/remote exposure until those controls pass qualification; it is not acceptable to defer the underlying tenant-safe architecture.
+
+### Implementation constraint
+
+Do not rewrite existing modules solely to conform to this language recommendation. First map current responsibilities and contracts, identify verified gaps, and propose incremental migrations with compatibility tests. The target architecture must be language-neutral at client/API/event boundaries.

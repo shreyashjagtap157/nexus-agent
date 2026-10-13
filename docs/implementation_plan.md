@@ -1,3 +1,5 @@
+> **Current-plan notice (2026-10-13):** This file is a historical implementation snapshot and must not be used as the authoritative list of current work. Follow `docs/ROADMAP.md` and the authoritative requirements in `docs/ARCHITECTURE.md`, `docs/MULTI_AGENT_PLATFORM.md`, and `docs/ORCHESTRATION.md`. Current work proceeds through sequential qualification gates, with repository-first evidence and explicit acceptance criteria. The target includes local and authenticated multi-user operation from the initial architecture, autonomous agents within runtime-enforced permissions, and a requirements-first language decision. Historical phase labels, estimates, paths and completion claims below require revalidation against the live repository before reuse.
+
 # Nexus CLI — Complete Implementation Plan
 
 > **Date:** June 8, 2026
