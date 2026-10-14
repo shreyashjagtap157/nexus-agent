@@ -391,3 +391,5 @@ The detailed proposed principal, tenant, session, local-bootstrap and migration 
 ### Completion standard
 
 Architecture claims are targets until verified against code and tests. Each target capability needs traceable acceptance tests and workflow evidence. Any migration from existing code must preserve behavior through adapters/contracts, proceed gate by gate, and avoid parallel implementations of the same domain logic.
+
+For the actionable implementation sequence—including language responsibilities, module boundaries, principal/tenant enforcement, persistence migration, worker/event contracts, client parity and testable exit criteria—see [IMPLEMENTATION_BLUEPRINT.md](IMPLEMENTATION_BLUEPRINT.md). That blueprint expands, rather than replaces, the product and security contracts cited above.
