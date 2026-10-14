@@ -10,6 +10,8 @@
 
 This roadmap supersedes the original 0.2.x planning document. Historical implementation estimates from that document are no longer authoritative; the repository state, tests, CI workflows and current architecture documentation are authoritative.
 
+The detailed implementation sequence, language allocation, domain/module contracts, security model, data model, client strategy and gate-level acceptance tests are expanded in [IMPLEMENTATION_BLUEPRINT.md](IMPLEMENTATION_BLUEPRINT.md). This roadmap remains authoritative for gate order and qualification status; the blueprint explains how to implement those gates without claiming target behavior already exists.
+
 ## Current platform baseline
 
 The unified NexusAgent platform currently includes:

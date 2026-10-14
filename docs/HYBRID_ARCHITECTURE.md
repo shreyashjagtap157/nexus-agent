@@ -1,8 +1,10 @@
-# Hybrid Rust/Python Architecture — Nexus
+# Hybrid Rust/Python Architecture — Historical Proposal
 
-> **Date:** June 8, 2026
-> **Status:** Design Document — Ready for Implementation
-> **Decision:** Rust for CLI/render/inference dispatch, Python for agents/memory/tools
+> **Original date:** June 8, 2026
+> **Current status:** Historical design proposal; not implementation-ready without reconciliation
+> **Precedence:** The requirements-first language decision in [ARCHITECTURE.md](ARCHITECTURE.md) and the current [IMPLEMENTATION_BLUEPRINT.md](IMPLEMENTATION_BLUEPRINT.md) supersede the old proposal below where they conflict.
+
+This file is retained for historical context. In particular, the older recommendation to place inference dispatch in Rust and its startup/latency targets are not current implementation decisions. The current allocation is Python for the shared agent/orchestration/research runtime, TypeScript for the browser UI, and Rust for native clients and narrowly justified system-sensitive components. Do not start a wholesale migration from this historical document; follow the current qualification gates and prove each incremental change with tests.
 
 ---
 
