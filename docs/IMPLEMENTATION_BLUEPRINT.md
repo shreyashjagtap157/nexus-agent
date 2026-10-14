@@ -991,7 +991,81 @@ This ordering is deliberate: better UI cannot compensate for an unauthenticated 
 
 ---
 
-## 24. References and document precedence
+## 24. Concrete repository migration map and PR slicing
+
+This map connects the target design to current source locations. Names below were checked against the current source tree; proposed behavior is not yet implemented merely because the file exists.
+
+### 24.1 API and application boundary
+
+| Current file | Current role / observed risk | Recommended next change | Must-pass tests |
+|---|---|---|---|
+| src/nexus_agent/gui/server.py | FastAPI application, middleware, routes, startup and shared global StateManager | First introduce an application/service container and explicit app factory while keeping the current app import for compatibility. Pass request-scoped Principal and run context to application services. Keep only immutable registries/process resources global. Keep loopback bind restriction until Gate 2 passes. | app factory isolated state; missing auth in shared mode; origin/CSRF; concurrent requests do not share mutable provider/workspace/session; non-loopback startup denied |
+| src/nexus_agent/auth/web_routes.py | Provider catalog/config/credential lifecycle with local-only boundary | Separate safe provider discovery from credential mutation and provider-test actions. Add verified session dependency, current membership checks and secret-reference authorization. | remote/missing-session denial; secret redaction; revoked membership; provider connection belongs to owner/tenant |
+| src/nexus_agent/agents/web_routes.py | Agent list/get/generate/save/delete endpoints and local-client checks | Keep routes thin; resolve Principal/workspace through authorization service. Validate generated profile schema and requested capabilities separately from effective permissions. Persist provenance and owner. | guessed profile ID; wrong tenant/workspace; missing Principal; invalid profile; generation cannot elevate capability |
+| src/nexus_agent/mcp/web_routes.py | MCP catalog/config/validation routes | Resolve MCP configuration from authorized tenant/workspace. Authorize each tool invocation downstream as well as configuration routes. | cross-tenant server config; missing Principal; secret redaction; MCP output treated as untrusted input |
+| src/nexus_agent/memory/web_routes.py | Scoped memory routes with local boundary | Resolve scope owner from Principal and resource grants; do not let caller-supplied session/team/agent IDs set ownership. | search filters before ranking; tenant cannot fetch/store/forget another tenant memory |
+| src/nexus_agent/team/web_routes.py | Team/run controls and team-data API | Use service functions for each operation; authorize run/team/artifact ownership on list/detail/messages/events/reports/artifacts/cancel/resume. | read/write/download/cancel/resume/replay denial matrix and valid-owner positive tests |
+
+### 24.2 Run, session and team core
+
+| Current file | Current role / observed risk | Recommended next change | Must-pass tests |
+|---|---|---|---|
+| src/nexus_agent/session/manager.py | Session lifecycle with a mutable active session field | Add explicit session/run arguments and execution context. Keep a compatibility wrapper for CLI local mode, but do not let a single active session select state for concurrent authenticated requests. | two concurrent sessions; resume/cancel wrong owner rejected; reload/restart recovery |
+| src/nexus_agent/session/storage.py | SQLite session/message/file-change schema | Add migration discipline and tenant/owner/workspace columns in the new repository path. Migrate existing local state under the explicit local principal and verify counts/hashes. | upgrade of old DB; rollback/recovery; tenant-scoped query; concurrent write |
+| src/nexus_agent/team/models.py | Team and worker data models | Separate internal model objects from versioned API/event DTOs. Define canonical state transitions and resource identifiers. | schema compatibility; state enum validation; serialized fixtures |
+| src/nexus_agent/team/store.py | Persistent team blackboard and team execution records | Add explicit tenant/run/workspace ownership, constraints, indexes and repository methods. Avoid unscoped lookup by team_id alone. | wrong-tenant team ID; transaction integrity; restart recovery |
+| src/nexus_agent/team/runtime.py | Team execution/scheduling/runtime path | Introduce immutable RunContext, budgets, cancellation, policy version, workspace/provider references and event writer. Remove implicit global ownership. Keep DAG planning bounded and deterministic. | parallel runs; dependency cycle; budget exhaustion; cancel; worker crash; no global-state leakage |
+| src/nexus_agent/team/control.py | Pause/resume/stop/control operations | Persist control intents, enforce run ownership and use conditional state transitions. Make cancellation/paused acknowledgement explicit. | race pause/cancel/resume; wrong owner; orphan worker recovery |
+| src/nexus_agent/team/planner.py | Team plan/profile selection | Record plan revision, acceptance criteria, profile provenance and resource budget. Generate only missing specialists and validate dependencies/duplicate roles before dispatch. | unknown dependencies; cycle; duplicate roles; generation budget stop |
+| src/nexus_agent/team/quality.py and src/nexus_agent/team/research.py | Quality/research policy integration | Keep final success tied to explicit verification/evidence criteria; preserve source-mode, collection-mode and saturation semantics. | stale evidence invalidates verification; user_only network policy; timed stop; contradiction gates |
+
+### 24.3 Storage, policy and capability enforcement
+
+| Current file / directory | Current role / observed risk | Recommended next change | Must-pass tests |
+|---|---|---|---|
+| src/nexus_agent/storage/layout.py | Resolves local/global/project/workspace runtime paths | Retain as a local filesystem layout adapter. Do not treat directory names as authenticated tenants. Shared mode resolves a workspace record and its storage key only after authorization. | path traversal, tenant locator tampering, workspace grant revoked, symlink containment |
+| src/nexus_agent/auth/store.py | Local provider credential storage | Preserve the local adapter; define owner-aware credential reference interface for shared storage, sharing grants, rotation and deletion. | no raw secret readback; file/keyring error handling; cross-tenant secret access denied |
+| src/nexus_agent/memory/scoped.py | Routes memory to global/user/project/workspace/agent/team/session stores | Make scope owner resolution Principal-aware and authorize each scope before querying. Add provenance and cache ownership. | pre-ranking scope isolation; deletion and cache invalidation |
+| src/nexus_agent/permissions/manager.py and src/nexus_agent/permissions/rules.py | Existing permission manager and rules | Define a central action/resource policy facade that composes current tool rules with principal, tenant, workspace, profile request and tool risk. Keep approval separate from allow/deny. | profile cannot elevate; exact-argument approval; policy version change |
+| src/nexus_agent/core/sandbox.py and src/nexus_agent/tools/ | Command execution and tool implementations | Keep argument validation and current path checks, then add explicit OS-specific sandbox capability/limits for the relevant tool risk. Mark unsupported isolation honestly. | child cleanup; resource limit; network policy; path race; timeout/cancel |
+| src/nexus_agent/mcp/ | MCP protocol/client/server integration | Add per-run authorized tool proxy, server ownership, bounded I/O and safe failure handling. Never trust MCP output as policy. | tool schema validation; credential separation; oversized output; untrusted output |
+| src/nexus_agent/audit/ | Audit routes/store | Standardize actor/tenant/action/resource/outcome/correlation fields; redact raw secrets and unrestricted tool payloads. | redaction scanner; cross-tenant audit read denial; event integrity policy |
+
+### 24.4 Client contracts and CI
+
+| Current surface | Recommended migration | Acceptance evidence |
+|---|---|---|
+| src/nexus_agent/gui/frontend/ | Keep the existing UI working; add TypeScript/React/Vite progressively around run graph, replay and artifact views after OpenAPI is stable | generated types checked in CI; no simulated progress; replay after disconnect |
+| src/nexus_agent/__main__.py and src/nexus_agent/cli/ | Preserve Python CLI compatibility; route use cases through the same services/API contracts | same run lifecycle and authorization decisions as web |
+| nexus-rs/ | Keep Rust TUI/CLI presentation and IPC client; version JSON DTO/event handling | schema compatibility, cancellation/reconnect and OS tests |
+| nexus-desktop/ | Keep desktop as a client of the shared runtime | same run status, error model and ownership decisions |
+| tests/test_gui_security.py | Extend current loopback/origin tests into Principal/session/tenant cases | missing/expired/revoked auth and exact-origin policy |
+| tests/test_auth_store.py | Extend credential tests for owner/tenant reference semantics | every credential/provider route and cross-owner denial |
+| tests/test_team_web_routes.py plus service/repository tests to add | Test route plus underlying service/repository enforcement | guessed-ID negative tests for list/read/write/export/download/replay/cancel/resume |
+| .github/workflows/ci.yml and security workflow | Add migration/database service jobs and cross-tenant qualification once relevant code exists | completed jobs on exact candidate SHA; audit artifact inspection |
+
+### 24.5 Recommended PR-sized sequence
+
+Keep work small enough that each PR has one root cause and a testable exit. Do not implement every row in one branch.
+
+1. **Test fixtures and repository contracts:** add isolated app/service fixtures, typed Principal and resource ownership test helpers without enabling shared access.
+2. **Principal/session vertical slice:** local bootstrap Principal, verified session contract, auth dependency and explicit missing/expired/revoked behavior. Keep non-loopback bind disabled.
+3. **Tenant schema/migrations:** introduce SQLAlchemy/Alembic base, user/tenant/membership/workspace tables, constraints and repeatable local-state migration.
+4. **First protected aggregate:** move session/run ownership through service and repository query; test two users and guessed IDs end-to-end.
+5. **Global-state removal:** pass explicit execution context to provider/session/workspace and run objects; remove active-session selection from web request semantics while preserving CLI adapters.
+6. **Team/task/event ownership:** migrate team store, worker context, durable event sequence, replay and cancellation.
+7. **Credential references:** owner-aware provider connection/secret lookup, redaction and sharing grant tests.
+8. **Tool/MCP policy:** centralized per-invocation authorization, sandbox guarantee matrix and worker-level revalidation.
+9. **Memory/artifact/research scopes:** pre-retrieval authorization, owner-aware artifacts, evidence and export paths.
+10. **API/client contract:** versioned DTOs, generated TS/Rust models and one run workflow end-to-end.
+11. **Gate 2 adversarial qualification:** complete all negative cross-tenant cases, migration/restore, revocation, concurrent worker and secret redaction proof.
+12. **Remote deployment re-evaluation:** only after Gate 2 fully passes and exact-head CI/Security + operator config are verified. This is not an automatic consequence of the schema existing.
+
+A PR must state the current candidate SHA, changed domain boundary, tests executed, tests not executed, migration impact, rollback/recovery path, workflow evidence and remaining risk. Keep runtime feature claims in ROADMAP.md synchronized with source/tests rather than marking a gate completed from this list.
+
+---
+
+## 25. References and document precedence
 
 Framework references:
 - Python asyncio: https://docs.python.org/3/library/asyncio.html
