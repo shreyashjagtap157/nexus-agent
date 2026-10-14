@@ -639,7 +639,7 @@ The language decision is based on product requirements, ecosystem support and op
 - **Rust is recommended for native desktop/CLI components and narrowly scoped system-sensitive components** where native packaging, predictable resource use or memory safety justify it. It should not duplicate the agent planner or provider orchestration.
 - Use language-neutral, versioned API/event schemas between components. Do not split the core across languages without a demonstrated boundary and contract tests.
 
-If one language had to be selected for the core product alone, select Python. This is not a recommendation to implement every client in Python or to put all privileged operations in the same process. See [Architecture](docs/ARCHITECTURE.md), the [Implementation Blueprint](docs/IMPLEMENTATION_BLUEPRINT.md), and [Hybrid Architecture](docs/HYBRID_ARCHITECTURE.md).
+If one language had to be selected for the core product alone, select Python. This is not a recommendation to implement every client in Python or to put all privileged operations in the same process. See [Architecture](docs/ARCHITECTURE.md) and the [Implementation Blueprint](docs/IMPLEMENTATION_BLUEPRINT.md) for current decisions; [Hybrid Architecture](docs/HYBRID_ARCHITECTURE.md) is retained as historical context.
 
 ### Delivery and evidence
 
