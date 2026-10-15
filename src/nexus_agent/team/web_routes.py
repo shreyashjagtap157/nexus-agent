@@ -18,6 +18,7 @@ from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
 from nexus_agent.storage.layout import StorageLayout
+from nexus_agent.utils.fs import iter_all_files
 from nexus_agent.workflows import WorkflowRegistry
 
 from .control import control as control_team_request
@@ -433,8 +434,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             return {"artifacts": []}
         # Traverse lazily and retain only file entries instead of sorting every directory
         # and file path. Sort the file entries by their original Path to preserve response order.
+        # ⚡ Bolt Optimization: Replace `pathlib.Path.rglob("*")` with custom memory-efficient
+        # `os.scandir` generator `iter_all_files` to avoid intermediate `Path` allocations overhead.
         artifacts: list[tuple[Path, dict[str, Any]]] = []
-        for path in root.rglob("*"):
+        for path in iter_all_files(root):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
