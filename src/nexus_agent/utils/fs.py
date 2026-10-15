@@ -3,6 +3,25 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate ALL files under search_path using os.scandir to avoid OOM from rglob.
+    Unlike iter_files, this includes hidden directories and build artifacts."""
+    try:
+        with os.scandir(str(search_path)) as it:
+            for entry in it:
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from iter_all_files(Path(entry.path))
+                    elif entry.is_file():
+                        yield Path(entry.path)
+                except OSError:
+                    continue
+    except PermissionError:
+        return
+    except OSError:
+        return
+
+
 def iter_files(search_path: Path) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     try:
