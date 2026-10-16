@@ -50,11 +50,16 @@ uv.lock
 .letta/
 
 # Rust
-nexus-rs/target/
+target/
+**/target/
 
 # Test
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Agent Workbench & Customizations
+.agents/
+skills-lock.json
 
 nul
