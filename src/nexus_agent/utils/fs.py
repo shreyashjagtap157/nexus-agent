@@ -34,6 +34,7 @@ def iter_files(search_path: Path) -> Iterator[Path]:
     except OSError:
         return
 
+
 def iter_all_files(search_path: Path) -> Iterator[Path]:
     """Lazily iterate all files under search_path using os.scandir, without skipping hidden files or node_modules."""
     try:
