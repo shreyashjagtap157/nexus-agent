@@ -33,3 +33,25 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+def iter_all_files(search_path: Path | str) -> Iterator[Path]:
+    """Lazily iterate all files under search_path using os.scandir."""
+    # Stack for non-recursive directory traversal to prevent RecursionError on deep folders
+    stack = [str(search_path)]
+
+    while stack:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                        # Yield files, avoiding additional Path object creation when possible
+                        yield Path(entry.path)
+                    except OSError:
+                        continue
+        except PermissionError:
+            continue
+        except OSError:
+            continue
