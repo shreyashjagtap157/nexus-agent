@@ -18,8 +18,8 @@ from nexus_agent.mcp.client import load_configured_servers
 from nexus_agent.permissions.manager import PermissionManager
 from nexus_agent.research.store import ResearchStore
 from nexus_agent.storage.layout import StorageLayout
-from nexus_agent.workflows import WorkflowRegistry
 from nexus_agent.utils.fs import iter_all_files
+from nexus_agent.workflows import WorkflowRegistry
 
 from .control import control as control_team_request
 from .models import TeamConfig, TeamMode
