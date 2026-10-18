@@ -310,9 +310,8 @@ class Sandbox:
                 return self.workspace
             # Enforce workspace boundary on all platforms
             workspace_resolved = self.workspace.resolve()
-            if (
-                not str(resolved).startswith(str(workspace_resolved) + os.sep)
-                and resolved != workspace_resolved
+            if os.path.commonpath([str(workspace_resolved), str(resolved)]) != str(
+                workspace_resolved
             ):
                 logger.warning(
                     f"Path {resolved} is outside workspace boundary {workspace_resolved}"

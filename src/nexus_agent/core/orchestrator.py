@@ -613,9 +613,9 @@ class Orchestrator:
                                             target_file = self.workspace / file_rel_path
                                             try:
                                                 resolved = target_file.resolve()
-                                                if not str(resolved).startswith(
-                                                    str(self.workspace.resolve()) + os.sep
-                                                ):
+                                                if os.path.commonpath(
+                                                    [str(self.workspace.resolve()), str(resolved)]
+                                                ) != str(self.workspace.resolve()):
                                                     logger.warning(
                                                         f"Path traversal blocked in debate reworked code: {file_rel_path}"
                                                     )
@@ -673,9 +673,9 @@ class Orchestrator:
                                             target_file = self.workspace / mf
                                             try:
                                                 resolved = target_file.resolve()
-                                                if not str(resolved).startswith(
-                                                    str(self.workspace.resolve()) + os.sep
-                                                ):
+                                                if os.path.commonpath(
+                                                    [str(self.workspace.resolve()), str(resolved)]
+                                                ) != str(self.workspace.resolve()):
                                                     logger.warning(
                                                         f"Path traversal blocked in debate modified file: {mf}"
                                                     )
