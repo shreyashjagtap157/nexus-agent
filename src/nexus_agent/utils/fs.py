@@ -33,3 +33,20 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate all files under search_path using os.scandir to avoid OOM from rglob. Includes hidden/ignored directories."""
+    try:
+        with os.scandir(str(search_path)) as it:
+            for entry in it:
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield from iter_all_files(Path(entry.path))
+                    elif entry.is_file():
+                        yield Path(entry.path)
+                except OSError:
+                    continue
+    except PermissionError:
+        return
+    except OSError:
+        return
