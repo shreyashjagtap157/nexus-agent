@@ -431,10 +431,13 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         root = _artifact_root(state_manager, team_id)
         if not root.exists():
             return {"artifacts": []}
+        from nexus_agent.utils.fs import iter_all_files
+
+        # Use os.scandir wrapper iter_all_files to avoid OOM from pathlib.rglob() creating many intermediate Path objects
         # Traverse lazily and retain only file entries instead of sorting every directory
         # and file path. Sort the file entries by their original Path to preserve response order.
         artifacts: list[tuple[Path, dict[str, Any]]] = []
-        for path in root.rglob("*"):
+        for path in iter_all_files(root):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
