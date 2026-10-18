@@ -34,6 +34,7 @@ def iter_files(search_path: Path) -> Iterator[Path]:
     except OSError:
         return
 
+
 def iter_all_files(search_path: Path | str) -> Iterator[Path]:
     """Lazily iterate all files under search_path using os.scandir."""
     # Stack for non-recursive directory traversal to prevent RecursionError on deep folders
