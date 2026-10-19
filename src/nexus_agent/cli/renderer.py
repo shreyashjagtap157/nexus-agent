@@ -1897,68 +1897,52 @@ class NexusTerminalRenderer:
         session_added: int = 0,
         session_removed: int = 0,
     ):
+        """Display a simple greeting panel - no system status/CPU/GPU/RAM.
+
+        This replaces the detailed resource monitor display with a clean
+        greeting showing model and workspace info only.
+        """
         try:
             width = shutil.get_terminal_size().columns
         except (OSError, ValueError):
             width = 80
 
-        # Narrow terminal fallback
-        if width < 40:
-            model_d = truncate_visual(model_name, 20)
-            ws = truncate_visual(workspace, 20)
-            lines = [
-                "╭─ NexusAgent ────────╮",
-                "│ Welcome to Nexus!   │",
-                f"│ Model: {model_d:<20} │",
-                f"│ Workspace: {ws:<20} │",
-                "╰─────────────────────╯",
-            ]
-            panel_h = len(lines)
-            batch = []
-            for i in range(panel_h):
-                batch.append(f"\033[{i + 1};1H\033[2K")
-            for i, line in enumerate(lines):
-                batch.append(f"\033[{i + 1};1H{line}")
-            batch.append(f"\033[{panel_h + 1};1H")
-            sys.stdout.write("".join(batch))
-            sys.stdout.flush()
-            self._welcome_height = panel_h
-            self._setup_scroll_region(self._welcome_height)
-            self._welcome_params = dict(
-                model_name=model_name,
-                workspace=workspace,
-                version=version,
-                provider=provider,
-                context_size=context_size,
-                model_status=model_status,
-                resource_info=resource_info,
-                tokens=tokens,
-                metrics=metrics,
-                active_agents=active_agents,
-                session_added=session_added,
-                session_removed=session_removed,
-            )
-            # Subscribe to live resource monitor (cheap when off-screen)
-            try:
-                from nexus_agent.cli.resource_monitor import ResourceMonitor
+        # Simple greeting panel - no system status or resource info
+        lines = [
+            "╭─ NexusAgent ────────╮",
+            "│   Welcome to Nexus!   │",
+            "│  LLM-powered coding agent   │",
+            "╰─────────────────────╯",
+        ]
 
-                self._resource_monitor = ResourceMonitor.get()
-                self._resource_monitor.subscribe()
-            except (ImportError, RuntimeError, OSError):
-                self._resource_monitor = None
-            return
-
-        # 1. Use the live resource monitor when available; fall back to a
-        #    one-shot sample so the panel still works without psutil.
-        cpu_percent = 0.0
-        cpu_threads = os.cpu_count() or 8
-        mem_str = "—"
-        gpu_percent = 0
-        vram_str = ""
-        try:
-            from nexus_agent.cli.resource_monitor import ResourceMonitor
-
-            mon = ResourceMonitor.get()
+        panel_h = len(lines)
+        batch = []
+        for i in range(panel_h):
+            batch.append(f"\033[{i + 1};1H\033[2K")
+        for i, line in enumerate(lines):
+            batch.append(f"\033[{i + 1};1H{line}")
+        batch.append(f"\033[{panel_h + 1};1H")
+        sys.stdout.write("".join(batch))
+        sys.stdout.flush()
+        self._welcome_height = panel_h
+        self._setup_scroll_region(self._welcome_height)
+        self._welcome_params = dict(
+            model_name=model_name,
+            workspace=workspace,
+            version=version,
+            provider=provider,
+            context_size=context_size,
+            model_status=model_status,
+            resource_info="",  # Explicitly empty - no system status displayed
+            tokens=tokens,
+            metrics=metrics,
+            active_agents=active_agents,
+            session_added=session_added,
+            session_removed=session_removed,
+        )
+        # Explicitly do not subscribe to resource monitor
+        self._resource_monitor = None
+        return
             self._resource_monitor = mon
             mon.subscribe()  # panel is visible — sample every second
             snap = mon.snapshot()

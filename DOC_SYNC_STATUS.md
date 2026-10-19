@@ -76,13 +76,13 @@
 - Version synchronization confirmed (VERSION=0.3.0-alpha.5 across all manifests)
 - Audit completed against all spec documents
 - Gate 1 implementation plan created (GATE1_IMPLEMENTATION_PLAN.md)
+- CHANGELOG.md updated with release notes (2026-10-13)
 
 ### 📋 Pending (Documentation Sync per ROADMAP.md #128-138)
-1. **Update CHANGELOG.md** if any significant changes made since last release
-2. **Add snapshot dates** to any historical audits/planning documents reused (CODEBASE_AUDIT.md already has "Historical snapshot — superseded" notice)
-3. **Ensure language decision recommendations** (Python core, TypeScript UI, Rust system) reflected in contributing guides and onboarding docs
-4. **Verify branch governance documentation** reflects the intent to migrate from master→main (GATE1_IMPLEMENTATION_PLAN.md documents this)
-5. **Synchronize docs/MULTI_AGENT_PLATFORM.md and docs/ORCHESTRATION.md** with code behavior — both read and aligned
+1. **Add snapshot dates** to any historical audits/planning documents reused (CODEBASE_AUDIT.md already has "Historical snapshot — superseded" notice)
+2. **Ensure language decision recommendations** (Python core, TypeScript UI, Rust system) reflected in contributing guides and onboarding docs
+3. **Verify branch governance documentation** reflects the intent to migrate from master→main (GATE1_IMPLEMENTATION_PLAN.md documents this; default branch left as master per user directive)
+4. **Synchronize docs/MULTI_AGENT_PLATFORM.md and docs/ORCHESTRATION.md** with code behavior — both read and aligned
 
 ## Evidence
 - All 7 artifacts read and verified against codebase implementation

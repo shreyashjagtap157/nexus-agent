@@ -240,7 +240,7 @@ class CommandDispatcherMixin(
             "/stats": self._cmd_stats,
             "/memory": self._cmd_memory,
             "/reflect": self._cmd_reflect,
-            "/task": self._cmd_task,
+            "/task": self._cmd_tasks,
             "/debate": self._cmd_debate,
             "/verify": self._cmd_verify,
             "/diff": self._cmd_diff,

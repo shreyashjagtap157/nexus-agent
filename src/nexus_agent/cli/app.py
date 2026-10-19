@@ -77,6 +77,15 @@ class NexusApp(
         self._session_id = session_id
         self._new_session = new_session
 
+        # Reset ResourceMonitor singleton to ensure fresh state (greeting mode)
+        try:
+            from nexus_agent.cli.resource_monitor import ResourceMonitor
+            if ResourceMonitor._instance is not None:
+                ResourceMonitor._instance._stop.set()
+                ResourceMonitor._instance = None
+        except Exception:
+            pass
+
         verbosity = Verbosity.VERBOSE if verbose else Verbosity.QUIET if quiet else Verbosity.NORMAL
         self.r = NexusTerminalRenderer(verbosity)
         self.console = self.r.console
@@ -139,6 +148,14 @@ class NexusApp(
 
     def run(self):
         try:
+            # Reset ResourceMonitor singleton to ensure fresh state
+            try:
+                from nexus_agent.cli.resource_monitor import ResourceMonitor
+                if ResourceMonitor._instance is not None:
+                    ResourceMonitor._instance._stop.set()
+                    ResourceMonitor._instance = None
+            except Exception:
+                pass
             self._initialize()
             self._welcome_thread = threading.Thread(target=self._welcome_update_loop, daemon=True)
             self._welcome_thread.start()
@@ -152,29 +169,15 @@ class NexusApp(
             self._cleanup()
 
     def _welcome_update_loop(self):
-        """Heartbeat loop to update the welcome panel with fresh resources
-        and session totals. Runs every second while the app is active.
+        """Heartbeat loop - disabled resource updates to show greeting instead of system status.
+
+        Runs every second while the app is active, but no longer ticks the resource
+        monitor or rebuilds the welcome panel with system stats.
         """
-        last_tokens = (0, 0)
-        last_diffs = (0, 0)
+        # Resource updates disabled - greeting will be shown instead of CPU/GPU/RAM
         while self._is_running.is_set():
             time.sleep(1.0)
-            # 1. Tick the per-second resource monitor (CPU/GPU)
-            self.r.tick_resources()
-            # 2. Rebuild the full panel if session totals changed
-            curr_tokens = (self._tokens.total_input, self._tokens.total_output)
-            curr_diffs = (self._tokens.total_added, self._tokens.total_removed)
-            if curr_tokens != last_tokens or curr_diffs != last_diffs:
-                try:
-                    self._rebuild_welcome(
-                        tokens=self._tokens,
-                        session_added=self._tokens.total_added,
-                        session_removed=self._tokens.total_removed,
-                    )
-                    last_tokens = curr_tokens
-                    last_diffs = curr_diffs
-                except Exception:
-                    pass
+            # No longer updating resource info - greeting displayed instead
 
     def _main_loop(self):
         # Clear screen to ensure no remnants of early prints are visible
