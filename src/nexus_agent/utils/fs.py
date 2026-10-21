@@ -33,3 +33,23 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate all entries under search_path using a stack-based os.scandir.
+    Yields both files and directories, preserving pathlib.rglob('*') behavior."""
+    stack = [str(search_path)]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as it:
+                for entry in it:
+                    try:
+                        p = Path(entry.path)
+                        yield p
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                    except OSError:
+                        continue
+        except (OSError, PermissionError):
+            continue
