@@ -33,3 +33,23 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate all files and directories under search_path using os.scandir to avoid OOM from rglob."""
+    # Optimization: Use a stack-based approach instead of recursion to prevent keeping file
+    # descriptors open for parent directories, avoiding EMFILE (too many open files) errors.
+    stack = [str(search_path)]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as it:
+                for entry in it:
+                    try:
+                        yield Path(entry.path)
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                    except OSError:
+                        continue
+        except (PermissionError, OSError):
+            continue
