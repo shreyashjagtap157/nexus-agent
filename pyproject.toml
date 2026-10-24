@@ -46,7 +46,9 @@ dependencies = [
     "tree-sitter>=0.22.0",
     "psutil>=5.9.0",
     "platformdirs>=4.0.0",
-    "filelock>=4.0.12,<4.1",
+    # Optimization/Security: Relaxed filelock constraint to >=4.2.1 to resolve
+    # pip-audit vulnerabilities (CVE-2026-112940, CVE-2026-112913, CVE-2026-112907)
+    "filelock>=4.2.1",
 ]
 
 [project.optional-dependencies]
