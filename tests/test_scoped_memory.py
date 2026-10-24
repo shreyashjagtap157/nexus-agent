@@ -4,7 +4,11 @@ from nexus_agent.memory.scoped import MemoryScope, ScopedMemory
 from nexus_agent.storage.layout import StorageLayout
 
 
-def test_scoped_memory_keeps_project_and_user_separate(tmp_path: Path):
+def test_scoped_memory_keeps_project_and_user_separate(tmp_path: Path, monkeypatch):
+    # Optimization/Fix: Ensure `get_data_dir()` resolves to a test-isolated path.
+    # Otherwise, it falls back to the user's global ~/.local/share/nexus-agent
+    # directory, leaking state and causing cross-test pollution.
+    monkeypatch.setenv("NEXUS_DATA_DIR", str(tmp_path / "user_data"))
     layout = StorageLayout(tmp_path, project_root=tmp_path)
     memory = ScopedMemory(layout)
     user_id = memory.store("User preference", scope=MemoryScope.USER, category="preference")
@@ -17,7 +21,9 @@ def test_scoped_memory_keeps_project_and_user_separate(tmp_path: Path):
     assert any(row["id"] == user_id and row["scope"] == "user" for row in user_results)
 
 
-def test_scoped_memory_supports_team_and_agent_scopes(tmp_path: Path):
+def test_scoped_memory_supports_team_and_agent_scopes(tmp_path: Path, monkeypatch):
+    # Optimization/Fix: Isolate data directory to prevent leaking test state globally.
+    monkeypatch.setenv("NEXUS_DATA_DIR", str(tmp_path / "user_data"))
     layout = StorageLayout(tmp_path)
     memory = ScopedMemory(layout, agent_id="reviewer", team_id="team-1")
     agent_id = memory.store("reviewer note", scope=MemoryScope.AGENT)
