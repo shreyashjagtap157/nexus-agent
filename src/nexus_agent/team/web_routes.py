@@ -433,8 +433,12 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
             return {"artifacts": []}
         # Traverse lazily and retain only file entries instead of sorting every directory
         # and file path. Sort the file entries by their original Path to preserve response order.
+        # PERF: Using iter_all_files instead of rglob to prevent RecursionError on deeply nested
+        # directories and reduce intermediate Path object allocations, improving performance.
         artifacts: list[tuple[Path, dict[str, Any]]] = []
-        for path in root.rglob("*"):
+        from nexus_agent.utils.fs import iter_all_files
+
+        for path in iter_all_files(root):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
