@@ -3,6 +3,26 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """
+    Lazily iterate all entries under search_path using a non-recursive, stack-based os.scandir
+    to avoid OOM from rglob and prevent EMFILE/RecursionError on deeply nested directories.
+    Yields Path for every entry (files, directories, symlinks) to mimic rglob('*').
+    """
+    stack = [str(search_path)]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as it:
+                for entry in it:
+                    path = Path(entry.path)
+                    yield path
+                    if entry.is_dir(follow_symlinks=False):
+                        stack.append(entry.path)
+        except OSError:
+            continue
+
+
 def iter_files(search_path: Path) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     try:
