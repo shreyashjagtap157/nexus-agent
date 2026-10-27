@@ -43,10 +43,9 @@ def iter_all_files(search_path: Path) -> Iterator[Path]:
         try:
             with os.scandir(str(current)) as it:
                 for entry in it:
+                    path_obj = Path(entry.path)
+                    yield path_obj
                     if entry.is_dir(follow_symlinks=False):
-                        yield Path(entry.path)
-                        stack.append(Path(entry.path))
-                    elif entry.is_file(follow_symlinks=False) or entry.is_symlink():
-                        yield Path(entry.path)
+                        stack.append(path_obj)
         except OSError:
             continue
