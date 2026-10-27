@@ -33,3 +33,20 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate ALL files under search_path (including hidden/ignored) using os.scandir."""
+    stack = [search_path]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(str(current)) as it:
+                for entry in it:
+                    if entry.is_dir(follow_symlinks=False):
+                        yield Path(entry.path)
+                        stack.append(Path(entry.path))
+                    elif entry.is_file(follow_symlinks=False) or entry.is_symlink():
+                        yield Path(entry.path)
+        except OSError:
+            continue
