@@ -33,3 +33,22 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Non-recursive, stack-based traversal yielding all entries including dirs/symlinks."""
+    stack = [search_path]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(str(current)) as it:
+                for entry in it:
+                    try:
+                        p = Path(entry.path)
+                        yield p
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(p)
+                    except OSError:
+                        continue
+        except OSError:
+            continue
