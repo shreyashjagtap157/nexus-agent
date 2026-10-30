@@ -42,7 +42,14 @@ def iter_all_files(search_path: Path) -> Iterator[Path]:
         current = stack.pop()
         try:
             with os.scandir(str(current)) as it:
-                for entry in it:
+                # Sort entries in reverse alphabetical order so that when they are
+                # popped from the stack, they are processed in alphabetical order.
+                # This ensures consistent, deterministic behavior across operating
+                # systems (e.g. Windows vs Linux) for tests and clients.
+                entries = list(it)
+                entries.sort(key=lambda e: e.name, reverse=True)
+
+                for entry in entries:
                     try:
                         p = Path(entry.path)
                         yield p
