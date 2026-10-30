@@ -42,20 +42,24 @@ def iter_all_files(search_path: Path) -> Iterator[Path]:
         current = stack.pop()
         try:
             with os.scandir(str(current)) as it:
-                # Sort entries in reverse alphabetical order so that when they are
-                # popped from the stack, they are processed in alphabetical order.
-                # This ensures consistent, deterministic behavior across operating
-                # systems (e.g. Windows vs Linux) for tests and clients.
+                # Sort entries alphabetically to ensure consistent, deterministic behavior
+                # across operating systems (e.g. Windows vs Linux) for tests and clients.
                 entries = list(it)
-                entries.sort(key=lambda e: e.name, reverse=True)
+                entries.sort(key=lambda e: e.name)
 
+                dirs_to_append = []
                 for entry in entries:
                     try:
                         p = Path(entry.path)
                         yield p
                         if entry.is_dir(follow_symlinks=False):
-                            stack.append(p)
+                            dirs_to_append.append(p)
                     except OSError:
                         continue
+
+                # Reverse the directories before appending to the stack so they are popped
+                # and processed in alphabetical order.
+                dirs_to_append.reverse()
+                stack.extend(dirs_to_append)
         except OSError:
             continue
