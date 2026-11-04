@@ -8,25 +8,24 @@ def iter_all_files(search_path: Path) -> Iterator[Path]:
     # We use a non-recursive stack-based approach with os.scandir to prevent RecursionError on
     # deeply nested directories and reduce Path object allocation overhead compared to
     # pathlib.Path.rglob('*').
-    try:
-        stack = [search_path]
-        while stack:
-            current_dir = stack.pop()
-            try:
-                with os.scandir(str(current_dir)) as it:
-                    for entry in it:
-                        try:
-                            path_obj = Path(entry.path)
-                            yield path_obj
+    stack = [search_path]
+    while stack:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(str(current_dir)) as it:
+                for entry in it:
+                    try:
+                        path_obj = Path(entry.path)
+                        yield path_obj
 
-                            # rglob yields both files and dirs, but only traverses dirs.
-                            # Do not follow symlinks.
-                            if entry.is_dir(follow_symlinks=False):
-                                stack.append(path_obj)
-                        except OSError:
-                            continue
-            except (PermissionError, OSError):
-                continue
+                        # rglob yields both files and dirs, but only traverses dirs.
+                        # Do not follow symlinks.
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(path_obj)
+                    except OSError:
+                        continue
+        except (PermissionError, OSError):
+            continue
 
 
 def iter_files(search_path: Path) -> Iterator[Path]:
