@@ -1,4 +1,3 @@
-
-## 2024-06-15 - [Replace slow pathlib.rglob with fast os.scandir for directory traversals]
-**Learning:** Using `pathlib.Path.rglob()` for recursive directory traversal creates significant overhead because it creates intermediate `Path` objects. A custom recursive `os.scandir` implementation is much faster for tasks like finding GGUF files and calculating disk usage, especially when handling deeply nested folders.
-**Action:** When optimizing file system traversal or repeated `stat` checking in hot loops, prefer `os.scandir` with explicit `follow_symlinks` flags instead of `pathlib.rglob()`.
+## 2024-05-14 - Replace pathlib.Path.rglob with os.scandir for performance
+**Learning:** In Python, using `pathlib.Path.rglob()` for directory traversal creates significant memory overhead due to the constant instantiation of intermediate `Path` objects. For performance-critical code or deeply nested directories, implementing a custom non-recursive, stack-based file generator with `os.scandir` is measurably faster and prevents `RecursionError`.
+**Action:** When a bottleneck is found in directory traversal, replace `pathlib.Path.rglob` with a stack-based `os.scandir` traversal. Ensure the custom generator preserves original path yielding behavior (including directories and symlinks) before adding to stack.
