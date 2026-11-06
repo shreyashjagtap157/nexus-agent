@@ -33,3 +33,22 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """
+    Lazily iterate all entries under search_path using a non-recursive stack-based
+    os.scandir approach. This prevents RecursionError and reduces memory overhead compared
+    to rglob while preserving hidden files and returning all entry types.
+    """
+    stack = [str(search_path)]
+    while stack:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    yield Path(entry.path)
+                    if entry.is_dir(follow_symlinks=False):
+                        stack.append(entry.path)
+        except OSError:
+            continue
