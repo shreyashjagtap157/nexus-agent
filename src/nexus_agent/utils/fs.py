@@ -33,3 +33,23 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """Lazily iterate all files (including hidden) under search_path iteratively to avoid OOM and
+    EMFILE from recursion."""
+    stack = [str(search_path)]
+    while stack:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    try:
+                        if entry.is_dir(follow_symlinks=False) and not entry.is_symlink():
+                            stack.append(entry.path)
+                        elif entry.is_file(follow_symlinks=False) or entry.is_symlink():
+                            yield Path(entry.path)
+                    except OSError:
+                        continue
+        except OSError:
+            continue
