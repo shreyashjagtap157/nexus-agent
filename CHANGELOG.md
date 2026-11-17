@@ -11,7 +11,8 @@ Release precedence and compatibility are governed by Semantic Versioning.
 
 ## [Unreleased]
 
-Changes not yet assigned to a release.
+- No significant changes since 0.3.0-alpha.5 release (2026-10-09)
+- Documentation synchronization in progress per ROADMAP.md #128-138
 
 ## [0.3.0-alpha.4]
 

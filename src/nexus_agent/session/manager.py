@@ -52,6 +52,7 @@ class SessionManager:
         data_dir: str | Path | None = None,
         auto_save: bool = True,
         auto_save_interval: int = 30,
+        tenant_id: str | None = None,
     ):
         self.data_dir = Path(data_dir or "~/.nexus-agent/sessions").expanduser()
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -61,6 +62,7 @@ class SessionManager:
 
         self.auto_save = auto_save
         self.auto_save_interval = auto_save_interval
+        self.tenant_id = tenant_id
 
         self._active_session_id: str | None = None
         self._last_save_time: float = 0
@@ -110,6 +112,7 @@ class SessionManager:
         title: str = "",
         mode: str = "auto",
         metadata: dict[str, Any] | None = None,
+        tenant_id: str | None = None,
     ) -> str:
         """Create a new session.
 
@@ -120,11 +123,16 @@ class SessionManager:
             title: Session title.
             mode: Session operating mode.
             metadata: Additional metadata.
+            tenant_id: Tenant identifier (for multi-user isolation).
 
         Returns:
             New session ID.
         """
         session_id = uuid.uuid4().hex[:12]
+
+        session_metadata = dict(metadata or {})
+        if tenant_id:
+            session_metadata["tenant_id"] = tenant_id
 
         self.storage.create_session(
             session_id=session_id,
@@ -133,13 +141,13 @@ class SessionManager:
             workspace=workspace,
             title=title or f"Session {time.strftime('%Y-%m-%d %H:%M')}",
             mode=mode,
-            metadata=metadata,
+            metadata=session_metadata,
         )
 
         self._active_session_id = session_id
         self._last_save_time = time.time()
 
-        logger.info(f"Created session: {session_id}")
+        logger.info(f"Created session: {session_id} (tenant: {tenant_id or 'default'})")
         return session_id
 
     def resume_session(self, session_id: str) -> dict[str, Any] | None:

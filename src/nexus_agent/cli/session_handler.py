@@ -382,7 +382,8 @@ class SessionOrchestratorMixin:
     def _rebuild_welcome(self):
         strip_markup(self._model_name())
         if self._first_request_done:
-            res_info = self._get_resource_info()
+            # resource_info omitted to display greeting instead of system status
+            res_info = ""
         else:
             res_info = ""
         if hasattr(self.r, "rebuild_welcome"):

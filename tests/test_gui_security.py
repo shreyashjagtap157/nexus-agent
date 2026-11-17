@@ -1,12 +1,26 @@
+from typing import Any, cast
+
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+import nexus_agent.gui.server as gui_server
 from nexus_agent.agents.web_routes import _require_local as require_agent_local
 from nexus_agent.auth.web_routes import _local_only as require_auth_local
-from nexus_agent.gui.server import _allowed_websocket_origin, _require_local_client, app
-from nexus_agent.mcp.web_routes import _require_local as require_mcp_local
+from nexus_agent.gui.server import (
+    _allowed_local_http_origin,
+    _allowed_websocket_origin,
+    _format_gui_url,
+    _require_local_client,
+    _require_loopback_bind_host,
+    app,
+)
+from nexus_agent.mcp.web_routes import (
+    _require_local as require_mcp_local,
+    register_mcp_routes,
+)
+from nexus_agent.team.web_routes import _require_local_client as require_team_local
 from nexus_agent.memory.web_routes import _require_local as require_memory_local
 from nexus_agent.research.web_routes import _require_local as require_research_local
 
@@ -83,6 +97,7 @@ def test_websocket_origin_guard_rejects_untrusted_origins(headers):
     [
         {"origin": "http://localhost:8765", "host": "localhost:8765"},
         {"origin": "http://127.0.0.1:8765", "host": "127.0.0.1:8765"},
+        {"origin": "http://127.0.0.2:8765", "host": "127.0.0.2:8765"},
         {"origin": "http://[::1]:8765", "host": "[::1]:8765"},
         {},
     ],
@@ -99,6 +114,7 @@ def test_websocket_origin_guard_allows_same_origin_and_nonbrowser_clients(header
         require_memory_local,
         require_mcp_local,
         require_research_local,
+        require_team_local,
         _require_local_client,
     ],
 )
@@ -107,3 +123,113 @@ def test_sensitive_guards_fail_closed_when_client_address_is_missing(guard):
     with pytest.raises(HTTPException) as exc:
         guard(request)
     assert exc.value.status_code == 403
+
+
+@pytest.mark.parametrize(
+    "host",
+    (
+        "127.0.0.1",
+        "::1",
+        "localhost",
+    ),
+)
+def test_gui_bind_policy_accepts_only_loopback_targets(host):
+    _require_loopback_bind_host(host)
+
+
+@pytest.mark.parametrize(
+    "host",
+    (
+        "0.0.0.0",
+        "127.0.0.2",
+        "192.168.1.20",
+        "10.0.0.4",
+        "::",
+        "2001:db8::1",
+        "attacker.example",
+        "",
+    ),
+)
+def test_gui_bind_policy_rejects_network_accessible_targets(host):
+    with pytest.raises(ValueError, match="loopback"):
+        _require_loopback_bind_host(host)
+
+
+def test_gui_startup_rejects_configured_remote_bind_before_initializing_runtime(monkeypatch):
+    monkeypatch.setattr(
+        gui_server, "load_config", lambda **_: {"gui": {"host": "0.0.0.0"}}
+    )
+
+    with pytest.raises(ValueError, match="loopback"):
+        gui_server.start_gui_server(open_browser=False)
+
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    (
+        ("post", "/api/mcp/validate", None),
+        ("put", "/api/mcp", []),
+    ),
+)
+def test_mcp_mutation_routes_reject_missing_client_address(
+    method, path, payload, tmp_path, monkeypatch
+):
+    isolated_app = FastAPI()
+    register_mcp_routes(isolated_app, {"workspace": str(tmp_path)})
+    monkeypatch.setattr(
+        "nexus_agent.mcp.web_routes.load_config",
+        lambda **_: {"mcp": {"servers": []}},
+    )
+    monkeypatch.setattr("nexus_agent.mcp.web_routes.save_user_config", lambda *_: None)
+
+    client = TestClient(isolated_app, client=cast(Any, None))
+    if method == "post":
+        response = client.post(path)
+    else:
+        response = client.put(path, json=payload)
+
+    assert response.status_code == 403
+
+@pytest.mark.parametrize(
+    ("host", "expected"),
+    (
+        ("127.0.0.1", "http://127.0.0.1:7860"),
+        ("localhost", "http://localhost:7860"),
+        ("::1", "http://[::1]:7860"),
+    ),
+)
+def test_gui_url_formats_loopback_addresses(host, expected):
+    assert _format_gui_url(host, 7860) == expected
+
+@pytest.mark.parametrize(
+    ("headers", "scheme", "allowed"),
+    (
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.1:7860"}, "http", True),
+        ({"host": "[::1]:7860", "origin": "http://[::1]:7860"}, "http", True),
+        ({"host": "localhost:7860", "origin": "http://localhost:7860"}, "http", True),
+        ({"host": "127.0.0.1:7860"}, "http", True),
+        ({"host": "127.0.0.1:7860", "origin": "https://127.0.0.1:7860"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.2:7860"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://evil.example:7860"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.1:3000"}, "http", False),
+        ({"host": "127.0.0.1:7860", "origin": "http://127.0.0.1:7860/path"}, "http", False),
+    ),
+)
+def test_http_origin_policy(headers, scheme, allowed):
+    assert _allowed_local_http_origin(headers, scheme) is allowed
+
+
+def test_api_middleware_blocks_cross_origin_mutation_before_handler():
+    client = TestClient(app, client=("127.0.0.1", 12345))
+    response = client.post(
+        "/api/__origin-policy-test__",
+        headers={"Origin": "https://attacker.example"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Cross-origin GUI/API requests are blocked."
+
+@pytest.mark.parametrize("path", ("/api/skills", "/api/audit/verify"))
+def test_sensitive_routes_reject_missing_client_address(path):
+    client = TestClient(app, client=cast(Any, None))
+    response = client.get(path)
+    assert response.status_code == 403
+

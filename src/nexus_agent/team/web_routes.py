@@ -431,8 +431,10 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         root = _artifact_root(state_manager, team_id)
         if not root.exists():
             return {"artifacts": []}
-        artifacts = []
-        for path in sorted(root.rglob("*")):
+        # Traverse lazily and retain only file entries instead of sorting every directory
+        # and file path. Sort the file entries by their original Path to preserve response order.
+        artifacts: list[tuple[Path, dict[str, Any]]] = []
+        for path in root.rglob("*"):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
@@ -440,13 +442,17 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
                 continue
             if resolved.is_file():
                 artifacts.append(
-                    {
-                        "name": str(resolved.relative_to(root)),
-                        "size": resolved.stat().st_size,
-                        "path": str(resolved),
-                    }
+                    (
+                        path,
+                        {
+                            "name": str(resolved.relative_to(root)),
+                            "size": resolved.stat().st_size,
+                            "path": str(resolved),
+                        },
+                    )
                 )
-        return {"team_id": team_id, "artifacts": artifacts}
+        artifacts.sort(key=lambda item: item[0])
+        return {"team_id": team_id, "artifacts": [item for _, item in artifacts]}
 
     @router.get("/api/teams/{team_id}/artifacts/{artifact_path:path}")
     async def download_team_artifact(request: Request, team_id: str, artifact_path: str):

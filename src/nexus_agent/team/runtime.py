@@ -162,6 +162,7 @@ class TeamRuntime:
         provider_selector: ProviderSelector | None = None,
         agent_registry: AgentRegistry | None = None,
         mcp_clients: list[Any] | None = None,
+        tenant_id: str | None = None,
     ):
         self.provider = provider
         self.tools = list(tools)
@@ -171,6 +172,7 @@ class TeamRuntime:
         self.permission_callback = permission_callback
         self.provider_selector = provider_selector
         self.agent_registry = agent_registry or AgentRegistry(self.workspace)
+        self.tenant_id = tenant_id
         from nexus_agent.core.config import get_data_dir
 
         self.skill_registry = SkillRegistry(
@@ -199,7 +201,10 @@ class TeamRuntime:
             pass
 
     def _make_store(self) -> TeamStore:
-        return TeamStore(self.data_dir / "teams.db")
+        store_path = self.data_dir / "teams.db"
+        # TODO: Add tenant-specific database paths once tenant_id is properly integrated
+        # For now, use the same store but teams will have tenant_id field
+        return TeamStore(store_path)
 
     @staticmethod
     def _tool_matches(name: str, categories: set[str]) -> bool:
@@ -735,6 +740,7 @@ Team protocol:
                             "source_count_before": before_sources,
                         },
                         profile.role_id,
+                        tenant_id=self.tenant_id or "",
                     )
 
                 round_chunks: list[str] = []
@@ -778,6 +784,7 @@ Team protocol:
                             "round": round_index,
                         },
                         profile.role_id,
+                        tenant_id=self.tenant_id or "",
                     )
                     events.put(
                         AgentEvent(
@@ -831,6 +838,7 @@ Team protocol:
                             "idle_rounds": idle_rounds,
                         },
                         profile.role_id,
+                        tenant_id=self.tenant_id or "",
                     )
                     if (
                         config.research_collection == "until_saturation"
@@ -1136,6 +1144,7 @@ Team protocol:
             mode.value,
             str(self.workspace),
             cfg.__dict__,
+            tenant_id=self.tenant_id or "",
         )
         if mode == TeamMode.RESEARCH:
             from .research import policy as research_policy

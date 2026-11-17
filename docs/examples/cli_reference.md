@@ -50,12 +50,13 @@ Launch the web-based GUI dashboard.
 ```bash
 nexus gui                   # Default port 7860
 nexus gui --port 9000     # Custom port
-nexus gui --host 0.0.0.0  # Bind to all interfaces
 nexus gui --no-browser    # Don't auto-open browser
 nexus gui --workspace /path
 nexus gui --provider openai
 nexus gui --model gpt-4o
 ```
+
+**Security note:** The GUI/API accepts loopback bind addresses only. Non-loopback addresses such as `0.0.0.0` are rejected until authenticated identity and tenant-isolation Gate 2 is qualified. Use the default `127.0.0.1` binding for local access.
 
 ---
 

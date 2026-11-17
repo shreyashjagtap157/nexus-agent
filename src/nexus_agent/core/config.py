@@ -2,7 +2,7 @@
 Configuration loader for NexusAgent.
 
 Loads configuration from:
-1. Default config (config/default.yaml)
+1. Default config (src/nexus_agent/_default_config.yaml)
 2. User config (~/.nexus-agent/config.yaml)
 3. Project config (.nexus-agent.yaml in workspace)
 4. Environment variables (NEXUS_*)

@@ -14,8 +14,10 @@ def test_provider_factory_prefers_auth_store_over_environment(monkeypatch, tmp_p
         }
     }
     from nexus_agent.auth import AuthStore
+    # create_provider imports AuthStore lazily from nexus_agent.auth to avoid a
+    # circular import, so patch it on the source module.
     monkeypatch.setattr(
-        "nexus_agent.llm.providers.factory.AuthStore",
+        "nexus_agent.auth.AuthStore",
         lambda: AuthStore(tmp_path / "auth.json"),
     )
     AuthStore(tmp_path / "auth.json").set("nvidia_nim", "stored-value")

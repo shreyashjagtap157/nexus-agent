@@ -1,20 +1,33 @@
 from pathlib import Path
 
+import pytest
+
 from nexus_agent.memory.scoped import MemoryScope, ScopedMemory
 from nexus_agent.storage.layout import StorageLayout
 
 
-def test_scoped_memory_keeps_project_and_user_separate(tmp_path: Path):
+def test_scoped_memory_keeps_project_and_user_separate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # USER-scoped memory resolves to the global user data dir, which is shared
+    # outside the test workspace. Isolate it so repeated runs cannot accumulate
+    # entries and push the freshly stored row out of the search window.
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("NEXUS_DATA_DIR", str(data_dir))
     layout = StorageLayout(tmp_path, project_root=tmp_path)
     memory = ScopedMemory(layout)
-    user_id = memory.store("User preference", scope=MemoryScope.USER, category="preference")
-    project_id = memory.store("Project architecture", scope=MemoryScope.PROJECT, category="architecture")
-    assert user_id != project_id
+    try:
+        user_id = memory.store("User preference", scope=MemoryScope.USER, category="preference")
+        project_id = memory.store(
+            "Project architecture", scope=MemoryScope.PROJECT, category="architecture"
+        )
+        assert user_id != project_id
 
-    project_results = memory.search("architecture", scopes=[MemoryScope.PROJECT], limit=5)
-    assert any(row["id"] == project_id and row["scope"] == "project" for row in project_results)
-    user_results = memory.search("preference", scopes=[MemoryScope.USER], limit=5)
-    assert any(row["id"] == user_id and row["scope"] == "user" for row in user_results)
+        project_results = memory.search("architecture", scopes=[MemoryScope.PROJECT], limit=5)
+        assert any(row["id"] == project_id and row["scope"] == "project" for row in project_results)
+        user_results = memory.search("preference", scopes=[MemoryScope.USER], limit=5)
+        assert any(row["id"] == user_id and row["scope"] == "user" for row in user_results)
+    finally:
+        memory.close()
+
 
 
 def test_scoped_memory_supports_team_and_agent_scopes(tmp_path: Path):

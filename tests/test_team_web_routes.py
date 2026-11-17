@@ -82,3 +82,51 @@ def test_team_report_rejects_symlinked_result_artifact(tmp_path: Path):
     register_team_routes(app, State(tmp_path))
     response = TestClient(app, client=("127.0.0.1", 12345)).get("/api/teams/team-1/report")
     assert response.status_code == 400
+
+def test_team_artifacts_listing_preserves_hidden_files_and_sorted_order(tmp_path: Path):
+    root = _artifact_root(State(tmp_path), "team-1")
+    files = [
+        ".hidden/secret.txt",
+        "a.txt",
+        "build/output.bin",
+        "nested/child.txt",
+        "node_modules/pkg.json",
+        "z.txt",
+    ]
+    for relative in files:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative, encoding="utf-8")
+
+    app = FastAPI()
+    register_team_routes(app, State(tmp_path))
+    response = TestClient(app, client=("127.0.0.1", 12345)).get(
+        "/api/teams/team-1/artifacts"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["team_id"] == "team-1"
+    assert [item["name"] for item in payload["artifacts"]] == [str(Path(item)) for item in files]
+
+
+def test_team_artifacts_listing_excludes_symlinks_outside_root(tmp_path: Path):
+    root = _artifact_root(State(tmp_path), "team-1")
+    root.mkdir(parents=True, exist_ok=True)
+    outside = tmp_path / "outside.txt"
+    outside.write_text("private", encoding="utf-8")
+    link = root / "outside-link.txt"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("Symlinks are not available on this platform")
+
+    app = FastAPI()
+    register_team_routes(app, State(tmp_path))
+    response = TestClient(app, client=("127.0.0.1", 12345)).get(
+        "/api/teams/team-1/artifacts"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["artifacts"] == []
+

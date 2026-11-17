@@ -17,10 +17,11 @@ NexusAgent exposes three API surfaces:
 ```bash
 nexus gui                          # Default port 7860
 nexus gui --port 9000             # Custom port
-nexus gui --host 0.0.0.0          # Bind to all interfaces
 nexus gui --no-browser            # Skip auto-open browser
 nexus gui --workspace /path       # Set workspace directory
 ```
+
+**Security note:** The GUI/API accepts loopback bind addresses only. Non-loopback addresses such as `0.0.0.0` are rejected until authenticated identity and tenant-isolation Gate 2 is qualified. Use the default `127.0.0.1` binding for local access. Browser-originated API requests must also match the exact loopback origin (host and port); foreign or cross-origin requests are rejected. Requests without an Origin header remain available to local CLI/non-browser clients, so this is a CSRF defense, not authentication.
 
 ---
 

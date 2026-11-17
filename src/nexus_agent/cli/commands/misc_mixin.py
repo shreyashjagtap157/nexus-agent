@@ -98,20 +98,13 @@ class MiscCommandsMixin:
         self.r.system_message("No IDE detected. Set $EDITOR or install VS Code/Cursor.")
 
     def _cmd_mobile(self, args: str):
-        """Show mobile connection info."""
-        host = self._config.get("gui", {}).get("host", "127.0.0.1")
+        """Explain the current local-only GUI access policy."""
         port = self._config.get("gui", {}).get("port", 7860)
-        if host == "127.0.0.1":
-            self.r.system_message(
-                "To connect from mobile, first set the GUI host to 0.0.0.0:\n"
-                "  /config gui.host 0.0.0.0\n"
-                "  /gui\n"
-                f"Then open http://<your-ip>:{port} on your mobile device."
-            )
-        else:
-            self.r.system_message(
-                f"GUI is running on {host}:{port}\nOpen this URL on your mobile device's browser."
-            )
+        self.r.system_message(
+            "Remote/mobile GUI access is disabled until authenticated multi-user identity "
+            "and tenant isolation pass Gate 2. Non-loopback GUI/API binds are refused.\n"
+            f"For local access, open http://127.0.0.1:{port} on the same device."
+        )
 
     def _cmd_release_notes(self, args: str):
         self.r.system_message(f"Release notes for v{__version__}: See CHANGELOG.md")

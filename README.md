@@ -603,6 +603,8 @@ scripts/               Release/versioning utilities
 
 NexusAgent uses permission-gated tools and workspace boundary checks for filesystem and shell operations. Destructive file operations use a reversible trash path by default.
 
+**Current deployment limit:** Until authenticated identity and tenant isolation pass Gate 2, the GUI/API refuses non-loopback bind addresses. Use it only on the local machine; do not expose it through a LAN address, reverse proxy, or tunnel. Browser-originated API requests are restricted to the exact local origin. These are exposure/CSRF mitigations, not authenticated multi-user authorization, and they do not complete Gate 2. See [the API security note](docs/API.md) and [the principal/tenant contract](docs/STORAGE_AND_GOVERNANCE.md).
+
 Security-sensitive capabilities should be explicitly reviewed before enabling automatic execution in a production environment.
 
 ---

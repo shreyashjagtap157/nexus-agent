@@ -19,6 +19,7 @@ class MemoryScope(str, Enum):
     AGENT = "agent"
     TEAM = "team"
     SESSION = "session"
+    TENANT = "tenant"
 
 
 class ScopedMemory:
@@ -41,11 +42,13 @@ class ScopedMemory:
         agent_id: str | None = None,
         team_id: str | None = None,
         session_id: str | None = None,
+        tenant_id: str | None = None,
     ):
         self.layout = layout
         self.agent_id = agent_id
         self.team_id = team_id
         self.session_id = session_id
+        self.tenant_id = tenant_id
         self._lock = threading.RLock()
         self._managers: dict[MemoryScope, MemoryManager] = {}
 
@@ -70,6 +73,10 @@ class ScopedMemory:
             if not self.session_id:
                 raise ValueError("session_id is required for session-scoped memory.")
             return self.layout.workspace_runtime / "sessions" / self.session_id / "memory"
+        if scope == MemoryScope.TENANT:
+            if not self.tenant_id:
+                raise ValueError("tenant_id is required for tenant-scoped memory.")
+            return self.layout.tenant_memory(self.tenant_id)
         raise ValueError(f"Unsupported memory scope: {scope}")
 
     def manager(self, scope: MemoryScope) -> MemoryManager:
@@ -148,3 +155,13 @@ class ScopedMemory:
             for manager in self._managers.values():
                 manager.close()
             self._managers.clear()
+
+    def with_tenant(self, tenant_id: str) -> ScopedMemory:
+        """Create a new ScopedMemory instance with tenant context."""
+        return ScopedMemory(
+            self.layout,
+            agent_id=self.agent_id,
+            team_id=self.team_id,
+            session_id=self.session_id,
+            tenant_id=tenant_id,
+        )

@@ -79,10 +79,7 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
 
     @router.put("/api/agents/{agent_id}")
     async def save_agent(agent_id: str, request: Request, payload: AgentWriteRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(
-                status_code=403, detail="Agent mutation is restricted to local clients."
-            )
+        _require_local(request)
         if agent_id.strip().lower() != payload.id.strip().lower():
             raise HTTPException(status_code=400, detail="Path agent ID and body ID must match")
         registry = _registry(state_manager)
@@ -95,10 +92,6 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
 
     @router.delete("/api/agents/{agent_id}")
     async def delete_agent(agent_id: str, request: Request, scope: AgentScope | None = None):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(
-                status_code=403, detail="Agent mutation is restricted to local clients."
-            )
         _require_local(request)
         removed = _registry(state_manager).delete(agent_id, scope)
         if not removed:
@@ -107,10 +100,7 @@ def register_agent_routes(app: Any, state_manager: Any) -> None:
 
     @router.post("/api/agents/generate")
     async def generate_agents(request: Request, payload: AgentGenerateRequest):
-        if request.client and request.client.host not in {"127.0.0.1", "::1", "localhost"}:
-            raise HTTPException(
-                status_code=403, detail="Agent mutation is restricted to local clients."
-            )
+        _require_local(request)
         provider = state_manager.get("engine")
         workspace = Path(state_manager.get("workspace") or Path.cwd()).resolve()
         config = state_manager.get("config") or load_config(workspace=workspace)

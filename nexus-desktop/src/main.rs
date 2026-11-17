@@ -33,10 +33,13 @@ struct Workflow {
     #[serde(default)]
     name: String,
     #[serde(default)]
+    #[allow(dead_code)]
     description: String,
     #[serde(default)]
+    #[allow(dead_code)]
     mode: String,
     #[serde(default)]
+    #[allow(dead_code)]
     default_agents: u32,
 }
 
@@ -55,6 +58,7 @@ struct Agent {
     #[serde(default)]
     model_role: String,
     #[serde(default)]
+    #[allow(dead_code)]
     result: Option<String>,
     #[serde(default)]
     error: Option<String>,
@@ -95,10 +99,12 @@ struct TeamResult {
     #[serde(default)]
     synthesis: String,
     #[serde(default)]
+    #[allow(dead_code)]
     artifact_paths: Vec<String>,
     #[serde(default)]
     summary: String,
     #[serde(default)]
+    #[allow(dead_code)]
     quality: serde_json::Value,
 }
 
@@ -136,6 +142,7 @@ enum ControlAction {
     Stop,
 }
 
+#[allow(dead_code)]
 enum Command {
     Start {
         endpoint: String,

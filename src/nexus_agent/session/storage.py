@@ -36,6 +36,7 @@ class SessionStorage(SQLiteStore):
             provider TEXT DEFAULT '',
             workspace TEXT DEFAULT '',
             mode TEXT DEFAULT 'auto',
+            tenant_id TEXT DEFAULT '',
             created_at REAL NOT NULL,
             updated_at REAL NOT NULL,
             message_count INTEGER DEFAULT 0,
@@ -46,12 +47,14 @@ class SessionStorage(SQLiteStore):
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
+            tenant_id TEXT DEFAULT '',
             role TEXT NOT NULL,
             type TEXT DEFAULT '',
             content TEXT,
             tool_calls TEXT,
             tool_call_id TEXT,
             name TEXT,
+            file_path TEXT,
             created_at REAL NOT NULL,
             metadata TEXT DEFAULT '{}',
             FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
@@ -60,7 +63,9 @@ class SessionStorage(SQLiteStore):
         CREATE TABLE IF NOT EXISTS file_changes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
+            tenant_id TEXT DEFAULT '',
             file_path TEXT NOT NULL,
+            event_type TEXT NOT NULL,
             change_type TEXT NOT NULL,
             original_content TEXT,
             new_content TEXT,
@@ -72,6 +77,7 @@ class SessionStorage(SQLiteStore):
         CREATE TABLE IF NOT EXISTS session_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
+            tenant_id TEXT DEFAULT '',
             event_type TEXT NOT NULL,
             event_data TEXT NOT NULL DEFAULT '{}',
             parent_event_id INTEGER,
@@ -80,9 +86,13 @@ class SessionStorage(SQLiteStore):
         );
 
         CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
+        CREATE INDEX IF NOT EXISTS idx_messages_tenant ON messages(tenant_id);
         CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id);
+        CREATE INDEX IF NOT EXISTS idx_file_changes_tenant ON file_changes(tenant_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);
+        CREATE INDEX IF NOT EXISTS idx_sessions_tenant ON sessions(tenant_id);
         CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id);
+        CREATE INDEX IF NOT EXISTS idx_session_events_tenant ON session_events(tenant_id);
     """)
 
     def _init_db(self) -> None:
@@ -413,15 +423,15 @@ class SessionStorage(SQLiteStore):
             return results
 
     def get_session_event_tree(self, session_id: str) -> list[dict[str, Any]]:
-        """Get session events structured as a tree (parent → children).
+        """Get session events structured as a tree (parent -> children).
 
-                Useful for visualizing the call chain during replay.
+        Useful for visualizing the call chain during replay.
 
-                Args:
-                    session_id: Session ID.
+        Args:
+            session_id: Session ID.
 
-        n        Returns:
-                    List of root events, each with a 'children' list.
+        Returns:
+            List of root events, each with a 'children' list.
         """
         events = self.get_session_events(session_id)
         event_map: dict[int, dict[str, Any]] = {}
