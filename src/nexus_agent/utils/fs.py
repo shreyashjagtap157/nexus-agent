@@ -3,6 +3,30 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """
+    Lazily iterate all files and directories under search_path using a non-recursive,
+    stack-based os.scandir loop to improve performance by avoiding RecursionError for
+    deeply nested directories and reducing intermediate Path object allocations during
+    the walk. Yields directories and symlinks in addition to standard files.
+    """
+    stack = [str(search_path)]
+    while stack:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    path_obj = Path(entry.path)
+                    yield path_obj
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+
+
 def iter_files(search_path: Path) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     try:
