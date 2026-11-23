@@ -33,3 +33,27 @@ def iter_files(search_path: Path) -> Iterator[Path]:
         return
     except OSError:
         return
+
+
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """
+    Lazily iterates all files under search_path using a stack and os.scandir.
+    This optimization improves performance by avoiding RecursionError for deeply
+    nested directories and reducing intermediate Path object allocations during
+    the recursive walk. It does not skip hidden directories.
+    """
+    stack = [str(search_path)]
+    while stack:
+        current_dir = stack.pop()
+        try:
+            with os.scandir(current_dir) as it:
+                for entry in it:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(entry.path)
+                        elif entry.is_file():
+                            yield Path(entry.path)
+                    except OSError:
+                        continue
+        except OSError:
+            continue
