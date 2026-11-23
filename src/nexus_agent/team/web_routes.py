@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import threading
 import uuid
 from pathlib import Path
@@ -431,10 +432,27 @@ def register_team_routes(app: Any, state_manager: Any) -> None:
         root = _artifact_root(state_manager, team_id)
         if not root.exists():
             return {"artifacts": []}
+
+        def iter_all_files(directory: Path):
+            # This optimization improves performance by avoiding RecursionError for deeply nested
+            # directories and reducing intermediate Path object allocations during the recursive walk.
+            stack = [directory]
+            while stack:
+                current_dir = stack.pop()
+                try:
+                    with os.scandir(current_dir) as entries:
+                        for entry in entries:
+                            entry_path = Path(entry.path)
+                            yield entry_path
+                            if entry.is_dir(follow_symlinks=False):
+                                stack.append(entry_path)
+                except OSError:
+                    continue
+
         # Traverse lazily and retain only file entries instead of sorting every directory
         # and file path. Sort the file entries by their original Path to preserve response order.
         artifacts: list[tuple[Path, dict[str, Any]]] = []
-        for path in root.rglob("*"):
+        for path in iter_all_files(root):
             resolved = path.resolve()
             try:
                 resolved.relative_to(root)
