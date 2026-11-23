@@ -118,6 +118,20 @@ class GitTool(Tool):
                         f"Only alphanumeric, ., /, -, and _ are allowed. Got: '{token[:50]}...'"
                     )
 
+                # Block dangerous flags/configurations that can lead to command execution
+                dangerous = [
+                    "--upload-pack",
+                    "--receive-pack",
+                    "--ext-cmd",
+                    "core.pager",
+                    "diff.external",
+                ]
+                if token == "-c":
+                    return "Error: The '-c' flag is blocked for security reasons."
+                for dang in dangerous:
+                    if dang in token:
+                        return f"Error: The configuration or flag '{dang}' is blocked for security reasons."
+
         cmd = [self._git_path, subcommand]
         if args:
             cmd += parsed_args
