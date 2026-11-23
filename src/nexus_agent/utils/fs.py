@@ -3,6 +3,33 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
+def iter_all_files(search_path: Path) -> Iterator[Path]:
+    """
+    Yields all paths (files, directories, and symlinks) under search_path.
+    This replaces pathlib.Path.rglob() with a stack-based, non-recursive
+    os.scandir implementation. It improves performance by avoiding
+    RecursionError for deeply nested directories and reducing intermediate
+    Path object allocations during the walk. It yields every Path entry
+    before adding directories to the stack, avoiding functional regressions
+    by keeping all hidden files and symlinks.
+    """
+    stack = [search_path]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(str(current)) as it:
+                for entry in it:
+                    try:
+                        path_obj = Path(entry.path)
+                        yield path_obj
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(path_obj)
+                    except OSError:
+                        continue
+        except (PermissionError, OSError):
+            continue
+
+
 def iter_files(search_path: Path) -> Iterator[Path]:
     """Lazily iterate files under search_path using os.scandir to avoid OOM from rglob."""
     try:
